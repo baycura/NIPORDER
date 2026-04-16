@@ -29,7 +29,7 @@ function PrivateRoute({ children, managerOnly = false }) {
 }
 
 function AppRoutes() {
-  const { session, staffUser, isKitchen, isCashier, loading } = useAuth();
+  const { session, staffUser, isKitchen, isCashier } = useAuth();
   const defaultRoute = isKitchen ? "/kitchen" : isCashier ? "/payment" : "/tables";
   return (
     <Routes>
@@ -38,14 +38,16 @@ function AppRoutes() {
       }/>
       <Route path="/menu/:qrToken" element={<CustomerMenu />} />
       <Route path="/menu" element={<CustomerMenu />} />
-      <Route path="/" element={<PrivateRoute><StaffLayout /></PrivateRoute>}>
+      <Route path="/" element={
+        <PrivateRoute><StaffLayout /></PrivateRoute>
+      }>
         <Route index element={<Navigate to={defaultRoute} replace />} />
-        <Route path="tables"  element={<TablesPage />} />
-        <Route path="orders"  element={<OrdersPage />} />
-        <Route path="kitchen" element={<KitchenPage />} />
-        <Route path="payment" element={<PaymentPage />} />
-        <Route path="stock"   element={<StockViewPage />} />
-        <Route path="myshift" element={<MyShiftPage />} />
+        <Route path="tables"     element={<TablesPage />} />
+        <Route path="orders"     element={<OrdersPage />} />
+        <Route path="kitchen"    element={<KitchenPage />} />
+        <Route path="payment"    element={<PaymentPage />} />
+        <Route path="stock"      element={<StockViewPage />} />
+        <Route path="myshift"    element={<MyShiftPage />} />
         <Route path="stock-mgmt" element={<PrivateRoute managerOnly><StockMgmtPage /></PrivateRoute>} />
         <Route path="staff-mgmt" element={<PrivateRoute managerOnly><StaffMgmtPage /></PrivateRoute>} />
         <Route path="happy-hour" element={<PrivateRoute managerOnly><HappyHourPage /></PrivateRoute>} />
