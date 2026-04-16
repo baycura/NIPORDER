@@ -63,7 +63,8 @@ export default function LoginPage() {
           )}
 
           <button type="submit" disabled={loading}
-            style={{ width:"100%", padding:"14px", background:loading?"#555":"#C8973E",
+            style={{ width:"100%", padding:"14px",
+              background:loading?"#555":"#C8973E",
               border:"none", color:"#000", fontFamily:cv, fontSize:20,
               letterSpacing:"1px", borderRadius:8, cursor:"pointer" }}>
             {loading ? "GİRİŞ YAPILIYOR..." : "GİRİŞ YAP"}
