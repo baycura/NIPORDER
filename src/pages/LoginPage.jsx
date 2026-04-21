@@ -25,11 +25,16 @@ export default function LoginPage() {
         </div>
         <form onSubmit={handleSubmit} style={{background:"#1E1E1E",border:"1px solid #2A2A2A",borderRadius:16,padding:28}}>
           <div style={{color:"#888",fontFamily:cvc,fontSize:10,letterSpacing:"2px",marginBottom:6}}>E-POSTA</div>
-          <input type="email" value={email} onChange={e=>setEmail(e.target.value)} placeholder="isim@notinparis.me" style={{width:"100%",background:"#111",border:"1px solid #2A2A2A",borderRadius:8,padding:"12px 14px",color:"#F0EDE8",fontFamily:cvc,fontSize:15,marginBottom:16}}/>
+          <input type="email" value={email} onChange={e=>setEmail(e.target.value)} placeholder="isim@notinparis.me"
+            style={{width:"100%",background:"#111",border:"1px solid #2A2A2A",borderRadius:8,padding:"12px 14px",color:"#F0EDE8",fontFamily:cvc,fontSize:15,marginBottom:16}}/>
           <div style={{color:"#888",fontFamily:cvc,fontSize:10,letterSpacing:"2px",marginBottom:6}}>ŞİFRE</div>
-          <input type="password" value={password} onChange={e=>setPassword(e.target.value)} placeholder="••••••••" style={{width:"100%",background:"#111",border:"1px solid #2A2A2A",borderRadius:8,padding:"12px 14px",color:"#F0EDE8",fontFamily:cvc,fontSize:15,marginBottom:20}}/>
+          <input type="password" value={password} onChange={e=>setPassword(e.target.value)} placeholder="••••••••"
+            style={{width:"100%",background:"#111",border:"1px solid #2A2A2A",borderRadius:8,padding:"12px 14px",color:"#F0EDE8",fontFamily:cvc,fontSize:15,marginBottom:20}}/>
           {error&&<div style={{color:"#E05A5A",fontFamily:cvc,fontSize:11,marginBottom:14}}>⚠ {error}</div>}
-          <button type="submit" disabled={loading} style={{width:"100%",padding:"14px",background:loading?"#555":"#C8973E",border:"none",color:"#000",fontFamily:cv,fontSize:20,letterSpacing:"1px",borderRadius:8,cursor:"pointer"}}>{loading?"GİRİŞ YAPILIYOR...":"GİRİŞ YAP"}</button>
+          <button type="submit" disabled={loading}
+            style={{width:"100%",padding:"14px",background:loading?"#555":"#C8973E",border:"none",color:"#000",fontFamily:cv,fontSize:20,letterSpacing:"1px",borderRadius:8,cursor:"pointer"}}>
+            {loading?"GİRİŞ YAPILIYOR...":"GİRİŞ YAP"}
+          </button>
         </form>
         <div style={{marginTop:12,color:"#555",fontFamily:cvc,fontSize:11,textAlign:"center"}}>Hesabınız yoksa yöneticinizle iletişime geçin</div>
       </div>
