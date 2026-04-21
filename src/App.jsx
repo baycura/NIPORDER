@@ -23,7 +23,6 @@ function PrivateRoute({ children, managerOnly = false }) {
   if (managerOnly && !isManager) return <Navigate to="/tables" replace />;
   return children;
 }
-
 function AppRoutes() {
   const { session, staffUser, isKitchen, isCashier } = useAuth();
   const d = isKitchen ? "/kitchen" : isCashier ? "/payment" : "/tables";
@@ -34,24 +33,21 @@ function AppRoutes() {
       <Route path="/menu" element={<CustomerMenu />} />
       <Route path="/" element={<PrivateRoute><StaffLayout /></PrivateRoute>}>
         <Route index element={<Navigate to={d} replace />} />
-        <Route path="tables"     element={<TablesPage />} />
-        <Route path="orders"     element={<OrdersPage />} />
-        <Route path="kitchen"    element={<KitchenPage />} />
-        <Route path="payment"    element={<PaymentPage />} />
-        <Route path="stock"      element={<StockViewPage />} />
-        <Route path="myshift"    element={<MyShiftPage />} />
+        <Route path="tables" element={<TablesPage />} />
+        <Route path="orders" element={<OrdersPage />} />
+        <Route path="kitchen" element={<KitchenPage />} />
+        <Route path="payment" element={<PaymentPage />} />
+        <Route path="stock" element={<StockViewPage />} />
+        <Route path="myshift" element={<MyShiftPage />} />
         <Route path="stock-mgmt" element={<PrivateRoute managerOnly><StockMgmtPage /></PrivateRoute>} />
         <Route path="staff-mgmt" element={<PrivateRoute managerOnly><StaffMgmtPage /></PrivateRoute>} />
         <Route path="happy-hour" element={<PrivateRoute managerOnly><HappyHourPage /></PrivateRoute>} />
-        <Route path="reports"    element={<PrivateRoute managerOnly><ReportsPage /></PrivateRoute>} />
-        <Route path="members"    element={<PrivateRoute managerOnly><MembersPage /></PrivateRoute>} />
+        <Route path="reports" element={<PrivateRoute managerOnly><ReportsPage /></PrivateRoute>} />
+        <Route path="members" element={<PrivateRoute managerOnly><MembersPage /></PrivateRoute>} />
         <Route path="merch-mgmt" element={<PrivateRoute managerOnly><MerchMgmtPage /></PrivateRoute>} />
       </Route>
       <Route path="*" element={<Navigate to="/" replace />} />
     </Routes>
   );
 }
-
-export default function App() {
-  return <AuthProvider><AppRoutes /></AuthProvider>;
-}
+export default function App() { return <AuthProvider><AppRoutes /></AuthProvider>; }
