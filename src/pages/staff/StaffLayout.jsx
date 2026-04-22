@@ -4,7 +4,7 @@ import { useAuth } from "../../contexts/AuthContext.jsx";
 
 const STAFF_NAV = [
   {to:"/tables",  icon:"🪑", label:"Masalar"},
-  {to:"/orders",  icon:"📋", label:"Siparis"},
+  {to:"/orders",  icon:"📋", label:"Sipariş"},
   {to:"/kitchen", icon:"🍳", label:"Mutfak"},
   {to:"/payment", icon:"💰", label:"Kasa"},
 ];
@@ -15,19 +15,19 @@ const STAFF_NAV_EXTRA = [
 ];
 
 const MANAGER_NAV = [
-  {to:"/menu-mgmt",   icon:"📖", label:"Menu Yonetimi"},
-  {to:"/tables-mgmt", icon:"🪑", label:"Masa Yonetimi"},
-  {to:"/stock-mgmt",  icon:"📦", label:"Stok Yonetimi"},
+  {to:"/menu-mgmt",   icon:"🍽", label:"Menü Yönetimi"},
+  {to:"/tables-mgmt", icon:"🪑", label:"Masa Yönetimi"},
+  {to:"/stock-mgmt",  icon:"📦", label:"Stok Yönetimi"},
   {to:"/staff-mgmt",  icon:"👥", label:"Personel"},
+  {to:"/members",     icon:"🌟", label:"Üyeler & Borç"},
   {to:"/happy-hour",  icon:"🎉", label:"Happy Hour"},
   {to:"/reports",     icon:"📈", label:"Raporlar"},
-  {to:"/members",     icon:"🌟", label:"Uyeler"},
   {to:"/merch-mgmt",  icon:"👕", label:"Merch"},
   {to:"/settings",    icon:"⚙",   label:"Ayarlar"},
 ];
 
 const roleColor  = {manager:"#C8973E", owner:"#C8973E", waiter:"#3ECF8E", kitchen:"#E07A3E", cashier:"#5A8FE0"};
-const roleLabel  = {manager:"Yonetici", owner:"Yonetici", waiter:"Garson", kitchen:"Mutfak", cashier:"Kasiyer"};
+const roleLabel  = {manager:"Yönetici", owner:"Yönetici", waiter:"Garson", kitchen:"Mutfak", cashier:"Kasiyer"};
 
 export default function StaffLayout() {
   const {staffUser, isManager, signOut} = useAuth();
@@ -43,7 +43,7 @@ export default function StaffLayout() {
     return () => window.removeEventListener("resize", onResize);
   }, []);
 
-  const cv  = "-apple-system,BlinkMacSystemFont,'Segoe UI',Roboto,sans-serif";
+  const cv = "-apple-system,BlinkMacSystemFont,'Segoe UI',Roboto,sans-serif";
   const linkStyle = (isActive) => ({
     display:"flex",alignItems:"center",gap:12,padding:"12px 14px",borderRadius:10,textDecoration:"none",
     background:isActive?"rgba(200,151,62,0.18)":"transparent",
@@ -59,13 +59,8 @@ export default function StaffLayout() {
 
   const Sidebar = ({mobile}) => (
     <div style={{
-      width:mobile?"82vw":240,
-      maxWidth:320,
-      background:"#161616",
-      height:"100vh",
-      display:"flex",flexDirection:"column",
-      borderRight:mobile?"none":"1px solid #2A2A2A",
-      overflowY:"auto",
+      width:mobile?"82vw":240,maxWidth:320,background:"#161616",height:"100vh",
+      display:"flex",flexDirection:"column",borderRight:mobile?"none":"1px solid #2A2A2A",overflowY:"auto",
     }}>
       <div style={{padding:"18px 16px 14px",borderBottom:"1px solid #2A2A2A",display:"flex",alignItems:"center",justifyContent:"space-between"}}>
         <div style={{display:"flex",alignItems:"center",gap:10}}>
@@ -82,7 +77,7 @@ export default function StaffLayout() {
         {[...STAFF_NAV, ...STAFF_NAV_EXTRA].map(item => <NavItem key={item.to} item={item} onClick={mobile?()=>setDrawerOpen(false):undefined}/>)}
         {isManager && (<>
           <div style={{height:1,background:"#2A2A2A",margin:"10px 8px"}}/>
-          <div style={{padding:"4px 14px",fontSize:10,letterSpacing:"2px",color:"#666",fontFamily:cv,fontWeight:700}}>YONETIM</div>
+          <div style={{padding:"4px 14px",fontSize:10,letterSpacing:"2px",color:"#666",fontFamily:cv,fontWeight:700}}>YÖNETİM</div>
           {MANAGER_NAV.map(item => <NavItem key={item.to} item={item} onClick={mobile?()=>setDrawerOpen(false):undefined}/>)}
         </>)}
       </nav>
