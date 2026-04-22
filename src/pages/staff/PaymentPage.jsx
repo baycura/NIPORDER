@@ -1,30 +1,144 @@
-import{useState,useEffect}from"react";import{supabase}from"../../lib/supabase.js";import{useAuth}from"../../contexts/AuthContext.jsx";
-const cv="'Coolvetica','Bebas Neue',sans-serif";const cvc="'Coolvetica Condensed','Barlow Condensed',sans-serif";
-const METHODS=[{id:"cash",label:"Nakit",icon:"💵",color:"#3ECF8E"},{id:"card",label:"Kart",icon:"💳",color:"#5A8FE0"},{id:"transfer",label:"Havale",icon:"📱",color:"#C8973E"},{id:"debt",label:"Veresiye",icon:"📋",color:"#E05A5A"}];
-function PayModal({order,onClose,onPaid,staffId}){
-  const[method,setMethod]=useState("cash");const[loading,setLoading]=useState(false);
-  const total=Math.round(order.total||0);
-  const handlePay=async()=>{setLoading(true);await supabase.from("payments").insert({order_id:order.id,method,amount:total,staff_id:staffId});await supabase.from("orders").update({status:method==="debt"?"debt":"paid",paid_at:new Date().toISOString()}).eq("id",order.id);setLoading(false);onPaid();onClose();};
-  return(<div onClick={onClose} style={{position:"fixed",inset:0,background:"#000000bb",zIndex:200,display:"flex",alignItems:"center",justifyContent:"center"}}>
-    <div onClick={e=>e.stopPropagation()} style={{background:"#161616",border:"1px solid #2A2A2A",borderRadius:16,padding:28,width:380}}>
-      <div style={{display:"flex",justifyContent:"space-between",alignItems:"center",marginBottom:20}}><div style={{color:"#F0EDE8",fontFamily:cv,fontSize:22}}>{order.cafe_tables?.name}</div><div style={{color:"#C8973E",fontFamily:cv,fontSize:32}}>₺{total.toLocaleString()}</div></div>
-      <div style={{display:"grid",gridTemplateColumns:"1fr 1fr",gap:8,marginBottom:20}}>{METHODS.map(m=>(<button key={m.id} onClick={()=>setMethod(m.id)} style={{padding:"12px",border:`2px solid ${method===m.id?m.color:"#2A2A2A"}`,background:method===m.id?m.color+"22":"transparent",color:method===m.id?m.color:"#888",borderRadius:10,cursor:"pointer",fontFamily:cvc,fontSize:12,display:"flex",alignItems:"center",gap:8}}><span style={{fontSize:18}}>{m.icon}</span>{m.label}</button>))}</div>
-      <div style={{display:"flex",gap:10}}><button onClick={onClose} style={{flex:1,padding:"12px",background:"transparent",border:"1px solid #2A2A2A",color:"#888",borderRadius:8,cursor:"pointer",fontFamily:cvc,fontSize:12}}>İptal</button><button onClick={handlePay} disabled={loading} style={{flex:2,padding:"12px",background:loading?"#333":"#3ECF8E",border:"none",color:"#000",fontFamily:cv,fontSize:18,cursor:"pointer",borderRadius:8}}>{loading?"İŞLENİYOR...":`TAHSİL ET · ₺${total.toLocaleString()}`}</button></div>
+import { useEffect, useState } from "react";
+import { useNavigate } from "react-router-dom";
+import { supabase } from "../../lib/supabase.js";
+
+const cv = "-apple-system,BlinkMacSystemFont,'Segoe UI',Roboto,sans-serif";
+
+export default function PaymentPage() {
+  const navigate = useNavigate();
+  const [orders, setOrders] = useState([]);
+  const [tables, setTables] = useState({});
+  const [loading, setLoading] = useState(true);
+  const [modal, setModal] = useState(null);
+  const [method, setMethod] = useState("cash");
+  const [amount, setAmount] = useState("");
+  const [customerId, setCustomerId] = useState(null);
+  const [customerSearch, setCustomerSearch] = useState("");
+  const [customers, setCustomers] = useState([]);
+  const [busy, setBusy] = useState(false);
+
+  const load = async () => {
+    setLoading(true);
+    const [{data: ords}, {data: tabs}, {data: custs}] = await Promise.all([
+      supabase.from("orders").select("id, table_id, customer_name, total, status, created_at").in("status", ["open","pending","preparing","ready"]).order("created_at", { ascending: false }),
+      supabase.from("cafe_tables").select("id, name"),
+      supabase.from("customers").select("id, name, outstanding_balance").order("name"),
+    ]);
+    const tabMap = {};
+    (tabs || []).forEach(t => { tabMap[t.id] = t.name; });
+    setTables(tabMap);
+    setOrders(ords || []);
+    setCustomers(custs || []);
+    setLoading(false);
+  };
+  useEffect(() => { load(); }, []);
+
+  const openPay = (o) => {
+    setModal(o); setMethod("cash"); setAmount(String(o.total || 0));
+    setCustomerId(null); setCustomerSearch("");
+  };
+
+  const completePayment = async () => {
+    if (busy) return;
+    const amt = Number(amount);
+    if (!amt || amt <= 0) { alert("Gecerli tutar gir"); return; }
+
+    if (method === "debt") {
+      if (!customerId) { alert("Borc icin musteri sec"); return; }
+      setBusy(true);
+      const cust = customers.find(c => c.id === customerId);
+      const newBalance = Number(cust?.outstanding_balance || 0) + amt;
+      const [custRes, ordRes] = await Promise.all([
+        supabase.from("customers").update({ outstanding_balance: newBalance }).eq("id", customerId),
+        supabase.from("orders").update({ status: "paid", paid_at: new Date().toISOString(), customer_id: customerId }).eq("id", modal.id),
+      ]);
+      await supabase.from("payments").insert({ order_id: modal.id, amount: amt, method: "debt", customer_id: customerId });
+      setBusy(false);
+      if (custRes.error || ordRes.error) { alert("Hata: " + (custRes.error?.message || ordRes.error?.message)); return; }
+      alert("Borc kaydedildi: ₺" + amt + " (Kalan: ₺" + newBalance + ")");
+    } else {
+      setBusy(true);
+      await supabase.from("payments").insert({ order_id: modal.id, amount: amt, method });
+      const { error } = await supabase.from("orders").update({ status: "paid", paid_at: new Date().toISOString() }).eq("id", modal.id);
+      setBusy(false);
+      if (error) { alert("Hata: " + error.message); return; }
+      alert(method === "cash" ? "Nakit tahsil edildi" : "Kart ile tahsil edildi");
+    }
+    setModal(null); load();
+  };
+
+  if (loading) return (<div style={{color:"#888",fontFamily:cv,padding:20}}>Yukleniyor...</div>);
+
+  const filteredCustomers = customers.filter(c => {
+    if (!customerSearch) return true;
+    return c.name?.toLowerCase().includes(customerSearch.toLowerCase());
+  });
+
+  return (
+    <div style={{fontFamily:cv,color:"#F0EDE8"}}>
+      <div style={{fontSize:24,fontWeight:800,marginBottom:4}}>Kasa</div>
+      <div style={{fontSize:11,color:"#888",letterSpacing:"1px",marginBottom:18}}>{orders.length} BEKLEYEN HESAP</div>
+
+      {orders.length === 0 && <div style={{textAlign:"center",padding:40,color:"#666",fontSize:13}}>Bekleyen hesap yok</div>}
+
+      {orders.map(o => {
+        const where = o.table_id ? tables[o.table_id] : "👤 " + (o.customer_name || "Misafir");
+        return (
+          <div key={o.id} style={{background:"#1A1A1A",border:"1px solid #2A2A2A",borderRadius:10,padding:14,marginBottom:8,display:"flex",alignItems:"center",gap:12}}>
+            <div style={{flex:1,minWidth:0}}>
+              <div style={{fontSize:14,fontWeight:700,color:"#F0EDE8"}}>{where}</div>
+              <div style={{fontSize:11,color:"#888",marginTop:2}}>{new Date(o.created_at).toLocaleTimeString("tr-TR", {hour:"2-digit", minute:"2-digit"})}</div>
+            </div>
+            <div style={{fontSize:16,fontWeight:800,color:"#F0EDE8"}}>₺{o.total || 0}</div>
+            <button onClick={() => openPay(o)} style={{padding:"8px 14px",background:"#3ECF8E",color:"#000",border:"none",borderRadius:8,fontSize:12,fontWeight:800,cursor:"pointer"}}>Tahsil Et</button>
+          </div>
+        );
+      })}
+
+      {modal && (
+        <div onClick={() => setModal(null)} style={{position:"fixed",inset:0,background:"rgba(0,0,0,0.75)",display:"flex",alignItems:"flex-end",justifyContent:"center",zIndex:100}}>
+          <div onClick={e=>e.stopPropagation()} style={{background:"#161616",border:"1px solid #2A2A2A",borderRadius:"16px 16px 0 0",padding:20,width:"100%",maxWidth:500,maxHeight:"90vh",overflowY:"auto"}}>
+            <div style={{fontSize:18,fontWeight:800,color:"#F0EDE8",marginBottom:16}}>Odeme Al</div>
+
+            <div style={{background:"#0C0C0C",border:"1px solid #2A2A2A",borderRadius:10,padding:14,marginBottom:14}}>
+              <div style={{fontSize:11,color:"#888",marginBottom:4}}>{modal.table_id ? tables[modal.table_id] : "👤 " + (modal.customer_name || "Misafir")}</div>
+              <div style={{fontSize:24,color:"#F0EDE8",fontWeight:800}}>₺{modal.total || 0}</div>
+            </div>
+
+            <div style={{display:"flex",gap:6,marginBottom:14}}>
+              {[["cash","💵 Nakit"],["card","💳 Kart"],["debt","📝 Borç"]].map(([k,l]) => (
+                <button key={k} onClick={()=>setMethod(k)} style={{flex:1,padding:"14px 10px",background:method===k?"#C8973E":"#222",color:method===k?"#000":"#888",border:"1px solid "+(method===k?"#C8973E":"#333"),borderRadius:10,fontSize:12,fontWeight:700,cursor:"pointer"}}>{l}</button>
+              ))}
+            </div>
+
+            <div style={{marginBottom:12}}>
+              <div style={{fontSize:10,color:"#888",letterSpacing:"1.5px",fontWeight:700,marginBottom:5}}>TUTAR (₺)</div>
+              <input type="number" value={amount} onChange={e=>setAmount(e.target.value)} style={{width:"100%",padding:"14px 16px",background:"#0C0C0C",border:"1px solid #2A2A2A",borderRadius:10,color:"#F0EDE8",fontSize:20,fontWeight:700,outline:"none",fontFamily:"inherit"}}/>
+            </div>
+
+            {method === "debt" && (
+              <div style={{marginBottom:12,background:"#2A1818",border:"1px solid #553333",borderRadius:10,padding:12}}>
+                <div style={{fontSize:10,color:"#FFB0B0",letterSpacing:"1.5px",fontWeight:700,marginBottom:8}}>MUSTERI SEC</div>
+                <input value={customerSearch} onChange={e=>setCustomerSearch(e.target.value)} placeholder="Musteri ara..." style={{width:"100%",padding:"10px 12px",background:"#0C0C0C",border:"1px solid #2A2A2A",borderRadius:8,color:"#F0EDE8",fontSize:13,outline:"none",marginBottom:8,fontFamily:"inherit"}}/>
+                <div style={{maxHeight:160,overflowY:"auto"}}>
+                  {filteredCustomers.slice(0,30).map(c => (
+                    <div key={c.id} onClick={()=>setCustomerId(c.id)} style={{padding:"8px 10px",background:customerId===c.id?"rgba(200,151,62,0.2)":"transparent",border:"1px solid "+(customerId===c.id?"#C8973E":"transparent"),borderRadius:6,cursor:"pointer",marginBottom:4,display:"flex",justifyContent:"space-between",alignItems:"center"}}>
+                      <div style={{fontSize:13,color:"#F0EDE8"}}>{c.name}</div>
+                      {Number(c.outstanding_balance) > 0 && <div style={{fontSize:11,color:"#C8973E",fontWeight:700}}>₺{c.outstanding_balance}</div>}
+                    </div>
+                  ))}
+                </div>
+                <div style={{fontSize:10,color:"#888",marginTop:6}}>NOT: Odeme yapilmaz, bu tutar musterinin borc hesabina eklenir.</div>
+              </div>
+            )}
+
+            <div style={{display:"flex",gap:8}}>
+              <button onClick={() => setModal(null)} style={{flex:1,padding:"14px",background:"transparent",color:"#888",border:"1px solid #333",borderRadius:10,fontSize:14,fontWeight:700,cursor:"pointer"}}>Iptal</button>
+              <button onClick={completePayment} disabled={busy} style={{flex:2,padding:"14px",background:"#3ECF8E",color:"#000",border:"none",borderRadius:10,fontSize:14,fontWeight:800,cursor:"pointer",opacity:busy?0.6:1}}>{busy?"Kaydediliyor...":(method==="debt"?"Borca Yaz":"Tahsilat")}</button>
+            </div>
+          </div>
+        </div>
+      )}
     </div>
-  </div>);}
-export default function PaymentPage(){
-  const{staffUser}=useAuth();const[orders,setOrders]=useState([]);const[loading,setLoading]=useState(true);const[payOrder,setPayOrder]=useState(null);
-  const load=async()=>{const{data}=await supabase.from("orders").select("*,cafe_tables(name),staff(name),order_items(*)").in("status",["open","sent","preparing","ready"]).order("created_at",{ascending:false});setOrders(data||[]);setLoading(false);};
-  useEffect(()=>{load();},[]);
-  return(<div>
-    <div style={{display:"flex",justifyContent:"space-between",alignItems:"center",marginBottom:20}}><h1 style={{color:"#F0EDE8",fontFamily:cv,fontSize:28,letterSpacing:"-0.5px",margin:0}}>Kasa</h1><div style={{color:"#3ECF8E",fontFamily:cvc,fontSize:13}}>Açık: ₺{Math.round(orders.reduce((s,o)=>s+(o.total||0),0)).toLocaleString()}</div></div>
-    {loading&&<div style={{color:"#888",fontFamily:cvc,fontSize:12,textAlign:"center",padding:40}}>YÜKLENİYOR...</div>}
-    <div style={{display:"grid",gridTemplateColumns:"repeat(auto-fill,minmax(260px,1fr))",gap:12}}>
-      {orders.map(o=>(<div key={o.id} style={{background:"#1E1E1E",border:"1px solid #2A2A2A",borderRadius:12,padding:16}}>
-        <div style={{display:"flex",justifyContent:"space-between",alignItems:"flex-start",marginBottom:12}}><div><div style={{color:"#F0EDE8",fontFamily:cv,fontSize:20}}>{o.cafe_tables?.name}</div><div style={{color:"#888",fontFamily:cvc,fontSize:11,marginTop:2}}>{o.staff?.name}</div></div><div style={{color:"#C8973E",fontFamily:cv,fontSize:24}}>₺{Math.round(o.total||0).toLocaleString()}</div></div>
-        <div style={{marginBottom:12}}>{(o.order_items||[]).slice(0,3).map((item,i)=>(<div key={i} style={{color:"#888",fontFamily:cvc,fontSize:11,padding:"2px 0"}}>{item.product_name} ×{item.quantity}</div>))}</div>
-        <button onClick={()=>setPayOrder(o)} style={{width:"100%",padding:"10px",background:"#3ECF8E",border:"none",color:"#000",fontFamily:cv,fontSize:16,cursor:"pointer",borderRadius:8}}>ÖDEME AL</button>
-      </div>))}
-    </div>
-    {payOrder&&<PayModal order={payOrder} staffId={staffUser?.id} onClose={()=>setPayOrder(null)} onPaid={load}/>}
-  </div>);}
+  );
+}
