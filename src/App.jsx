@@ -7,6 +7,7 @@ import TablesPage from "./pages/staff/TablesPage.jsx";
 import OrdersPage from "./pages/staff/OrdersPage.jsx";
 import OrderDetailPage from "./pages/staff/OrderDetailPage.jsx";
 import KitchenPage from "./pages/staff/KitchenPage.jsx";
+import KitchenDisplayPage from "./pages/staff/KitchenDisplayPage.jsx";
 import PaymentPage from "./pages/staff/PaymentPage.jsx";
 import StockViewPage from "./pages/staff/StockViewPage.jsx";
 import MyShiftPage from "./pages/staff/MyShiftPage.jsx";
@@ -20,11 +21,12 @@ import SettingsPage from "./pages/manager/SettingsPage.jsx";
 import MenuMgmtPage from "./pages/manager/MenuMgmtPage.jsx";
 import TablesMgmtPage from "./pages/manager/TablesMgmtPage.jsx";
 
-function PrivateRoute({ children, managerOnly = false }) {
-  const { session, staffUser, isManager, loading } = useAuth();
-  if (loading) return <div style={{display:"flex",alignItems:"center",justifyContent:"center",height:"100vh",color:"#888",fontSize:14,letterSpacing:"2px"}}>YUKLENIYOR...</div>;
-  if (!session || !staffUser) return <Navigate to="/login" replace />;
-  if (managerOnly && !isManager) return <Navigate to="/tables" replace />;
+function PrivateRoute({ children, managerOnly = false, adminOnly = false }) {
+  const { session, staffUser, isManager, isAdmin, loading } = useAuth();
+  if (loading) return (<div style={{display:"flex",alignItems:"center",justifyContent:"center",height:"100vh",color:"#888",fontSize:14,letterSpacing:"2px"}}>YUKLENIYOR...</div>);
+  if (!session || !staffUser) return (<Navigate to="/login" replace />);
+  if (adminOnly && !isAdmin) return (<Navigate to="/tables" replace />);
+  if (managerOnly && !isManager) return (<Navigate to="/tables" replace />);
   return children;
 }
 
@@ -33,9 +35,13 @@ function AppRoutes() {
   const defaultRoute = isKitchen ? "/kitchen" : isCashier ? "/payment" : "/tables";
   return (
     <Routes>
-      <Route path="/login" element={session && staffUser ? <Navigate to={defaultRoute} replace /> : <LoginPage />}/>
+      <Route path="/login" element={session && staffUser ? (<Navigate to={defaultRoute} replace />) : (<LoginPage />)}/>
       <Route path="/menu/:qrToken" element={<CustomerMenu />} />
       <Route path="/menu" element={<CustomerMenu />} />
+
+      {/* Tablet kitchen display - standalone fullscreen */}
+      <Route path="/kitchen-display" element={<PrivateRoute><KitchenDisplayPage /></PrivateRoute>} />
+
       <Route path="/" element={<PrivateRoute><StaffLayout /></PrivateRoute>}>
         <Route index element={<Navigate to={defaultRoute} replace />} />
         <Route path="tables"           element={<TablesPage />} />
@@ -48,7 +54,7 @@ function AppRoutes() {
         <Route path="stock-mgmt"       element={<PrivateRoute managerOnly><StockMgmtPage /></PrivateRoute>} />
         <Route path="staff-mgmt"       element={<PrivateRoute managerOnly><StaffMgmtPage /></PrivateRoute>} />
         <Route path="happy-hour"       element={<PrivateRoute managerOnly><HappyHourPage /></PrivateRoute>} />
-        <Route path="reports"          element={<PrivateRoute managerOnly><ReportsPage /></PrivateRoute>} />
+        <Route path="reports"          element={<PrivateRoute adminOnly><ReportsPage /></PrivateRoute>} />
         <Route path="members"          element={<PrivateRoute managerOnly><MembersPage /></PrivateRoute>} />
         <Route path="merch-mgmt"       element={<PrivateRoute managerOnly><MerchMgmtPage /></PrivateRoute>} />
         <Route path="settings"         element={<PrivateRoute managerOnly><SettingsPage /></PrivateRoute>} />
@@ -61,5 +67,5 @@ function AppRoutes() {
 }
 
 export default function App() {
-  return <AuthProvider><AppRoutes /></AuthProvider>;
+  return (<AuthProvider><AppRoutes /></AuthProvider>);
 }
