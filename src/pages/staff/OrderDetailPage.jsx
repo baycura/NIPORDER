@@ -25,18 +25,18 @@ export default function OrderDetailPage() {
   const [nameDraft, setNameDraft] = useState("");
 
   const load = async () => {
-    const [{data: ord}, {data: its}, {data: cats}, {data: prods}, {data: hhData}] = await Promise.all([
+    const [{data: ord}, {data: its}, {data: cats}, {data: prods}, hhRes] = await Promise.all([
       supabase.from("orders").select("*").eq("id", orderId).single(),
       supabase.from("order_items").select("*, products(name)").eq("order_id", orderId).order("created_at"),
       supabase.from("categories").select("*").eq("is_active", true).order("sort_order"),
       supabase.from("products").select("*").eq("is_available", true).order("sort_order"),
-      supabase.rpc("get_active_happy_hour"),
+      supabase.rpc("get_active_happy_hour").then(r => r).catch(() => ({data: null})),
     ]);
     setOrder(ord);
     setItems(its || []);
     if (cats) { setCategories(cats); if (cats.length && !selectedCat) setSelectedCat(cats[0].id); }
     if (prods) setProducts(prods);
-    if (hhData?.[0]) setHh(hhData[0]);
+    if (hhRes?.data?.[0]) setHh(hhRes.data[0]);
     if (ord?.table_id) {
       const { data: tab } = await supabase.from("cafe_tables").select("*").eq("id", ord.table_id).single();
       setTable(tab);
@@ -63,8 +63,9 @@ export default function OrderDetailPage() {
     setBusy(true);
     const finalPrice = calcPrice(p);
     const { error } = await supabase.from("order_items").insert({
-      order_id: orderId, product_id: p.id, qty: 1,
-      product_price: Number(p.price), final_price: finalPrice, status: "pending",
+      order_id: orderId, product_id: p.id, quantity: 1,
+      product_name: p.name, product_price: Number(p.price), final_price: finalPrice,
+      kitchen_status: "pending", sent_to_kitchen: false,
       notes: note || null, selected_options: options || null,
     });
     if (error) alert("Hata: " + error.message);
@@ -84,22 +85,22 @@ export default function OrderDetailPage() {
   const updateQty = async (item, delta) => {
     if (busy) return;
     setBusy(true);
-    const newQty = item.qty + delta;
+    const newQty = item.quantity + delta;
     if (newQty <= 0) await supabase.from("order_items").delete().eq("id", item.id);
-    else await supabase.from("order_items").update({ qty: newQty }).eq("id", item.id);
+    else await supabase.from("order_items").update({ quantity: newQty }).eq("id", item.id);
     await load(); await recalcTotal(); setBusy(false);
   };
 
   const recalcTotal = async () => {
-    const { data: its } = await supabase.from("order_items").select("qty, final_price").eq("order_id", orderId);
-    const subtotal = (its || []).reduce((s, it) => s + Number(it.final_price) * it.qty, 0);
+    const { data: its } = await supabase.from("order_items").select("quantity, final_price").eq("order_id", orderId);
+    const subtotal = (its || []).reduce((s, it) => s + Number(it.final_price) * (it.quantity||0), 0);
     await supabase.from("orders").update({ subtotal, total: subtotal }).eq("id", orderId);
   };
 
   const sendToKitchen = async () => {
     if (busy || items.length === 0) return;
     setBusy(true);
-    await supabase.from("order_items").update({ status: "preparing" }).eq("order_id", orderId).eq("status", "pending");
+    await supabase.from("order_items").update({ kitchen_status: "preparing", sent_to_kitchen: true }).eq("order_id", orderId).eq("kitchen_status", "pending");
     await supabase.from("orders").update({ status: "preparing" }).eq("id", orderId);
     setBusy(false);
     navigate("/orders");
@@ -128,7 +129,7 @@ export default function OrderDetailPage() {
 
   const visibleProducts = products.filter(p => p.category_id === selectedCat);
   const headTitle = table ? table.name : (order.customer_name ? "👤 " + order.customer_name : "Hesap");
-  const pendingCount = items.filter(i => i.status === "pending").length;
+  const pendingCount = items.filter(i => i.kitchen_status === "pending" || !i.sent_to_kitchen).length;
 
   return (
     <div style={{fontFamily:cv,color:"#F0EDE8",paddingBottom:120}}>
@@ -147,7 +148,7 @@ export default function OrderDetailPage() {
           </>
         )}
       </div>
-      <div style={{fontSize:11,color:"#888",marginBottom:10}}>{items.length === 0 ? "Bos hesap" : items.reduce((s,i)=>s+i.qty,0) + " urun · ₺" + (order.total||0)}</div>
+      <div style={{fontSize:11,color:"#888",marginBottom:10}}>{items.length === 0 ? "Bos hesap" : items.reduce((s,i)=>s+(i.quantity||0),0) + " urun · ₺" + (order.total||0)}</div>
 
       {editingNote ? (
         <div style={{background:"#1A1A1A",border:"1px solid #C8973E",borderRadius:10,padding:10,marginBottom:14}}>
@@ -168,21 +169,22 @@ export default function OrderDetailPage() {
 
       {items.length > 0 && (
         <div style={{background:"#1A1A1A",border:"1px solid #2A2A2A",borderRadius:12,padding:12,marginBottom:14}}>
-          {items.map(it => (
-            <div key={it.id} style={{display:"flex",alignItems:"center",justifyContent:"space-between",padding:"10px 0",borderBottom:"1px solid #2A2A2A"}}>
+          {items.map(it => {
+            const editable = it.kitchen_status === "pending" && !it.sent_to_kitchen;
+            return (<div key={it.id} style={{display:"flex",alignItems:"center",justifyContent:"space-between",padding:"10px 0",borderBottom:"1px solid #2A2A2A"}}>
               <div style={{flex:1,minWidth:0}}>
-                <div style={{fontSize:14,fontWeight:600,color:"#F0EDE8"}}>{it.products?.name || "Urun"}</div>
+                <div style={{fontSize:14,fontWeight:600,color:"#F0EDE8"}}>{it.products?.name || it.product_name || "Urun"}</div>
                 {it.selected_options && <div style={{fontSize:10,color:"#C8973E",marginTop:2}}>{Object.values(it.selected_options).join(", ")}</div>}
                 {it.notes && <div style={{fontSize:10,color:"#FFD27A",marginTop:2,fontStyle:"italic"}}>Not: {it.notes}</div>}
-                <div style={{fontSize:11,color:"#888",marginTop:2}}>₺{it.final_price} {it.status === "preparing" && "· Mutfakta"}{it.status === "ready" && "· Hazir"}</div>
+                <div style={{fontSize:11,color:"#888",marginTop:2}}>₺{it.final_price} {it.kitchen_status === "preparing" && "· Mutfakta"}{it.kitchen_status === "ready" && "· Hazir"}</div>
               </div>
               <div style={{display:"flex",alignItems:"center",gap:8}}>
-                <button onClick={() => updateQty(it, -1)} disabled={it.status!=="pending"} style={{width:28,height:28,background:"#2A2A2A",color:"#F0EDE8",border:"none",borderRadius:6,fontSize:18,cursor:it.status!=="pending"?"not-allowed":"pointer",opacity:it.status!=="pending"?0.4:1}}>−</button>
-                <div style={{width:24,textAlign:"center",fontSize:14,fontWeight:700}}>{it.qty}</div>
-                <button onClick={() => updateQty(it, +1)} disabled={it.status!=="pending"} style={{width:28,height:28,background:"#C8973E",color:"#000",border:"none",borderRadius:6,fontSize:18,cursor:it.status!=="pending"?"not-allowed":"pointer",opacity:it.status!=="pending"?0.4:1}}>+</button>
+                <button onClick={() => updateQty(it, -1)} disabled={!editable} style={{width:28,height:28,background:"#2A2A2A",color:"#F0EDE8",border:"none",borderRadius:6,fontSize:18,cursor:editable?"pointer":"not-allowed",opacity:editable?1:0.4}}>−</button>
+                <div style={{width:24,textAlign:"center",fontSize:14,fontWeight:700}}>{it.quantity}</div>
+                <button onClick={() => updateQty(it, +1)} disabled={!editable} style={{width:28,height:28,background:"#C8973E",color:"#000",border:"none",borderRadius:6,fontSize:18,cursor:editable?"pointer":"not-allowed",opacity:editable?1:0.4}}>+</button>
               </div>
-            </div>
-          ))}
+            </div>);
+          })}
         </div>
       )}
 
@@ -190,38 +192,36 @@ export default function OrderDetailPage() {
         {showMenu ? "Menuyu Gizle ↑" : "+ Urun Ekle"}
       </button>
 
-      {showMenu && (
-        <>
-          <div style={{display:"flex",gap:6,overflowX:"auto",marginBottom:12,paddingBottom:4}}>
-            {categories.map(c => (
-              <button key={c.id} onClick={() => setSelectedCat(c.id)} style={{flexShrink:0,padding:"6px 12px",border:"none",borderRadius:14,fontSize:11,fontWeight:700,background:selectedCat===c.id?"#C8973E":"#222",color:selectedCat===c.id?"#000":"#888",cursor:"pointer",whiteSpace:"nowrap",letterSpacing:"0.5px"}}>
-                {c.icon && <span style={{marginRight:3}}>{c.icon}</span>}{c.name?.toUpperCase()}
-              </button>
-            ))}
-          </div>
-          <div>
-            {visibleProducts.map(p => {
-              const fp = calcPrice(p);
-              const dis = fp < Number(p.price);
-              const soldOut = p.sold_out_today;
-              return (
-                <div key={p.id} onClick={() => onProductTap(p)} style={{display:"flex",justifyContent:"space-between",alignItems:"center",padding:"12px",background:"#1A1A1A",border:"1px solid "+(soldOut?"#552222":"#2A2A2A"),borderRadius:10,marginBottom:6,cursor:"pointer",opacity:soldOut?0.5:1}}>
-                  <div style={{flex:1,minWidth:0}}>
-                    <div style={{fontSize:14,fontWeight:600,color:"#F0EDE8"}}>{p.name}</div>
-                    {soldOut && <div style={{fontSize:10,color:"#FFB0B0",marginTop:2}}>{p.unavailable_reason || "Tukendi"}</div>}
-                    {p.has_options && <div style={{fontSize:10,color:"#C8973E",marginTop:2}}>Secenekli</div>}
-                  </div>
-                  <div style={{display:"flex",alignItems:"center",gap:10}}>
-                    {dis && <span style={{fontSize:11,color:"#888",textDecoration:"line-through"}}>₺{p.price}</span>}
-                    <span style={{fontSize:14,fontWeight:700,color:dis?"#C8973E":"#F0EDE8"}}>₺{fp}</span>
-                    <div style={{width:28,height:28,background:soldOut?"#333":"#C8973E",color:soldOut?"#666":"#000",borderRadius:6,fontSize:18,fontWeight:700,display:"flex",alignItems:"center",justifyContent:"center"}}>+</div>
-                  </div>
+      {showMenu && (<>
+        <div style={{display:"flex",gap:6,overflowX:"auto",marginBottom:12,paddingBottom:4}}>
+          {categories.map(c => (
+            <button key={c.id} onClick={() => setSelectedCat(c.id)} style={{flexShrink:0,padding:"6px 12px",border:"none",borderRadius:14,fontSize:11,fontWeight:700,background:selectedCat===c.id?"#C8973E":"#222",color:selectedCat===c.id?"#000":"#888",cursor:"pointer",whiteSpace:"nowrap",letterSpacing:"0.5px"}}>
+              {c.icon && <span style={{marginRight:3}}>{c.icon}</span>}{c.name?.toUpperCase()}
+            </button>
+          ))}
+        </div>
+        <div>
+          {visibleProducts.map(p => {
+            const fp = calcPrice(p);
+            const dis = fp < Number(p.price);
+            const soldOut = p.sold_out_today;
+            return (
+              <div key={p.id} onClick={() => onProductTap(p)} style={{display:"flex",justifyContent:"space-between",alignItems:"center",padding:"12px",background:"#1A1A1A",border:"1px solid "+(soldOut?"#552222":"#2A2A2A"),borderRadius:10,marginBottom:6,cursor:"pointer",opacity:soldOut?0.5:1}}>
+                <div style={{flex:1,minWidth:0}}>
+                  <div style={{fontSize:14,fontWeight:600,color:"#F0EDE8"}}>{p.name}</div>
+                  {soldOut && <div style={{fontSize:10,color:"#FFB0B0",marginTop:2}}>{p.unavailable_reason || "Tukendi"}</div>}
+                  {p.has_options && <div style={{fontSize:10,color:"#C8973E",marginTop:2}}>Secenekli</div>}
                 </div>
-              );
-            })}
-          </div>
-        </>
-      )}
+                <div style={{display:"flex",alignItems:"center",gap:10}}>
+                  {dis && <span style={{fontSize:11,color:"#888",textDecoration:"line-through"}}>₺{p.price}</span>}
+                  <span style={{fontSize:14,fontWeight:700,color:dis?"#C8973E":"#F0EDE8"}}>₺{fp}</span>
+                  <div style={{width:28,height:28,background:soldOut?"#333":"#C8973E",color:soldOut?"#666":"#000",borderRadius:6,fontSize:18,fontWeight:700,display:"flex",alignItems:"center",justifyContent:"center"}}>+</div>
+                </div>
+              </div>
+            );
+          })}
+        </div>
+      </>)}
 
       {pendingCount > 0 && (
         <div style={{position:"fixed",bottom:78,left:14,right:14,zIndex:35}}>
