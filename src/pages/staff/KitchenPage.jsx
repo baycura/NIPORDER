@@ -12,8 +12,8 @@ export default function KitchenPage() {
   const load = async () => {
     setLoading(true);
     const [{data: ords}, {data: its}, {data: tabs}] = await Promise.all([
-      supabase.from("orders").select("*").in("status", ["preparing","ready"]).order("created_at"),
-      supabase.from("order_items").select("*, products(name, category_id, categories(name))").in("status", ["preparing","ready"]).order("created_at"),
+      supabase.from("orders").select("*").in("status", ["preparing","ready","open"]).order("created_at"),
+      supabase.from("order_items").select("*, products(name, category_id, categories(name))").in("kitchen_status", ["preparing","ready"]).order("created_at"),
       supabase.from("cafe_tables").select("id, name"),
     ]);
     const tabMap = {};
@@ -31,27 +31,29 @@ export default function KitchenPage() {
   }, []);
 
   const markReady = async (item) => {
-    await supabase.from("order_items").update({ status: "ready" }).eq("id", item.id);
+    await supabase.from("order_items").update({ kitchen_status: "ready" }).eq("id", item.id);
     load();
   };
 
   const markDone = async (orderId) => {
-    await supabase.from("order_items").update({ status: "served" }).eq("order_id", orderId).in("status", ["preparing","ready"]);
+    await supabase.from("order_items").update({ kitchen_status: "served" }).eq("order_id", orderId).in("kitchen_status", ["preparing","ready"]);
     load();
   };
 
   if (loading) return (<div style={{color:"#888",fontFamily:cv,padding:20}}>Yukleniyor...</div>);
 
+  // Show only orders that have active items
+  const ordersWithItems = orders.filter(o => items.some(i => i.order_id === o.id));
+
   return (
     <div style={{fontFamily:cv,color:"#F0EDE8"}}>
       <div style={{fontSize:24,fontWeight:800,marginBottom:4}}>Mutfak</div>
-      <div style={{fontSize:11,color:"#888",letterSpacing:"1px",marginBottom:18}}>{orders.length} AKTIF HESAP · {items.length} URUN</div>
+      <div style={{fontSize:11,color:"#888",letterSpacing:"1px",marginBottom:18}}>{ordersWithItems.length} AKTIF HESAP · {items.length} URUN</div>
 
-      {orders.length === 0 && <div style={{textAlign:"center",padding:40,color:"#666",fontSize:13}}>Bekleyen urun yok</div>}
+      {ordersWithItems.length === 0 && <div style={{textAlign:"center",padding:40,color:"#666",fontSize:13}}>Bekleyen urun yok</div>}
 
-      {orders.map(o => {
+      {ordersWithItems.map(o => {
         const oItems = items.filter(i => i.order_id === o.id);
-        if (oItems.length === 0) return null;
         const where = o.table_id ? tables[o.table_id] : "👤 " + (o.customer_name || "Misafir");
         const waitMin = Math.round((Date.now() - new Date(o.created_at).getTime()) / 60000);
         return (
@@ -60,12 +62,14 @@ export default function KitchenPage() {
               <div style={{fontSize:16,fontWeight:800,color:"#F0EDE8"}}>{where}</div>
               <div style={{fontSize:11,color:waitMin>15?"#FF8866":"#888",fontWeight:600}}>{waitMin} dk</div>
             </div>
+            {o.notes && <div style={{background:"rgba(200,151,62,0.15)",border:"1px solid rgba(200,151,62,0.4)",borderRadius:8,padding:8,marginBottom:8,fontSize:12,color:"#FFD27A"}}>SIPARIS NOTU: {o.notes}</div>}
             {oItems.map(it => {
-              const isReady = it.status === "ready";
+              const isReady = it.kitchen_status === "ready";
               return (
                 <div key={it.id} style={{display:"flex",alignItems:"center",justifyContent:"space-between",padding:"10px 0",borderBottom:"1px solid rgba(42,42,42,0.5)"}}>
                   <div style={{flex:1}}>
-                    <div style={{fontSize:14,fontWeight:700,color:isReady?"#3ECF8E":"#F0EDE8"}}>{it.qty}× {it.products?.name || "Urun"}</div>
+                    <div style={{fontSize:14,fontWeight:700,color:isReady?"#3ECF8E":"#F0EDE8"}}>{it.quantity}× {it.products?.name || it.product_name || "Urun"}</div>
+                    {it.selected_options && <div style={{fontSize:11,color:"#C8973E",marginTop:2,fontWeight:600}}>{Object.values(it.selected_options).join(", ")}</div>}
                     {it.notes && <div style={{fontSize:11,color:"#FFD27A",marginTop:2,fontStyle:"italic"}}>Not: {it.notes}</div>}
                     {it.products?.categories?.name && <div style={{fontSize:10,color:"#666",marginTop:2,letterSpacing:"1px"}}>{it.products.categories.name.toUpperCase()}</div>}
                   </div>
@@ -77,7 +81,7 @@ export default function KitchenPage() {
                 </div>
               );
             })}
-            {oItems.every(i => i.status === "ready") && (
+            {oItems.every(i => i.kitchen_status === "ready") && (
               <button onClick={() => markDone(o.id)} style={{width:"100%",padding:"10px",background:"transparent",color:"#888",border:"1px solid #333",borderRadius:8,fontSize:12,fontWeight:700,cursor:"pointer",marginTop:10}}>Servis edildi → kapat</button>
             )}
           </div>
