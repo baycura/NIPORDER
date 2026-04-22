@@ -4,7 +4,7 @@ import { useAuth } from "../../contexts/AuthContext.jsx";
 
 const STAFF_NAV = [
   {to:"/tables",  icon:"🪑", label:"Masalar"},
-  {to:"/orders",  icon:"📋", label:"Sipariş"},
+  {to:"/orders",  icon:"📋", label:"Siparis"},
   {to:"/kitchen", icon:"🍳", label:"Mutfak"},
   {to:"/payment", icon:"💰", label:"Kasa"},
 ];
@@ -15,17 +15,19 @@ const STAFF_NAV_EXTRA = [
 ];
 
 const MANAGER_NAV = [
-  {to:"/stock-mgmt", icon:"📦", label:"Stok Yönetimi"},
-  {to:"/staff-mgmt", icon:"👥", label:"Personel"},
-  {to:"/happy-hour", icon:"🎉", label:"Happy Hour"},
-  {to:"/reports",    icon:"📈", label:"Raporlar"},
-  {to:"/members",    icon:"🌟", label:"Üyeler"},
-  {to:"/merch-mgmt", icon:"👕", label:"Merch"},
-  {to:"/settings",   icon:"⚙",   label:"Ayarlar"},
+  {to:"/menu-mgmt",   icon:"📖", label:"Menu Yonetimi"},
+  {to:"/tables-mgmt", icon:"🪑", label:"Masa Yonetimi"},
+  {to:"/stock-mgmt",  icon:"📦", label:"Stok Yonetimi"},
+  {to:"/staff-mgmt",  icon:"👥", label:"Personel"},
+  {to:"/happy-hour",  icon:"🎉", label:"Happy Hour"},
+  {to:"/reports",     icon:"📈", label:"Raporlar"},
+  {to:"/members",     icon:"🌟", label:"Uyeler"},
+  {to:"/merch-mgmt",  icon:"👕", label:"Merch"},
+  {to:"/settings",    icon:"⚙",   label:"Ayarlar"},
 ];
 
 const roleColor  = {manager:"#C8973E", owner:"#C8973E", waiter:"#3ECF8E", kitchen:"#E07A3E", cashier:"#5A8FE0"};
-const roleLabel  = {manager:"Yönetici", owner:"Yönetici", waiter:"Garson", kitchen:"Mutfak", cashier:"Kasiyer"};
+const roleLabel  = {manager:"Yonetici", owner:"Yonetici", waiter:"Garson", kitchen:"Mutfak", cashier:"Kasiyer"};
 
 export default function StaffLayout() {
   const {staffUser, isManager, signOut} = useAuth();
@@ -80,7 +82,7 @@ export default function StaffLayout() {
         {[...STAFF_NAV, ...STAFF_NAV_EXTRA].map(item => <NavItem key={item.to} item={item} onClick={mobile?()=>setDrawerOpen(false):undefined}/>)}
         {isManager && (<>
           <div style={{height:1,background:"#2A2A2A",margin:"10px 8px"}}/>
-          <div style={{padding:"4px 14px",fontSize:10,letterSpacing:"2px",color:"#666",fontFamily:cv,fontWeight:700}}>YÖNETİM</div>
+          <div style={{padding:"4px 14px",fontSize:10,letterSpacing:"2px",color:"#666",fontFamily:cv,fontWeight:700}}>YONETIM</div>
           {MANAGER_NAV.map(item => <NavItem key={item.to} item={item} onClick={mobile?()=>setDrawerOpen(false):undefined}/>)}
         </>)}
       </nav>
@@ -105,10 +107,8 @@ export default function StaffLayout() {
     );
   }
 
-  // MOBILE VIEW
   return (
     <div style={{background:"#0C0C0C",minHeight:"100vh",fontFamily:cv}}>
-      {/* Top bar */}
       <header style={{display:"flex",alignItems:"center",justifyContent:"space-between",padding:"10px 14px",background:"#161616",borderBottom:"1px solid #2A2A2A",position:"sticky",top:0,zIndex:40}}>
         <button onClick={()=>setDrawerOpen(true)} style={{background:"none",border:"none",color:"#F0EDE8",cursor:"pointer",padding:6,display:"flex",flexDirection:"column",gap:4}}>
           <div style={{width:22,height:2,background:"#F0EDE8"}}/>
@@ -122,10 +122,8 @@ export default function StaffLayout() {
         <div style={{width:30,height:30,borderRadius:"50%",background:color+"33",display:"flex",alignItems:"center",justifyContent:"center",color,fontSize:13,fontWeight:700}}>{staffUser?.name?.[0]||"?"}</div>
       </header>
 
-      {/* Main content */}
       <main style={{padding:"16px 14px",paddingBottom:80,minHeight:"calc(100vh - 56px)"}}><Outlet/></main>
 
-      {/* Bottom nav (4 main items) */}
       <nav style={{position:"fixed",bottom:0,left:0,right:0,background:"#161616",borderTop:"1px solid #2A2A2A",display:"flex",justifyContent:"space-around",padding:"8px 0 14px",zIndex:35,boxShadow:"0 -2px 12px rgba(0,0,0,0.5)"}}>
         {STAFF_NAV.map(item => (
           <NavLink key={item.to} to={item.to} style={({isActive}) => ({display:"flex",flexDirection:"column",alignItems:"center",gap:3,textDecoration:"none",color:isActive?"#C8973E":"#666",padding:"4px 10px",minWidth:50})}>
@@ -135,7 +133,6 @@ export default function StaffLayout() {
         ))}
       </nav>
 
-      {/* Drawer overlay */}
       {drawerOpen && (
         <div onClick={()=>setDrawerOpen(false)} style={{position:"fixed",inset:0,background:"rgba(0,0,0,0.6)",zIndex:80,backdropFilter:"blur(2px)"}}>
           <div onClick={(e)=>e.stopPropagation()} style={{position:"fixed",left:0,top:0,bottom:0,zIndex:90,boxShadow:"4px 0 20px rgba(0,0,0,0.5)"}}>
