@@ -1,78 +1,103 @@
 import { useEffect, useState } from "react";
 import { supabase } from "../../lib/supabase.js";
 
-const cv  = "'Coolvetica','Bebas Neue',sans-serif";
-const cvc = "'Coolvetica Condensed','Barlow Condensed',sans-serif";
+const cv = "-apple-system,BlinkMacSystemFont,'Segoe UI',Roboto,sans-serif";
 
 export default function SettingsPage() {
-  const [enabled, setEnabled] = useState(true);
-  const [pct, setPct] = useState(5);
+  const [settings, setSettings] = useState({});
   const [loading, setLoading] = useState(true);
-  const [saving, setSaving] = useState(false);
-  const [msg, setMsg] = useState("");
+  const [busy, setBusy] = useState(false);
+  const [saved, setSaved] = useState(false);
 
-  useEffect(() => { (async () => {
+  const load = async () => {
+    setLoading(true);
     const { data } = await supabase.from("app_settings").select("*");
-    if (data) {
-      const e = data.find(d => d.key === "member_discount_enabled");
-      const p = data.find(d => d.key === "member_discount_pct");
-      if (e) setEnabled(e.value === true || e.value === "true");
-      if (p) setPct(Number(p.value));
-    }
+    const obj = {};
+    (data || []).forEach(s => { obj[s.key] = s.value; });
+    setSettings(obj);
     setLoading(false);
-  })(); }, []);
+  };
+  useEffect(() => { load(); }, []);
 
-  const save = async () => {
-    setSaving(true); setMsg("");
-    const { error: e1 } = await supabase.from("app_settings").upsert({
-      key: "member_discount_enabled", value: enabled, updated_at: new Date().toISOString(),
-    });
-    const { error: e2 } = await supabase.from("app_settings").upsert({
-      key: "member_discount_pct", value: Number(pct), updated_at: new Date().toISOString(),
-    });
-    setSaving(false);
-    if (e1 || e2) setMsg("HATA: " + (e1?.message || e2?.message));
-    else setMsg("Kaydedildi.");
-    setTimeout(() => setMsg(""), 3000);
+  const setKey = async (key, value) => {
+    setSettings({...settings, [key]: value});
   };
 
-  if (loading) return <div style={{color:"#888",fontFamily:cvc,letterSpacing:"2px",fontSize:14}}>YUKLENIYOR...</div>;
+  const save = async () => {
+    if (busy) return;
+    setBusy(true);
+    for (const [key, value] of Object.entries(settings)) {
+      await supabase.from("app_settings").upsert({ key, value }, { onConflict: "key" });
+    }
+    setBusy(false);
+    setSaved(true);
+    setTimeout(() => setSaved(false), 2000);
+  };
+
+  if (loading) return (<div style={{color:"#888",fontFamily:cv,padding:20}}>Yukleniyor...</div>);
+
+  const partyEnabled = settings.party_mode_enabled === true || settings.party_mode_enabled === "true";
+  const partyFrom = settings.party_mode_from || "22:00";
+  const partyUntil = settings.party_mode_until || "04:00";
+  const memberDiscount = Number(settings.member_discount_pct) || 0;
+  const memberEnabled = settings.member_discount_enabled === true || settings.member_discount_enabled === "true";
 
   return (
-    <div style={{maxWidth:600}}>
-      <div style={{fontFamily:cv,fontSize:36,color:"#F0EDE8",marginBottom:6}}>AYARLAR</div>
-      <div style={{fontFamily:cvc,fontSize:12,color:"#888",letterSpacing:"2px",marginBottom:32}}>UYELIK & INDIRIM YONETIMI</div>
+    <div style={{fontFamily:cv,color:"#F0EDE8"}}>
+      <div style={{fontSize:24,fontWeight:800,marginBottom:4}}>Ayarlar</div>
+      <div style={{fontSize:11,color:"#888",letterSpacing:"1px",marginBottom:18}}>SISTEM AYARLARI</div>
 
-      <div style={{background:"#161616",border:"1px solid #2A2A2A",borderRadius:12,padding:24,marginBottom:20}}>
-        <div style={{display:"flex",justifyContent:"space-between",alignItems:"center",marginBottom:8}}>
-          <div>
-            <div style={{fontFamily:cv,fontSize:18,color:"#F0EDE8"}}>UYE OTOMATIK INDIRIMI</div>
-            <div style={{fontFamily:cvc,fontSize:13,color:"#888",marginTop:4}}>Google ile uye olan musterilere otomatik indirim uygula</div>
-          </div>
-          <label style={{position:"relative",display:"inline-block",width:54,height:30}}>
-            <input type="checkbox" checked={enabled} onChange={e => setEnabled(e.target.checked)} style={{opacity:0,width:0,height:0}}/>
-            <span style={{position:"absolute",cursor:"pointer",top:0,left:0,right:0,bottom:0,background:enabled?"#C8973E":"#2A2A2A",borderRadius:30,transition:"0.2s"}}>
-              <span style={{position:"absolute",height:24,width:24,left:enabled?27:3,top:3,background:"#fff",borderRadius:"50%",transition:"0.2s"}}/>
-            </span>
-          </label>
+      {/* Parti modu */}
+      <Section icon="🎉" title="Parti Modu" desc="Belirli saatlerde ozel parti menusu aktif olur. Bu sirada parti urunleri musteri menusunde gozukur.">
+        <Toggle checked={partyEnabled} onChange={v=>setKey("party_mode_enabled", v)} label="Parti modu aktif"/>
+        <div style={{display:"flex",gap:8}}>
+          <Field label="BASLANGIC" style={{flex:1}}><input type="time" value={partyFrom} onChange={e=>setKey("party_mode_from", e.target.value)} style={inputS}/></Field>
+          <Field label="BITIS" style={{flex:1}}><input type="time" value={partyUntil} onChange={e=>setKey("party_mode_until", e.target.value)} style={inputS}/></Field>
         </div>
-      </div>
+        <div style={{fontSize:11,color:"#888",marginTop:6}}>NOT: Parti saatleri arasinda "Parti Menusu" tab'i acilir. "show_in_party_menu" isaretli urunler gosterilir.</div>
+      </Section>
 
-      <div style={{background:"#161616",border:"1px solid #2A2A2A",borderRadius:12,padding:24,marginBottom:20,opacity:enabled?1:0.5}}>
-        <div style={{fontFamily:cv,fontSize:18,color:"#F0EDE8",marginBottom:6}}>INDIRIM YUZDESI</div>
-        <div style={{fontFamily:cvc,fontSize:13,color:"#888",marginBottom:16}}>Tum uyelere uygulanacak varsayilan indirim orani</div>
-        <div style={{display:"flex",alignItems:"center",gap:12}}>
-          <input type="number" min="0" max="100" disabled={!enabled} value={pct} onChange={e => setPct(e.target.value)}
-            style={{flex:1,background:"#0C0C0C",border:"1px solid #2A2A2A",borderRadius:8,padding:"12px 16px",color:"#F0EDE8",fontFamily:cv,fontSize:24,outline:"none"}}/>
-          <span style={{fontFamily:cv,fontSize:32,color:"#C8973E"}}>%</span>
-        </div>
-        <div style={{fontFamily:cvc,fontSize:11,color:"#666",marginTop:8,letterSpacing:"1px"}}>NOT: Admin tek tek uyelere ozel indirim tanimlayabilir (UYELER sayfasi). Ozel indirim varsa o uygulanir.</div>
-      </div>
+      {/* Member indirimi */}
+      <Section icon="🌟" title="Uye Indirimi" desc="Sisteme kayitli musterilerin Google ile giris yapip otomatik indirim almalari icin.">
+        <Toggle checked={memberEnabled} onChange={v=>setKey("member_discount_enabled", v)} label="Uye indirimi aktif"/>
+        <Field label={"INDIRIM ORANI (%) - su an: %" + memberDiscount}>
+          <input type="number" min="0" max="50" value={memberDiscount} onChange={e=>setKey("member_discount_pct", Number(e.target.value))} style={inputS}/>
+        </Field>
+        <div style={{fontSize:11,color:"#888",marginTop:6}}>NOT: Bir musteriye ozel "admin_discount" varsa, uye indirimi yerine o uygulanir.</div>
+      </Section>
 
-      <button onClick={save} disabled={saving} style={{width:"100%",padding:"14px",background:"#C8973E",color:"#000",border:"none",borderRadius:8,fontFamily:cv,fontSize:18,letterSpacing:"2px",cursor:"pointer",opacity:saving?0.6:1}}>
-        {saving ? "KAYDEDILIYOR..." : "KAYDET"}
-      </button>
-      {msg && <div style={{textAlign:"center",marginTop:16,fontFamily:cvc,fontSize:13,color:msg.startsWith("HATA")?"#FF4444":"#4ADE80"}}>{msg}</div>}
+      {/* Save button */}
+      <button onClick={save} disabled={busy} style={{width:"100%",padding:"14px",background:"#C8973E",color:"#000",border:"none",borderRadius:12,fontSize:15,fontWeight:800,cursor:"pointer",marginTop:16,opacity:busy?0.6:1}}>{busy?"Kaydediliyor...":(saved?"✓ Kaydedildi":"Ayarlari Kaydet")}</button>
     </div>
   );
+}
+
+const inputS = {width:"100%",padding:"10px 12px",background:"#0C0C0C",border:"1px solid #2A2A2A",borderRadius:8,color:"#F0EDE8",fontSize:14,outline:"none",fontFamily:"inherit"};
+
+function Field({label, children, style={}}) {
+  return (<div style={{marginBottom:12,...style}}>
+    <div style={{fontSize:10,color:"#888",letterSpacing:"1.5px",fontWeight:700,marginBottom:5}}>{label}</div>
+    {children}
+  </div>);
+}
+
+function Toggle({checked, onChange, label}) {
+  return (<label style={{display:"flex",alignItems:"center",gap:10,marginBottom:14,cursor:"pointer",userSelect:"none"}}>
+    <div style={{position:"relative",width:42,height:24,borderRadius:12,background:checked?"#C8973E":"#333",transition:"0.2s"}}>
+      <div style={{position:"absolute",top:3,left:checked?21:3,width:18,height:18,borderRadius:"50%",background:"#fff",transition:"0.2s"}}/>
+    </div>
+    <input type="checkbox" checked={checked} onChange={e=>onChange(e.target.checked)} style={{display:"none"}}/>
+    <span style={{fontSize:14,color:"#F0EDE8"}}>{label}</span>
+  </label>);
+}
+
+function Section({icon, title, desc, children}) {
+  return (<div style={{background:"#1A1A1A",border:"1px solid #2A2A2A",borderRadius:12,padding:16,marginBottom:14}}>
+    <div style={{display:"flex",alignItems:"center",gap:8,marginBottom:4}}>
+      <span style={{fontSize:18}}>{icon}</span>
+      <div style={{fontSize:16,fontWeight:800,color:"#F0EDE8"}}>{title}</div>
+    </div>
+    <div style={{fontSize:11,color:"#888",marginBottom:14,lineHeight:1.5}}>{desc}</div>
+    {children}
+  </div>);
 }
