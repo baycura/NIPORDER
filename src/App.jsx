@@ -22,7 +22,7 @@ import TablesMgmtPage from "./pages/manager/TablesMgmtPage.jsx";
 
 function PrivateRoute({ children, managerOnly = false }) {
   const { session, staffUser, isManager, loading } = useAuth();
-  if (loading) return <div style={{display:"flex",alignItems:"center",justifyContent:"center",height:"100vh",color:"#888",fontFamily:"-apple-system,sans-serif",fontSize:14,letterSpacing:"2px"}}>YUKLENIYOR...</div>;
+  if (loading) return <div style={{display:"flex",alignItems:"center",justifyContent:"center",height:"100vh",color:"#888",fontSize:14,letterSpacing:"2px"}}>YUKLENIYOR...</div>;
   if (!session || !staffUser) return <Navigate to="/login" replace />;
   if (managerOnly && !isManager) return <Navigate to="/tables" replace />;
   return children;
@@ -38,22 +38,22 @@ function AppRoutes() {
       <Route path="/menu" element={<CustomerMenu />} />
       <Route path="/" element={<PrivateRoute><StaffLayout /></PrivateRoute>}>
         <Route index element={<Navigate to={defaultRoute} replace />} />
-        <Route path="tables"      element={<TablesPage />} />
-        <Route path="orders"      element={<OrdersPage />} />
-        <Route path="orders/:orderId" element={<OrderDetailPage />} />
-        <Route path="kitchen"     element={<KitchenPage />} />
-        <Route path="payment"     element={<PaymentPage />} />
-        <Route path="stock"       element={<StockViewPage />} />
-        <Route path="myshift"     element={<MyShiftPage />} />
-        <Route path="menu-mgmt"   element={<PrivateRoute managerOnly><MenuMgmtPage /></PrivateRoute>} />
-        <Route path="tables-mgmt" element={<PrivateRoute managerOnly><TablesMgmtPage /></PrivateRoute>} />
-        <Route path="stock-mgmt"  element={<PrivateRoute managerOnly><StockMgmtPage /></PrivateRoute>} />
-        <Route path="staff-mgmt"  element={<PrivateRoute managerOnly><StaffMgmtPage /></PrivateRoute>} />
-        <Route path="happy-hour"  element={<PrivateRoute managerOnly><HappyHourPage /></PrivateRoute>} />
-        <Route path="reports"     element={<PrivateRoute managerOnly><ReportsPage /></PrivateRoute>} />
-        <Route path="members"     element={<PrivateRoute managerOnly><MembersPage /></PrivateRoute>} />
-        <Route path="merch-mgmt"  element={<PrivateRoute managerOnly><MerchMgmtPage /></PrivateRoute>} />
-        <Route path="settings"    element={<PrivateRoute managerOnly><SettingsPage /></PrivateRoute>} />
+        <Route path="tables"           element={<TablesPage />} />
+        <Route path="orders"           element={<OrdersPage />} />
+        <Route path="orders/:orderId"  element={<OrderDetailPage />} />
+        <Route path="kitchen"          element={<KitchenPage />} />
+        <Route path="payment"          element={<PaymentPage />} />
+        <Route path="stock"            element={<StockViewPage />} />
+        <Route path="myshift"          element={<MyShiftPage />} />
+        <Route path="stock-mgmt"       element={<PrivateRoute managerOnly><StockMgmtPage /></PrivateRoute>} />
+        <Route path="staff-mgmt"       element={<PrivateRoute managerOnly><StaffMgmtPage /></PrivateRoute>} />
+        <Route path="happy-hour"       element={<PrivateRoute managerOnly><HappyHourPage /></PrivateRoute>} />
+        <Route path="reports"          element={<PrivateRoute managerOnly><ReportsPage /></PrivateRoute>} />
+        <Route path="members"          element={<PrivateRoute managerOnly><MembersPage /></PrivateRoute>} />
+        <Route path="merch-mgmt"       element={<PrivateRoute managerOnly><MerchMgmtPage /></PrivateRoute>} />
+        <Route path="settings"         element={<PrivateRoute managerOnly><SettingsPage /></PrivateRoute>} />
+        <Route path="menu-mgmt"        element={<PrivateRoute managerOnly><MenuMgmtPage /></PrivateRoute>} />
+        <Route path="tables-mgmt"      element={<PrivateRoute managerOnly><TablesMgmtPage /></PrivateRoute>} />
       </Route>
       <Route path="*" element={<Navigate to="/" replace />} />
     </Routes>
