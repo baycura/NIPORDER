@@ -1,16 +1,37 @@
 import { Outlet, NavLink, useNavigate } from "react-router-dom";
 import { useAuth } from "../../contexts/AuthContext.jsx";
-const cv="'Coolvetica','Bebas Neue',sans-serif";
-const cvc="'Coolvetica Condensed','Barlow Condensed',sans-serif";
-const STAFF_NAV=[{to:"/tables",icon:"🪑",label:"Masalar"},{to:"/orders",icon:"📋",label:"Siparişler"},{to:"/kitchen",icon:"👨‍🍳",label:"Mutfak"},{to:"/payment",icon:"💳",label:"Kasa"},{to:"/stock",icon:"📦",label:"Stok"},{to:"/myshift",icon:"📊",label:"Vardiyam"}];
-const MANAGER_NAV=[{to:"/stock-mgmt",icon:"🗃️",label:"Stok Yönetimi"},{to:"/staff-mgmt",icon:"👥",label:"Personel"},{to:"/happy-hour",icon:"⚡",label:"Happy Hour"},{to:"/reports",icon:"📈",label:"Raporlar"},{to:"/members",icon:"⭐",label:"Üyeler"},{to:"/merch-mgmt",icon:"👕",label:"Merch"}];
-const roleColor={manager:"#C8973E",owner:"#C8973E",waiter:"#3ECF8E",kitchen:"#E07A3E",cashier:"#5A8FE0"};
-const roleLabel={manager:"Yönetici",owner:"Yönetici",waiter:"Garson",kitchen:"Mutfak",cashier:"Kasiyer"};
-export default function StaffLayout(){
-  const{staffUser,isManager,signOut}=useAuth();
-  const navigate=useNavigate();
-  const color=roleColor[staffUser?.role]||"#888";
-  return(
+
+const cv  = "'Coolvetica','Bebas Neue',sans-serif";
+const cvc = "'Coolvetica Condensed','Barlow Condensed',sans-serif";
+
+const STAFF_NAV = [
+  {to:"/tables",  icon:"🪑", label:"Masalar"},
+  {to:"/orders",  icon:"📋", label:"Siparisler"},
+  {to:"/kitchen", icon:"🍳", label:"Mutfak"},
+  {to:"/payment", icon:"💰", label:"Kasa"},
+  {to:"/stock",   icon:"📦", label:"Stok"},
+  {to:"/myshift", icon:"📊", label:"Vardiyam"},
+];
+
+const MANAGER_NAV = [
+  {to:"/stock-mgmt", icon:"📦", label:"Stok Yonetimi"},
+  {to:"/staff-mgmt", icon:"👥", label:"Personel"},
+  {to:"/happy-hour", icon:"🎉", label:"Happy Hour"},
+  {to:"/reports",    icon:"📈", label:"Raporlar"},
+  {to:"/members",    icon:"🌟", label:"Uyeler"},
+  {to:"/merch-mgmt", icon:"👕", label:"Uyeler"},
+  {to:"/settings",   icon:"⚙",   label:"Ayarlar"},
+];
+
+const roleColor  = {manager:"#C8973E", owner:"#C8973E", waiter:"#3ECF8E", kitchen:"#E07A3E", cashier:"#5A8FE0"};
+const roleLabel  = {manager:"Yonetici", owner:"Yonetici", waiter:"Garson", kitchen:"Mutfak", cashier:"Kasiyer"};
+
+export default function StaffLayout() {
+  const {staffUser, isManager, signOut} = useAuth();
+  const navigate = useNavigate();
+  const color = roleColor[staffUser?.role] || "#888";
+
+  return (
     <div style={{display:"flex",background:"#0C0C0C",minHeight:"100vh"}}>
       <aside style={{width:220,background:"#161616",borderRight:"1px solid #2A2A2A",height:"100vh",display:"flex",flexDirection:"column",position:"fixed",left:0,top:0,zIndex:50,overflowY:"auto"}}>
         <div style={{padding:"18px 16px 14px",borderBottom:"1px solid #2A2A2A"}}>
@@ -23,15 +44,15 @@ export default function StaffLayout(){
           </div>
         </div>
         <nav style={{padding:"10px 8px",display:"flex",flexDirection:"column",gap:2}}>
-          {STAFF_NAV.map(item=>(
-            <NavLink key={item.to} to={item.to} style={({isActive})=>({display:"flex",alignItems:"center",gap:9,padding:"9px 10px",borderRadius:8,textDecoration:"none",background:isActive?"rgba(200,151,62,0.12)":"transparent",color:isActive?"#C8973E":"#888",fontFamily:cvc,fontSize:12,letterSpacing:"0.5px"})}>
+          {STAFF_NAV.map(item => (
+            <NavLink key={item.to} to={item.to} style={({isActive}) => ({display:"flex",alignItems:"center",gap:9,padding:"9px 10px",borderRadius:8,textDecoration:"none",background:isActive?"rgba(200,151,62,0.12)":"transparent",color:isActive?"#C8973E":"#888",fontFamily:cvc,fontSize:13})}>
               <span style={{fontSize:15}}>{item.icon}</span>{item.label}
             </NavLink>
           ))}
-          {isManager&&(<>
+          {isManager && (<>
             <div style={{height:1,background:"#2A2A2A",margin:"8px 4px"}}/>
-            {MANAGER_NAV.map(item=>(
-              <NavLink key={item.to} to={item.to} style={({isActive})=>({display:"flex",alignItems:"center",gap:9,padding:"9px 10px",borderRadius:8,textDecoration:"none",background:isActive?"rgba(200,151,62,0.12)":"transparent",color:isActive?"#C8973E":"#888",fontFamily:cvc,fontSize:12,letterSpacing:"0.5px"})}>
+            {MANAGER_NAV.map(item => (
+              <NavLink key={item.to} to={item.to} style={({isActive}) => ({display:"flex",alignItems:"center",gap:9,padding:"9px 10px",borderRadius:8,textDecoration:"none",background:isActive?"rgba(200,151,62,0.12)":"transparent",color:isActive?"#C8973E":"#888",fontFamily:cvc,fontSize:13})}>
                 <span style={{fontSize:15}}>{item.icon}</span>{item.label}
               </NavLink>
             ))}
@@ -45,7 +66,7 @@ export default function StaffLayout(){
               <div style={{color:"#F0EDE8",fontFamily:cvc,fontSize:12,fontWeight:700}}>{staffUser?.name}</div>
               <div style={{color,fontFamily:cvc,fontSize:9,letterSpacing:"1px"}}>{roleLabel[staffUser?.role]||staffUser?.role}</div>
             </div>
-            <button onClick={async()=>{await signOut();navigate("/login");}} style={{background:"none",border:"none",color:"#444",fontSize:16,cursor:"pointer"}}>✕</button>
+            <button onClick={async()=>{await signOut();navigate("/login");}} style={{background:"none",border:"none",color:"#444",fontSize:16,cursor:"pointer"}}>×</button>
           </div>
         </div>
       </aside>
