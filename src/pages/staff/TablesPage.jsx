@@ -19,7 +19,7 @@ export default function TablesPage() {
     setLoading(true);
     const [{data: tabs}, {data: ords}] = await Promise.all([
       supabase.from("cafe_tables").select("*").order("sort_order").order("name"),
-      supabase.from("orders").select("id, table_id, customer_name, total, status, created_at").in("status", ["open","pending","preparing","ready"]),
+      supabase.from("orders").select("id, table_id, customer_name, total, status, created_at").in("status", ["open","sent","preparing","ready"]),
     ]);
     setTables(tabs || []);
     setOrders(ords || []);
