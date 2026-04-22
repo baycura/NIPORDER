@@ -20,7 +20,7 @@ export default function PaymentPage() {
   const load = async () => {
     setLoading(true);
     const [{data: ords}, {data: tabs}, {data: custs}] = await Promise.all([
-      supabase.from("orders").select("id, table_id, customer_name, total, status, created_at").in("status", ["open","pending","preparing","ready"]).order("created_at", { ascending: false }),
+      supabase.from("orders").select("id, table_id, customer_name, total, status, created_at").in("status", ["open","sent","preparing","ready"]).order("created_at", { ascending: false }),
       supabase.from("cafe_tables").select("id, name"),
       supabase.from("customers").select("id, name, outstanding_balance").order("name"),
     ]);
