@@ -1,191 +1,370 @@
-import { useEffect, useState, useMemo } from "react";
+import { useEffect, useMemo, useState } from "react";
+import { useParams, useNavigate } from "react-router-dom";
 import { supabase } from "../../lib/supabase.js";
-import { useAuth } from "../../contexts/AuthContext.jsx";
 
 const cv = "-apple-system,BlinkMacSystemFont,'Segoe UI',Roboto,sans-serif";
 
+// Party mode hours helper (crosses midnight handling)
+function isInRange(now, from, until) {
+  if (!from || !until) return false;
+  const [fh, fm] = from.split(":").map(Number);
+  const [uh, um] = until.split(":").map(Number);
+  const h = now.getHours(), m = now.getMinutes();
+  const nowMin = h * 60 + m;
+  const fromMin = fh * 60 + fm;
+  const untilMin = uh * 60 + um;
+  if (fromMin <= untilMin) return nowMin >= fromMin && nowMin < untilMin;
+  return nowMin >= fromMin || nowMin < untilMin; // crosses midnight
+}
+
 export default function CustomerMenu() {
-  const { customer, signInWithGoogle, signOut } = useAuth();
+  const { qrToken } = useParams();
+  const navigate = useNavigate();
+
+  const [table, setTable] = useState(null);
   const [categories, setCategories] = useState([]);
   const [products, setProducts] = useState([]);
-  const [selectedCat, setSelectedCat] = useState(null);
+  const [settings, setSettings] = useState(null);
   const [hh, setHh] = useState(null);
-  const [settings, setSettings] = useState({});
   const [loading, setLoading] = useState(true);
-  const [now, setNow] = useState(new Date());
+  const [selectedCat, setSelectedCat] = useState(null);
+  const [cart, setCart] = useState([]); // [{product, quantity, options, note}]
+  const [optModal, setOptModal] = useState(null);
+  const [optSelected, setOptSelected] = useState({});
+  const [optNote, setOptNote] = useState("");
+  const [checkoutOpen, setCheckoutOpen] = useState(false);
+  const [customerName, setCustomerName] = useState("");
+  const [submitting, setSubmitting] = useState(false);
+  const [successOrderId, setSuccessOrderId] = useState(null);
+
+  const now = new Date();
+  const partyMode = settings && settings.party_mode_enabled && isInRange(now, settings.party_mode_from, settings.party_mode_until);
 
   const load = async () => {
     setLoading(true);
-    const [{data: cats}, {data: prods}, hhRes, {data: setts}] = await Promise.all([
-      supabase.from("categories").select("*").eq("is_active", true).order("sort_order"),
-      supabase.from("products").select("*").eq("is_available", true).order("sort_order"),
-      supabase.rpc("get_active_happy_hour").then(r=>r).catch(()=>({data:null})),
-      supabase.from("app_settings").select("*"),
-    ]);
-    if (cats) setCategories(cats);
-    if (prods) setProducts(prods);
-    if (hhRes?.data?.[0]) setHh(hhRes.data[0]);
-    const obj = {};
-    (setts || []).forEach(s => { obj[s.key] = s.value; });
-    setSettings(obj);
+    try {
+      // Find table by qr_token if provided, else walkin mode
+      let tab = null;
+      if (qrToken) {
+        const { data: t } = await supabase.from("cafe_tables").select("*").eq("qr_token", qrToken).maybeSingle();
+        tab = t || null;
+      }
+      setTable(tab);
+
+      const [{data: cats}, {data: prods}, {data: app}, hhRes] = await Promise.all([
+        supabase.from("categories").select("*").eq("is_active", true).order("sort_order"),
+        supabase.from("products").select("*").eq("is_available", true).order("sort_order"),
+        supabase.from("app_settings").select("*").limit(1).maybeSingle(),
+        supabase.rpc("get_active_happy_hour").then(r => r).catch(() => ({data: null})),
+      ]);
+      setCategories(cats || []);
+      setProducts(prods || []);
+      setSettings(app || {});
+      if (hhRes && hhRes.data && hhRes.data[0]) setHh(hhRes.data[0]);
+
+      if (cats && cats.length && !selectedCat) setSelectedCat(cats[0].id);
+    } catch (e) {
+      console.error("Menu load error", e);
+    }
     setLoading(false);
   };
 
-  useEffect(() => {
-    load();
-    const t = setInterval(() => setNow(new Date()), 60000);
-    return () => clearInterval(t);
-  }, []);
+  useEffect(() => { load(); }, [qrToken]);
 
-  // Party mode active?
-  const partyEnabled = settings.party_mode_enabled === true || settings.party_mode_enabled === "true";
-  const partyFrom = settings.party_mode_from || "22:00";
-  const partyUntil = settings.party_mode_until || "04:00";
-  const isPartyTime = (() => {
-    if (!partyEnabled) return false;
-    const cur = now.getHours() * 60 + now.getMinutes();
-    const [fh, fm] = partyFrom.split(":").map(Number);
-    const [uh, um] = partyUntil.split(":").map(Number);
-    const f = fh*60 + fm;
-    const u = uh*60 + um;
-    if (f < u) return cur >= f && cur < u;
-    return cur >= f || cur < u; // overnight
-  })();
+  // Filter categories by time availability + party mode
+  const visibleCategories = useMemo(() => {
+    return categories.filter(c => {
+      if (c.available_from && c.available_until && !isInRange(now, c.available_from, c.available_until)) return false;
+      return true;
+    });
+  }, [categories, now]);
 
-  const memberPct = customer && (settings.member_discount_enabled===true||settings.member_discount_enabled==="true") ? Number(settings.member_discount_pct)||0 : 0;
-  const adminDiscount = Number(customer?.admin_discount) || 0;
+  // Filter products - in party mode, only show_in_party_menu products
+  const visibleProducts = useMemo(() => {
+    let list = products.filter(p => p.category_id === selectedCat);
+    if (partyMode) {
+      // In party mode, if any product is marked for party menu, only show those in that category
+      const partyProducts = list.filter(p => p.show_in_party_menu);
+      if (partyProducts.length > 0) list = partyProducts;
+    }
+    return list;
+  }, [products, selectedCat, partyMode]);
 
   const calcPrice = (p) => {
     let pct = 0;
-    if (hh && (hh.category_ids?.length === 0 || hh.category_ids?.includes(p.category_id))) pct = Number(hh.discount_pct);
-    if (Number(p.instant_discount_pct) > pct) pct = Number(p.instant_discount_pct);
-    const userPct = adminDiscount > 0 ? adminDiscount : memberPct;
-    if (userPct > pct) pct = userPct;
+    if (hh && (hh.category_ids?.length === 0 || hh.category_ids?.includes(p.category_id))) pct = Number(hh.discount_pct) || 0;
+    if (Number(p.instant_discount_pct||0) > pct) pct = Number(p.instant_discount_pct);
     return Math.round(Number(p.price) * (100 - pct) / 100);
   };
 
-  // Category time check
-  const isCategoryActive = (c) => {
-    if (!c.available_from || !c.available_until) return true;
-    const cur = now.getHours() * 60 + now.getMinutes();
-    const [fh, fm] = c.available_from.split(":").map(Number);
-    const [uh, um] = c.available_until.split(":").map(Number);
-    const f = fh*60 + fm;
-    const u = uh*60 + um;
-    if (f < u) return cur >= f && cur < u;
-    return cur >= f || cur < u;
+  const cartTotal = useMemo(() => cart.reduce((s, it) => s + calcPrice(it.product) * it.quantity, 0), [cart, hh]);
+  const cartCount = useMemo(() => cart.reduce((s, it) => s + it.quantity, 0), [cart]);
+
+  const findInCart = (productId, options, note) => {
+    return cart.findIndex(c =>
+      c.product.id === productId &&
+      JSON.stringify(c.options || null) === JSON.stringify(options || null) &&
+      (c.note || "") === (note || "")
+    );
   };
 
-  const visibleCategories = useMemo(() => {
-    return categories;
-  }, [categories]);
+  const onProductTap = (p) => {
+    if (p.sold_out_today) {
+      alert("Bu ürün şu an tükendi: " + (p.unavailable_reason || ""));
+      return;
+    }
+    if (p.has_options && p.options_config) {
+      setOptModal(p);
+      setOptSelected({});
+      setOptNote("");
+    } else {
+      addToCart(p, null, null);
+    }
+  };
 
-  useEffect(() => {
-    if (visibleCategories.length && !selectedCat) setSelectedCat(visibleCategories[0].id);
-  }, [visibleCategories]);
+  const addToCart = (product, options, note) => {
+    setCart(prev => {
+      const idx = findInCart(product.id, options, note);
+      if (idx >= 0) {
+        const next = [...prev];
+        next[idx] = { ...next[idx], quantity: next[idx].quantity + 1 };
+        return next;
+      }
+      return [...prev, { product, quantity: 1, options: options || null, note: note || null }];
+    });
+  };
 
-  const visibleProducts = products.filter(p => {
-    if (p.category_id !== selectedCat) return false;
-    // In party time, filter by show_in_party_menu
-    if (isPartyTime && !p.show_in_party_menu) return false;
-    return true;
-  });
+  const updateQty = (idx, delta) => {
+    setCart(prev => {
+      const next = [...prev];
+      const q = next[idx].quantity + delta;
+      if (q <= 0) return next.filter((_, i) => i !== idx);
+      next[idx] = { ...next[idx], quantity: q };
+      return next;
+    });
+  };
 
-  const selectedCatObj = categories.find(c => c.id === selectedCat);
-  const catActive = selectedCatObj ? isCategoryActive(selectedCatObj) : true;
+  const confirmOptions = () => {
+    if (!optModal) return;
+    const cfg = optModal.options_config || {};
+    for (const group of cfg.groups || []) {
+      if (group.required && !optSelected[group.name]) {
+        alert("Lütfen " + group.name + " seç"); return;
+      }
+    }
+    addToCart(optModal, optSelected, optNote.trim() || null);
+    setOptModal(null);
+  };
+
+  const submitOrder = async () => {
+    if (submitting || cart.length === 0) return;
+    if (!table && !customerName.trim()) { alert("Lütfen adını gir"); return; }
+    setSubmitting(true);
+    try {
+      const totalVal = cartTotal;
+      const { data: ord, error: ordErr } = await supabase.from("orders").insert({
+        table_id: table ? table.id : null,
+        customer_name: table ? null : customerName.trim(),
+        subtotal: totalVal,
+        total: totalVal,
+        status: "open",
+      }).select().single();
+      if (ordErr) throw ordErr;
+
+      const itemsPayload = cart.map(c => ({
+        order_id: ord.id,
+        product_id: c.product.id,
+        product_name: c.product.name,
+        product_price: Number(c.product.price),
+        final_price: calcPrice(c.product),
+        quantity: c.quantity,
+        kitchen_status: "pending",
+        sent_to_kitchen: false,
+        notes: c.note || null,
+        selected_options: c.options || null,
+      }));
+      const { error: itErr } = await supabase.from("order_items").insert(itemsPayload);
+      if (itErr) throw itErr;
+
+      setSuccessOrderId(ord.id);
+      setCart([]);
+      setCheckoutOpen(false);
+    } catch (e) {
+      alert("Sipariş gönderilemedi: " + e.message);
+    }
+    setSubmitting(false);
+  };
 
   if (loading) {
-    return (<div style={{minHeight:"100vh",display:"flex",alignItems:"center",justifyContent:"center",background:"#fafafa",color:"#888",fontFamily:cv,fontSize:13,letterSpacing:"2px"}}>YUKLENIYOR...</div>);
+    return (<div style={{fontFamily:cv,background:"#fff",minHeight:"100vh",display:"flex",alignItems:"center",justifyContent:"center",color:"#888"}}>Yükleniyor...</div>);
+  }
+
+  if (successOrderId) {
+    return (
+      <div style={{fontFamily:cv,background:"#fff",minHeight:"100vh",padding:"40px 20px",color:"#000"}}>
+        <div style={{maxWidth:420,margin:"0 auto",textAlign:"center"}}>
+          <div style={{fontSize:60,marginBottom:14}}>✅</div>
+          <div style={{fontSize:24,fontWeight:800,marginBottom:8}}>Siparişin alındı!</div>
+          <div style={{fontSize:14,color:"#555",marginBottom:24,lineHeight:1.5}}>
+            {table ? table.name + " için" : "Misafir siparişi"} mutfağa iletildi. Garson kısa sürede yanına gelecek.
+          </div>
+          <button onClick={() => { setSuccessOrderId(null); load(); }} style={{padding:"14px 28px",background:"#C8973E",color:"#000",border:"none",borderRadius:12,fontSize:14,fontWeight:800,cursor:"pointer"}}>Yeni sipariş ver</button>
+        </div>
+      </div>
+    );
   }
 
   return (
-    <div style={{minHeight:"100vh",background:"#fafafa",color:"#000",fontFamily:cv,paddingBottom:80}}>
-      {/* Sticky header */}
-      <header style={{position:"sticky",top:0,zIndex:30,background:"#fff",borderBottom:"1px solid #eee",padding:"14px 18px",display:"flex",alignItems:"center",justifyContent:"space-between"}}>
-        <div>
-          <div style={{fontSize:16,fontWeight:800,letterSpacing:"1px"}}>NOT IN PARIS</div>
-          {isPartyTime && <div style={{fontSize:9,color:"#C8973E",letterSpacing:"2px",fontWeight:700,marginTop:2}}>🎉 PARTI MENUSU AKTIF</div>}
-        </div>
-        {customer ? (
-          <div style={{display:"flex",alignItems:"center",gap:8}}>
-            <div style={{textAlign:"right"}}>
-              <div style={{fontSize:12,fontWeight:600}}>{customer.name?.split(" ")[0]}</div>
-              {(memberPct > 0 || adminDiscount > 0) && <div style={{fontSize:9,color:"#C8973E",fontWeight:700}}>-%{adminDiscount > 0 ? adminDiscount : memberPct}</div>}
+    <div style={{fontFamily:cv,background:"#fff",minHeight:"100vh",color:"#000",paddingBottom:cart.length>0?96:24}}>
+      {/* Header */}
+      <div style={{padding:"20px 16px 10px",borderBottom:"1px solid #eee",position:"sticky",top:0,background:"#fff",zIndex:20}}>
+        <div style={{display:"flex",alignItems:"center",justifyContent:"space-between"}}>
+          <div>
+            <div style={{fontSize:18,fontWeight:800,letterSpacing:"0.5px"}}>NOT IN PARIS</div>
+            <div style={{fontSize:10,color:"#888",letterSpacing:"2px",marginTop:2}}>
+              {table ? table.name?.toUpperCase() : "MENÜ"}
+              {partyMode && <span style={{marginLeft:6,color:"#C8973E",fontWeight:700}}>· PARTİ MODU 🎉</span>}
             </div>
-            {customer.avatar_url && <img src={customer.avatar_url} alt="" style={{width:30,height:30,borderRadius:"50%"}}/>}
           </div>
-        ) : (
-          <button onClick={signInWithGoogle} style={{padding:"6px 12px",background:"#000",color:"#fff",border:"none",borderRadius:6,fontSize:11,fontWeight:600,cursor:"pointer"}}>Google Giris</button>
-        )}
-      </header>
+          {hh && <div style={{background:"#C8973E",color:"#000",padding:"4px 10px",borderRadius:10,fontSize:10,fontWeight:800,letterSpacing:"0.5px"}}>HAPPY HOUR -%{hh.discount_pct}</div>}
+        </div>
 
-      {/* Categories pills */}
-      <div style={{padding:"12px 18px 4px",overflowX:"auto",display:"flex",gap:8,position:"sticky",top:54,background:"#fafafa",zIndex:25}}>
-        {visibleCategories.map(c => {
-          const active = isCategoryActive(c);
-          return (
-            <button key={c.id} onClick={()=>setSelectedCat(c.id)} style={{flexShrink:0,padding:"8px 14px",border:"1px solid "+(selectedCat===c.id?"#000":"#ddd"),borderRadius:20,fontSize:11,fontWeight:700,letterSpacing:"1px",background:selectedCat===c.id?"#000":"#fff",color:selectedCat===c.id?"#fff":(active?"#333":"#aaa"),cursor:"pointer",whiteSpace:"nowrap",opacity:active?1:0.5}}>
-              {c.icon && <span style={{marginRight:4}}>{c.icon}</span>}{c.name?.toUpperCase()}
-              {!active && <span style={{marginLeft:6,fontSize:9}}>(KAPALI)</span>}
+        {/* Categories */}
+        <div style={{display:"flex",gap:6,overflowX:"auto",marginTop:12,paddingBottom:4}}>
+          {visibleCategories.map(c => (
+            <button key={c.id} onClick={() => setSelectedCat(c.id)} style={{flexShrink:0,padding:"8px 14px",border:"none",borderRadius:16,fontSize:12,fontWeight:700,background:selectedCat===c.id?"#000":"#f2f2f2",color:selectedCat===c.id?"#fff":"#333",cursor:"pointer",whiteSpace:"nowrap",letterSpacing:"0.3px"}}>
+              {c.icon && <span style={{marginRight:4}}>{c.icon}</span>}{c.name}
             </button>
-          );
-        })}
+          ))}
+        </div>
       </div>
 
-      {/* Category-level closed warning */}
-      {selectedCatObj && !catActive && (
-        <div style={{margin:"10px 18px",padding:"12px 14px",background:"#fff8e6",border:"1px solid #f0d090",borderRadius:8,fontSize:12,color:"#806020"}}>
-          🕧 Bu menu su an kapali. Acilis: <strong>{selectedCatObj.available_from?.substring(0,5)} - {selectedCatObj.available_until?.substring(0,5)}</strong>
-        </div>
-      )}
-
       {/* Products */}
-      <div style={{padding:"6px 18px"}}>
+      <div style={{padding:"14px 16px"}}>
+        {visibleProducts.length === 0 && <div style={{textAlign:"center",color:"#888",padding:40,fontSize:13}}>Bu kategoride ürün yok</div>}
         {visibleProducts.map(p => {
           const fp = calcPrice(p);
           const dis = fp < Number(p.price);
           const soldOut = p.sold_out_today;
-          const dimmed = soldOut || (selectedCatObj && !isCategoryActive(selectedCatObj));
+          const cartIdx = cart.findIndex(c => c.product.id === p.id && !c.options);
+          const inCart = cartIdx >= 0 ? cart[cartIdx].quantity : 0;
           return (
-            <div key={p.id} style={{display:"flex",justifyContent:"space-between",alignItems:"flex-start",padding:"14px 0",borderBottom:"1px solid #eee",opacity:dimmed?0.4:1}}>
-              <div style={{flex:1,minWidth:0,paddingRight:12}}>
-                <div style={{fontSize:14,fontWeight:600,color:"#000",textDecoration:soldOut?"line-through":"none"}}>{p.name}</div>
-                {p.description && <div style={{fontSize:11,color:"#777",marginTop:3,lineHeight:1.4}}>{p.description}</div>}
-                {soldOut && <div style={{fontSize:10,color:"#c00",letterSpacing:"1px",fontWeight:700,marginTop:4,padding:"2px 6px",background:"#fee",border:"1px solid #fcc",borderRadius:4,display:"inline-block"}}>{p.unavailable_reason ? p.unavailable_reason.toUpperCase() : "TUKENDI"}</div>}
-                {p.has_options && !soldOut && <div style={{fontSize:10,color:"#888",letterSpacing:"1px",marginTop:3}}>SECENEKLI</div>}
+            <div key={p.id} style={{display:"flex",gap:12,padding:"14px 0",borderBottom:"1px solid #f0f0f0",opacity:soldOut?0.45:1}}>
+              {p.image_url && <img src={p.image_url} alt="" style={{width:72,height:72,borderRadius:10,objectFit:"cover",flexShrink:0}}/>}
+              <div style={{flex:1,minWidth:0}}>
+                <div style={{fontSize:15,fontWeight:700,color:"#000",lineHeight:1.3}}>{p.name}</div>
+                {p.description && <div style={{fontSize:12,color:"#666",marginTop:3,lineHeight:1.4}}>{p.description}</div>}
+                {soldOut && <div style={{fontSize:11,color:"#c44",marginTop:4,fontWeight:600}}>{p.unavailable_reason || "Tükendi"}</div>}
+                {p.has_options && !soldOut && <div style={{fontSize:10,color:"#C8973E",marginTop:3,fontWeight:700,letterSpacing:"0.5px"}}>SEÇENEKLI</div>}
+                <div style={{display:"flex",alignItems:"center",gap:10,marginTop:8}}>
+                  {dis && <span style={{fontSize:12,color:"#999",textDecoration:"line-through"}}>₺{p.price}</span>}
+                  <span style={{fontSize:15,fontWeight:800,color:dis?"#C8973E":"#000"}}>₺{fp}</span>
+                </div>
               </div>
-              <div style={{textAlign:"right",flexShrink:0}}>
-                {dis ? (<>
-                  <div style={{fontSize:11,color:"#999",textDecoration:"line-through"}}>₺{p.price}</div>
-                  <div style={{fontSize:14,fontWeight:700,color:"#c80"}}>₺{fp}</div>
-                </>) : (
-                  <div style={{fontSize:14,fontWeight:700,color:"#000"}}>₺{fp}</div>
-                )}
-              </div>
+              {!soldOut && (
+                <div style={{display:"flex",alignItems:"center",flexShrink:0}}>
+                  {inCart > 0 && !p.has_options ? (
+                    <div style={{display:"flex",alignItems:"center",gap:8,background:"#000",borderRadius:24,padding:"4px 6px"}}>
+                      <button onClick={() => updateQty(cartIdx, -1)} style={{width:28,height:28,background:"transparent",color:"#fff",border:"none",borderRadius:"50%",fontSize:18,cursor:"pointer",fontWeight:700}}>−</button>
+                      <div style={{minWidth:18,textAlign:"center",color:"#fff",fontSize:14,fontWeight:800}}>{inCart}</div>
+                      <button onClick={() => updateQty(cartIdx, +1)} style={{width:28,height:28,background:"transparent",color:"#fff",border:"none",borderRadius:"50%",fontSize:18,cursor:"pointer",fontWeight:700}}>+</button>
+                    </div>
+                  ) : (
+                    <button onClick={() => onProductTap(p)} style={{width:36,height:36,background:"#000",color:"#fff",border:"none",borderRadius:"50%",fontSize:22,cursor:"pointer",fontWeight:700,display:"flex",alignItems:"center",justifyContent:"center"}}>+</button>
+                  )}
+                </div>
+              )}
             </div>
           );
         })}
-        {visibleProducts.length === 0 && (
-          <div style={{textAlign:"center",padding:60,color:"#aaa",fontSize:13}}>
-            {isPartyTime ? "Bu kategoride parti urunu yok" : "Bu kategoride urun yok"}
-          </div>
-        )}
       </div>
 
-      {/* Bottom nav */}
-      <nav style={{position:"fixed",bottom:0,left:0,right:0,background:"#fff",borderTop:"1px solid #eee",padding:"10px 18px env(safe-area-inset-bottom) 18px",display:"flex",justifyContent:"space-around"}}>
-        <a href="https://www.instagram.com/notinparis.cafe" target="_blank" rel="noreferrer" style={{display:"flex",flexDirection:"column",alignItems:"center",gap:3,textDecoration:"none",color:"#666",fontSize:10,fontWeight:600}}>
-          <span style={{fontSize:18}}>📷</span>INSTAGRAM
-        </a>
-        <a href="https://maps.google.com/?q=Not+In+Paris+Antalya" target="_blank" rel="noreferrer" style={{display:"flex",flexDirection:"column",alignItems:"center",gap:3,textDecoration:"none",color:"#666",fontSize:10,fontWeight:600}}>
-          <span style={{fontSize:18}}>📍</span>YOL TARIFI
-        </a>
-        {customer && (
-          <button onClick={signOut} style={{display:"flex",flexDirection:"column",alignItems:"center",gap:3,background:"none",border:"none",color:"#666",fontSize:10,fontWeight:600,cursor:"pointer"}}>
-            <span style={{fontSize:18}}>⭳</span>CIKIS
+      {/* Floating cart bar */}
+      {cart.length > 0 && (
+        <div style={{position:"fixed",bottom:14,left:14,right:14,zIndex:40}}>
+          <button onClick={() => setCheckoutOpen(true)} style={{width:"100%",padding:"16px 20px",background:"#000",color:"#fff",border:"none",borderRadius:14,fontSize:15,fontWeight:800,cursor:"pointer",boxShadow:"0 6px 20px rgba(0,0,0,0.35)",display:"flex",justifyContent:"space-between",alignItems:"center"}}>
+            <span>🛒 Sepetim ({cartCount})</span>
+            <span>₺{cartTotal} · Devam →</span>
           </button>
-        )}
-      </nav>
+        </div>
+      )}
+
+      {/* Options modal */}
+      {optModal && (
+        <div onClick={() => setOptModal(null)} style={{position:"fixed",inset:0,background:"rgba(0,0,0,0.55)",display:"flex",alignItems:"flex-end",justifyContent:"center",zIndex:100}}>
+          <div onClick={e=>e.stopPropagation()} style={{background:"#fff",borderRadius:"18px 18px 0 0",padding:20,width:"100%",maxWidth:500,maxHeight:"85vh",overflowY:"auto"}}>
+            <div style={{fontSize:20,fontWeight:800,marginBottom:4}}>{optModal.name}</div>
+            <div style={{fontSize:13,color:"#666",marginBottom:18}}>₺{calcPrice(optModal)}</div>
+            {(optModal.options_config?.groups || []).map(group => (
+              <div key={group.name} style={{marginBottom:14}}>
+                <div style={{fontSize:11,color:"#333",letterSpacing:"1px",fontWeight:700,marginBottom:6}}>
+                  {group.name?.toUpperCase()}{group.required && <span style={{color:"#c44",marginLeft:4}}>*</span>}
+                </div>
+                <div style={{display:"flex",flexWrap:"wrap",gap:6}}>
+                  {(group.options || []).map(opt => (
+                    <button key={opt} onClick={()=>setOptSelected({...optSelected, [group.name]: opt})} style={{padding:"10px 14px",background:optSelected[group.name]===opt?"#000":"#f2f2f2",color:optSelected[group.name]===opt?"#fff":"#333",border:"none",borderRadius:10,fontSize:13,fontWeight:700,cursor:"pointer"}}>{opt}</button>
+                  ))}
+                </div>
+              </div>
+            ))}
+            <div style={{marginBottom:16}}>
+              <div style={{fontSize:11,color:"#333",letterSpacing:"1px",fontWeight:700,marginBottom:6}}>NOT (OPSİYONEL)</div>
+              <input value={optNote} onChange={e=>setOptNote(e.target.value)} placeholder="Örn: buzsuz, sekersiz" style={{width:"100%",padding:"12px 14px",background:"#f7f7f7",border:"1px solid #eee",borderRadius:10,fontSize:14,outline:"none",fontFamily:"inherit"}}/>
+            </div>
+            <div style={{display:"flex",gap:8}}>
+              <button onClick={() => setOptModal(null)} style={{flex:1,padding:"14px",background:"#fff",color:"#666",border:"1px solid #ddd",borderRadius:12,fontSize:14,fontWeight:700,cursor:"pointer"}}>İptal</button>
+              <button onClick={confirmOptions} style={{flex:2,padding:"14px",background:"#000",color:"#fff",border:"none",borderRadius:12,fontSize:14,fontWeight:800,cursor:"pointer"}}>Sepete Ekle</button>
+            </div>
+          </div>
+        </div>
+      )}
+
+      {/* Checkout drawer */}
+      {checkoutOpen && (
+        <div onClick={() => setCheckoutOpen(false)} style={{position:"fixed",inset:0,background:"rgba(0,0,0,0.55)",display:"flex",alignItems:"flex-end",justifyContent:"center",zIndex:110}}>
+          <div onClick={e=>e.stopPropagation()} style={{background:"#fff",borderRadius:"18px 18px 0 0",padding:20,width:"100%",maxWidth:520,maxHeight:"92vh",overflowY:"auto"}}>
+            <div style={{display:"flex",justifyContent:"space-between",alignItems:"center",marginBottom:14}}>
+              <div style={{fontSize:20,fontWeight:800}}>Sepetim</div>
+              <button onClick={() => setCheckoutOpen(false)} style={{background:"none",border:"none",fontSize:24,cursor:"pointer",padding:0,color:"#666"}}>×</button>
+            </div>
+
+            {cart.map((c, idx) => (
+              <div key={idx} style={{display:"flex",alignItems:"center",gap:10,padding:"12px 0",borderBottom:"1px solid #f0f0f0"}}>
+                <div style={{flex:1,minWidth:0}}>
+                  <div style={{fontSize:14,fontWeight:700}}>{c.product.name}</div>
+                  {c.options && <div style={{fontSize:11,color:"#C8973E",marginTop:2,fontWeight:600}}>{Object.values(c.options).join(" · ")}</div>}
+                  {c.note && <div style={{fontSize:11,color:"#666",fontStyle:"italic",marginTop:2}}>Not: {c.note}</div>}
+                  <div style={{fontSize:12,color:"#555",marginTop:3}}>₺{calcPrice(c.product)} × {c.quantity} = ₺{calcPrice(c.product) * c.quantity}</div>
+                </div>
+                <div style={{display:"flex",alignItems:"center",gap:6,background:"#f2f2f2",borderRadius:20,padding:"3px 5px"}}>
+                  <button onClick={() => updateQty(idx, -1)} style={{width:26,height:26,background:"transparent",color:"#000",border:"none",borderRadius:"50%",fontSize:16,cursor:"pointer",fontWeight:700}}>−</button>
+                  <div style={{minWidth:18,textAlign:"center",fontSize:13,fontWeight:800}}>{c.quantity}</div>
+                  <button onClick={() => updateQty(idx, +1)} style={{width:26,height:26,background:"transparent",color:"#000",border:"none",borderRadius:"50%",fontSize:16,cursor:"pointer",fontWeight:700}}>+</button>
+                </div>
+              </div>
+            ))}
+
+            {!table && (
+              <div style={{marginTop:14}}>
+                <div style={{fontSize:11,color:"#333",letterSpacing:"1px",fontWeight:700,marginBottom:6}}>ADIN (garsonlar seni tanısın)</div>
+                <input value={customerName} onChange={e=>setCustomerName(e.target.value)} placeholder="Örn: Efekan" style={{width:"100%",padding:"12px 14px",background:"#f7f7f7",border:"1px solid #eee",borderRadius:10,fontSize:14,outline:"none",fontFamily:"inherit"}}/>
+              </div>
+            )}
+
+            <div style={{display:"flex",justifyContent:"space-between",alignItems:"center",marginTop:16,padding:"14px 0",borderTop:"2px solid #000"}}>
+              <div style={{fontSize:13,color:"#333",letterSpacing:"1px",fontWeight:700}}>TOPLAM</div>
+              <div style={{fontSize:22,fontWeight:800}}>₺{cartTotal}</div>
+            </div>
+
+            <button onClick={submitOrder} disabled={submitting} style={{width:"100%",marginTop:14,padding:"16px",background:"#C8973E",color:"#000",border:"none",borderRadius:14,fontSize:15,fontWeight:800,cursor:"pointer",opacity:submitting?0.6:1}}>
+              {submitting ? "Gönderiliyor..." : "Siparişi Gönder"}
+            </button>
+            <div style={{textAlign:"center",fontSize:11,color:"#888",marginTop:10}}>
+              {table ? "Garson siparişini masana getirecek" : "Garson kısa sürede yanına gelecek"}
+            </div>
+          </div>
+        </div>
+      )}
     </div>
   );
 }
