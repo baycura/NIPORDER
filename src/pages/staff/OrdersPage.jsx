@@ -6,11 +6,12 @@ const cv = "-apple-system,BlinkMacSystemFont,'Segoe UI',Roboto,sans-serif";
 
 const STATUS_LABEL = {
   open: { label:"Yeni", color:"#3ECF8E" },
-  pending: { label:"Yeni", color:"#3ECF8E" },
+  sent: { label:"Mutfakta", color:"#E07A3E" },
   preparing: { label:"Mutfakta", color:"#E07A3E" },
   ready: { label:"Hazır", color:"#C8973E" },
-  served: { label:"Servis edildi", color:"#5A8FE0" },
   paid: { label:"Ödenmiş", color:"#888" },
+  cancelled: { label:"İptal", color:"#FF6666" },
+  debt: { label:"Borç", color:"#8B5CF6" },
 };
 
 export default function OrdersPage() {
@@ -23,9 +24,9 @@ export default function OrdersPage() {
   const load = async () => {
     setLoading(true);
     let statuses;
-    if (filter === "active") statuses = ["open","pending","preparing","ready","served"];
-    else if (filter === "paid") statuses = ["paid"];
-    else statuses = ["open","pending","preparing","ready","served","paid","cancelled"];
+    if (filter === "active") statuses = ["open","sent","preparing","ready"];
+    else if (filter === "paid") statuses = ["paid","debt"];
+    else statuses = ["open","sent","preparing","ready","paid","cancelled","debt"];
 
     const [{data: ords}, {data: tabs}] = await Promise.all([
       supabase.from("orders").select("*").in("status", statuses).order("created_at", {ascending:false}).limit(80),
