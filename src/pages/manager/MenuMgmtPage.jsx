@@ -2,258 +2,255 @@ import { useEffect, useState } from "react";
 import { supabase } from "../../lib/supabase.js";
 
 const cv = "-apple-system,BlinkMacSystemFont,'Segoe UI',Roboto,sans-serif";
-const card = {background:"#1A1A1A",border:"1px solid #2A2A2A",borderRadius:12,padding:14,marginBottom:10};
-const inputS = {width:"100%",padding:"10px 12px",background:"#0C0C0C",border:"1px solid #2A2A2A",borderRadius:8,color:"#F0EDE8",fontSize:14,outline:"none",fontFamily:cv};
-const btnGold = {padding:"10px 14px",background:"#C8973E",color:"#000",border:"none",borderRadius:8,fontSize:13,fontWeight:700,cursor:"pointer"};
-const btnGhost = {padding:"10px 14px",background:"transparent",color:"#888",border:"1px solid #333",borderRadius:8,fontSize:13,fontWeight:600,cursor:"pointer"};
-const btnDanger = {padding:"6px 10px",background:"transparent",color:"#FF6464",border:"1px solid #FF6464",borderRadius:6,fontSize:11,fontWeight:600,cursor:"pointer"};
 
 export default function MenuMgmtPage() {
   const [categories, setCategories] = useState([]);
-  const [products, setProducts]     = useState([]);
-  const [selCat, setSelCat]         = useState(null);
-  const [loading, setLoading]       = useState(true);
+  const [products, setProducts] = useState([]);
+  const [selectedCat, setSelectedCat] = useState(null);
+  const [loading, setLoading] = useState(true);
 
-  // Modals
-  const [catModal, setCatModal]     = useState(null);  // {id?,name,sort_order,icon,available_from,available_until}
-  const [prodModal, setProdModal]   = useState(null);  // {id?,name,description,price,category_id,sort_order,...}
+  const [catModal, setCatModal] = useState(null);
+  const [catName, setCatName] = useState("");
+  const [catIcon, setCatIcon] = useState("");
+  const [catFrom, setCatFrom] = useState("");
+  const [catUntil, setCatUntil] = useState("");
+  const [catActive, setCatActive] = useState(true);
+
+  const [prodModal, setProdModal] = useState(null);
+  const [pName, setPName] = useState("");
+  const [pDesc, setPDesc] = useState("");
+  const [pPrice, setPPrice] = useState("");
+  const [pDiscount, setPDiscount] = useState(0);
+  const [pSoldOut, setPSoldOut] = useState(false);
+  const [pReason, setPReason] = useState("");
+  const [pParty, setPParty] = useState(false);
+  const [pAvailable, setPAvailable] = useState(true);
 
   const load = async () => {
     setLoading(true);
-    const [{data:cats},{data:prods}] = await Promise.all([
+    const [{data: cats}, {data: prods}] = await Promise.all([
       supabase.from("categories").select("*").order("sort_order"),
       supabase.from("products").select("*").order("sort_order"),
     ]);
-    setCategories(cats||[]);
-    setProducts(prods||[]);
-    if (!selCat && cats?.length) setSelCat(cats[0].id);
+    setCategories(cats || []);
+    setProducts(prods || []);
+    if (cats?.length && !selectedCat) setSelectedCat(cats[0].id);
     setLoading(false);
   };
+
   useEffect(() => { load(); }, []);
 
-  // CATEGORY OPS
-  const newCategory = () => setCatModal({ name:"", sort_order: (categories.at(-1)?.sort_order||0)+10, icon:"", available_from:"", available_until:"", is_active:true });
-  const editCategory = (c) => setCatModal({...c, available_from: c.available_from||"", available_until: c.available_until||""});
-  const saveCategory = async () => {
-    const c = catModal;
-    if (!c.name.trim()) { alert("Kategori adi girin"); return; }
+  const openCatNew = () => {
+    setCatModal({mode:"new"});
+    setCatName(""); setCatIcon(""); setCatFrom(""); setCatUntil(""); setCatActive(true);
+  };
+  const openCatEdit = (c) => {
+    setCatModal({mode:"edit", data:c});
+    setCatName(c.name); setCatIcon(c.icon||"");
+    setCatFrom(c.available_from?.substring(0,5) || "");
+    setCatUntil(c.available_until?.substring(0,5) || "");
+    setCatActive(c.is_active !== false);
+  };
+  const saveCat = async () => {
+    const name = catName.trim();
+    if (!name) { alert("Kategori adi gerekli"); return; }
     const payload = {
-      name: c.name.trim(), sort_order: Number(c.sort_order)||0,
-      icon: c.icon||null,
-      available_from: c.available_from||null,
-      available_until: c.available_until||null,
-      is_active: c.is_active !== false,
+      name, icon: catIcon || null,
+      available_from: catFrom || null,
+      available_until: catUntil || null,
+      is_active: catActive,
     };
-    const { error } = c.id
-      ? await supabase.from("categories").update(payload).eq("id", c.id)
-      : await supabase.from("categories").insert(payload);
-    if (error) { alert("Hata: "+error.message); return; }
+    if (catModal.mode === "new") {
+      const maxSort = Math.max(...categories.map(c => c.sort_order || 0), 0);
+      payload.sort_order = maxSort + 10;
+      const { error } = await supabase.from("categories").insert(payload);
+      if (error) { alert("Hata: " + error.message); return; }
+    } else {
+      const { error } = await supabase.from("categories").update(payload).eq("id", catModal.data.id);
+      if (error) { alert("Hata: " + error.message); return; }
+    }
     setCatModal(null); load();
   };
-  const deleteCategory = async (c) => {
-    const cnt = products.filter(p => p.category_id === c.id).length;
-    if (cnt > 0) { alert("Bu kategoride "+cnt+" urun var. Once urunleri silin/tasiyın."); return; }
-    if (!confirm("'"+c.name+"' kategorisini silmek istediginizden emin misiniz?")) return;
+  const deleteCat = async (c) => {
+    const prodCount = products.filter(p => p.category_id === c.id).length;
+    if (prodCount > 0) { alert("Once icindeki " + prodCount + " urunu silin/tasiyin"); return; }
+    if (!confirm('"' + c.name + '" kategorisi silinsin mi?')) return;
     const { error } = await supabase.from("categories").delete().eq("id", c.id);
-    if (error) { alert("Hata: "+error.message); return; }
-    load();
-  };
-  const toggleCatActive = async (c) => {
-    await supabase.from("categories").update({is_active: !c.is_active}).eq("id", c.id);
+    if (error) { alert("Hata: " + error.message); return; }
     load();
   };
 
-  // PRODUCT OPS
-  const newProduct = () => {
-    if (!selCat) { alert("Once bir kategori secin"); return; }
-    setProdModal({ name:"", description:"", price:0, category_id:selCat, sort_order:(products.filter(p=>p.category_id===selCat).at(-1)?.sort_order||0)+10, is_available:true, is_out_of_stock:false, sold_out_today:false, instant_discount_pct:0, show_in_party_menu:false });
+  const openProdNew = () => {
+    if (!selectedCat) { alert("Once kategori secin"); return; }
+    setProdModal({mode:"new"});
+    setPName(""); setPDesc(""); setPPrice(""); setPDiscount(0);
+    setPSoldOut(false); setPReason(""); setPParty(false); setPAvailable(true);
   };
-  const editProduct = (p) => setProdModal({...p, description: p.description||"", instant_discount_pct: p.instant_discount_pct||0});
-  const saveProduct = async () => {
-    const p = prodModal;
-    if (!p.name.trim()) { alert("Urun adi girin"); return; }
-    if (!p.price || isNaN(Number(p.price))) { alert("Gecerli bir fiyat girin"); return; }
+  const openProdEdit = (p) => {
+    setProdModal({mode:"edit", data:p});
+    setPName(p.name); setPDesc(p.description||"");
+    setPPrice(String(p.price));
+    setPDiscount(Number(p.instant_discount_pct)||0);
+    setPSoldOut(!!p.sold_out_today);
+    setPReason(p.unavailable_reason||"");
+    setPParty(!!p.show_in_party_menu);
+    setPAvailable(p.is_available !== false);
+  };
+  const saveProd = async () => {
+    const name = pName.trim();
+    if (!name) { alert("Urun adi gerekli"); return; }
+    const price = Number(pPrice);
+    if (!price || price <= 0) { alert("Gecerli fiyat gir"); return; }
     const payload = {
-      name: p.name.trim(), description: p.description||null,
-      price: Number(p.price), category_id: p.category_id,
-      sort_order: Number(p.sort_order)||0,
-      is_available: p.is_available !== false,
-      is_out_of_stock: !!p.is_out_of_stock,
-      sold_out_today: !!p.sold_out_today,
-      instant_discount_pct: Number(p.instant_discount_pct)||0,
-      show_in_party_menu: !!p.show_in_party_menu,
+      name, description: pDesc.trim() || null, price,
+      category_id: prodModal.mode === "new" ? selectedCat : prodModal.data.category_id,
+      is_available: pAvailable,
+      sold_out_today: pSoldOut,
+      unavailable_reason: pReason.trim() || null,
+      instant_discount_pct: Number(pDiscount) || 0,
+      show_in_party_menu: pParty,
     };
-    const { error } = p.id
-      ? await supabase.from("products").update(payload).eq("id", p.id)
-      : await supabase.from("products").insert(payload);
-    if (error) { alert("Hata: "+error.message); return; }
+    if (prodModal.mode === "new") {
+      const catProds = products.filter(x => x.category_id === selectedCat);
+      const maxSort = Math.max(...catProds.map(x => x.sort_order || 0), 0);
+      payload.sort_order = maxSort + 10;
+      payload.is_out_of_stock = false;
+      const { error } = await supabase.from("products").insert(payload);
+      if (error) { alert("Hata: " + error.message); return; }
+    } else {
+      const { error } = await supabase.from("products").update(payload).eq("id", prodModal.data.id);
+      if (error) { alert("Hata: " + error.message); return; }
+    }
     setProdModal(null); load();
   };
-  const deleteProduct = async (p) => {
-    if (!confirm("'"+p.name+"' urununu silmek istediginizden emin misiniz?")) return;
+  const deleteProd = async (p) => {
+    if (!confirm('"' + p.name + '" silinsin mi?')) return;
     const { error } = await supabase.from("products").delete().eq("id", p.id);
-    if (error) { alert("Hata: "+error.message); return; }
+    if (error) { alert("Hata: " + error.message); return; }
     load();
   };
   const toggleSoldOut = async (p) => {
-    await supabase.from("products").update({sold_out_today: !p.sold_out_today}).eq("id", p.id);
-    load();
-  };
-  const toggleAvailable = async (p) => {
-    await supabase.from("products").update({is_available: !p.is_available}).eq("id", p.id);
+    await supabase.from("products").update({ sold_out_today: !p.sold_out_today }).eq("id", p.id);
     load();
   };
 
-  if (loading) return <div style={{color:"#888",padding:20,fontFamily:cv}}>Yukleniyor...</div>;
+  if (loading) return (<div style={{color:"#888",fontFamily:cv,padding:20}}>Yukleniyor...</div>);
 
-  const visibleProducts = products.filter(p => p.category_id === selCat);
+  const visibleProds = products.filter(p => p.category_id === selectedCat);
+  const sel = categories.find(c => c.id === selectedCat);
 
   return (
     <div style={{fontFamily:cv,color:"#F0EDE8"}}>
-      <div style={{fontSize:26,fontWeight:800,marginBottom:4}}>Menu Yonetimi</div>
-      <div style={{fontSize:12,color:"#888",marginBottom:18}}>Kategorileri ve urunleri ekle/duzenle/sil</div>
+      <div style={{fontSize:24,fontWeight:800,marginBottom:4}}>Menu Yonetimi</div>
+      <div style={{fontSize:11,color:"#888",letterSpacing:"1px",marginBottom:18}}>KATEGORILER, URUNLER, FIYATLAR</div>
 
-      {/* Categories list */}
-      <div style={{display:"flex",justifyContent:"space-between",alignItems:"center",marginBottom:10}}>
-        <div style={{fontSize:13,letterSpacing:"1.5px",fontWeight:700,color:"#888"}}>KATEGORILER</div>
-        <button onClick={newCategory} style={btnGold}>+ Yeni Kategori</button>
-      </div>
-
-      <div style={{display:"flex",gap:8,overflowX:"auto",paddingBottom:6,marginBottom:14}}>
+      <div style={{display:"flex",gap:6,overflowX:"auto",marginBottom:10,paddingBottom:4}}>
         {categories.map(c => (
-          <div key={c.id} onClick={() => setSelCat(c.id)}
-            style={{flexShrink:0,padding:"10px 14px",borderRadius:10,cursor:"pointer",border:"1px solid "+(selCat===c.id?"#C8973E":"#2A2A2A"),background:selCat===c.id?"rgba(200,151,62,0.12)":"#1A1A1A",minWidth:140,opacity:c.is_active?1:0.4}}>
-            <div style={{display:"flex",justifyContent:"space-between",alignItems:"center",marginBottom:4}}>
-              <div style={{fontSize:14,fontWeight:700,color:"#F0EDE8"}}>{c.icon} {c.name}</div>
-            </div>
-            <div style={{fontSize:10,color:"#666"}}>{products.filter(p=>p.category_id===c.id).length} urun</div>
-            {(c.available_from || c.available_until) && (
-              <div style={{fontSize:9,color:"#888",marginTop:3}}>{c.available_from?.slice(0,5)||"--"} → {c.available_until?.slice(0,5)||"--"}</div>
-            )}
-            <div style={{display:"flex",gap:4,marginTop:8}}>
-              <button onClick={(e)=>{e.stopPropagation(); editCategory(c);}} style={{...btnGhost,padding:"4px 8px",fontSize:10,flex:1}}>Duzenle</button>
-              <button onClick={(e)=>{e.stopPropagation(); toggleCatActive(c);}} style={{...btnGhost,padding:"4px 8px",fontSize:10,color:c.is_active?"#888":"#3ECF8E",borderColor:c.is_active?"#333":"#3ECF8E"}}>{c.is_active?"Gizle":"Goster"}</button>
-              <button onClick={(e)=>{e.stopPropagation(); deleteCategory(c);}} style={{...btnDanger,padding:"4px 8px",fontSize:10}}>Sil</button>
-            </div>
-          </div>
+          <button key={c.id} onClick={() => setSelectedCat(c.id)} style={{flexShrink:0,padding:"8px 14px",border:"none",borderRadius:16,fontSize:12,fontWeight:700,letterSpacing:"0.5px",background:selectedCat===c.id?"#C8973E":"#222",color:selectedCat===c.id?"#000":(c.is_active===false?"#555":"#aaa"),cursor:"pointer",whiteSpace:"nowrap",opacity:c.is_active===false?0.5:1}}>
+            {c.icon && <span style={{marginRight:4}}>{c.icon}</span>}{c.name?.toUpperCase()}
+          </button>
         ))}
+        <button onClick={openCatNew} style={{flexShrink:0,padding:"8px 14px",border:"1px dashed #C8973E",background:"transparent",color:"#C8973E",borderRadius:16,fontSize:12,fontWeight:700,cursor:"pointer",whiteSpace:"nowrap"}}>+ Kategori</button>
       </div>
 
-      {/* Products of selected category */}
-      <div style={{display:"flex",justifyContent:"space-between",alignItems:"center",marginBottom:10,marginTop:20}}>
-        <div style={{fontSize:13,letterSpacing:"1.5px",fontWeight:700,color:"#888"}}>URUNLER ({visibleProducts.length})</div>
-        <button onClick={newProduct} style={btnGold}>+ Yeni Urun</button>
-      </div>
-
-      {visibleProducts.length === 0 && (
-        <div style={{...card,textAlign:"center",color:"#666",padding:30}}>Bu kategoride henuz urun yok</div>
+      {sel && (
+        <div style={{display:"flex",gap:8,marginBottom:16}}>
+          <button onClick={() => openCatEdit(sel)} style={{padding:"6px 10px",background:"#222",color:"#888",border:"1px solid #333",borderRadius:8,fontSize:11,cursor:"pointer"}}>Kategoriyi Duzenle</button>
+          <button onClick={() => deleteCat(sel)} style={{padding:"6px 10px",background:"transparent",color:"#FF6666",border:"1px solid #553333",borderRadius:8,fontSize:11,cursor:"pointer"}}>Sil</button>
+        </div>
       )}
 
-      {visibleProducts.map(p => (
-        <div key={p.id} style={{...card,opacity:p.is_available?(p.sold_out_today?0.6:1):0.4}}>
-          <div style={{display:"flex",justifyContent:"space-between",alignItems:"flex-start",marginBottom:8}}>
-            <div style={{flex:1}}>
-              <div style={{fontSize:15,fontWeight:700,color:"#F0EDE8"}}>{p.name}</div>
-              {p.description && <div style={{fontSize:12,color:"#888",marginTop:2}}>{p.description}</div>}
-              <div style={{display:"flex",alignItems:"center",gap:10,marginTop:8,flexWrap:"wrap"}}>
-                <span style={{fontSize:16,fontWeight:800,color:"#C8973E"}}>₺{p.price}</span>
-                {p.instant_discount_pct > 0 && (
-                  <span style={{fontSize:10,padding:"2px 6px",background:"#FF4444",color:"#fff",borderRadius:4,fontWeight:700}}>%{p.instant_discount_pct} INDIRIM</span>
-                )}
-                {p.sold_out_today && <span style={{fontSize:10,padding:"2px 6px",background:"#FF6464",color:"#fff",borderRadius:4,fontWeight:700}}>BUGUN TUKENDI</span>}
-                {!p.is_available && <span style={{fontSize:10,padding:"2px 6px",background:"#444",color:"#888",borderRadius:4,fontWeight:700}}>GIZLI</span>}
-                {p.show_in_party_menu && <span style={{fontSize:10,padding:"2px 6px",background:"#7B5CFF",color:"#fff",borderRadius:4,fontWeight:700}}>🎉 PARTY</span>}
+      <div style={{marginBottom:12,display:"flex",justifyContent:"space-between",alignItems:"center"}}>
+        <div style={{fontSize:13,color:"#888",fontWeight:600}}>{visibleProds.length} urun</div>
+        <button onClick={openProdNew} style={{padding:"10px 16px",background:"#C8973E",color:"#000",border:"none",borderRadius:10,fontSize:13,fontWeight:800,cursor:"pointer"}}>+ Yeni Urun</button>
+      </div>
+
+      <div>
+        {visibleProds.map(p => (
+          <div key={p.id} style={{background:"#1A1A1A",border:"1px solid "+(p.sold_out_today?"#552222":"#2A2A2A"),borderRadius:10,padding:12,marginBottom:8,opacity:p.is_available===false?0.4:1}}>
+            <div style={{display:"flex",justifyContent:"space-between",alignItems:"flex-start",gap:8}}>
+              <div style={{flex:1,minWidth:0}}>
+                <div style={{display:"flex",alignItems:"center",gap:6,flexWrap:"wrap"}}>
+                  <div style={{fontSize:14,fontWeight:700,color:"#F0EDE8"}}>{p.name}</div>
+                  {p.sold_out_today && <span style={{fontSize:9,padding:"2px 6px",background:"#552222",color:"#FFB0B0",borderRadius:6,letterSpacing:"1px",fontWeight:700}}>TUKENDI</span>}
+                  {p.show_in_party_menu && <span style={{fontSize:9,padding:"2px 6px",background:"#4A2552",color:"#E0B0FF",borderRadius:6,letterSpacing:"1px",fontWeight:700}}>PARTI</span>}
+                  {p.instant_discount_pct > 0 && <span style={{fontSize:9,padding:"2px 6px",background:"#223355",color:"#B0D0FF",borderRadius:6,letterSpacing:"1px",fontWeight:700}}>-%{p.instant_discount_pct}</span>}
+                </div>
+                {p.description && <div style={{fontSize:11,color:"#777",marginTop:3}}>{p.description}</div>}
+                <div style={{fontSize:12,color:"#C8973E",marginTop:4,fontWeight:700}}>₺{p.price}</div>
+              </div>
+              <div style={{display:"flex",flexDirection:"column",gap:4,flexShrink:0}}>
+                <button onClick={() => toggleSoldOut(p)} style={{padding:"4px 8px",background:p.sold_out_today?"#552222":"transparent",color:p.sold_out_today?"#FFB0B0":"#888",border:"1px solid "+(p.sold_out_today?"#552222":"#333"),borderRadius:6,fontSize:10,cursor:"pointer",fontWeight:700,whiteSpace:"nowrap"}}>{p.sold_out_today ? "✓ TUKENDI" : "Tukendi"}</button>
+                <button onClick={() => openProdEdit(p)} style={{padding:"4px 8px",background:"#222",color:"#aaa",border:"1px solid #333",borderRadius:6,fontSize:10,cursor:"pointer"}}>Duzenle</button>
+                <button onClick={() => deleteProd(p)} style={{padding:"4px 8px",background:"transparent",color:"#FF6666",border:"1px solid #553333",borderRadius:6,fontSize:10,cursor:"pointer"}}>Sil</button>
               </div>
             </div>
           </div>
-          <div style={{display:"flex",gap:6,flexWrap:"wrap"}}>
-            <button onClick={() => editProduct(p)} style={btnGhost}>Duzenle</button>
-            <button onClick={() => toggleSoldOut(p)} style={{...btnGhost,color:p.sold_out_today?"#3ECF8E":"#888"}}>{p.sold_out_today?"Stoga Geri Al":"Bugun Tukendi"}</button>
-            <button onClick={() => toggleAvailable(p)} style={{...btnGhost,color:p.is_available?"#888":"#3ECF8E"}}>{p.is_available?"Menuden Gizle":"Menuye Goster"}</button>
-            <button onClick={() => deleteProduct(p)} style={btnDanger}>Sil</button>
-          </div>
-        </div>
-      ))}
-
-      {/* CATEGORY MODAL */}
-      {catModal && (
-        <Modal onClose={()=>setCatModal(null)} title={catModal.id?"Kategoriyi Duzenle":"Yeni Kategori"}>
-          <Field label="Ad"><input style={inputS} value={catModal.name} onChange={e=>setCatModal({...catModal,name:e.target.value})} autoFocus/></Field>
-          <Field label="Ikon (emoji)"><input style={inputS} value={catModal.icon} onChange={e=>setCatModal({...catModal,icon:e.target.value})} placeholder="🍺"/></Field>
-          <Field label="Sira"><input type="number" style={inputS} value={catModal.sort_order} onChange={e=>setCatModal({...catModal,sort_order:e.target.value})}/></Field>
-          <div style={{display:"grid",gridTemplateColumns:"1fr 1fr",gap:10}}>
-            <Field label="Aktif Saat (basla)"><input type="time" style={inputS} value={catModal.available_from} onChange={e=>setCatModal({...catModal,available_from:e.target.value})}/></Field>
-            <Field label="Aktif Saat (bitis)"><input type="time" style={inputS} value={catModal.available_until} onChange={e=>setCatModal({...catModal,available_until:e.target.value})}/></Field>
-          </div>
-          <div style={{fontSize:11,color:"#888",marginTop:4,marginBottom:14}}>Bos birakilirsa 7/24 aktif. Saat disinda musterilere "Mutfak Kapali" olarak gosterilir.</div>
-          <ModalActions onCancel={()=>setCatModal(null)} onSave={saveCategory}/>
-        </Modal>
-      )}
-
-      {/* PRODUCT MODAL */}
-      {prodModal && (
-        <Modal onClose={()=>setProdModal(null)} title={prodModal.id?"Urunu Duzenle":"Yeni Urun"}>
-          <Field label="Ad"><input style={inputS} value={prodModal.name} onChange={e=>setProdModal({...prodModal,name:e.target.value})} autoFocus/></Field>
-          <Field label="Aciklama"><textarea style={{...inputS,minHeight:60,resize:"vertical"}} value={prodModal.description} onChange={e=>setProdModal({...prodModal,description:e.target.value})}/></Field>
-          <div style={{display:"grid",gridTemplateColumns:"1fr 1fr",gap:10}}>
-            <Field label="Fiyat (₺)"><input type="number" style={inputS} value={prodModal.price} onChange={e=>setProdModal({...prodModal,price:e.target.value})}/></Field>
-            <Field label="Sira"><input type="number" style={inputS} value={prodModal.sort_order} onChange={e=>setProdModal({...prodModal,sort_order:e.target.value})}/></Field>
-          </div>
-          <Field label="Kategori">
-            <select style={inputS} value={prodModal.category_id} onChange={e=>setProdModal({...prodModal,category_id:e.target.value})}>
-              {categories.map(c => <option key={c.id} value={c.id}>{c.name}</option>)}
-            </select>
-          </Field>
-          <Field label="Anlik Indirim (%)"><input type="number" min="0" max="99" style={inputS} value={prodModal.instant_discount_pct} onChange={e=>setProdModal({...prodModal,instant_discount_pct:e.target.value})}/></Field>
-          <div style={{display:"flex",flexDirection:"column",gap:8,marginTop:10}}>
-            <Toggle label="Menuye goster" checked={prodModal.is_available} onChange={v=>setProdModal({...prodModal,is_available:v})}/>
-            <Toggle label="Bugun tukendi" checked={prodModal.sold_out_today} onChange={v=>setProdModal({...prodModal,sold_out_today:v})}/>
-            <Toggle label="🎉 Party menusunde goster" checked={prodModal.show_in_party_menu} onChange={v=>setProdModal({...prodModal,show_in_party_menu:v})}/>
-          </div>
-          <ModalActions onCancel={()=>setProdModal(null)} onSave={saveProduct}/>
-        </Modal>
-      )}
-    </div>
-  );
-}
-
-function Modal({title, onClose, children}) {
-  return (
-    <div onClick={onClose} style={{position:"fixed",inset:0,background:"rgba(0,0,0,0.75)",display:"flex",alignItems:"center",justifyContent:"center",zIndex:100,padding:14}}>
-      <div onClick={e=>e.stopPropagation()} style={{background:"#1A1A1A",border:"1px solid #2A2A2A",borderRadius:16,padding:20,width:"100%",maxWidth:480,maxHeight:"90vh",overflowY:"auto"}}>
-        <div style={{fontSize:18,fontWeight:800,color:"#F0EDE8",marginBottom:14}}>{title}</div>
-        {children}
+        ))}
+        {visibleProds.length === 0 && <div style={{textAlign:"center",padding:40,color:"#666",fontSize:12}}>Bu kategoride urun yok</div>}
       </div>
+
+      {catModal && (
+        <Modal onClose={() => setCatModal(null)} title={catModal.mode==="new"?"Yeni Kategori":"Kategoriyi Duzenle"}>
+          <Field label="AD"><input value={catName} onChange={e=>setCatName(e.target.value)} style={inputS}/></Field>
+          <Field label="IKON (emoji)"><input value={catIcon} onChange={e=>setCatIcon(e.target.value)} placeholder="emoji" style={inputS}/></Field>
+          <div style={{display:"flex",gap:8}}>
+            <Field label="BASLANGIC SAATI" style={{flex:1}}><input type="time" value={catFrom} onChange={e=>setCatFrom(e.target.value)} style={inputS}/></Field>
+            <Field label="BITIS SAATI" style={{flex:1}}><input type="time" value={catUntil} onChange={e=>setCatUntil(e.target.value)} style={inputS}/></Field>
+          </div>
+          <Toggle checked={catActive} onChange={setCatActive} label="Aktif"/>
+          <ModalFooter onCancel={() => setCatModal(null)} onSave={saveCat}/>
+        </Modal>
+      )}
+
+      {prodModal && (
+        <Modal onClose={() => setProdModal(null)} title={prodModal.mode==="new"?"Yeni Urun":"Urunu Duzenle"}>
+          <Field label="AD"><input value={pName} onChange={e=>setPName(e.target.value)} style={inputS}/></Field>
+          <Field label="ACIKLAMA"><input value={pDesc} onChange={e=>setPDesc(e.target.value)} style={inputS}/></Field>
+          <Field label="FIYAT"><input type="number" value={pPrice} onChange={e=>setPPrice(e.target.value)} style={inputS}/></Field>
+          <Field label="ANLIK INDIRIM (%)"><input type="number" min="0" max="100" value={pDiscount} onChange={e=>setPDiscount(e.target.value)} style={inputS}/></Field>
+          <Toggle checked={pSoldOut} onChange={setPSoldOut} label="Bugun tukendi"/>
+          {pSoldOut && <Field label="NEDEN (musteri gorecek)"><input value={pReason} onChange={e=>setPReason(e.target.value)} placeholder="orn: Mutfak kapali" style={inputS}/></Field>}
+          <Toggle checked={pParty} onChange={setPParty} label="Sadece parti menusunde"/>
+          <Toggle checked={pAvailable} onChange={setPAvailable} label="Menude aktif"/>
+          <ModalFooter onCancel={() => setProdModal(null)} onSave={saveProd}/>
+        </Modal>
+      )}
     </div>
   );
 }
 
-function Field({label, children}) {
-  return (
-    <div style={{marginBottom:12}}>
-      <div style={{fontSize:11,color:"#888",letterSpacing:"1px",fontWeight:700,marginBottom:5}}>{label.toUpperCase()}</div>
+const inputS = {width:"100%",padding:"10px 12px",background:"#0C0C0C",border:"1px solid #2A2A2A",borderRadius:8,color:"#F0EDE8",fontSize:14,outline:"none",fontFamily:"inherit"};
+
+function Field({label, children, style={}}) {
+  return (<div style={{marginBottom:12,...style}}>
+    <div style={{fontSize:10,color:"#888",letterSpacing:"1.5px",fontWeight:700,marginBottom:5}}>{label}</div>
+    {children}
+  </div>);
+}
+
+function Toggle({checked, onChange, label}) {
+  return (<label style={{display:"flex",alignItems:"center",gap:10,marginBottom:12,cursor:"pointer",userSelect:"none"}}>
+    <div style={{position:"relative",width:42,height:24,borderRadius:12,background:checked?"#C8973E":"#333",transition:"0.2s"}}>
+      <div style={{position:"absolute",top:3,left:checked?21:3,width:18,height:18,borderRadius:"50%",background:"#fff",transition:"0.2s"}}/>
+    </div>
+    <input type="checkbox" checked={checked} onChange={e=>onChange(e.target.checked)} style={{display:"none"}}/>
+    <span style={{fontSize:13,color:"#F0EDE8"}}>{label}</span>
+  </label>);
+}
+
+function Modal({title, children, onClose}) {
+  return (<div onClick={onClose} style={{position:"fixed",inset:0,background:"rgba(0,0,0,0.75)",display:"flex",alignItems:"flex-end",justifyContent:"center",zIndex:100,padding:0}}>
+    <div onClick={e => e.stopPropagation()} style={{background:"#161616",border:"1px solid #2A2A2A",borderRadius:"16px 16px 0 0",padding:20,width:"100%",maxWidth:500,maxHeight:"90vh",overflowY:"auto"}}>
+      <div style={{fontSize:18,fontWeight:800,color:"#F0EDE8",marginBottom:16}}>{title}</div>
       {children}
     </div>
-  );
+  </div>);
 }
 
-function Toggle({label, checked, onChange}) {
-  return (
-    <label style={{display:"flex",alignItems:"center",justifyContent:"space-between",padding:"10px 12px",background:"#0C0C0C",border:"1px solid #2A2A2A",borderRadius:8,cursor:"pointer"}}>
-      <span style={{fontSize:13,color:"#F0EDE8"}}>{label}</span>
-      <div style={{position:"relative",width:42,height:24,background:checked?"#C8973E":"#2A2A2A",borderRadius:12,transition:"0.2s"}}>
-        <div style={{position:"absolute",width:18,height:18,background:"#fff",borderRadius:"50%",top:3,left:checked?21:3,transition:"0.2s"}}/>
-        <input type="checkbox" checked={checked} onChange={e=>onChange(e.target.checked)} style={{opacity:0,position:"absolute",inset:0,cursor:"pointer"}}/>
-      </div>
-    </label>
-  );
-}
-
-function ModalActions({onCancel, onSave}) {
-  return (
-    <div style={{display:"flex",gap:8,marginTop:16}}>
-      <button onClick={onCancel} style={{flex:1,padding:"12px",background:"transparent",color:"#888",border:"1px solid #333",borderRadius:10,fontSize:14,fontWeight:700,cursor:"pointer"}}>Iptal</button>
-      <button onClick={onSave} style={{flex:2,padding:"12px",background:"#C8973E",color:"#000",border:"none",borderRadius:10,fontSize:14,fontWeight:800,cursor:"pointer"}}>Kaydet</button>
-    </div>
-  );
+function ModalFooter({onCancel, onSave}) {
+  return (<div style={{display:"flex",gap:8,marginTop:10}}>
+    <button onClick={onCancel} style={{flex:1,padding:"12px",background:"transparent",color:"#888",border:"1px solid #333",borderRadius:10,fontSize:14,fontWeight:700,cursor:"pointer"}}>Iptal</button>
+    <button onClick={onSave} style={{flex:2,padding:"12px",background:"#C8973E",color:"#000",border:"none",borderRadius:10,fontSize:14,fontWeight:800,cursor:"pointer"}}>Kaydet</button>
+  </div>);
 }
