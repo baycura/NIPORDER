@@ -11,8 +11,8 @@ export default function KitchenDisplayPage() {
 
   const load = async () => {
     const [{data: ords}, {data: its}, {data: tabs}] = await Promise.all([
-      supabase.from("orders").select("*").in("status", ["preparing","ready"]).order("created_at"),
-      supabase.from("order_items").select("*, products(name)").in("status", ["preparing","ready"]).order("created_at"),
+      supabase.from("orders").select("*").in("status", ["preparing","ready","open"]).order("created_at"),
+      supabase.from("order_items").select("*, products(name)").in("kitchen_status", ["preparing","ready"]).order("created_at"),
       supabase.from("cafe_tables").select("id, name"),
     ]);
     const tabMap = {};
@@ -30,28 +30,26 @@ export default function KitchenDisplayPage() {
   }, []);
 
   const markReady = async (item) => {
-    await supabase.from("order_items").update({ status: "ready" }).eq("id", item.id);
+    await supabase.from("order_items").update({ kitchen_status: "ready" }).eq("id", item.id);
     load();
   };
 
   const markServed = async (orderId) => {
-    await supabase.from("order_items").update({ status: "served" }).eq("order_id", orderId).in("status", ["preparing","ready"]);
+    await supabase.from("order_items").update({ kitchen_status: "served" }).eq("order_id", orderId).in("kitchen_status", ["preparing","ready"]);
     load();
   };
 
-  // Calculate columns by order status urgency
   const orderCards = orders.map(o => {
     const oItems = items.filter(i => i.order_id === o.id);
     if (oItems.length === 0) return null;
     const where = o.table_id ? tables[o.table_id] : (o.customer_name || "Misafir");
     const waitMs = now - new Date(o.created_at).getTime();
     const waitMin = Math.floor(waitMs / 60000);
-    const allReady = oItems.every(i => i.status === "ready");
+    const allReady = oItems.every(i => i.kitchen_status === "ready");
     const urgency = allReady ? "ready" : waitMin > 15 ? "urgent" : waitMin > 7 ? "warning" : "fresh";
     return { o, oItems, where, waitMin, urgency, allReady };
   }).filter(Boolean);
 
-  // Sort: urgent first, then warning, then fresh, ready last
   const urgencyOrder = { urgent: 0, warning: 1, fresh: 2, ready: 3 };
   orderCards.sort((a,b) => urgencyOrder[a.urgency] - urgencyOrder[b.urgency]);
 
@@ -107,21 +105,17 @@ export default function KitchenDisplayPage() {
               )}
               <div>
                 {oItems.map(it => {
-                  const isReady = it.status === "ready";
+                  const isReady = it.kitchen_status === "ready";
                   return (
                     <div key={it.id} onClick={() => !isReady && markReady(it)} style={{display:"flex",alignItems:"center",justifyContent:"space-between",padding:"10px 12px",margin:"6px 0",background:isReady?"rgba(62,207,142,0.12)":"rgba(255,255,255,0.03)",border:"1px solid "+(isReady?"#3ECF8E":"transparent"),borderRadius:8,cursor:isReady?"default":"pointer",userSelect:"none"}}>
                       <div style={{flex:1}}>
                         <div style={{fontSize:18,fontWeight:800,color:isReady?"#88FFC8":"#F0EDE8"}}>
-                          <span style={{color:isReady?"#88FFC8":"#C8973E",marginRight:8}}>{it.qty}×</span>{it.products?.name || "Urun"}
+                          <span style={{color:isReady?"#88FFC8":"#C8973E",marginRight:8}}>{it.quantity}×</span>{it.products?.name || it.product_name || "Urun"}
                         </div>
                         {it.selected_options && <div style={{fontSize:12,color:"#C8973E",marginTop:3,fontWeight:700}}>{Object.values(it.selected_options).join(" · ")}</div>}
                         {it.notes && <div style={{fontSize:11,color:"#FFD27A",marginTop:3,fontStyle:"italic"}}>✎ {it.notes}</div>}
                       </div>
-                      {isReady ? (
-                        <div style={{fontSize:22,color:"#3ECF8E"}}>✓</div>
-                      ) : (
-                        <div style={{padding:"6px 12px",background:"#3ECF8E",color:"#000",borderRadius:6,fontSize:11,fontWeight:900,letterSpacing:"1px"}}>HAZIR</div>
-                      )}
+                      {isReady ? (<div style={{fontSize:22,color:"#3ECF8E"}}>✓</div>) : (<div style={{padding:"6px 12px",background:"#3ECF8E",color:"#000",borderRadius:6,fontSize:11,fontWeight:900,letterSpacing:"1px"}}>HAZIR</div>)}
                     </div>
                   );
                 })}
