@@ -15,54 +15,74 @@ export function AuthProvider({ children }) {
     const loadSession = async (sess) => {
       if (!mounted) return;
       setSession(sess);
-      if (sess?.user) {
-        // Try staff first
-        const { data: s } = await supabase.from("staff").select("*").eq("auth_id", sess.user.id).maybeSingle();
-        if (s) {
-          setStaffUser(s);
-          setCustomer(null);
-          // Update last_login (fire and forget)
-          supabase.from("staff").update({ last_login: new Date().toISOString() }).eq("id", s.id);
-        } else {
-          // Try customer
-          const email = sess.user.email;
-          const { data: c } = await supabase.from("customers").select("*").or("auth_user_id.eq." + sess.user.id + ",email.eq." + email).maybeSingle();
-          if (c) {
-            // Backfill auth_user_id if missing
-            if (!c.auth_user_id) {
-              await supabase.from("customers").update({ auth_user_id: sess.user.id, avatar_url: sess.user.user_metadata?.avatar_url, name: c.name || sess.user.user_metadata?.full_name }).eq("id", c.id);
-            }
-            setCustomer(c);
-            setStaffUser(null);
+      try {
+        if (sess && sess.user) {
+          const userId = sess.user.id;
+          const userEmail = sess.user.email;
+
+          // Try staff first
+          const staffRes = await supabase.from("staff").select("*").eq("auth_id", userId).maybeSingle();
+          const s = staffRes && staffRes.data;
+
+          if (s) {
+            setStaffUser(s);
+            setCustomer(null);
+            // Update last_login (fire and forget)
+            supabase.from("staff").update({ last_login: new Date().toISOString() }).eq("id", s.id);
           } else {
-            // Auto-create customer for Google sign-in
-            const md = sess.user.user_metadata || {};
-            const { data: newC } = await supabase.from("customers").insert({
-              name: md.full_name || md.name || email,
-              email,
-              auth_user_id: sess.user.id,
-              avatar_url: md.avatar_url || md.picture,
-              tier: "bronze",
-            }).select().single();
-            setCustomer(newC || null);
-            setStaffUser(null);
+            // Try customer by auth_user_id first
+            let cRes = await supabase.from("customers").select("*").eq("auth_user_id", userId).maybeSingle();
+            let c = cRes && cRes.data;
+
+            // If not found, try by email
+            if (!c && userEmail) {
+              const cRes2 = await supabase.from("customers").select("*").eq("email", userEmail).maybeSingle();
+              c = cRes2 && cRes2.data;
+            }
+
+            if (c) {
+              if (!c.auth_user_id) {
+                const md = sess.user.user_metadata || {};
+                await supabase.from("customers").update({
+                  auth_user_id: userId,
+                  avatar_url: md.avatar_url || md.picture,
+                  name: c.name || md.full_name || md.name,
+                }).eq("id", c.id);
+              }
+              setCustomer(c);
+              setStaffUser(null);
+            } else {
+              // Auto-create customer
+              const md = sess.user.user_metadata || {};
+              const newRes = await supabase.from("customers").insert({
+                name: md.full_name || md.name || userEmail,
+                email: userEmail,
+                auth_user_id: userId,
+                avatar_url: md.avatar_url || md.picture,
+                tier: "bronze",
+              }).select().single();
+              setCustomer((newRes && newRes.data) || null);
+              setStaffUser(null);
+            }
           }
+        } else {
+          setStaffUser(null);
+          setCustomer(null);
         }
-      } else {
-        setStaffUser(null);
-        setCustomer(null);
+      } catch (e) {
+        console.error("Session load error", e);
       }
       setLoading(false);
     };
 
-    supabase.auth.getSession().then(({ data: { session: s } }) => loadSession(s));
-    const { data: { subscription } } = supabase.auth.onAuthStateChange((_event, s) => loadSession(s));
-    return () => { mounted = false; subscription?.unsubscribe(); };
+    supabase.auth.getSession().then(function(res) { loadSession(res.data.session); });
+    const sub = supabase.auth.onAuthStateChange(function(_event, s) { loadSession(s); });
+    return function() { mounted = false; if (sub && sub.data && sub.data.subscription) sub.data.subscription.unsubscribe(); };
   }, []);
 
   const signIn = async (email, password) => {
-    const { error } = await supabase.auth.signInWithPassword({ email, password });
-    if (error) throw error;
+    const res = await supabase.auth.signInWithPassword({ email, password });
+    if (res && res.error) throw res.error;
   };
 
   const signInWithGoogle = async () => {
@@ -78,8 +98,7 @@ export function AuthProvider({ children }) {
     setCustomer(null);
   };
 
-  // Role flags
-  const role = staffUser?.role;
+  const role = staffUser && staffUser.role;
   const isAdmin   = role === "admin";
   const isManager = role === "admin" || role === "manager" || role === "owner";
   const isWaiter  = role === "waiter" || role === "cashier";
