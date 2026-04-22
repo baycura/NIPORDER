@@ -1,67 +1,171 @@
-import{useState,useEffect}from"react";import{useParams}from"react-router-dom";import{supabase}from"../../lib/supabase.js";
-const cv="'Coolvetica','Bebas Neue',sans-serif";const cvc="'Coolvetica Condensed','Barlow Condensed',sans-serif";
-const UI={en:{menu:"MENU",merch:"MERCH",rides:"RIDES",nights:"NIGHTS",search:"SEARCH...",viewOrder:"VIEW ORDER",send:"SEND ORDER",back:"←",total:"TOTAL",orderReceived:"ORDER RECEIVED",backToMenu:"BACK TO MENU",happyHour:"HAPPY HOUR",discount:"OFF",item:"ITEM",addToCart:"ADD TO CART",outOfStock:"OUT OF STOCK"},tr:{menu:"MENÜ",merch:"MERCH",rides:"SÜRÜŞLER",nights:"GECELER",search:"ARA...",viewOrder:"SİPARİŞİ GÖR",send:"GÖNDER",back:"←",total:"TOPLAM",orderReceived:"SİPARİŞ ALINDI",backToMenu:"MENÜYE DÖN",happyHour:"HAPPY HOUR",discount:"İNDİRİM",item:"ÜRÜN",addToCart:"SEPETE EKLE",outOfStock:"TÜKENDI"}};
-function dp(price,pct){return Math.round(price*(1-pct/100));}
-function Stp({n,onP,onM}){return(<div style={{display:"flex",alignItems:"center",gap:8}}><button onClick={onM} style={{width:28,height:28,background:n>0?"#000":"#eee",border:"none",color:n>0?"#fff":"#bbb",fontSize:15,fontWeight:900,cursor:"pointer",display:"flex",alignItems:"center",justifyContent:"center"}}>−</button><span style={{fontFamily:cv,fontSize:17,color:"#000",minWidth:16,textAlign:"center"}}>{n}</span><button onClick={onP} style={{width:28,height:28,background:"#000",border:"none",color:"#fff",fontSize:15,fontWeight:900,cursor:"pointer",display:"flex",alignItems:"center",justifyContent:"center"}}>+</button></div>);}
-export default function CustomerMenu(){
-  const{qrToken}=useParams();const[lang,setLang]=useState("en");const[tab,setTab]=useState("menu");const[view,setView]=useState("main");const[categories,setCategories]=useState([]);const[hhRule,setHhRule]=useState(null);const[merch,setMerch]=useState([]);const[tableInfo,setTableInfo]=useState(null);const[cart,setCartRaw]=useState({});const[loading,setLoading]=useState(true);const[totPrice,setTotPrice]=useState(0);const[note,setNote]=useState("");const[sending,setSending]=useState(false);const[activeCat,setActiveCat]=useState(null);
-  useEffect(()=>{Promise.all([supabase.from("categories").select("*,products(*)").eq("is_active",true).order("sort_order"),supabase.from("active_happy_hour").select("*"),supabase.from("merch_products").select("*,merch_variants(*)").eq("is_active",true).order("sort_order"),qrToken?supabase.from("cafe_tables").select("*").eq("qr_token",qrToken).single():Promise.resolve({data:null})]).then(([{data:cats},{data:hh},{data:m},{data:table}])=>{const c=(cats||[]).map(c=>({...c,products:(c.products||[]).filter(p=>p.is_available&&!p.is_out_of_stock).sort((a,b)=>a.sort_order-b.sort_order)}));setCategories(c);if(c[0])setActiveCat(c[0].id);setHhRule(hh?.[0]||null);setMerch(m||[]);setTableInfo(table);setLoading(false);});},[qrToken]);
-  const setQty=(id,qty)=>setCartRaw(p=>{const n={...p};if(qty<=0)delete n[id];else n[id]=qty;return n;});
-  useEffect(()=>{const hhCatIds=hhRule?.category_ids||[];const HH=hhRule?.discount_pct||0;const allProds=categories.flatMap(c=>(c.products||[]).map(p=>({...p,catId:c.id})));let total=0;for(const[id,qty]of Object.entries(cart)){const prod=allProds.find(p=>p.id===id);if(prod){const disc=hhCatIds.includes(prod.catId)?HH:0;total+=(disc?dp(prod.price,disc):prod.price)*qty;continue;}const[mid]=id.split("_");const mi=merch.find(m=>m.id===mid);if(mi)total+=mi.price*qty;}setTotPrice(Math.round(total));},[cart,categories,hhRule,merch]);
-  const totalItems=Object.values(cart).reduce((a,b)=>a+b,0);const t=UI[lang];
-  const handleOrder=async()=>{setSending(true);const hhCatIds=hhRule?.category_ids||[];const HH=hhRule?.discount_pct||0;const allProds=categories.flatMap(c=>(c.products||[]).map(p=>({...p,catId:c.id})));const{data:order}=await supabase.from("orders").insert({table_id:tableInfo?.id||null,note:note||null,status:"open"}).select().single();if(order){const rows=[];for(const[id,qty]of Object.entries(cart)){const prod=allProds.find(p=>p.id===id);if(prod){const disc=hhCatIds.includes(prod.catId)?HH:0;const fp=disc?dp(prod.price,disc):prod.price;rows.push({order_id:order.id,product_id:prod.id,product_name:prod.name,product_price:prod.price,final_price:fp,quantity:qty,sent_to_kitchen:false,kitchen_status:"pending"});}}if(rows.length)await supabase.from("order_items").insert(rows);}setSending(false);setView("success");};
-  const hhCatIds=hhRule?.category_ids||[];const HH=hhRule?.discount_pct||0;
-  const TABS=[{id:"menu",icon:"☕",label:t.menu},{id:"merch",icon:"👕",label:t.merch},{id:"rides",icon:"🚴",label:t.rides},{id:"nights",icon:"🌙",label:t.nights}];
-  if(loading)return(<div style={{minHeight:"100vh",background:"#fff",display:"flex",alignItems:"center",justifyContent:"center"}}><div style={{fontFamily:cvc,fontSize:12,letterSpacing:"3px",color:"#bbb"}}>NOT IN PARIS · LOADING...</div></div>);
-  if(view==="success")return(<div style={{background:"#fff",minHeight:"100vh",maxWidth:480,margin:"0 auto",display:"flex",flexDirection:"column",alignItems:"center",justifyContent:"center",padding:32,textAlign:"center"}}><div style={{fontSize:52,marginBottom:16}}>✓</div><div style={{fontFamily:cv,fontSize:34,color:"#000",letterSpacing:"-1px",marginBottom:8}}>{t.orderReceived}</div><div style={{fontFamily:cvc,fontSize:12,color:"#888",letterSpacing:"2px",marginBottom:24}}>₺{totPrice.toLocaleString()}</div><button onClick={()=>{setView("main");setCartRaw({});}} style={{background:"#000",color:"#fff",border:"none",padding:"14px 30px",fontFamily:cv,fontSize:14,letterSpacing:"2px",cursor:"pointer",width:"100%"}}>{t.backToMenu}</button></div>);
-  if(view==="cart")return(<div style={{background:"#fff",minHeight:"100vh",maxWidth:480,margin:"0 auto",paddingBottom:100}}>
-    <style>{"*{box-sizing:border-box;margin:0;padding:0;}body{background:#fff;}"}</style>
-    <div style={{padding:"16px 20px",borderBottom:"2px solid #000",display:"flex",alignItems:"center",gap:12,position:"sticky",top:0,background:"#fff",zIndex:9}}>
-      <button onClick={()=>setView("main")} style={{background:"none",border:"2px solid #000",width:36,height:36,cursor:"pointer",fontFamily:cv,fontSize:15,display:"flex",alignItems:"center",justifyContent:"center"}}>{t.back}</button>
-      <div style={{fontFamily:cv,fontSize:26}}>{t.viewOrder}</div>
-      <div style={{marginLeft:"auto",background:"#000",color:"#fff",fontFamily:cvc,fontSize:10,padding:"4px 10px"}}>{totalItems} {t.item}</div>
-    </div>
-    <div style={{padding:"0 20px 20px"}}>
-      {Object.entries(cart).map(([id,qty])=>{const allProds=categories.flatMap(c=>(c.products||[]).map(p=>({...p,catId:c.id})));const prod=allProds.find(p=>p.id===id);if(!prod)return null;const disc=hhCatIds.includes(prod.catId)?HH:0;const fp=disc?dp(prod.price,disc):prod.price;return(<div key={id} style={{display:"flex",alignItems:"center",borderBottom:"1px solid #eee",padding:"14px 0",gap:12}}><div style={{flex:1}}><div style={{fontFamily:cv,fontSize:17,color:"#000"}}>{prod.name}</div><div style={{fontFamily:cvc,fontSize:11,color:"#aaa",marginTop:2}}>₺{fp} × {qty} = ₺{(fp*qty).toLocaleString()}</div></div><Stp n={qty} onP={()=>setQty(id,qty+1)} onM={()=>setQty(id,qty-1)}/></div>);})}
-      <textarea value={note} onChange={e=>setNote(e.target.value)} placeholder={lang==="tr"?"Özel istek...":"Special request..."} rows={2} style={{width:"100%",border:"2px solid #000",padding:12,fontFamily:cvc,fontSize:13,resize:"none",outline:"none",background:"#fff",marginTop:16}}/>
-      <div style={{marginTop:14,borderTop:"2px solid #000",paddingTop:14,display:"flex",justifyContent:"space-between",alignItems:"baseline"}}><div style={{fontFamily:cv,fontSize:13,letterSpacing:"2px",color:"#999"}}>{t.total}</div><div style={{fontFamily:cv,fontSize:32,color:"#000"}}>₺{totPrice.toLocaleString()}</div></div>
-    </div>
-    <div style={{position:"fixed",bottom:0,left:"50%",transform:"translateX(-50%)",width:"100%",maxWidth:480,padding:16,background:"#fff",borderTop:"2px solid #000"}}><button onClick={handleOrder} disabled={sending} style={{width:"100%",padding:"15px",background:sending?"#555":"#000",color:"#fff",border:"none",fontFamily:cv,fontSize:16,letterSpacing:"3px",cursor:"pointer"}}>{sending?"GÖNDERİLİYOR...":`${t.send} · ₺${totPrice.toLocaleString()}`}</button></div>
-  </div>);
-  return(<div style={{background:"#fff",minHeight:"100vh",maxWidth:480,margin:"0 auto",paddingBottom:100}}>
-    <style>{"*{box-sizing:border-box;margin:0;padding:0;}::-webkit-scrollbar{display:none;}@keyframes slideUp{from{transform:translateY(100%)}to{transform:translateY(0)}}@keyframes pulse{0%,100%{opacity:1}50%{opacity:.3}}"}</style>
-    <div style={{position:"sticky",top:0,zIndex:100,background:"#fff",borderBottom:"1px solid #f0f0f0",padding:"7px 16px",display:"flex",justifyContent:"space-between",alignItems:"center"}}>
-      <div style={{display:"flex",gap:3}}>{[["en","🇬🇧"],["tr","🇹🇷"]].map(([code,flag])=>(<button key={code} onClick={()=>setLang(code)} style={{display:"flex",alignItems:"center",gap:3,padding:"3px 7px",border:"1.5px solid "+(lang===code?"#000":"#ddd"),background:lang===code?"#000":"transparent",color:lang===code?"#fff":"#bbb",fontFamily:cvc,fontSize:9,letterSpacing:"1px",cursor:"pointer"}}><span style={{fontSize:11}}>{flag}</span>{code.toUpperCase()}</button>))}</div>
-    </div>
-    {tab==="menu"&&(<div style={{background:"#fff"}}>
-      {hhRule&&HH>0&&<div style={{background:"#000",padding:"8px 20px",display:"flex",justifyContent:"space-between",alignItems:"center"}}><div style={{display:"flex",alignItems:"center",gap:8}}><span style={{width:6,height:6,borderRadius:"50%",background:"#FF3B30",display:"inline-block",animation:"pulse 1.5s infinite"}}/><span style={{fontFamily:cv,fontSize:14,color:"#fff",letterSpacing:"1px"}}>{t.happyHour} · %{HH} {t.discount}</span></div></div>}
-      <div style={{padding:"16px 20px 0"}}><div style={{fontFamily:cv,fontSize:52,letterSpacing:"-3px",lineHeight:.88,color:"#000",marginBottom:14}}>{t.menu}</div></div>
-      <div style={{overflowX:"auto",display:"flex",borderBottom:"2px solid #000",marginTop:14}}>
-        {categories.map(c=>(<button key={c.id} onClick={()=>setActiveCat(c.id)} style={{flexShrink:0,padding:"9px 12px",border:"none",background:activeCat===c.id?"#000":"transparent",color:activeCat===c.id?"#fff":hhCatIds.includes(c.id)?"#FF3B30":"#aaa",fontFamily:cvc,fontSize:10,letterSpacing:"1.5px",cursor:"pointer",whiteSpace:"nowrap"}}>{c.name.toUpperCase()}</button>))}
-      </div>
-      <div style={{height:1,background:"#000",margin:"0 20px"}}/>
-      {(categories.find(c=>c.id===activeCat)?.products||[]).map(item=>{const isHH=hhCatIds.includes(activeCat)&&HH>0;const fp=isHH?dp(item.price,HH):item.price;const qty=cart[item.id]||0;return(<div key={item.id} style={{borderBottom:"1px solid #eee",padding:"12px 0",background:qty>0?"#f7f7f7":"#fff"}}>
-        <div style={{display:"flex",alignItems:"flex-start",gap:10,padding:"0 20px"}}>
-          <div style={{flex:1}}><div style={{display:"flex",alignItems:"baseline",gap:7,marginBottom:2}}><span style={{fontFamily:cv,fontSize:19,letterSpacing:"-0.3px",color:"#000"}}>{item.name}</span>{isHH&&<span style={{fontFamily:cvc,fontSize:8,color:"#fff",background:"#FF3B30",padding:"1px 5px"}}>HH</span>}</div><div style={{fontFamily:cvc,fontSize:11,color:"#aaa"}}>{item.description}</div></div>
-          <div style={{display:"flex",flexDirection:"column",alignItems:"flex-end",gap:5}}>
-            <div style={{textAlign:"right"}}>{fp<item.price&&<div style={{fontFamily:cvc,fontSize:10,color:"#ccc",textDecoration:"line-through"}}>₺{item.price}</div>}<div style={{fontFamily:cv,fontSize:19,color:isHH?"#FF3B30":"#000"}}>₺{fp}</div></div>
-            {qty===0?<button onClick={()=>setQty(item.id,1)} style={{width:28,height:28,background:"#000",color:"#fff",border:"none",fontSize:17,fontWeight:900,cursor:"pointer",display:"flex",alignItems:"center",justifyContent:"center"}}>+</button>:<Stp n={qty} onP={()=>setQty(item.id,qty+1)} onM={()=>setQty(item.id,qty-1)}/>}
-          </div>
+import { useEffect, useMemo, useState } from "react";
+import { useParams } from "react-router-dom";
+import { supabase } from "../../lib/supabase.js";
+import { useAuth } from "../../contexts/AuthContext.jsx";
+
+const cv  = "'Coolvetica','Bebas Neue',sans-serif";
+const cvc = "'Coolvetica Condensed','Barlow Condensed',sans-serif";
+
+const I18N = {
+  en: { menu:"MENU", merch:"MERCH", rides:"RIDES", nights:"NIGHTS", member:"MEMBER", signin:"Sign in with Google", signout:"Sign out", happyhour:"HAPPY HOUR", cart:"YOUR ORDER", empty:"Add items to start", send:"Send to kitchen", sent:"Sent!" },
+  tr: { menu:"MENU", merch:"URUNLER", rides:"RIDES", nights:"NIGHTS", member:"UYE", signin:"Google ile giris", signout:"Cikis", happyhour:"HAPPY HOUR", cart:"SIPARISIN", empty:"Eklemek icin urune dokun", send:"Mutfaga gonder", sent:"Gonderildi!" },
+};
+
+function GoogleIcon() {
+  return (<svg width="18" height="18" viewBox="0 0 48 48"><path fill="#FFC107" d="M43.6 20.5H42V20H24v8h11.3c-1.6 4.5-5.9 8-11.3 8-6.6 0-12-5.4-12-12s5.4-12 12-12c3 0 5.7 1.1 7.8 3l5.7-5.7C33.6 5.5 29 4 24 4 12.9 4 4 12.9 4 24s8.9 20 20 20 20-8.9 20-20c0-1.3-.1-2.4-.4-3.5z"/><path fill="#FF3D00" d="M6.3 14.7l6.6 4.8C14.7 16 19 13 24 13c3 0 5.7 1.1 7.8 3l5.7-5.7C33.6 5.5 29 4 24 4 16.3 4 9.7 8.3 6.3 14.7z"/><path fill="#4CAF50" d="M24 44c5 0 9.5-1.9 12.9-5l-5.9-5c-2 1.4-4.5 2.2-7 2.2-5.4 0-10-3.5-11.6-8.4l-6.5 5C9.4 39.5 16 44 24 44z"/><path fill="#1976D2" d="M43.6 20.5H42V20H24v8h11.3c-.8 2.2-2.2 4.1-4 5.5l5.9 5c-.4.4 6.8-5 6.8-14.5 0-1.3-.1-2.4-.4-3.5z"/></svg>);
+}
+
+export default function CustomerMenu() {
+  const { qrToken } = useParams();
+  const { customer, signInWithGoogle, signOut } = useAuth();
+
+  const [lang, setLang] = useState("en");
+  const t = I18N[lang];
+
+  const [tab, setTab] = useState("menu");
+  const [categories, setCategories] = useState([]);
+  const [products, setProducts] = useState([]);
+  const [selectedCat, setSelectedCat] = useState(null);
+  const [cart, setCart] = useState([]);
+
+  const [hh, setHh] = useState(null);
+  const [memberOn, setMemberOn] = useState(false);
+  const [memberPct, setMemberPct] = useState(0);
+
+  // load menu + settings + active happy hour
+  useEffect(() => { (async () => {
+    const [{data: cats}, {data: prods}, {data: settings}, {data: hhData}] = await Promise.all([
+      supabase.from("categories").select("*").eq("is_active", true).order("sort_order"),
+      supabase.from("products").select("*").eq("is_available", true).eq("is_out_of_stock", false).order("sort_order"),
+      supabase.from("app_settings").select("*"),
+      supabase.rpc("get_active_happy_hour"),
+    ]);
+    if (cats) { setCategories(cats); if (cats.length) setSelectedCat(cats[0].id); }
+    if (prods) setProducts(prods);
+    if (settings) {
+      const e = settings.find(s => s.key === "member_discount_enabled");
+      const p = settings.find(s => s.key === "member_discount_pct");
+      setMemberOn(e?.value === true || e?.value === "true");
+      setMemberPct(Number(p?.value) || 0);
+    }
+    if (hhData?.[0]) setHh(hhData[0]);
+  })(); }, []);
+
+  // discount calculator: returns {hhPct, memPct, finalPrice} per product
+  const calcPrice = (p) => {
+    let hhPct = 0, memPct = 0;
+    if (hh && (hh.category_ids?.length === 0 || hh.category_ids?.includes(p.category_id))) {
+      hhPct = Number(hh.discount_pct);
+    }
+    if (customer) {
+      // customer-specific override > global setting
+      if (customer.admin_discount && customer.admin_discount > 0) memPct = Number(customer.admin_discount);
+      else if (memberOn) memPct = memberPct;
+    }
+    const bestPct = Math.max(hhPct, memPct);
+    const finalPrice = Math.round(Number(p.price) * (100 - bestPct) / 100);
+    return { hhPct, memPct, bestPct, finalPrice, original: Number(p.price) };
+  };
+
+  const visibleProducts = products.filter(p => p.category_id === selectedCat);
+
+  const addToCart = (p) => setCart(c => {
+    const ex = c.find(x => x.id === p.id);
+    if (ex) return c.map(x => x.id === p.id ? {...x, qty: x.qty + 1} : x);
+    const pr = calcPrice(p);
+    return [...c, {id: p.id, name: p.name, qty: 1, price: pr.finalPrice, original: pr.original}];
+  });
+
+  const cartTotal = useMemo(() => cart.reduce((s, it) => s + it.qty * it.price, 0), [cart]);
+
+  return (
+    <div style={{minHeight:"100vh",background:"#fff",fontFamily:cvc,paddingBottom:80}}>
+      {/* Top bar: lang + member status */}
+      <div style={{display:"flex",justifyContent:"space-between",padding:"14px 16px",alignItems:"center"}}>
+        <div style={{display:"flex",gap:6}}>
+          <button onClick={()=>setLang("en")} style={{padding:"3px 8px",border:"1px solid "+(lang==="en"?"#000":"#ddd"),background:lang==="en"?"#000":"#fff",color:lang==="en"?"#fff":"#000",fontSize:10,fontFamily:cvc,letterSpacing:"1px",cursor:"pointer"}}>🇬🇧 EN</button>
+          <button onClick={()=>setLang("tr")} style={{padding:"3px 8px",border:"1px solid "+(lang==="tr"?"#000":"#ddd"),background:lang==="tr"?"#000":"#fff",color:lang==="tr"?"#fff":"#000",fontSize:10,fontFamily:cvc,letterSpacing:"1px",cursor:"pointer"}}>🇹🇷 TR</button>
         </div>
-      </div>);})}
-      <div style={{height:80}}/>
-    </div>)}
-    {tab==="merch"&&(<div style={{background:"#fff"}}>
-      <div style={{padding:"20px 20px 0",borderBottom:"2px solid #000"}}><div style={{fontFamily:cv,fontSize:52,letterSpacing:"-3px",lineHeight:.88,color:"#000",marginBottom:14}}>{t.merch}</div></div>
-      {merch.map(item=>{const qty=cart[item.id]||0;return(<div key={item.id} style={{borderBottom:"2px solid #000"}}>
-        <div style={{width:"100%",height:280,background:"#f5f5f5",overflow:"hidden",display:"flex",alignItems:"center",justifyContent:"center"}}>{item.image_url?<img src={item.image_url} alt={item.name_en} style={{width:"100%",height:"100%",objectFit:"cover"}}/>:<div style={{fontSize:32,opacity:.3}}>📸</div>}</div>
-        <div style={{padding:"18px 20px 22px"}}><div style={{fontFamily:cv,fontSize:26,letterSpacing:"-1px",color:"#000",lineHeight:1,marginBottom:4}}>{lang==="tr"?(item.name_tr||item.name_en):item.name_en}</div><div style={{height:1,background:"#eee",marginBottom:14}}/><div style={{display:"flex",justifyContent:"space-between",alignItems:"center"}}><div style={{fontFamily:cv,fontSize:28,color:"#000"}}>₺{item.price?.toLocaleString()}</div>{qty===0?<button onClick={()=>setQty(item.id,1)} style={{padding:"10px 20px",background:"#000",color:"#fff",border:"none",fontFamily:cv,fontSize:14,letterSpacing:"2px",cursor:"pointer"}}>{t.addToCart}</button>:<Stp n={qty} onP={()=>setQty(item.id,qty+1)} onM={()=>setQty(item.id,qty-1)}/>}</div></div>
-      </div>);})}
-      <div style={{height:80}}/>
-    </div>)}
-    {(tab==="rides"||tab==="nights")&&(<div style={{padding:40,textAlign:"center"}}><div style={{fontFamily:cv,fontSize:24,color:"#000",marginBottom:8}}>YAKINDA</div><div style={{fontFamily:cvc,fontSize:12,color:"#aaa"}}>Etkinlikler çok yakında eklenecek</div></div>)}
-    <div style={{position:"fixed",bottom:0,left:"50%",transform:"translateX(-50%)",width:"100%",maxWidth:480,zIndex:50,background:"#fff",borderTop:"2px solid #000",display:"flex"}}>
-      {TABS.map(({id,icon,label})=>(<button key={id} onClick={()=>setTab(id)} style={{flex:1,padding:"10px 0",border:"none",background:tab===id?"#000":"transparent",color:tab===id?"#fff":"#999",cursor:"pointer",display:"flex",flexDirection:"column",alignItems:"center",gap:2}}><span style={{fontSize:15}}>{icon}</span><span style={{fontFamily:cv,fontSize:10,letterSpacing:"1px"}}>{label}</span></button>))}
+        {customer ? (
+          <div style={{display:"flex",alignItems:"center",gap:8}}>
+            {customer.avatar_url && <img src={customer.avatar_url} alt="" style={{width:24,height:24,borderRadius:"50%"}}/>}
+            <div style={{fontSize:11,color:"#666",fontFamily:cvc,letterSpacing:"1px"}}>{customer.name}</div>
+            <button onClick={signOut} style={{background:"none",border:"none",color:"#999",fontSize:11,cursor:"pointer",fontFamily:cvc}}>×</button>
+          </div>
+        ) : (
+          <button onClick={()=>signInWithGoogle()} style={{display:"flex",alignItems:"center",gap:6,padding:"5px 10px",border:"1px solid #ddd",background:"#fff",borderRadius:18,fontFamily:cvc,fontSize:11,color:"#333",cursor:"pointer",letterSpacing:"0.5px"}}>
+            <GoogleIcon/>{t.signin}
+          </button>
+        )}
+      </div>
+
+      {/* Title */}
+      <div style={{padding:"4px 24px 16px"}}>
+        <div style={{fontFamily:cv,fontSize:42,letterSpacing:"2px"}}>{t[tab]}</div>
+        {hh && tab === "menu" && (
+          <div style={{display:"inline-block",marginTop:6,padding:"3px 10px",background:"#000",color:"#FFD700",fontSize:10,letterSpacing:"2px",borderRadius:12}}>🔥 {t.happyhour}</div>
+        )}
+      </div>
+
+      {/* Categories scroll */}
+      {tab === "menu" && (
+        <div style={{display:"flex",gap:18,overflowX:"auto",padding:"4px 24px 14px",borderBottom:"1px solid #eee"}}>
+          {categories.map(c => (
+            <button key={c.id} onClick={()=>setSelectedCat(c.id)} style={{background:"none",border:"none",padding:"8px 0",fontFamily:cvc,fontSize:12,letterSpacing:"2px",color:selectedCat===c.id?"#000":"#999",borderBottom:selectedCat===c.id?"2px solid #000":"2px solid transparent",cursor:"pointer",whiteSpace:"nowrap",fontWeight:selectedCat===c.id?700:400}}>
+              {c.name?.toUpperCase()}
+            </button>
+          ))}
+        </div>
+      )}
+
+      {/* Products */}
+      {tab === "menu" && (
+        <div style={{padding:"0 16px"}}>
+          {visibleProducts.map(p => {
+            const pr = calcPrice(p);
+            const discounted = pr.bestPct > 0;
+            return (
+              <div key={p.id} style={{display:"flex",justifyContent:"space-between",alignItems:"center",padding:"18px 8px",borderBottom:"1px solid #f0f0f0"}}>
+                <div style={{flex:1,paddingRight:16}}>
+                  <div style={{fontFamily:cv,fontSize:18}}>{p.name}</div>
+                  {p.description && <div style={{fontSize:11,color:"#999",marginTop:3,fontFamily:cvc}}>{p.description}</div>}
+                </div>
+                <div style={{display:"flex",flexDirection:"column",alignItems:"flex-end",gap:6}}>
+                  {discounted ? (
+                    <div style={{display:"flex",flexDirection:"column",alignItems:"flex-end"}}>
+                      <span style={{fontSize:11,color:"#999",textDecoration:"line-through",fontFamily:cvc}}>₺{pr.original}</span>
+                      <span style={{fontFamily:cv,fontSize:18,color:"#000",fontWeight:700}}>₺{pr.finalPrice}</span>
+                    </div>
+                  ) : (
+                    <span style={{fontFamily:cv,fontSize:18}}>₺{pr.finalPrice}</span>
+                  )}
+                  <button onClick={()=>addToCart(p)} style={{width:30,height:30,background:"#000",color:"#fff",border:"none",borderRadius:6,cursor:"pointer",fontSize:18,fontFamily:cv,display:"flex",alignItems:"center",justifyContent:"center"}}>+</button>
+                </div>
+              </div>
+            );
+          })}
+          {visibleProducts.length === 0 && <div style={{padding:40,textAlign:"center",color:"#999",fontFamily:cvc,letterSpacing:"1px",fontSize:12}}>NO ITEMS</div>}
+        </div>
+      )}
+
+      {tab !== "menu" && (
+        <div style={{padding:60,textAlign:"center",color:"#999",fontFamily:cvc,letterSpacing:"2px"}}>COMING SOON</div>
+      )}
+
+      {/* Bottom nav */}
+      <div style={{position:"fixed",bottom:0,left:0,right:0,background:"#fff",borderTop:"1px solid #eee",display:"flex",justifyContent:"space-around",padding:"8px 0 12px"}}>
+        {[
+          {key:"menu",  icon:"☕", label:t.menu},
+          {key:"merch", icon:"👕", label:t.merch},
+          {key:"rides", icon:"🛵", label:t.rides},
+          {key:"nights",icon:"🌙", label:t.nights},
+        ].map(item => (
+          <button key={item.key} onClick={()=>setTab(item.key)} style={{background:"none",border:"none",display:"flex",flexDirection:"column",alignItems:"center",gap:4,cursor:"pointer",color:tab===item.key?"#000":"#bbb",borderTop:tab===item.key?"2px solid #000":"2px solid transparent",paddingTop:6,marginTop:-8,fontFamily:cvc}}>
+            <span style={{fontSize:20}}>{item.icon}</span>
+            <span style={{fontSize:9,letterSpacing:"1px"}}>{item.label}</span>
+          </button>
+        ))}
+      </div>
     </div>
-    {totalItems>0&&(<div style={{position:"fixed",bottom:60,left:"50%",transform:"translateX(-50%)",width:"calc(100% - 40px)",maxWidth:440,zIndex:49}}><button onClick={()=>setView("cart")} style={{width:"100%",padding:"12px 18px",background:"#000",color:"#fff",border:"none",cursor:"pointer",display:"flex",alignItems:"center",justifyContent:"space-between",boxShadow:"0 -4px 24px #00000033"}}><div style={{display:"flex",alignItems:"center",gap:10}}><div style={{background:"#fff",color:"#000",width:26,height:26,display:"flex",alignItems:"center",justifyContent:"center",fontFamily:cv,fontSize:14}}>{totalItems}</div><span style={{fontFamily:cv,fontSize:14,letterSpacing:"2px"}}>{t.viewOrder}</span></div><span style={{fontFamily:cv,fontSize:17}}>₺{totPrice.toLocaleString()}</span></button></div>)}
-  </div>);}
+  );
+}
