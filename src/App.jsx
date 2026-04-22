@@ -17,6 +17,8 @@ import ReportsPage from "./pages/manager/ReportsPage.jsx";
 import MembersPage from "./pages/manager/MembersPage.jsx";
 import MerchMgmtPage from "./pages/manager/MerchMgmtPage.jsx";
 import SettingsPage from "./pages/manager/SettingsPage.jsx";
+import MenuMgmtPage from "./pages/manager/MenuMgmtPage.jsx";
+import TablesMgmtPage from "./pages/manager/TablesMgmtPage.jsx";
 
 function PrivateRoute({ children, managerOnly = false }) {
   const { session, staffUser, isManager, loading } = useAuth();
@@ -43,6 +45,8 @@ function AppRoutes() {
         <Route path="payment"     element={<PaymentPage />} />
         <Route path="stock"       element={<StockViewPage />} />
         <Route path="myshift"     element={<MyShiftPage />} />
+        <Route path="menu-mgmt"   element={<PrivateRoute managerOnly><MenuMgmtPage /></PrivateRoute>} />
+        <Route path="tables-mgmt" element={<PrivateRoute managerOnly><TablesMgmtPage /></PrivateRoute>} />
         <Route path="stock-mgmt"  element={<PrivateRoute managerOnly><StockMgmtPage /></PrivateRoute>} />
         <Route path="staff-mgmt"  element={<PrivateRoute managerOnly><StaffMgmtPage /></PrivateRoute>} />
         <Route path="happy-hour"  element={<PrivateRoute managerOnly><HappyHourPage /></PrivateRoute>} />
