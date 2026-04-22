@@ -20,6 +20,8 @@ import MerchMgmtPage from "./pages/manager/MerchMgmtPage.jsx";
 import SettingsPage from "./pages/manager/SettingsPage.jsx";
 import MenuMgmtPage from "./pages/manager/MenuMgmtPage.jsx";
 import TablesMgmtPage from "./pages/manager/TablesMgmtPage.jsx";
+import RecipesMgmtPage from "./pages/manager/RecipesMgmtPage.jsx";
+import InvoicesPage from "./pages/manager/InvoicesPage.jsx";
 
 function PrivateRoute({ children, managerOnly = false, adminOnly = false }) {
   const { session, staffUser, isManager, isAdmin, loading } = useAuth();
@@ -38,10 +40,7 @@ function AppRoutes() {
       <Route path="/login" element={session && staffUser ? (<Navigate to={defaultRoute} replace />) : (<LoginPage />)}/>
       <Route path="/menu/:qrToken" element={<CustomerMenu />} />
       <Route path="/menu" element={<CustomerMenu />} />
-
-      {/* Tablet kitchen display - standalone fullscreen */}
       <Route path="/kitchen-display" element={<PrivateRoute><KitchenDisplayPage /></PrivateRoute>} />
-
       <Route path="/" element={<PrivateRoute><StaffLayout /></PrivateRoute>}>
         <Route index element={<Navigate to={defaultRoute} replace />} />
         <Route path="tables"           element={<TablesPage />} />
@@ -60,6 +59,8 @@ function AppRoutes() {
         <Route path="settings"         element={<PrivateRoute managerOnly><SettingsPage /></PrivateRoute>} />
         <Route path="menu-mgmt"        element={<PrivateRoute managerOnly><MenuMgmtPage /></PrivateRoute>} />
         <Route path="tables-mgmt"      element={<PrivateRoute managerOnly><TablesMgmtPage /></PrivateRoute>} />
+        <Route path="recipes"          element={<PrivateRoute managerOnly><RecipesMgmtPage /></PrivateRoute>} />
+        <Route path="invoices"         element={<PrivateRoute managerOnly><InvoicesPage /></PrivateRoute>} />
       </Route>
       <Route path="*" element={<Navigate to="/" replace />} />
     </Routes>
