@@ -18,6 +18,8 @@ const MANAGER_NAV = [
   {to:"/menu-mgmt",   icon:"🍽", label:"Menü Yönetimi"},
   {to:"/tables-mgmt", icon:"🪑", label:"Masa Yönetimi"},
   {to:"/stock-mgmt",  icon:"📦", label:"Stok Yönetimi"},
+  {to:"/recipes",     icon:"📝", label:"Reçeteler"},
+  {to:"/invoices",    icon:"🧾", label:"Faturalar"},
   {to:"/staff-mgmt",  icon:"👥", label:"Personel"},
   {to:"/members",     icon:"🌟", label:"Üyeler & Borç"},
   {to:"/happy-hour",  icon:"🎉", label:"Happy Hour"},
