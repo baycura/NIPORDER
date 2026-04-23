@@ -4,6 +4,59 @@ import { supabase } from "../../lib/supabase.js";
 
 const cv = "-apple-system,BlinkMacSystemFont,'Segoe UI',Roboto,sans-serif";
 
+const T = {
+  tr: {
+    menu: "MENÜ", partyMode: "PARTİ MODU", category_empty: "Bu kategoride ürün yok",
+    sold_out: "Tükendi", optional: "SEÇENEKLI", cart: "🛒 Sepetim",
+    continue: "Devam", note_optional: "Örn: buzsuz, sekersiz", optional_label: "NOT (OPSİYONEL)",
+    cancel: "İptal", add_to_cart: "Sepete Ekle", my_cart: "Sepetim",
+    your_name: "ADIN (garsonlar seni tanısın)", name_placeholder: "Örn: Efekan",
+    order_note_label: "SİPARİŞ NOTU (mutfak görecek)", order_note_placeholder: "Örn: az pişmiş, baharatsız...",
+    total: "TOPLAM", submit_order: "Siparişi Gönder", submitting: "Gönderiliyor...",
+    waiter_will_bring: "Garson siparişini masana getirecek",
+    notif_promise: "Sipariş hazır olunca bildirim göndereceğiz",
+    please_choose: "Lütfen", please_enter_name: "Lütfen adını gir",
+    sold_out_alert: "Bu ürün şu an tükendi: ",
+    order_received: "Siparişin alındı!", order_kitchen_msg: "utfağa iletildi. Hazırlanıyor…",
+    preparing: "Hazırlanıyor...",
+    notif_granted: "🔔 Hazır olunca bildirim alacaksın",
+    notif_denied: "⚠️ Bildirim engellendi. Sayfayı açık bırak — hazır olunca ses çalacak.",
+    notif_ask: "🔔 Bildirim izni ver",
+    back_to_menu: "Menüye dön",
+    order_ready_big: "SİPARİŞİN HAZIR!", pick_from_cashier: "Kasadan alabilirsin.",
+    play_again: "🔊 Tekrar çal",
+    enjoy: "Afiyet olsun!", thanks: "Tekrar bekleriz ♥", new_order: "Yeni sipariş ver",
+    submit_failed: "Sipariş gönderilemedi: ",
+    notif_title: "🔔 Siparişin hazır!", notif_body: "Kasadan alabilirsin — Not In Paris",
+    happy_hour: "HAPPY HOUR",
+  },
+  en: {
+    menu: "MENU", partyMode: "PARTY MODE", category_empty: "No products in this category",
+    sold_out: "Sold out", optional: "OPTIONS", cart: "🛒 Cart",
+    continue: "Continue", note_optional: "e.g. no ice, no sugar", optional_label: "NOTE (OPTIONAL)",
+    cancel: "Cancel", add_to_cart: "Add to Cart", my_cart: "My Cart",
+    your_name: "YOUR NAME (so the staff can find you)", name_placeholder: "e.g. John",
+    order_note_label: "ORDER NOTE (kitchen will see)", order_note_placeholder: "e.g. medium-rare, no spice...",
+    total: "TOTAL", submit_order: "Place Order", submitting: "Sending...",
+    waiter_will_bring: "Server will bring it to your table",
+    notif_promise: "We'll notify you when your order is ready",
+    please_choose: "Please choose", please_enter_name: "Please enter your name",
+    sold_out_alert: "This item is sold out: ",
+    order_received: "Order received!", order_kitchen_msg: "ent to kitchen. Being prepared…",
+    preparing: "Preparing...",
+    notif_granted: "🔔 You'll be notified when ready",
+    notif_denied: "⚠️ Notifications blocked. Keep this page open — you'll hear a sound when ready.",
+    notif_ask: "🔔 Enable notifications",
+    back_to_menu: "Back to menu",
+    order_ready_big: "YOUR ORDER IS READY!", pick_from_cashier: "Pick it up from the cashier.",
+    play_again: "🔊 Play again",
+    enjoy: "Enjoy your meal!", thanks: "See you soon ♥", new_order: "Place a new order",
+    submit_failed: "Failed to send order: ",
+    notif_title: "🔔 Your order is ready!", notif_body: "Pick it up from the cashier — Not In Paris",
+    happy_hour: "HAPPY HOUR",
+  }
+};
+
 function isInRange(now, from, until) {
   if (!from || !until) return false;
   const [fh, fm] = from.split(":").map(Number);
@@ -16,27 +69,29 @@ function isInRange(now, from, until) {
   return nowMin >= fromMin || nowMin < untilMin;
 }
 
-function playDing() {
-  // Strategy 1: HTMLAudioElement with inline wav (works on Safari/Firefox/Chrome/mobile)
-  try {
-    const wavB64 = "UklGRtwCAABXQVZFZm10IBAAAAABAAEAESsAACJWAAACABAAZGF0YbYCAAAAAP////8AAAEAAAAAAP//AAAAAP//AAAAAAAAAAABAAAA/////wAAAAABAAAAAAAAAAAAAAAAAAAAAAABAAAA/////wAAAQAAAAAAAAAAAP//AAD/////AQABAAAAAAD//wAAAAAAAP//AAD//wEAAAABAAEAAAABAAEAAQABAP//AAAAAAAAAAAAAAAAAAAAAAAAAAAAAAEAAAAAAAAAAAAAAAAA//8AAAEAAAD//wAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAA//8AAP//AAD//wAA//8AAP//AAAAAAAAAQABAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAABAAAAAAD/////AAAAAAAAAAAAAAAAAAABAAEAAQABAAAA//8AAAAA//8AAAAAAQAAAAEAAAAAAAAAAAD//wAAAAAAAAAAAAAAAAAAAQAAAAAAAAAAAAAAAAAAAAAAAAD//wAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAA=";
-    const audio = new Audio("data:audio/wav;base64," + wavB64);
-    audio.volume = 0.5; audio.play().catch(()=>{});
-  } catch (e) {}
-  // Strategy 2: Web Audio API oscillator (cleaner tone)
-  try {
-    const ctx = new (window.AudioContext || window.webkitAudioContext)();
-    const play = (freq, start, dur) => {
-      const o = ctx.createOscillator(); const g = ctx.createGain();
-      o.type = "sine"; o.frequency.value = freq;
-      o.connect(g); g.connect(ctx.destination);
-      g.gain.setValueAtTime(0.0001, ctx.currentTime + start);
-      g.gain.exponentialRampToValueAtTime(0.3, ctx.currentTime + start + 0.01);
-      g.gain.exponentialRampToValueAtTime(0.0001, ctx.currentTime + start + dur);
-      o.start(ctx.currentTime + start); o.stop(ctx.currentTime + start + dur);
-    };
-    play(880, 0, 0.18); play(1320, 0.18, 0.35);
-  } catch (e) {}
+let _audioCtx = null;
+function getAudioCtx() {
+  if (!_audioCtx) {
+    try { _audioCtx = new (window.AudioContext || window.webkitAudioContext)(); }
+    catch (e) {}
+  }
+  return _audioCtx;
+}
+
+async function playDing() {
+  const ctx = getAudioCtx();
+  if (!ctx) return;
+  if (ctx.state === "suspended") { try { await ctx.resume(); } catch (e) {} }
+  const beep = (freq, start, dur, vol=0.6) => {
+    const o = ctx.createOscillator(); const g = ctx.createGain();
+    o.type = "sine"; o.frequency.value = freq;
+    o.connect(g); g.connect(ctx.destination);
+    g.gain.setValueAtTime(0.0001, ctx.currentTime + start);
+    g.gain.exponentialRampToValueAtTime(vol, ctx.currentTime + start + 0.01);
+    g.gain.exponentialRampToValueAtTime(0.0001, ctx.currentTime + start + dur);
+    o.start(ctx.currentTime + start); o.stop(ctx.currentTime + start + dur);
+  };
+  beep(880, 0, 0.18); beep(1320, 0.18, 0.35);
 }
 
 function vibrate() {
@@ -59,6 +114,12 @@ export default function CustomerMenu() {
   const { qrToken } = useParams();
   const navigate = useNavigate();
 
+  const [lang, setLang] = useState(() => {
+    try { return localStorage.getItem("nip_lang") || "tr"; } catch (e) { return "tr"; }
+  });
+  const t = T[lang] || T.tr;
+  const setLanguage = (l) => { setLang(l); try { localStorage.setItem("nip_lang", l); } catch (e) {} };
+
   const [table, setTable] = useState(null);
   const [categories, setCategories] = useState([]);
   const [products, setProducts] = useState([]);
@@ -72,6 +133,7 @@ export default function CustomerMenu() {
   const [optNote, setOptNote] = useState("");
   const [checkoutOpen, setCheckoutOpen] = useState(false);
   const [customerName, setCustomerName] = useState("");
+  const [orderNote, setOrderNote] = useState("");
   const [submitting, setSubmitting] = useState(false);
   const [successOrderId, setSuccessOrderId] = useState(null);
   const [orderStage, setOrderStage] = useState("pending");
@@ -83,13 +145,18 @@ export default function CustomerMenu() {
   const now = new Date();
   const partyMode = settings && settings.party_mode_enabled && isInRange(now, settings.party_mode_from, settings.party_mode_until);
 
+  // Helpers to pick the right language for product/category names
+  const pName = (p) => (lang === "en" && p?.name_en) ? p.name_en : p?.name;
+  const pDesc = (p) => (lang === "en" && p?.description_en) ? p.description_en : p?.description;
+  const cName = (c) => (lang === "en" && c?.name_en) ? c.name_en : c?.name;
+
   const load = async () => {
     setLoading(true);
     try {
       let tab = null;
       if (qrToken) {
-        const { data: t } = await supabase.from("cafe_tables").select("*").eq("qr_token", qrToken).maybeSingle();
-        tab = t || null;
+        const { data: tt } = await supabase.from("cafe_tables").select("*").eq("qr_token", qrToken).maybeSingle();
+        tab = tt || null;
       }
       setTable(tab);
       const [{data: cats}, {data: prods}, {data: app}, hhRes] = await Promise.all([
@@ -109,9 +176,9 @@ export default function CustomerMenu() {
 
   useEffect(() => { load(); }, [qrToken]);
 
+  // Realtime + polling fallback
   useEffect(() => {
     if (!successOrderId) return;
-    // Polling fallback: check order items every 3s in case Realtime is down
     let stopped = false;
     const checkStatus = async () => {
       if (stopped) return;
@@ -126,59 +193,43 @@ export default function CustomerMenu() {
         setOrderStage(prev => {
           if (prev === "ready" || prev === "served") return prev;
           playDing(); vibrate();
-          showBrowserNotification("🔔 Siparişin hazır!", "Kasadan alabilirsin — Not In Paris");
+          showBrowserNotification(t.notif_title, t.notif_body);
           return "ready";
         });
       }
     };
     checkStatus();
     const poller = setInterval(checkStatus, 3000);
-    console.log("[NIP] Realtime subscribe for order", successOrderId);
+
     const ch = supabase
       .channel("customer-order-" + successOrderId)
       .on("postgres_changes",
           {event:"*", schema:"public", table:"order_items", filter:"order_id=eq." + successOrderId},
-          async (payload) => {
-            console.log("[NIP] order_items event:", payload.eventType, payload.new?.kitchen_status);
-            const { data: items } = await supabase
-              .from("order_items").select("kitchen_status").eq("order_id", successOrderId);
-            if (!items || items.length === 0) return;
-            const allServed = items.every(it => it.kitchen_status === "served");
-            const anyReady = items.some(it => it.kitchen_status === "ready" || it.kitchen_status === "served");
-            console.log("[NIP] allServed=" + allServed + " anyReady=" + anyReady + " stage=" + orderStage);
-            if (allServed) {
-              setOrderStage("served");
-            } else if (anyReady && orderStage !== "ready" && orderStage !== "served") {
-              setOrderStage("ready");
-              playDing();
-              vibrate();
-              showBrowserNotification("🔔 Siparişin hazır!", "Kasadan alabilirsin — Not In Paris");
-            }
-          })
-      .subscribe((status) => console.log("[NIP] channel status:", status));
+          checkStatus)
+      .subscribe();
     return () => { stopped = true; clearInterval(poller); supabase.removeChannel(ch); };
-  }, [successOrderId]);
+  }, [successOrderId, lang]);
 
-  const unlockAudio = () => {
+  const unlockAudio = async () => {
     if (audioUnlockedRef.current) return;
     try {
-      const ctx = new (window.AudioContext || window.webkitAudioContext)();
-      const o = ctx.createOscillator(); const g = ctx.createGain();
-      g.gain.value = 0.001; o.connect(g); g.connect(ctx.destination);
-      o.start(); o.stop(ctx.currentTime + 0.01);
+      const ctx = getAudioCtx();
+      if (ctx && ctx.state === "suspended") await ctx.resume();
+      if (ctx) {
+        const o = ctx.createOscillator(); const g = ctx.createGain();
+        g.gain.value = 0.001; o.connect(g); g.connect(ctx.destination);
+        o.start(); o.stop(ctx.currentTime + 0.02);
+      }
       audioUnlockedRef.current = true;
     } catch (e) {}
   };
 
-  // Request permission synchronously during user gesture (doesn't block)
   const askNotifPermissionSync = () => {
     if (typeof Notification === "undefined") return;
     if (Notification.permission !== "default") { setNotifState(Notification.permission); return; }
     try {
       const maybe = Notification.requestPermission((perm) => setNotifState(perm));
-      if (maybe && typeof maybe.then === "function") {
-        maybe.then(p => setNotifState(p));
-      }
+      if (maybe && typeof maybe.then === "function") maybe.then(p => setNotifState(p));
     } catch (e) {}
   };
 
@@ -219,7 +270,7 @@ export default function CustomerMenu() {
   const onProductTap = (p) => {
     unlockAudio();
     if (p.sold_out_today) {
-      alert("Bu ürün şu an tükendi: " + (p.unavailable_reason || ""));
+      alert(t.sold_out_alert + (p.unavailable_reason || ""));
       return;
     }
     if (p.has_options && p.options_config) {
@@ -256,7 +307,7 @@ export default function CustomerMenu() {
     const cfg = optModal.options_config || {};
     for (const group of cfg.groups || []) {
       if (group.required && !optSelected[group.name]) {
-        alert("Lütfen " + group.name + " seç"); return;
+        alert(t.please_choose + " " + group.name); return;
       }
     }
     addToCart(optModal, optSelected, optNote.trim() || null);
@@ -265,9 +316,8 @@ export default function CustomerMenu() {
 
   const submitOrder = async () => {
     if (submitting || cart.length === 0) return;
-    if (!table && !customerName.trim()) { alert("Lütfen adını gir"); return; }
+    if (!table && !customerName.trim()) { alert(t.please_enter_name); return; }
     unlockAudio();
-    // Ask permission during user gesture (synchronous, non-blocking)
     askNotifPermissionSync();
     setSubmitting(true);
     try {
@@ -278,6 +328,7 @@ export default function CustomerMenu() {
         subtotal: totalVal,
         total: totalVal,
         status: "open",
+        note: orderNote.trim() || null,
       }).select().single();
       if (ordErr) throw ordErr;
 
@@ -299,15 +350,23 @@ export default function CustomerMenu() {
       setSuccessOrderId(ord.id);
       setOrderStage("pending");
       setCart([]);
+      setOrderNote("");
       setCheckoutOpen(false);
     } catch (e) {
-      alert("Sipariş gönderilemedi: " + e.message);
+      alert(t.submit_failed + e.message);
     }
     setSubmitting(false);
   };
 
+  const LangSwitcher = () => (
+    <div style={{display:"flex",gap:4,background:"#f2f2f2",borderRadius:18,padding:3}}>
+      <button onClick={() => setLanguage("tr")} style={{padding:"4px 10px",background:lang==="tr"?"#000":"transparent",color:lang==="tr"?"#fff":"#666",border:"none",borderRadius:14,fontSize:11,fontWeight:700,cursor:"pointer"}}>🇹🇷 TR</button>
+      <button onClick={() => setLanguage("en")} style={{padding:"4px 10px",background:lang==="en"?"#000":"transparent",color:lang==="en"?"#fff":"#666",border:"none",borderRadius:14,fontSize:11,fontWeight:700,cursor:"pointer"}}>🇬🇧 EN</button>
+    </div>
+  );
+
   if (loading) {
-    return (<div style={{fontFamily:cv,background:"#fff",minHeight:"100vh",display:"flex",alignItems:"center",justifyContent:"center",color:"#888"}}>Yükleniyor...</div>);
+    return (<div style={{fontFamily:cv,background:"#fff",minHeight:"100vh",display:"flex",alignItems:"center",justifyContent:"center",color:"#888"}}>...</div>);
   }
 
   if (successOrderId) {
@@ -320,44 +379,40 @@ export default function CustomerMenu() {
           {isReady ? (
             <>
               <div style={{fontSize:80,marginBottom:14}}>🔔</div>
-              <div style={{fontSize:30,fontWeight:900,marginBottom:8,letterSpacing:"-0.5px"}}>SİPARİŞİN HAZIR!</div>
+              <div style={{fontSize:30,fontWeight:900,marginBottom:8,letterSpacing:"-0.5px"}}>{t.order_ready_big}</div>
               <div style={{fontSize:15,color:"#555",marginBottom:24,lineHeight:1.5}}>
-                {table ? (table.name + " · ") : ""}Kasadan alabilirsin.
+                {table ? (table.name + " · ") : ""}{t.pick_from_cashier}
               </div>
-              <button onClick={() => { playDing(); vibrate(); }} style={{padding:"12px 24px",background:"#C8973E",color:"#000",border:"none",borderRadius:12,fontSize:13,fontWeight:800,cursor:"pointer"}}>🔊 Tekrar çal</button>
+              <button onClick={() => { playDing(); vibrate(); }} style={{padding:"12px 24px",background:"#C8973E",color:"#000",border:"none",borderRadius:12,fontSize:13,fontWeight:800,cursor:"pointer"}}>{t.play_again}</button>
             </>
           ) : isServed ? (
             <>
               <div style={{fontSize:72,marginBottom:14}}>🙏</div>
-              <div style={{fontSize:26,fontWeight:800,marginBottom:8}}>Afiyet olsun!</div>
-              <div style={{fontSize:14,color:"#555",marginBottom:24,lineHeight:1.5}}>Tekrar bekleriz ♥</div>
-              <button onClick={() => { setSuccessOrderId(null); setOrderStage("pending"); load(); }} style={{padding:"14px 28px",background:"#C8973E",color:"#000",border:"none",borderRadius:12,fontSize:14,fontWeight:800,cursor:"pointer"}}>Yeni sipariş ver</button>
+              <div style={{fontSize:26,fontWeight:800,marginBottom:8}}>{t.enjoy}</div>
+              <div style={{fontSize:14,color:"#555",marginBottom:24,lineHeight:1.5}}>{t.thanks}</div>
+              <button onClick={() => { setSuccessOrderId(null); setOrderStage("pending"); load(); }} style={{padding:"14px 28px",background:"#C8973E",color:"#000",border:"none",borderRadius:12,fontSize:14,fontWeight:800,cursor:"pointer"}}>{t.new_order}</button>
             </>
           ) : (
             <>
               <div style={{fontSize:60,marginBottom:14}}>✅</div>
-              <div style={{fontSize:24,fontWeight:800,marginBottom:8}}>Siparişin alındı!</div>
+              <div style={{fontSize:24,fontWeight:800,marginBottom:8}}>{t.order_received}</div>
               <div style={{fontSize:14,color:"#555",marginBottom:18,lineHeight:1.5}}>
-                {table ? (table.name + " için m") : "M"}utfağa iletildi. Hazırlanıyor…
+                {table ? (table.name + (lang==="en"?": s":": m")) : (lang==="en"?"S":"M")}{t.order_kitchen_msg}
               </div>
               <div style={{display:"inline-flex",alignItems:"center",gap:8,padding:"10px 16px",background:"#f6f6f6",borderRadius:24,marginBottom:24,fontSize:13,color:"#555"}}>
                 <span style={{width:10,height:10,borderRadius:"50%",background:"#C8973E",display:"inline-block"}}></span>
-                Hazırlanıyor...
+                {t.preparing}
               </div>
               <div style={{marginBottom:10}}>
                 {notifState === "granted" ? (
-                  <div style={{padding:"10px 14px",background:"#E8F5E9",border:"1px solid #B2DFDB",borderRadius:10,fontSize:12,color:"#2e7d32"}}>
-                    🔔 Hazır olunca bildirim alacaksın
-                  </div>
+                  <div style={{padding:"10px 14px",background:"#E8F5E9",border:"1px solid #B2DFDB",borderRadius:10,fontSize:12,color:"#2e7d32"}}>{t.notif_granted}</div>
                 ) : notifState === "denied" ? (
-                  <div style={{padding:"10px 14px",background:"#FFF3E0",border:"1px solid #FFCC80",borderRadius:10,fontSize:11,color:"#E65100",lineHeight:1.5}}>
-                    ⚠️ Bildirim engellendi. Sayfayı açık bırak — hazır olunca ses çalacak.
-                  </div>
+                  <div style={{padding:"10px 14px",background:"#FFF3E0",border:"1px solid #FFCC80",borderRadius:10,fontSize:11,color:"#E65100",lineHeight:1.5}}>{t.notif_denied}</div>
                 ) : (
-                  <button onClick={askNotifPermissionSync} style={{padding:"10px 18px",background:"#C8973E",color:"#000",border:"none",borderRadius:10,fontSize:12,fontWeight:800,cursor:"pointer"}}>🔔 Bildirim izni ver</button>
+                  <button onClick={askNotifPermissionSync} style={{padding:"10px 18px",background:"#C8973E",color:"#000",border:"none",borderRadius:10,fontSize:12,fontWeight:800,cursor:"pointer"}}>{t.notif_ask}</button>
                 )}
               </div>
-              <button onClick={() => { setSuccessOrderId(null); setOrderStage("pending"); load(); }} style={{padding:"10px 22px",background:"transparent",color:"#888",border:"1px solid #ddd",borderRadius:10,fontSize:12,cursor:"pointer"}}>Menüye dön</button>
+              <button onClick={() => { setSuccessOrderId(null); setOrderStage("pending"); load(); }} style={{padding:"10px 22px",background:"transparent",color:"#888",border:"1px solid #ddd",borderRadius:10,fontSize:12,cursor:"pointer"}}>{t.back_to_menu}</button>
             </>
           )}
         </div>
@@ -372,24 +427,27 @@ export default function CustomerMenu() {
           <div>
             <div style={{fontSize:18,fontWeight:800,letterSpacing:"0.5px"}}>NOT IN PARIS</div>
             <div style={{fontSize:10,color:"#888",letterSpacing:"2px",marginTop:2}}>
-              {table ? table.name?.toUpperCase() : "MENÜ"}
-              {partyMode && <span style={{marginLeft:6,color:"#C8973E",fontWeight:700}}>· PARTİ MODU 🎉</span>}
+              {table ? table.name?.toUpperCase() : t.menu}
+              {partyMode && <span style={{marginLeft:6,color:"#C8973E",fontWeight:700}}>· {t.partyMode} 🎉</span>}
             </div>
           </div>
-          {hh && <div style={{background:"#C8973E",color:"#000",padding:"4px 10px",borderRadius:10,fontSize:10,fontWeight:800,letterSpacing:"0.5px"}}>HAPPY HOUR -%{hh.discount_pct}</div>}
+          <div style={{display:"flex",alignItems:"center",gap:8}}>
+            {hh && <div style={{background:"#C8973E",color:"#000",padding:"4px 10px",borderRadius:10,fontSize:10,fontWeight:800,letterSpacing:"0.5px"}}>{t.happy_hour} -%{hh.discount_pct}</div>}
+            <LangSwitcher/>
+          </div>
         </div>
 
         <div style={{display:"flex",gap:6,overflowX:"auto",marginTop:12,paddingBottom:4}}>
           {visibleCategories.map(c => (
             <button key={c.id} onClick={() => setSelectedCat(c.id)} style={{flexShrink:0,padding:"8px 14px",border:"none",borderRadius:16,fontSize:12,fontWeight:700,background:selectedCat===c.id?"#000":"#f2f2f2",color:selectedCat===c.id?"#fff":"#333",cursor:"pointer",whiteSpace:"nowrap",letterSpacing:"0.3px"}}>
-              {c.icon && <span style={{marginRight:4}}>{c.icon}</span>}{c.name}
+              {c.icon && <span style={{marginRight:4}}>{c.icon}</span>}{cName(c)}
             </button>
           ))}
         </div>
       </div>
 
       <div style={{padding:"14px 16px"}}>
-        {visibleProducts.length === 0 && <div style={{textAlign:"center",color:"#888",padding:40,fontSize:13}}>Bu kategoride ürün yok</div>}
+        {visibleProducts.length === 0 && <div style={{textAlign:"center",color:"#888",padding:40,fontSize:13}}>{t.category_empty}</div>}
         {visibleProducts.map(p => {
           const fp = calcPrice(p);
           const dis = fp < Number(p.price);
@@ -400,10 +458,10 @@ export default function CustomerMenu() {
             <div key={p.id} style={{display:"flex",gap:12,padding:"14px 0",borderBottom:"1px solid #f0f0f0",opacity:soldOut?0.45:1}}>
               {p.image_url && <img src={p.image_url} alt="" style={{width:72,height:72,borderRadius:10,objectFit:"cover",flexShrink:0}}/>}
               <div style={{flex:1,minWidth:0}}>
-                <div style={{fontSize:15,fontWeight:700,color:"#000",lineHeight:1.3}}>{p.name}</div>
-                {p.description && <div style={{fontSize:12,color:"#666",marginTop:3,lineHeight:1.4}}>{p.description}</div>}
-                {soldOut && <div style={{fontSize:11,color:"#c44",marginTop:4,fontWeight:600}}>{p.unavailable_reason || "Tükendi"}</div>}
-                {p.has_options && !soldOut && <div style={{fontSize:10,color:"#C8973E",marginTop:3,fontWeight:700,letterSpacing:"0.5px"}}>SEÇENEKLI</div>}
+                <div style={{fontSize:15,fontWeight:700,color:"#000",lineHeight:1.3}}>{pName(p)}</div>
+                {pDesc(p) && <div style={{fontSize:12,color:"#666",marginTop:3,lineHeight:1.4}}>{pDesc(p)}</div>}
+                {soldOut && <div style={{fontSize:11,color:"#c44",marginTop:4,fontWeight:600}}>{p.unavailable_reason || t.sold_out}</div>}
+                {p.has_options && !soldOut && <div style={{fontSize:10,color:"#C8973E",marginTop:3,fontWeight:700,letterSpacing:"0.5px"}}>{t.optional}</div>}
                 <div style={{display:"flex",alignItems:"center",gap:10,marginTop:8}}>
                   {dis && <span style={{fontSize:12,color:"#999",textDecoration:"line-through"}}>₺{p.price}</span>}
                   <span style={{fontSize:15,fontWeight:800,color:dis?"#C8973E":"#000"}}>₺{fp}</span>
@@ -430,8 +488,8 @@ export default function CustomerMenu() {
       {cart.length > 0 && (
         <div style={{position:"fixed",bottom:14,left:14,right:14,zIndex:40}}>
           <button onClick={() => setCheckoutOpen(true)} style={{width:"100%",padding:"16px 20px",background:"#000",color:"#fff",border:"none",borderRadius:14,fontSize:15,fontWeight:800,cursor:"pointer",boxShadow:"0 6px 20px rgba(0,0,0,0.35)",display:"flex",justifyContent:"space-between",alignItems:"center"}}>
-            <span>🛒 Sepetim ({cartCount})</span>
-            <span>₺{cartTotal} · Devam →</span>
+            <span>{t.cart} ({cartCount})</span>
+            <span>₺{cartTotal} · {t.continue} →</span>
           </button>
         </div>
       )}
@@ -439,7 +497,7 @@ export default function CustomerMenu() {
       {optModal && (
         <div onClick={() => setOptModal(null)} style={{position:"fixed",inset:0,background:"rgba(0,0,0,0.55)",display:"flex",alignItems:"flex-end",justifyContent:"center",zIndex:100}}>
           <div onClick={e=>e.stopPropagation()} style={{background:"#fff",borderRadius:"18px 18px 0 0",padding:20,width:"100%",maxWidth:500,maxHeight:"85vh",overflowY:"auto"}}>
-            <div style={{fontSize:20,fontWeight:800,marginBottom:4}}>{optModal.name}</div>
+            <div style={{fontSize:20,fontWeight:800,marginBottom:4}}>{pName(optModal)}</div>
             <div style={{fontSize:13,color:"#666",marginBottom:18}}>₺{calcPrice(optModal)}</div>
             {(optModal.options_config?.groups || []).map(group => (
               <div key={group.name} style={{marginBottom:14}}>
@@ -454,12 +512,12 @@ export default function CustomerMenu() {
               </div>
             ))}
             <div style={{marginBottom:16}}>
-              <div style={{fontSize:11,color:"#333",letterSpacing:"1px",fontWeight:700,marginBottom:6}}>NOT (OPSİYONEL)</div>
-              <input value={optNote} onChange={e=>setOptNote(e.target.value)} placeholder="Örn: buzsuz, sekersiz" style={{width:"100%",padding:"12px 14px",background:"#f7f7f7",border:"1px solid #eee",borderRadius:10,fontSize:14,outline:"none",fontFamily:"inherit"}}/>
+              <div style={{fontSize:11,color:"#333",letterSpacing:"1px",fontWeight:700,marginBottom:6}}>{t.optional_label}</div>
+              <input value={optNote} onChange={e=>setOptNote(e.target.value)} placeholder={t.note_optional} style={{width:"100%",padding:"12px 14px",background:"#f7f7f7",border:"1px solid #eee",borderRadius:10,fontSize:14,outline:"none",fontFamily:"inherit"}}/>
             </div>
             <div style={{display:"flex",gap:8}}>
-              <button onClick={() => setOptModal(null)} style={{flex:1,padding:"14px",background:"#fff",color:"#666",border:"1px solid #ddd",borderRadius:12,fontSize:14,fontWeight:700,cursor:"pointer"}}>İptal</button>
-              <button onClick={confirmOptions} style={{flex:2,padding:"14px",background:"#000",color:"#fff",border:"none",borderRadius:12,fontSize:14,fontWeight:800,cursor:"pointer"}}>Sepete Ekle</button>
+              <button onClick={() => setOptModal(null)} style={{flex:1,padding:"14px",background:"#fff",color:"#666",border:"1px solid #ddd",borderRadius:12,fontSize:14,fontWeight:700,cursor:"pointer"}}>{t.cancel}</button>
+              <button onClick={confirmOptions} style={{flex:2,padding:"14px",background:"#000",color:"#fff",border:"none",borderRadius:12,fontSize:14,fontWeight:800,cursor:"pointer"}}>{t.add_to_cart}</button>
             </div>
           </div>
         </div>
@@ -469,16 +527,16 @@ export default function CustomerMenu() {
         <div onClick={() => setCheckoutOpen(false)} style={{position:"fixed",inset:0,background:"rgba(0,0,0,0.55)",display:"flex",alignItems:"flex-end",justifyContent:"center",zIndex:110}}>
           <div onClick={e=>e.stopPropagation()} style={{background:"#fff",borderRadius:"18px 18px 0 0",padding:20,width:"100%",maxWidth:520,maxHeight:"92vh",overflowY:"auto"}}>
             <div style={{display:"flex",justifyContent:"space-between",alignItems:"center",marginBottom:14}}>
-              <div style={{fontSize:20,fontWeight:800}}>Sepetim</div>
+              <div style={{fontSize:20,fontWeight:800}}>{t.my_cart}</div>
               <button onClick={() => setCheckoutOpen(false)} style={{background:"none",border:"none",fontSize:24,cursor:"pointer",padding:0,color:"#666"}}>×</button>
             </div>
 
             {cart.map((c, idx) => (
               <div key={idx} style={{display:"flex",alignItems:"center",gap:10,padding:"12px 0",borderBottom:"1px solid #f0f0f0"}}>
                 <div style={{flex:1,minWidth:0}}>
-                  <div style={{fontSize:14,fontWeight:700}}>{c.product.name}</div>
+                  <div style={{fontSize:14,fontWeight:700}}>{pName(c.product)}</div>
                   {c.options && <div style={{fontSize:11,color:"#C8973E",marginTop:2,fontWeight:600}}>{Object.values(c.options).join(" · ")}</div>}
-                  {c.note && <div style={{fontSize:11,color:"#666",fontStyle:"italic",marginTop:2}}>Not: {c.note}</div>}
+                  {c.note && <div style={{fontSize:11,color:"#666",fontStyle:"italic",marginTop:2}}>{c.note}</div>}
                   <div style={{fontSize:12,color:"#555",marginTop:3}}>₺{calcPrice(c.product)} × {c.quantity} = ₺{calcPrice(c.product) * c.quantity}</div>
                 </div>
                 <div style={{display:"flex",alignItems:"center",gap:6,background:"#f2f2f2",borderRadius:20,padding:"3px 5px"}}>
@@ -491,21 +549,26 @@ export default function CustomerMenu() {
 
             {!table && (
               <div style={{marginTop:14}}>
-                <div style={{fontSize:11,color:"#333",letterSpacing:"1px",fontWeight:700,marginBottom:6}}>ADIN (garsonlar seni tanısın)</div>
-                <input value={customerName} onChange={e=>setCustomerName(e.target.value)} placeholder="Örn: Efekan" style={{width:"100%",padding:"12px 14px",background:"#f7f7f7",border:"1px solid #eee",borderRadius:10,fontSize:14,outline:"none",fontFamily:"inherit"}}/>
+                <div style={{fontSize:11,color:"#333",letterSpacing:"1px",fontWeight:700,marginBottom:6}}>{t.your_name}</div>
+                <input value={customerName} onChange={e=>setCustomerName(e.target.value)} placeholder={t.name_placeholder} style={{width:"100%",padding:"12px 14px",background:"#f7f7f7",border:"1px solid #eee",borderRadius:10,fontSize:14,outline:"none",fontFamily:"inherit"}}/>
               </div>
             )}
 
+            <div style={{marginTop:14}}>
+              <div style={{fontSize:11,color:"#333",letterSpacing:"1px",fontWeight:700,marginBottom:6}}>{t.order_note_label}</div>
+              <textarea value={orderNote} onChange={e=>setOrderNote(e.target.value)} placeholder={t.order_note_placeholder} rows={2} style={{width:"100%",padding:"12px 14px",background:"#f7f7f7",border:"1px solid #eee",borderRadius:10,fontSize:14,outline:"none",fontFamily:"inherit",resize:"vertical"}}/>
+            </div>
+
             <div style={{display:"flex",justifyContent:"space-between",alignItems:"center",marginTop:16,padding:"14px 0",borderTop:"2px solid #000"}}>
-              <div style={{fontSize:13,color:"#333",letterSpacing:"1px",fontWeight:700}}>TOPLAM</div>
+              <div style={{fontSize:13,color:"#333",letterSpacing:"1px",fontWeight:700}}>{t.total}</div>
               <div style={{fontSize:22,fontWeight:800}}>₺{cartTotal}</div>
             </div>
 
             <button onClick={submitOrder} disabled={submitting} style={{width:"100%",marginTop:14,padding:"16px",background:"#C8973E",color:"#000",border:"none",borderRadius:14,fontSize:15,fontWeight:800,cursor:"pointer",opacity:submitting?0.6:1}}>
-              {submitting ? "Gönderiliyor..." : "Siparişi Gönder"}
+              {submitting ? t.submitting : t.submit_order}
             </button>
             <div style={{textAlign:"center",fontSize:11,color:"#888",marginTop:10}}>
-              {table ? "Garson siparişini masana getirecek" : "Sipariş hazır olunca bildirim göndereceğiz"}
+              {table ? t.waiter_will_bring : t.notif_promise}
             </div>
           </div>
         </div>
