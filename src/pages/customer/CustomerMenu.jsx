@@ -68,7 +68,9 @@ export default function CustomerMenu() {
   const [submitting, setSubmitting] = useState(false);
   const [successOrderId, setSuccessOrderId] = useState(null);
   const [orderStage, setOrderStage] = useState("pending");
-  const [notifGranted, setNotifGranted] = useState(false);
+  const [notifState, setNotifState] = useState(
+    typeof Notification !== "undefined" ? Notification.permission : "unsupported"
+  );
   const audioUnlockedRef = useRef(false);
 
   const now = new Date();
@@ -102,26 +104,29 @@ export default function CustomerMenu() {
 
   useEffect(() => {
     if (!successOrderId) return;
+    console.log("[NIP] Realtime subscribe for order", successOrderId);
     const ch = supabase
       .channel("customer-order-" + successOrderId)
       .on("postgres_changes",
           {event:"*", schema:"public", table:"order_items", filter:"order_id=eq." + successOrderId},
-          async () => {
+          async (payload) => {
+            console.log("[NIP] order_items event:", payload.eventType, payload.new?.kitchen_status);
             const { data: items } = await supabase
               .from("order_items").select("kitchen_status").eq("order_id", successOrderId);
             if (!items || items.length === 0) return;
             const allServed = items.every(it => it.kitchen_status === "served");
-            const anyReady = items.some(it => it.kitchen_status === "ready");
+            const anyReady = items.some(it => it.kitchen_status === "ready" || it.kitchen_status === "served");
+            console.log("[NIP] allServed=" + allServed + " anyReady=" + anyReady + " stage=" + orderStage);
             if (allServed) {
               setOrderStage("served");
-            } else if (anyReady && orderStage !== "ready") {
+            } else if (anyReady && orderStage !== "ready" && orderStage !== "served") {
               setOrderStage("ready");
               playDing();
               vibrate();
               showBrowserNotification("🔔 Siparişin hazır!", "Kasadan alabilirsin — Not In Paris");
             }
           })
-      .subscribe();
+      .subscribe((status) => console.log("[NIP] channel status:", status));
     return () => { supabase.removeChannel(ch); };
   }, [successOrderId, orderStage]);
 
@@ -136,15 +141,16 @@ export default function CustomerMenu() {
     } catch (e) {}
   };
 
-  const requestNotifPermission = async () => {
-    if (typeof Notification === "undefined") return false;
-    if (Notification.permission === "granted") { setNotifGranted(true); return true; }
-    if (Notification.permission === "denied") { setNotifGranted(false); return false; }
+  // Request permission synchronously during user gesture (doesn't block)
+  const askNotifPermissionSync = () => {
+    if (typeof Notification === "undefined") return;
+    if (Notification.permission !== "default") { setNotifState(Notification.permission); return; }
     try {
-      const p = await Notification.requestPermission();
-      setNotifGranted(p === "granted");
-      return p === "granted";
-    } catch (e) { return false; }
+      const maybe = Notification.requestPermission((perm) => setNotifState(perm));
+      if (maybe && typeof maybe.then === "function") {
+        maybe.then(p => setNotifState(p));
+      }
+    } catch (e) {}
   };
 
   const visibleCategories = useMemo(() => {
@@ -232,6 +238,8 @@ export default function CustomerMenu() {
     if (submitting || cart.length === 0) return;
     if (!table && !customerName.trim()) { alert("Lütfen adını gir"); return; }
     unlockAudio();
+    // Ask permission during user gesture (synchronous, non-blocking)
+    askNotifPermissionSync();
     setSubmitting(true);
     try {
       const totalVal = cartTotal;
@@ -252,7 +260,7 @@ export default function CustomerMenu() {
         final_price: calcPrice(c.product),
         quantity: c.quantity,
         kitchen_status: "pending",
-        sent_to_kitchen: false,
+        sent_to_kitchen: true,
         notes: c.note || null,
         selected_options: c.options || null,
       }));
@@ -263,7 +271,6 @@ export default function CustomerMenu() {
       setOrderStage("pending");
       setCart([]);
       setCheckoutOpen(false);
-      setTimeout(() => requestNotifPermission(), 400);
     } catch (e) {
       alert("Sipariş gönderilemedi: " + e.message);
     }
@@ -288,7 +295,7 @@ export default function CustomerMenu() {
               <div style={{fontSize:15,color:"#555",marginBottom:24,lineHeight:1.5}}>
                 {table ? (table.name + " · ") : ""}Kasadan alabilirsin.
               </div>
-              <button onClick={() => { playDing(); vibrate(); }} style={{padding:"12px 24px",background:"#C8973E",color:"#000",border:"none",borderRadius:12,fontSize:13,fontWeight:800,cursor:"pointer",marginRight:8}}>🔊 Tekrar çal</button>
+              <button onClick={() => { playDing(); vibrate(); }} style={{padding:"12px 24px",background:"#C8973E",color:"#000",border:"none",borderRadius:12,fontSize:13,fontWeight:800,cursor:"pointer"}}>🔊 Tekrar çal</button>
             </>
           ) : isServed ? (
             <>
@@ -309,12 +316,16 @@ export default function CustomerMenu() {
                 Hazırlanıyor...
               </div>
               <div style={{marginBottom:10}}>
-                {notifGranted ? (
+                {notifState === "granted" ? (
                   <div style={{padding:"10px 14px",background:"#E8F5E9",border:"1px solid #B2DFDB",borderRadius:10,fontSize:12,color:"#2e7d32"}}>
                     🔔 Hazır olunca bildirim alacaksın
                   </div>
+                ) : notifState === "denied" ? (
+                  <div style={{padding:"10px 14px",background:"#FFF3E0",border:"1px solid #FFCC80",borderRadius:10,fontSize:11,color:"#E65100",lineHeight:1.5}}>
+                    ⚠️ Bildirim engellendi. Sayfayı açık bırak — hazır olunca ses çalacak.
+                  </div>
                 ) : (
-                  <button onClick={requestNotifPermission} style={{padding:"10px 18px",background:"#fff",color:"#333",border:"1px solid #ccc",borderRadius:10,fontSize:12,fontWeight:700,cursor:"pointer"}}>🔔 Bildirim izni ver</button>
+                  <button onClick={askNotifPermissionSync} style={{padding:"10px 18px",background:"#C8973E",color:"#000",border:"none",borderRadius:10,fontSize:12,fontWeight:800,cursor:"pointer"}}>🔔 Bildirim izni ver</button>
                 )}
               </div>
               <button onClick={() => { setSuccessOrderId(null); setOrderStage("pending"); load(); }} style={{padding:"10px 22px",background:"transparent",color:"#888",border:"1px solid #ddd",borderRadius:10,fontSize:12,cursor:"pointer"}}>Menüye dön</button>
