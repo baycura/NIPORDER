@@ -240,7 +240,6 @@ export default function CustomerMenu() {
     if (submitting || cart.length === 0) return;
     if (!table && !customerName.trim()) { alert("Lütfen adını gir"); return; }
     unlockAudio();
-    await requestNotifPermission();
     setSubmitting(true);
     try {
       const totalVal = cartTotal;
@@ -272,6 +271,8 @@ export default function CustomerMenu() {
       setOrderStage("pending");
       setCart([]);
       setCheckoutOpen(false);
+      // Request notification permission after order is safely recorded
+      setTimeout(() => { requestNotifPermission(); }, 400);
     } catch (e) {
       alert("Sipariş gönderilemedi: " + e.message);
     }
