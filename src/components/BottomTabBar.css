@@ -1,0 +1,35 @@
+/* BottomTabBar — brutalist sticky bottom nav */
+.nip-tabbar {
+  position: fixed;
+  inset: auto 0 0 0;
+  z-index: 40;
+  display: grid;
+  grid-template-columns: repeat(4, 1fr);
+  height: calc(var(--nip-tabbar-h) + var(--nip-safe-bottom));
+  padding-bottom: var(--nip-safe-bottom);
+  background: var(--nip-surface);
+  border-top: 1px solid var(--nip-ink);
+  box-shadow: 0 -1px 0 var(--nip-ink);
+}
+.nip-tab {
+  appearance: none; background: transparent; border: 0; margin: 0;
+  padding: 10px 4px 6px; font: inherit; color: var(--nip-muted);
+  cursor: pointer; -webkit-tap-highlight-color: transparent;
+  position: relative; display: flex; flex-direction: column;
+  align-items: center; justify-content: flex-start; gap: 4px;
+  transition: color var(--nip-dur-fast) var(--nip-ease);
+}
+.nip-tab:focus-visible { outline: 2px solid var(--nip-ink); outline-offset: -2px; }
+.nip-tab:active { transform: translateY(0.5px); }
+.nip-tab.is-active { color: var(--nip-ink); }
+.nip-tab-indicator {
+  position: absolute; top: 0; left: 50%;
+  transform: translateX(-50%) scaleX(0); transform-origin: center;
+  width: 32px; height: 3px; background: var(--nip-ink);
+  transition: transform var(--nip-dur-med) var(--nip-ease);
+}
+.nip-tab.is-active .nip-tab-indicator { transform: translateX(-50%) scaleX(1); }
+.nip-tab-icon { width: 24px; height: 24px; display: inline-flex; align-items: center; justify-content: center; }
+.nip-tab-icon svg { width: 100%; height: 100%; fill: none; stroke: currentColor; stroke-width: 1.8; stroke-linecap: round; stroke-linejoin: round; }
+.nip-tab-label { font-family: var(--nip-font-display); font-size: 11px; letter-spacing: 0.14em; text-transform: uppercase; font-weight: 500; line-height: 1; }
+@media (hover: hover) { .nip-tab:not(.is-active):hover { color: var(--nip-ink-soft); } }
