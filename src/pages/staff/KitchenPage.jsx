@@ -3,133 +3,213 @@ import { supabase } from "../../lib/supabase.js";
 
 const cv = "-apple-system,BlinkMacSystemFont,'Segoe UI',Roboto,sans-serif";
 
-function playAlarm() {
+function playDing() {
   try {
     const ctx = new (window.AudioContext || window.webkitAudioContext)();
-    const tone = (freq, start, dur, vol=0.3) => {
-      const osc = ctx.createOscillator();
-      const gain = ctx.createGain();
-      osc.connect(gain); gain.connect(ctx.destination);
-      osc.frequency.value = freq;
-      osc.type = "square";
-      gain.gain.setValueAtTime(0, ctx.currentTime + start);
-      gain.gain.linearRampToValueAtTime(vol, ctx.currentTime + start + 0.02);
-      gain.gain.exponentialRampToValueAtTime(0.001, ctx.currentTime + start + dur);
-      osc.start(ctx.currentTime + start);
-      osc.stop(ctx.currentTime + start + dur);
+    const play = (freq, start, dur, vol=0.35) => {
+      const o = ctx.createOscillator(); const g = ctx.createGain();
+      o.type = "square"; o.frequency.value = freq;
+      o.connect(g); g.connect(ctx.destination);
+      g.gain.setValueAtTime(0.0001, ctx.currentTime + start);
+      g.gain.exponentialRampToValueAtTime(vol, ctx.currentTime + start + 0.01);
+      g.gain.exponentialRampToValueAtTime(0.0001, ctx.currentTime + start + dur);
+      o.start(ctx.currentTime + start); o.stop(ctx.currentTime + start + dur);
     };
-    tone(1000, 0, 0.15);
-    tone(1400, 0.18, 0.25);
-  } catch (e) {}
+    play(1200, 0, 0.15); play(900, 0.18, 0.18); play(1400, 0.40, 0.22);
+  } catch (e) { console.error("audio error", e); }
 }
 
 export default function KitchenPage() {
-  const [orders, setOrders] = useState([]);
-  const [items, setItems] = useState([]);
-  const [tables, setTables] = useState({});
+  const [tickets, setTickets] = useState([]);
   const [loading, setLoading] = useState(true);
-  const [muted, setMuted] = useState(() => localStorage.getItem("nip_kitchen_muted") === "1");
-  const knownItemsRef = useRef(new Set());
-  const initialLoadRef = useRef(true);
+  const [flash, setFlash] = useState(false);
+  const [soundOn, setSoundOn] = useState(true);
+  const [wakeLockOn, setWakeLockOn] = useState(false);
+  const audioUnlockedRef = useRef(false);
+  const knownItemIdsRef = useRef(new Set());
+  const wakeLockRef = useRef(null);
 
   const load = async () => {
-    setLoading(true);
-    const [{data: ords}, {data: its}, {data: tabs}] = await Promise.all([
-      supabase.from("orders").select("*").in("status", ["preparing","ready","open","sent"]).order("created_at"),
-      supabase.from("order_items").select("*, products(name, category_id, categories(name))").in("kitchen_status", ["preparing","ready"]).order("created_at"),
-      supabase.from("cafe_tables").select("id, name"),
-    ]);
-    const tabMap = {};
-    (tabs || []).forEach(t => { tabMap[t.id] = t.name; });
-    setTables(tabMap);
-    setOrders(ords || []);
+    const { data: orders } = await supabase
+      .from("orders")
+      .select("id, table_id, customer_name, created_at, status")
+      .in("status", ["open","sent","preparing","ready"])
+      .order("created_at", {ascending:true});
 
-    const newItems = its || [];
-    if (!initialLoadRef.current) {
-      const fresh = newItems.filter(it =>
-        !knownItemsRef.current.has(it.id) && it.kitchen_status === "preparing"
-      );
-      if (fresh.length > 0 && !muted) playAlarm();
-    }
-    knownItemsRef.current = new Set(newItems.map(i => i.id));
-    initialLoadRef.current = false;
-    setItems(newItems);
+    if (!orders || orders.length === 0) { setTickets([]); setLoading(false); return; }
+
+    const { data: items } = await supabase
+      .from("order_items")
+      .select("*")
+      .in("order_id", orders.map(o => o.id))
+      .in("kitchen_status", ["pending","preparing","ready"])
+      .order("created_at", {ascending:true});
+
+    const { data: tabs } = await supabase.from("cafe_tables").select("id,name");
+    const tabMap = {}; (tabs||[]).forEach(t => { tabMap[t.id] = t.name; });
+
+    const itemsByOrder = {};
+    (items||[]).forEach(it => {
+      if (!itemsByOrder[it.order_id]) itemsByOrder[it.order_id] = [];
+      itemsByOrder[it.order_id].push(it);
+    });
+
+    const visibleTickets = orders
+      .filter(o => itemsByOrder[o.id] && itemsByOrder[o.id].length > 0)
+      .map(o => ({
+        order: o,
+        items: itemsByOrder[o.id],
+        where: o.table_id ? (tabMap[o.table_id] || "Masa") : "👤 " + (o.customer_name || "Misafir"),
+      }));
+
+    setTickets(visibleTickets);
     setLoading(false);
   };
 
   useEffect(() => {
     load();
-    const ch = supabase.channel("kitchen").on("postgres_changes", {event:"*", schema:"public", table:"order_items"}, load).subscribe();
+    const ch = supabase
+      .channel("kitchen-page")
+      .on("postgres_changes", {event:"*", schema:"public", table:"order_items"}, (payload) => {
+        // If it is a new pending item we have not seen, play ding + flash
+        if (payload.eventType === "INSERT" && payload.new?.kitchen_status === "pending") {
+          if (!knownItemIdsRef.current.has(payload.new.id)) {
+            knownItemIdsRef.current.add(payload.new.id);
+            if (soundOn) playDing();
+            setFlash(true);
+            setTimeout(() => setFlash(false), 1200);
+          }
+        }
+        load();
+      })
+      .on("postgres_changes", {event:"*", schema:"public", table:"orders"}, load)
+      .subscribe();
     return () => supabase.removeChannel(ch);
-  }, []);
+  }, [soundOn]);
 
-  const markReady = async (item) => {
-    await supabase.from("order_items").update({ kitchen_status: "ready" }).eq("id", item.id);
-    // Auto-bump orders.status to "ready" when all items of that order are ready
-    const orderItems = items.filter(i => i.order_id === item.order_id);
-    const allWillBeReady = orderItems.every(i => i.id === item.id || i.kitchen_status === "ready");
-    if (allWillBeReady) {
-      await supabase.from("orders").update({ status: "ready" }).eq("id", item.order_id);
+  // Populate knownItemIds on initial load so we don't ding for existing items
+  useEffect(() => {
+    tickets.forEach(t => t.items.forEach(it => knownItemIdsRef.current.add(it.id)));
+  }, [tickets]);
+
+  const unlockAudioAndWakeLock = async () => {
+    if (!audioUnlockedRef.current) {
+      try {
+        const ctx = new (window.AudioContext || window.webkitAudioContext)();
+        const o = ctx.createOscillator(); const g = ctx.createGain();
+        g.gain.value = 0.001; o.connect(g); g.connect(ctx.destination);
+        o.start(); o.stop(ctx.currentTime + 0.01);
+        audioUnlockedRef.current = true;
+      } catch (e) {}
     }
+    if ("wakeLock" in navigator && !wakeLockRef.current) {
+      try {
+        wakeLockRef.current = await navigator.wakeLock.request("screen");
+        setWakeLockOn(true);
+        wakeLockRef.current.addEventListener("release", () => {
+          setWakeLockOn(false); wakeLockRef.current = null;
+        });
+      } catch (e) { console.error("wakeLock error", e); }
+    }
+  };
+
+  useEffect(() => {
+    const onVisibilityChange = async () => {
+      if (document.visibilityState === "visible" && wakeLockOn && !wakeLockRef.current && "wakeLock" in navigator) {
+        try { wakeLockRef.current = await navigator.wakeLock.request("screen"); } catch (e) {}
+      }
+    };
+    document.addEventListener("visibilitychange", onVisibilityChange);
+    return () => document.removeEventListener("visibilitychange", onVisibilityChange);
+  }, [wakeLockOn]);
+
+  const startPreparing = async (itemId) => {
+    await supabase.from("order_items").update({ kitchen_status: "preparing" }).eq("id", itemId);
+    load();
+  };
+  const markReady = async (itemId) => {
+    await supabase.from("order_items").update({ kitchen_status: "ready" }).eq("id", itemId);
+    load();
+  };
+  const markServed = async (orderId) => {
+    await supabase.from("order_items").update({ kitchen_status: "served" }).eq("order_id", orderId);
     load();
   };
 
-  const markDone = async (orderId) => {
-    await supabase.from("order_items").update({ kitchen_status: "served" }).eq("order_id", orderId).in("kitchen_status", ["preparing","ready"]);
-    load();
-  };
+  if (loading) return (<div style={{color:"#888",fontFamily:cv,padding:20}}>Yukleniyor...</div>);
 
-  const toggleMute = () => {
-    const next = !muted;
-    setMuted(next);
-    localStorage.setItem("nip_kitchen_muted", next ? "1" : "0");
-  };
-
-  if (loading) return (<div style={{color:"#888",fontFamily:cv,padding:20}}>Yükleniyor...</div>);
-
-  const ordersWithItems = orders.filter(o => items.some(i => i.order_id === o.id));
+  const totalItems = tickets.reduce((s,t) => s + t.items.length, 0);
 
   return (
-    <div style={{fontFamily:cv,color:"#F0EDE8"}}>
-      <div style={{display:"flex",justifyContent:"space-between",alignItems:"center",marginBottom:4}}>
-        <div style={{fontSize:24,fontWeight:800}}>Mutfak</div>
-        <button onClick={toggleMute} style={{padding:"6px 12px",background:muted?"#552222":"#183D2D",border:"1px solid "+(muted?"#FF4444":"#3ECF8E"),borderRadius:10,color:muted?"#FF8888":"#88FFC8",cursor:"pointer",fontSize:14,fontWeight:700}}>{muted?"🔇":"🔊"}</button>
+    <div style={{fontFamily:cv,color:"#F0EDE8",position:"relative",minHeight:"80vh"}}>
+      {flash && (
+        <div style={{position:"fixed",top:0,left:0,right:0,padding:"18px 20px",background:"#ff4444",color:"#fff",fontSize:20,fontWeight:900,textAlign:"center",letterSpacing:"2px",zIndex:200,animation:"flash 0.2s ease-in-out 6"}}>
+          🔔 YENİ SİPARİŞ!
+          <style>{`@keyframes flash { 0%,100%{background:#ff4444} 50%{background:#ffaa00} }`}</style>
+        </div>
+      )}
+      <div style={{display:"flex",justifyContent:"space-between",alignItems:"center",marginBottom:10,flexWrap:"wrap",gap:8}}>
+        <div>
+          <div style={{fontSize:24,fontWeight:800}}>Mutfak</div>
+          <div style={{fontSize:11,color:"#888",letterSpacing:"1px"}}>{tickets.length} AKTIF HESAP · {totalItems} URUN</div>
+        </div>
+        <div style={{display:"flex",gap:6}}>
+          <button onClick={() => { setSoundOn(!soundOn); unlockAudioAndWakeLock(); }} style={{padding:"8px 12px",background:soundOn?"#3ECF8E":"#444",color:"#000",border:"none",borderRadius:8,fontSize:11,fontWeight:700,cursor:"pointer",letterSpacing:"1px"}}>
+            {soundOn ? "🔊 SES AÇIK" : "🔇 SES KAPALI"}
+          </button>
+          <button onClick={unlockAudioAndWakeLock} style={{padding:"8px 12px",background:wakeLockOn?"#C8973E":"#444",color:wakeLockOn?"#000":"#aaa",border:"none",borderRadius:8,fontSize:11,fontWeight:700,cursor:"pointer",letterSpacing:"1px"}}>
+            {wakeLockOn ? "💡 EKRAN AÇIK" : "💤 Aktifleştir"}
+          </button>
+        </div>
       </div>
-      <div style={{fontSize:11,color:"#888",letterSpacing:"1px",marginBottom:18}}>{ordersWithItems.length} AKTIF HESAP · {items.length} URUN</div>
 
-      {ordersWithItems.length === 0 && <div style={{textAlign:"center",padding:40,color:"#666",fontSize:13}}>Bekleyen ürün yok</div>}
+      {!audioUnlockedRef.current && (
+        <div onClick={unlockAudioAndWakeLock} style={{background:"#3D2D18",border:"1px solid #C8973E",color:"#FFD088",padding:"10px 14px",borderRadius:10,fontSize:12,marginBottom:14,cursor:"pointer"}}>
+          👆 Ses ve ekran uyanık kalsın için buraya bir kez tıklayın
+        </div>
+      )}
 
-      {ordersWithItems.map(o => {
-        const oItems = items.filter(i => i.order_id === o.id);
-        const where = o.table_id ? tables[o.table_id] : "👤 " + (o.customer_name || "Misafir");
-        const waitMin = Math.round((Date.now() - new Date(o.created_at).getTime()) / 60000);
+      {tickets.length === 0 && <div style={{textAlign:"center",padding:60,color:"#666",fontSize:14}}>Aktif sipariş yok</div>}
+
+      {tickets.map(t => {
+        const waitMin = Math.round((Date.now() - new Date(t.order.created_at).getTime()) / 60000);
+        const urgent = waitMin >= 15;
+        const allReady = t.items.every(it => it.kitchen_status === "ready");
         return (
-          <div key={o.id} style={{background:"#1A1A1A",border:"1px solid #2A2A2A",borderRadius:12,padding:14,marginBottom:12}}>
-            <div style={{display:"flex",justifyContent:"space-between",alignItems:"center",marginBottom:10,paddingBottom:10,borderBottom:"1px solid #2A2A2A"}}>
-              <div style={{fontSize:16,fontWeight:800,color:"#F0EDE8"}}>{where}</div>
-              <div style={{fontSize:11,color:waitMin>15?"#FF8866":"#888",fontWeight:600}}>{waitMin} dk</div>
+          <div key={t.order.id} style={{background:"#1A1A1A",border:"1px solid "+(urgent?"#a00":"#2A2A2A"),borderRadius:12,padding:14,marginBottom:10}}>
+            <div style={{display:"flex",justifyContent:"space-between",alignItems:"center",marginBottom:10}}>
+              <div style={{fontSize:15,fontWeight:700}}>{t.where}</div>
+              <div style={{fontSize:12,color:urgent?"#ff6666":"#C8973E",fontWeight:700}}>{waitMin} dk</div>
             </div>
-            {o.notes && <div style={{background:"rgba(200,151,62,0.15)",border:"1px solid rgba(200,151,62,0.4)",borderRadius:8,padding:8,marginBottom:8,fontSize:12,color:"#FFD27A"}}>SİPARİŞ NOTU: {o.notes}</div>}
-            {oItems.map(it => {
-              const isReady = it.kitchen_status === "ready";
+
+            {t.items.map(it => {
+              const opts = it.selected_options ? Object.values(it.selected_options).join(" · ") : null;
               return (
-                <div key={it.id} style={{display:"flex",alignItems:"center",justifyContent:"space-between",padding:"10px 0",borderBottom:"1px solid rgba(42,42,42,0.5)"}}>
-                  <div style={{flex:1}}>
-                    <div style={{fontSize:14,fontWeight:700,color:isReady?"#3ECF8E":"#F0EDE8"}}>{it.quantity}× {it.products?.name || it.product_name || "Ürün"}</div>
-                    {it.selected_options && <div style={{fontSize:11,color:"#C8973E",marginTop:2,fontWeight:600}}>{Object.values(it.selected_options).join(", ")}</div>}
-                    {it.notes && <div style={{fontSize:11,color:"#FFD27A",marginTop:2,fontStyle:"italic"}}>Not: {it.notes}</div>}
-                    {it.products?.categories?.name && <div style={{fontSize:10,color:"#666",marginTop:2,letterSpacing:"1px"}}>{it.products.categories.name.toUpperCase()}</div>}
+                <div key={it.id} style={{display:"flex",alignItems:"center",gap:10,padding:"10px 0",borderTop:"1px solid #222"}}>
+                  <div style={{flex:1,minWidth:0}}>
+                    <div style={{fontSize:14,fontWeight:700,color: it.kitchen_status==="ready"?"#3ECF8E":"#F0EDE8"}}>
+                      {it.quantity}× {it.product_name}
+                    </div>
+                    {opts && <div style={{fontSize:11,color:"#C8973E",marginTop:2,fontWeight:600}}>{opts}</div>}
+                    {it.notes && <div style={{fontSize:11,color:"#aaa",fontStyle:"italic",marginTop:2}}>Not: {it.notes}</div>}
                   </div>
-                  {!isReady ? (
-                    <button onClick={() => markReady(it)} style={{padding:"8px 14px",background:"#3ECF8E",color:"#000",border:"none",borderRadius:8,fontSize:12,fontWeight:800,cursor:"pointer"}}>Hazır</button>
-                  ) : (
-                    <span style={{fontSize:11,color:"#3ECF8E",fontWeight:700,letterSpacing:"1px"}}>✓ HAZIR</span>
-                  )}
+                  <div style={{display:"flex",gap:6}}>
+                    {it.kitchen_status === "pending" && (
+                      <button onClick={() => startPreparing(it.id)} style={{padding:"8px 14px",background:"#E07A3E",color:"#000",border:"none",borderRadius:8,fontSize:11,fontWeight:800,cursor:"pointer"}}>Hazırlamaya başla</button>
+                    )}
+                    {it.kitchen_status === "preparing" && (
+                      <button onClick={() => markReady(it.id)} style={{padding:"8px 14px",background:"#3ECF8E",color:"#000",border:"none",borderRadius:8,fontSize:11,fontWeight:800,cursor:"pointer"}}>Hazır</button>
+                    )}
+                    {it.kitchen_status === "ready" && (
+                      <span style={{padding:"6px 10px",color:"#3ECF8E",fontSize:11,fontWeight:800}}>✓ HAZIR</span>
+                    )}
+                  </div>
                 </div>
               );
             })}
-            {oItems.every(i => i.kitchen_status === "ready") && (
-              <button onClick={() => markDone(o.id)} style={{width:"100%",padding:"10px",background:"transparent",color:"#888",border:"1px solid #333",borderRadius:8,fontSize:12,fontWeight:700,cursor:"pointer",marginTop:10}}>Servis edildi → kapat</button>
+
+            {allReady && (
+              <button onClick={() => markServed(t.order.id)} style={{width:"100%",marginTop:10,padding:"10px",background:"transparent",color:"#aaa",border:"1px dashed #555",borderRadius:8,fontSize:12,fontWeight:700,cursor:"pointer"}}>Servis edildi → kapat</button>
             )}
           </div>
         );
