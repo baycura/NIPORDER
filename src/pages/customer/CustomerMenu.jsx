@@ -17,6 +17,13 @@ function isInRange(now, from, until) {
 }
 
 function playDing() {
+  // Strategy 1: HTMLAudioElement with inline wav (works on Safari/Firefox/Chrome/mobile)
+  try {
+    const wavB64 = "UklGRtwCAABXQVZFZm10IBAAAAABAAEAESsAACJWAAACABAAZGF0YbYCAAAAAP////8AAAEAAAAAAP//AAAAAP//AAAAAAAAAAABAAAA/////wAAAAABAAAAAAAAAAAAAAAAAAAAAAABAAAA/////wAAAQAAAAAAAAAAAP//AAD/////AQABAAAAAAD//wAAAAAAAP//AAD//wEAAAABAAEAAAABAAEAAQABAP//AAAAAAAAAAAAAAAAAAAAAAAAAAAAAAEAAAAAAAAAAAAAAAAA//8AAAEAAAD//wAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAA//8AAP//AAD//wAA//8AAP//AAAAAAAAAQABAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAABAAAAAAD/////AAAAAAAAAAAAAAAAAAABAAEAAQABAAAA//8AAAAA//8AAAAAAQAAAAEAAAAAAAAAAAD//wAAAAAAAAAAAAAAAAAAAQAAAAAAAAAAAAAAAAAAAAAAAAD//wAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAA=";
+    const audio = new Audio("data:audio/wav;base64," + wavB64);
+    audio.volume = 0.5; audio.play().catch(()=>{});
+  } catch (e) {}
+  // Strategy 2: Web Audio API oscillator (cleaner tone)
   try {
     const ctx = new (window.AudioContext || window.webkitAudioContext)();
     const play = (freq, start, dur) => {
@@ -104,6 +111,28 @@ export default function CustomerMenu() {
 
   useEffect(() => {
     if (!successOrderId) return;
+    // Polling fallback: check order items every 3s in case Realtime is down
+    let stopped = false;
+    const checkStatus = async () => {
+      if (stopped) return;
+      const { data: items } = await supabase
+        .from("order_items").select("kitchen_status").eq("order_id", successOrderId);
+      if (!items || items.length === 0) return;
+      const allServed = items.every(it => it.kitchen_status === "served");
+      const anyReady = items.some(it => it.kitchen_status === "ready" || it.kitchen_status === "served");
+      if (allServed) {
+        setOrderStage(prev => prev === "served" ? prev : "served");
+      } else if (anyReady) {
+        setOrderStage(prev => {
+          if (prev === "ready" || prev === "served") return prev;
+          playDing(); vibrate();
+          showBrowserNotification("🔔 Siparişin hazır!", "Kasadan alabilirsin — Not In Paris");
+          return "ready";
+        });
+      }
+    };
+    checkStatus();
+    const poller = setInterval(checkStatus, 3000);
     console.log("[NIP] Realtime subscribe for order", successOrderId);
     const ch = supabase
       .channel("customer-order-" + successOrderId)
@@ -127,8 +156,8 @@ export default function CustomerMenu() {
             }
           })
       .subscribe((status) => console.log("[NIP] channel status:", status));
-    return () => { supabase.removeChannel(ch); };
-  }, [successOrderId, orderStage]);
+    return () => { stopped = true; clearInterval(poller); supabase.removeChannel(ch); };
+  }, [successOrderId]);
 
   const unlockAudio = () => {
     if (audioUnlockedRef.current) return;
