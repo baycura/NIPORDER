@@ -4,7 +4,6 @@ import { supabase } from "../../lib/supabase.js";
 
 const cv = "-apple-system,BlinkMacSystemFont,'Segoe UI',Roboto,sans-serif";
 
-// Party mode hours helper (crosses midnight handling)
 function isInRange(now, from, until) {
   if (!from || !until) return false;
   const [fh, fm] = from.split(":").map(Number);
@@ -17,7 +16,6 @@ function isInRange(now, from, until) {
   return nowMin >= fromMin || nowMin < untilMin;
 }
 
-// Web Audio API — simple ding sound
 function playDing() {
   try {
     const ctx = new (window.AudioContext || window.webkitAudioContext)();
@@ -69,7 +67,7 @@ export default function CustomerMenu() {
   const [customerName, setCustomerName] = useState("");
   const [submitting, setSubmitting] = useState(false);
   const [successOrderId, setSuccessOrderId] = useState(null);
-  const [orderStage, setOrderStage] = useState("pending"); // pending | ready | served
+  const [orderStage, setOrderStage] = useState("pending");
   const [notifGranted, setNotifGranted] = useState(false);
   const audioUnlockedRef = useRef(false);
 
@@ -85,7 +83,6 @@ export default function CustomerMenu() {
         tab = t || null;
       }
       setTable(tab);
-
       const [{data: cats}, {data: prods}, {data: app}, hhRes] = await Promise.all([
         supabase.from("categories").select("*").eq("is_active", true).order("sort_order"),
         supabase.from("products").select("*").eq("is_available", true).order("sort_order"),
@@ -96,17 +93,13 @@ export default function CustomerMenu() {
       setProducts(prods || []);
       setSettings(app || {});
       if (hhRes && hhRes.data && hhRes.data[0]) setHh(hhRes.data[0]);
-
       if (cats && cats.length && !selectedCat) setSelectedCat(cats[0].id);
-    } catch (e) {
-      console.error("Menu load error", e);
-    }
+    } catch (e) { console.error("Menu load error", e); }
     setLoading(false);
   };
 
   useEffect(() => { load(); }, [qrToken]);
 
-  // Realtime subscription to order items for the submitted order
   useEffect(() => {
     if (!successOrderId) return;
     const ch = supabase
@@ -132,7 +125,6 @@ export default function CustomerMenu() {
     return () => { supabase.removeChannel(ch); };
   }, [successOrderId, orderStage]);
 
-  // Unlock audio context on first user interaction
   const unlockAudio = () => {
     if (audioUnlockedRef.current) return;
     try {
@@ -271,8 +263,7 @@ export default function CustomerMenu() {
       setOrderStage("pending");
       setCart([]);
       setCheckoutOpen(false);
-      // Request notification permission after order is safely recorded
-      setTimeout(() => { requestNotifPermission(); }, 400);
+      setTimeout(() => requestNotifPermission(), 400);
     } catch (e) {
       alert("Sipariş gönderilemedi: " + e.message);
     }
@@ -292,7 +283,7 @@ export default function CustomerMenu() {
         <div style={{maxWidth:460,margin:"0 auto",textAlign:"center"}}>
           {isReady ? (
             <>
-              <div style={{fontSize:80,marginBottom:14,animation:"pulse 1s infinite"}}>🔔</div>
+              <div style={{fontSize:80,marginBottom:14}}>🔔</div>
               <div style={{fontSize:30,fontWeight:900,marginBottom:8,letterSpacing:"-0.5px"}}>SİPARİŞİN HAZIR!</div>
               <div style={{fontSize:15,color:"#555",marginBottom:24,lineHeight:1.5}}>
                 {table ? (table.name + " · ") : ""}Kasadan alabilirsin.
@@ -314,7 +305,7 @@ export default function CustomerMenu() {
                 {table ? (table.name + " için m") : "M"}utfağa iletildi. Hazırlanıyor…
               </div>
               <div style={{display:"inline-flex",alignItems:"center",gap:8,padding:"10px 16px",background:"#f6f6f6",borderRadius:24,marginBottom:24,fontSize:13,color:"#555"}}>
-                <span style={{width:10,height:10,borderRadius:"50%",background:"#C8973E",display:"inline-block",animation:"pulse 1s infinite"}}></span>
+                <span style={{width:10,height:10,borderRadius:"50%",background:"#C8973E",display:"inline-block"}}></span>
                 Hazırlanıyor...
               </div>
               <div style={{marginBottom:10}}>
@@ -329,7 +320,6 @@ export default function CustomerMenu() {
               <button onClick={() => { setSuccessOrderId(null); setOrderStage("pending"); load(); }} style={{padding:"10px 22px",background:"transparent",color:"#888",border:"1px solid #ddd",borderRadius:10,fontSize:12,cursor:"pointer"}}>Menüye dön</button>
             </>
           )}
-          <style>{`@keyframes pulse { 0%,100%{opacity:1;transform:scale(1)} 50%{opacity:0.5;transform:scale(0.9)} }`}</style>
         </div>
       </div>
     );
