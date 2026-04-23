@@ -4,6 +4,13 @@ import { supabase } from "../../lib/supabase.js";
 const cv = "-apple-system,BlinkMacSystemFont,'Segoe UI',Roboto,sans-serif";
 
 function playDing() {
+  // Strategy 1: HTMLAudioElement with inline wav (works on Safari/Firefox/Chrome/mobile)
+  try {
+    const wavB64 = "UklGRtwCAABXQVZFZm10IBAAAAABAAEAESsAACJWAAACABAAZGF0YbYCAAAAAP////8AAAEAAAAAAP//AAAAAP//AAAAAAAAAAABAAAA/////wAAAAABAAAAAAAAAAAAAAAAAAAAAAABAAAA/////wAAAQAAAAAAAAAAAP//AAD/////AQABAAAAAAD//wAAAAAAAP//AAD//wEAAAABAAEAAAABAAEAAQABAP//AAAAAAAAAAAAAAAAAAAAAAAAAAAAAAEAAAAAAAAAAAAAAAAA//8AAAEAAAD//wAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAA//8AAP//AAD//wAA//8AAP//AAAAAAAAAQABAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAABAAAAAAD/////AAAAAAAAAAAAAAAAAAABAAEAAQABAAAA//8AAAAA//8AAAAAAQAAAAEAAAAAAAAAAAD//wAAAAAAAAAAAAAAAAAAAQAAAAAAAAAAAAAAAAAAAAAAAAD//wAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAA=";
+    const audio = new Audio("data:audio/wav;base64," + wavB64);
+    audio.volume = 0.6; audio.play().catch(()=>{});
+  } catch (e) {}
+  // Strategy 2: Web Audio API (louder, more aggressive tone)
   try {
     const ctx = new (window.AudioContext || window.webkitAudioContext)();
     const play = (freq, start, dur, vol=0.35) => {
@@ -84,7 +91,27 @@ export default function KitchenPage() {
       })
       .on("postgres_changes", {event:"*", schema:"public", table:"orders"}, load)
       .subscribe();
-    return () => supabase.removeChannel(ch);
+    // Polling fallback: every 4s reload and check for new pending items
+    const poller = setInterval(async () => {
+      const { data: newItems } = await supabase
+        .from("order_items").select("id,kitchen_status,created_at")
+        .eq("kitchen_status", "pending").order("created_at", {ascending:false}).limit(5);
+      if (newItems && newItems.length) {
+        let foundNew = false;
+        newItems.forEach(it => {
+          if (!knownItemIdsRef.current.has(it.id)) {
+            knownItemIdsRef.current.add(it.id);
+            foundNew = true;
+          }
+        });
+        if (foundNew) {
+          if (soundOn) playDing();
+          setFlash(true); setTimeout(() => setFlash(false), 1500);
+          load();
+        }
+      }
+    }, 4000);
+    return () => { supabase.removeChannel(ch); clearInterval(poller); };
   }, [soundOn]);
 
   // Populate knownItemIds on initial load so we don't ding for existing items
