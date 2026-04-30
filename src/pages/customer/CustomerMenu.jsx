@@ -6,53 +6,89 @@ const cv = "-apple-system,BlinkMacSystemFont,'Segoe UI',Roboto,sans-serif";
 
 const T = {
   tr: {
-    menu: "MENÜ", partyMode: "PARTİ MODU", category_empty: "Bu kategoride ürün yok",
-    sold_out: "Tükendi", optional: "SEÇENEKLI", cart: "🛒 Sepetim",
-    continue: "Devam", note_optional: "Örn: buzsuz, sekersiz", optional_label: "NOT (OPSİYONEL)",
-    cancel: "İptal", add_to_cart: "Sepete Ekle", my_cart: "Sepetim",
-    your_name: "ADIN (garsonlar seni tanısın)", name_placeholder: "Örn: Efekan",
-    order_note_label: "SİPARİŞ NOTU (mutfak görecek)", order_note_placeholder: "Örn: az pişmiş, baharatsız...",
-    total: "TOPLAM", submit_order: "Siparişi Gönder", submitting: "Gönderiliyor...",
+    menu: "MENÜ",
+    partyMode: "PARTİ MODU",
+    category_empty: "Bu kategoride ürün yok",
+    sold_out: "Tükendi",
+    optional: "SEÇENEKLI",
+    cart: "🛒 Sepetim",
+    continue: "Devam",
+    note_optional: "Örn: buzsuz, sekersiz",
+    optional_label: "NOT (OPSİYONEL)",
+    cancel: "İptal",
+    add_to_cart: "Sepete Ekle",
+    my_cart: "Sepetim",
+    your_name: "ADIN (garsonlar seni tanısın)",
+    name_placeholder: "Örn: Efekan",
+    order_note_label: "SİPARİŞ NOTU (mutfak görecek)",
+    order_note_placeholder: "Örn: az pişmiş, baharatsız...",
+    total: "TOPLAM",
+    submit_order: "Siparişi Gönder",
+    submitting: "Gönderiliyor...",
     waiter_will_bring: "Garson siparişini masana getirecek",
     notif_promise: "Sipariş hazır olunca bildirim göndereceğiz",
-    please_choose: "Lütfen", please_enter_name: "Lütfen adını gir",
+    please_choose: "Lütfen",
+    please_enter_name: "Lütfen adını gir",
     sold_out_alert: "Bu ürün şu an tükendi: ",
-    order_received: "Siparişin alındı!", order_kitchen_msg: "utfağa iletildi. Hazırlanıyor…",
+    order_received: "Siparişin alındı!",
+    order_kitchen_msg: "utfağa iletildi. Hazırlanıyor…",
     preparing: "Hazırlanıyor...",
     notif_granted: "🔔 Hazır olunca bildirim alacaksın",
     notif_denied: "⚠️ Bildirim engellendi. Sayfayı açık bırak — hazır olunca ses çalacak.",
     notif_ask: "🔔 Bildirim izni ver",
     back_to_menu: "Menüye dön",
-    order_ready_big: "SİPARİŞİN HAZIR!", pick_from_cashier: "Kasadan alabilirsin.",
+    order_ready_big: "SİPARİŞİN HAZIR!",
+    pick_from_cashier: "Kasadan alabilirsin.",
     play_again: "🔊 Tekrar çal",
-    enjoy: "Afiyet olsun!", thanks: "Tekrar bekleriz ♥", new_order: "Yeni sipariş ver",
+    enjoy: "Afiyet olsun!",
+    thanks: "Tekrar bekleriz ♥",
+    new_order: "Yeni sipariş ver",
     submit_failed: "Sipariş gönderilemedi: ",
-    notif_title: "🔔 Siparişin hazır!", notif_body: "Kasadan alabilirsin — Not In Paris",
+    notif_title: "🔔 Siparişin hazır!",
+    notif_body: "Kasadan alabilirsin — Not In Paris",
     happy_hour: "HAPPY HOUR",
   },
   en: {
-    menu: "MENU", partyMode: "PARTY MODE", category_empty: "No products in this category",
-    sold_out: "Sold out", optional: "OPTIONS", cart: "🛒 Cart",
-    continue: "Continue", note_optional: "e.g. no ice, no sugar", optional_label: "NOTE (OPTIONAL)",
-    cancel: "Cancel", add_to_cart: "Add to Cart", my_cart: "My Cart",
-    your_name: "YOUR NAME (so the staff can find you)", name_placeholder: "e.g. John",
-    order_note_label: "ORDER NOTE (kitchen will see)", order_note_placeholder: "e.g. medium-rare, no spice...",
-    total: "TOTAL", submit_order: "Place Order", submitting: "Sending...",
+    menu: "MENU",
+    partyMode: "PARTY MODE",
+    category_empty: "No products in this category",
+    sold_out: "Sold out",
+    optional: "OPTIONS",
+    cart: "🛒 Cart",
+    continue: "Continue",
+    note_optional: "e.g. no ice, no sugar",
+    optional_label: "NOTE (OPTIONAL)",
+    cancel: "Cancel",
+    add_to_cart: "Add to Cart",
+    my_cart: "My Cart",
+    your_name: "YOUR NAME (so the staff can find you)",
+    name_placeholder: "e.g. John",
+    order_note_label: "ORDER NOTE (kitchen will see)",
+    order_note_placeholder: "e.g. medium-rare, no spice...",
+    total: "TOTAL",
+    submit_order: "Place Order",
+    submitting: "Sending...",
     waiter_will_bring: "Server will bring it to your table",
     notif_promise: "We'll notify you when your order is ready",
-    please_choose: "Please choose", please_enter_name: "Please enter your name",
+    please_choose: "Please choose",
+    please_enter_name: "Please enter your name",
     sold_out_alert: "This item is sold out: ",
-    order_received: "Order received!", order_kitchen_msg: "ent to kitchen. Being prepared…",
+    order_received: "Order received!",
+    order_kitchen_msg: "ent to kitchen. Being prepared…",
     preparing: "Preparing...",
     notif_granted: "🔔 You'll be notified when ready",
     notif_denied: "⚠️ Notifications blocked. Keep this page open — you'll hear a sound when ready.",
     notif_ask: "🔔 Enable notifications",
     back_to_menu: "Back to menu",
-    order_ready_big: "YOUR ORDER IS READY!", pick_from_cashier: "Pick it up from the cashier.",
+    order_ready_big: "YOUR ORDER IS READY!",
+    pick_from_cashier: "Pick it up from the cashier.",
     play_again: "🔊 Play again",
-    enjoy: "Enjoy your meal!", thanks: "See you soon ♥", new_order: "Place a new order",
+    enjoy: "Enjoy your meal!",
+    thanks: "See you soon ♥",
+    new_order: "Place a new order",
     submit_failed: "Failed to send order: ",
-    notif_title: "🔔 Your order is ready!", notif_body: "Pick it up from the cashier — Not In Paris",
+    notif_title: "🔔 Your order is ready!",
+    notif_body: "Pick it up from the cashier — Not In Paris",
     happy_hour: "HAPPY HOUR",
   }
 };
@@ -72,8 +108,7 @@ function isInRange(now, from, until) {
 let _audioCtx = null;
 function getAudioCtx() {
   if (!_audioCtx) {
-    try { _audioCtx = new (window.AudioContext || window.webkitAudioContext)(); }
-    catch (e) {}
+    try { _audioCtx = new (window.AudioContext || window.webkitAudioContext)(); } catch (e) {}
   }
   return _audioCtx;
 }
@@ -83,15 +118,19 @@ async function playDing() {
   if (!ctx) return;
   if (ctx.state === "suspended") { try { await ctx.resume(); } catch (e) {} }
   const beep = (freq, start, dur, vol=0.6) => {
-    const o = ctx.createOscillator(); const g = ctx.createGain();
-    o.type = "sine"; o.frequency.value = freq;
+    const o = ctx.createOscillator();
+    const g = ctx.createGain();
+    o.type = "sine";
+    o.frequency.value = freq;
     o.connect(g); g.connect(ctx.destination);
     g.gain.setValueAtTime(0.0001, ctx.currentTime + start);
     g.gain.exponentialRampToValueAtTime(vol, ctx.currentTime + start + 0.01);
     g.gain.exponentialRampToValueAtTime(0.0001, ctx.currentTime + start + dur);
-    o.start(ctx.currentTime + start); o.stop(ctx.currentTime + start + dur);
+    o.start(ctx.currentTime + start);
+    o.stop(ctx.currentTime + start + dur);
   };
-  beep(880, 0, 0.18); beep(1320, 0.18, 0.35);
+  beep(880, 0, 0.18);
+  beep(1320, 0.18, 0.35);
 }
 
 function vibrate() {
@@ -103,8 +142,12 @@ function showBrowserNotification(title, body) {
     if (typeof Notification === "undefined") return;
     if (Notification.permission !== "granted") return;
     const n = new Notification(title, {
-      body, icon: "/logo.png", badge: "/logo.png", tag: "nip-order",
-      requireInteraction: true, vibrate: [200,100,200],
+      body,
+      icon: "/icon512.png",
+      badge: "/icon512.png",
+      tag: "nip-order",
+      requireInteraction: true,
+      vibrate: [200,100,200],
     });
     n.onclick = () => { window.focus(); n.close(); };
   } catch (e) {}
@@ -143,9 +186,9 @@ export default function CustomerMenu() {
   const audioUnlockedRef = useRef(false);
 
   const now = new Date();
-  const partyMode = settings && settings.party_mode_enabled && isInRange(now, settings.party_mode_from, settings.party_mode_until);
+  const partyMode = settings && settings.party_mode_enabled &&
+    isInRange(now, settings.party_mode_from, settings.party_mode_until);
 
-  // Helpers to pick the right language for product/category names
   const pName = (p) => (lang === "en" && p?.name_en) ? p.name_en : p?.name;
   const pDesc = (p) => (lang === "en" && p?.description_en) ? p.description_en : p?.description;
   const cName = (c) => (lang === "en" && c?.name_en) ? c.name_en : c?.name;
@@ -176,7 +219,6 @@ export default function CustomerMenu() {
 
   useEffect(() => { load(); }, [qrToken]);
 
-  // Realtime + polling fallback
   useEffect(() => {
     if (!successOrderId) return;
     let stopped = false;
@@ -200,12 +242,9 @@ export default function CustomerMenu() {
     };
     checkStatus();
     const poller = setInterval(checkStatus, 3000);
-
     const ch = supabase
       .channel("customer-order-" + successOrderId)
-      .on("postgres_changes",
-          {event:"*", schema:"public", table:"order_items", filter:"order_id=eq." + successOrderId},
-          checkStatus)
+      .on("postgres_changes", {event:"*", schema:"public", table:"order_items", filter:"order_id=eq." + successOrderId}, checkStatus)
       .subscribe();
     return () => { stopped = true; clearInterval(poller); supabase.removeChannel(ch); };
   }, [successOrderId, lang]);
@@ -216,8 +255,10 @@ export default function CustomerMenu() {
       const ctx = getAudioCtx();
       if (ctx && ctx.state === "suspended") await ctx.resume();
       if (ctx) {
-        const o = ctx.createOscillator(); const g = ctx.createGain();
-        g.gain.value = 0.001; o.connect(g); g.connect(ctx.destination);
+        const o = ctx.createOscillator();
+        const g = ctx.createGain();
+        g.gain.value = 0.001;
+        o.connect(g); g.connect(ctx.destination);
         o.start(); o.stop(ctx.currentTime + 0.02);
       }
       audioUnlockedRef.current = true;
@@ -269,15 +310,10 @@ export default function CustomerMenu() {
 
   const onProductTap = (p) => {
     unlockAudio();
-    if (p.sold_out_today) {
-      alert(t.sold_out_alert + (p.unavailable_reason || ""));
-      return;
-    }
+    if (p.sold_out_today) { alert(t.sold_out_alert + (p.unavailable_reason || "")); return; }
     if (p.has_options && p.options_config) {
       setOptModal(p); setOptSelected({}); setOptNote("");
-    } else {
-      addToCart(p, null, null);
-    }
+    } else { addToCart(p, null, null); }
   };
 
   const addToCart = (product, options, note) => {
@@ -306,9 +342,7 @@ export default function CustomerMenu() {
     if (!optModal) return;
     const cfg = optModal.options_config || {};
     for (const group of cfg.groups || []) {
-      if (group.required && !optSelected[group.name]) {
-        alert(t.please_choose + " " + group.name); return;
-      }
+      if (group.required && !optSelected[group.name]) { alert(t.please_choose + " " + group.name); return; }
     }
     addToCart(optModal, optSelected, optNote.trim() || null);
     setOptModal(null);
@@ -317,44 +351,29 @@ export default function CustomerMenu() {
   const submitOrder = async () => {
     if (submitting || cart.length === 0) return;
     if (!table && !customerName.trim()) { alert(t.please_enter_name); return; }
-    unlockAudio();
-    askNotifPermissionSync();
+    unlockAudio(); askNotifPermissionSync();
     setSubmitting(true);
     try {
       const totalVal = cartTotal;
       const { data: ord, error: ordErr } = await supabase.from("orders").insert({
         table_id: table ? table.id : null,
         customer_name: table ? null : customerName.trim(),
-        subtotal: totalVal,
-        total: totalVal,
-        status: "open",
+        subtotal: totalVal, total: totalVal, status: "open",
         note: orderNote.trim() || null,
       }).select().single();
       if (ordErr) throw ordErr;
-
       const itemsPayload = cart.map(c => ({
-        order_id: ord.id,
-        product_id: c.product.id,
-        product_name: c.product.name,
-        product_price: Number(c.product.price),
-        final_price: calcPrice(c.product),
-        quantity: c.quantity,
-        kitchen_status: "pending",
-        sent_to_kitchen: true,
-        notes: c.note || null,
-        selected_options: c.options || null,
+        order_id: ord.id, product_id: c.product.id, product_name: c.product.name,
+        product_price: Number(c.product.price), final_price: calcPrice(c.product),
+        quantity: c.quantity, kitchen_status: "pending", sent_to_kitchen: true,
+        notes: c.note || null, selected_options: c.options || null,
       }));
       const { error: itErr } = await supabase.from("order_items").insert(itemsPayload);
       if (itErr) throw itErr;
-
       setSuccessOrderId(ord.id);
       setOrderStage("pending");
-      setCart([]);
-      setOrderNote("");
-      setCheckoutOpen(false);
-    } catch (e) {
-      alert(t.submit_failed + e.message);
-    }
+      setCart([]); setOrderNote(""); setCheckoutOpen(false);
+    } catch (e) { alert(t.submit_failed + e.message); }
     setSubmitting(false);
   };
 
@@ -366,7 +385,7 @@ export default function CustomerMenu() {
   );
 
   if (loading) {
-    return (<div style={{fontFamily:cv,background:"#fff",minHeight:"100vh",display:"flex",alignItems:"center",justifyContent:"center",color:"#888"}}>...</div>);
+    return (<div className="nip-customer" style={{fontFamily:cv,background:"#fff",minHeight:"100vh",display:"flex",alignItems:"center",justifyContent:"center",color:"#888"}}>...</div>);
   }
 
   if (successOrderId) {
@@ -374,7 +393,7 @@ export default function CustomerMenu() {
     const isReady = orderStage === "ready";
     const isServed = orderStage === "served";
     return (
-      <div style={{fontFamily:cv,background:bg,minHeight:"100vh",padding:"40px 20px",color:"#000",transition:"background 0.4s"}}>
+      <div className="nip-customer" style={{fontFamily:cv,background:bg,minHeight:"100vh",padding:"40px 20px",color:"#000",transition:"background 0.4s"}}>
         <div style={{maxWidth:460,margin:"0 auto",textAlign:"center"}}>
           {isReady ? (
             <>
@@ -421,7 +440,7 @@ export default function CustomerMenu() {
   }
 
   return (
-    <div style={{fontFamily:cv,background:"#fff",minHeight:"100vh",color:"#000",paddingBottom:cart.length>0?96:24}}>
+    <div className="nip-customer nip-customer-shell" style={{fontFamily:cv,background:"#fff",minHeight:"100vh",color:"#000",paddingBottom:cart.length>0?96:24}}>
       <div style={{padding:"20px 16px 10px",borderBottom:"1px solid #eee",position:"sticky",top:0,background:"#fff",zIndex:20}}>
         <div style={{display:"flex",alignItems:"center",justifyContent:"space-between"}}>
           <div>
@@ -436,7 +455,6 @@ export default function CustomerMenu() {
             <LangSwitcher/>
           </div>
         </div>
-
         <div style={{display:"flex",gap:6,overflowX:"auto",marginTop:12,paddingBottom:4}}>
           {visibleCategories.map(c => (
             <button key={c.id} onClick={() => setSelectedCat(c.id)} style={{flexShrink:0,padding:"8px 14px",border:"none",borderRadius:16,fontSize:12,fontWeight:700,background:selectedCat===c.id?"#000":"#f2f2f2",color:selectedCat===c.id?"#fff":"#333",cursor:"pointer",whiteSpace:"nowrap",letterSpacing:"0.3px"}}>
@@ -530,7 +548,6 @@ export default function CustomerMenu() {
               <div style={{fontSize:20,fontWeight:800}}>{t.my_cart}</div>
               <button onClick={() => setCheckoutOpen(false)} style={{background:"none",border:"none",fontSize:24,cursor:"pointer",padding:0,color:"#666"}}>×</button>
             </div>
-
             {cart.map((c, idx) => (
               <div key={idx} style={{display:"flex",alignItems:"center",gap:10,padding:"12px 0",borderBottom:"1px solid #f0f0f0"}}>
                 <div style={{flex:1,minWidth:0}}>
@@ -546,24 +563,20 @@ export default function CustomerMenu() {
                 </div>
               </div>
             ))}
-
             {!table && (
               <div style={{marginTop:14}}>
                 <div style={{fontSize:11,color:"#333",letterSpacing:"1px",fontWeight:700,marginBottom:6}}>{t.your_name}</div>
                 <input value={customerName} onChange={e=>setCustomerName(e.target.value)} placeholder={t.name_placeholder} style={{width:"100%",padding:"12px 14px",background:"#f7f7f7",border:"1px solid #eee",borderRadius:10,fontSize:14,outline:"none",fontFamily:"inherit"}}/>
               </div>
             )}
-
             <div style={{marginTop:14}}>
               <div style={{fontSize:11,color:"#333",letterSpacing:"1px",fontWeight:700,marginBottom:6}}>{t.order_note_label}</div>
               <textarea value={orderNote} onChange={e=>setOrderNote(e.target.value)} placeholder={t.order_note_placeholder} rows={2} style={{width:"100%",padding:"12px 14px",background:"#f7f7f7",border:"1px solid #eee",borderRadius:10,fontSize:14,outline:"none",fontFamily:"inherit",resize:"vertical"}}/>
             </div>
-
             <div style={{display:"flex",justifyContent:"space-between",alignItems:"center",marginTop:16,padding:"14px 0",borderTop:"2px solid #000"}}>
               <div style={{fontSize:13,color:"#333",letterSpacing:"1px",fontWeight:700}}>{t.total}</div>
               <div style={{fontSize:22,fontWeight:800}}>₺{cartTotal}</div>
             </div>
-
             <button onClick={submitOrder} disabled={submitting} style={{width:"100%",marginTop:14,padding:"16px",background:"#C8973E",color:"#000",border:"none",borderRadius:14,fontSize:15,fontWeight:800,cursor:"pointer",opacity:submitting?0.6:1}}>
               {submitting ? t.submitting : t.submit_order}
             </button>

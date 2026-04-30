@@ -1,0 +1,97 @@
+/* ============================================================
+   Not In Paris — Design Tokens (Light / Customer Theme)
+   ----------------------------------------------------------
+   Aesthetic: brutalist editorial café. Dominant black + cream,
+   sparse mustard accent. Hard edges, condensed display type.
+
+   Variables live at :root so they are globally available,
+   but color application is scoped to .nip-customer so the
+   dark staff/admin theme (index.css) stays untouched.
+   ============================================================ */
+
+:root {
+  /* ------- Colors (customer palette) ------- */
+  --nip-bg:          #FAFAF7;
+  --nip-surface:     #FFFFFF;
+  --nip-ink:         #0A0A0A;
+  --nip-ink-soft:    #1A1A1A;
+  --nip-muted:       #8A8A86;
+  --nip-divider:     #E5E3DC;
+  --nip-cream:       #EFEAE0;
+  --nip-accent:      #C8973E;   /* keep existing mustard */
+  --nip-accent-ink:  #2A2200;
+  --nip-danger:      #C83E3E;
+  --nip-success:     #2F7D4F;
+  --nip-overlay:     rgba(10,10,10,0.55);
+
+  /* ------- Typography ------- */
+  /* Coolvetica added in P7. Fallbacks keep the condensed look. */
+  --nip-font-display: "Coolvetica","Bebas Neue","Archivo Narrow","Oswald",system-ui,sans-serif;
+  --nip-font-body:    "IBM Plex Sans","DM Sans",-apple-system,BlinkMacSystemFont,"Segoe UI",sans-serif;
+  --nip-font-mono:    "IBM Plex Mono",ui-monospace,SFMono-Regular,monospace;
+
+  /* ------- Radii (brutalist → mostly 0) ------- */
+  --nip-r-0: 0px;
+  --nip-r-1: 2px;
+  --nip-r-2: 4px;
+
+  /* ------- Spacing (4px base) ------- */
+  --nip-s-1: 4px;
+  --nip-s-2: 8px;
+  --nip-s-3: 12px;
+  --nip-s-4: 16px;
+  --nip-s-5: 24px;
+  --nip-s-6: 32px;
+  --nip-s-7: 48px;
+  --nip-s-8: 64px;
+
+  /* ------- Shadows ------- */
+  --nip-shadow-1: 0 1px 0 rgba(0,0,0,0.06);
+  --nip-shadow-2: 0 2px 10px rgba(0,0,0,0.08);
+  --nip-shadow-pop: 0 8px 32px rgba(0,0,0,0.18);
+
+  /* ------- Motion ------- */
+  --nip-ease: cubic-bezier(0.22, 1, 0.36, 1);
+  --nip-dur-fast: 140ms;
+  --nip-dur-med: 260ms;
+
+  /* ------- Layout ------- */
+  --nip-tabbar-h: 64px;
+  --nip-safe-bottom: env(safe-area-inset-bottom, 0px);
+}
+
+/* ============================================================
+   Scoped customer theme — only applies inside .nip-customer
+   Wrap CustomerMenu root in <div className="nip-customer">.
+   ============================================================ */
+
+.nip-customer {
+  background: var(--nip-bg);
+  color: var(--nip-ink);
+  font-family: var(--nip-font-body);
+  min-height: 100vh;
+  -webkit-font-smoothing: antialiased;
+  text-rendering: optimizeLegibility;
+}
+
+.nip-customer h1,
+.nip-customer h2,
+.nip-customer h3,
+.nip-customer h4,
+.nip-customer .nip-display {
+  font-family: var(--nip-font-display);
+  letter-spacing: 0.01em;
+  font-weight: 500;
+  line-height: 1.02;
+  text-transform: uppercase;
+}
+
+/* Reserve space for the fixed bottom tab bar */
+.nip-customer-shell {
+  padding-bottom: calc(var(--nip-tabbar-h) + var(--nip-safe-bottom) + var(--nip-s-4));
+}
+
+/* ============================================================
+   P7 will add:
+     @font-face { font-family:'Coolvetica'; src:url('/fonts/coolvetica.woff2') format('woff2'); }
+   ============================================================ */

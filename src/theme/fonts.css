@@ -1,0 +1,46 @@
+/* ============================================================
+   Not In Paris — Coolvetica @font-face declarations (P7)
+   ----------------------------------------------------------
+   Latin-extended subset (~33 KB each), brotli unavailable so
+   shipped as OTF (browsers from 2020+ accept OTF in @font-face).
+
+   Three weights mapped to logical font-weight values so existing
+   CSS that uses font-weight:400/500/700 picks the right cut.
+
+   Place this file alongside tokens.css and import it in main.jsx
+   AFTER tokens.css.
+   ============================================================ */
+
+@font-face {
+  font-family: 'Coolvetica';
+  src: url('/fonts/Coolvetica-Condensed.otf') format('opentype');
+  font-weight: 400 500;
+  font-style: normal;
+  font-display: swap;
+}
+
+@font-face {
+  font-family: 'Coolvetica';
+  src: url('/fonts/Coolvetica-HeavyComp.otf') format('opentype');
+  font-weight: 700 900;
+  font-style: normal;
+  font-display: swap;
+}
+
+@font-face {
+  font-family: 'Coolvetica Wide';
+  src: url('/fonts/Coolvetica.otf') format('opentype');
+  font-weight: 400 500;
+  font-style: normal;
+  font-display: swap;
+}
+
+/* ---- Coolvetica is now active wherever --nip-font-display is used.
+        Also wire the BottomTabBar label, which uses font-weight 500. ---- */
+.nip-customer .nip-tab-label,
+.nip-customer h1,
+.nip-customer h2,
+.nip-customer h3,
+.nip-customer h4 {
+  font-weight: 500;
+}
