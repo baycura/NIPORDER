@@ -1,5 +1,5 @@
 import { useEffect, useMemo, useRef, useState } from "react";
-import { useParams, useNavigate } from "react-router-dom";
+import { useParams, useNavigate, useSearchParams } from "react-router-dom";
 import { supabase } from "../../lib/supabase.js";
 
 const cv = "-apple-system,BlinkMacSystemFont,'Segoe UI',Roboto,sans-serif";
@@ -156,6 +156,9 @@ function showBrowserNotification(title, body) {
 export default function CustomerMenu() {
   const { qrToken } = useParams();
   const navigate = useNavigate();
+  const [searchParams] = useSearchParams();
+  const storeSlugParam = (searchParams.get("store") || "paris").toLowerCase();
+  const [currentStoreId, setCurrentStoreId] = useState(null);
 
   const [lang, setLang] = useState(() => {
     try { return localStorage.getItem("nip_lang") || "tr"; } catch (e) { return "tr"; }
@@ -196,28 +199,48 @@ export default function CustomerMenu() {
   const load = async () => {
     setLoading(true);
     try {
+      // 1) Resolve current store: qrToken → cafe_tables.store_id, else URL ?store=slug
       let tab = null;
+      let storeId = null;
       if (qrToken) {
         const { data: tt } = await supabase.from("cafe_tables").select("*").eq("qr_token", qrToken).maybeSingle();
         tab = tt || null;
+        storeId = tab?.store_id || null;
       }
+      if (!storeId) {
+        const { data: storeRow } = await supabase.from("stores").select("id").eq("slug", storeSlugParam).maybeSingle();
+        storeId = storeRow?.id || null;
+      }
+      if (!storeId) {
+        // Fallback: paris
+        const { data: parisRow } = await supabase.from("stores").select("id").eq("slug", "paris").maybeSingle();
+        storeId = parisRow?.id || null;
+      }
+      setCurrentStoreId(storeId);
       setTable(tab);
-      const [{data: cats}, {data: prods}, {data: app}, hhRes] = await Promise.all([
-        supabase.from("categories").select("*").eq("is_active", true).order("sort_order"),
-        supabase.from("products").select("*").eq("is_available", true).order("sort_order"),
-        supabase.from("app_settings").select("*").limit(1).maybeSingle(),
+
+      // 2) Load store-scoped data in parallel
+      const [{data: cats}, {data: prods}, {data: appRows}, hhRes] = await Promise.all([
+        supabase.from("categories").select("*").eq("is_active", true).eq("store_id", storeId).order("sort_order"),
+        supabase.from("products").select("*").eq("is_available", true).eq("store_id", storeId).order("sort_order"),
+        supabase.from("app_settings").select("key,value").eq("store_id", storeId),
         supabase.rpc("get_active_happy_hour").then(r => r).catch(() => ({data: null})),
       ]);
       setCategories(cats || []);
       setProducts(prods || []);
-      setSettings(app || {});
+
+      // 3) Convert app_settings rows → flat object {key1: value1, key2: value2}
+      const settingsObj = {};
+      (appRows || []).forEach(row => { settingsObj[row.key] = row.value; });
+      setSettings(settingsObj);
+
       if (hhRes && hhRes.data && hhRes.data[0]) setHh(hhRes.data[0]);
       if (cats && cats.length && !selectedCat) setSelectedCat(cats[0].id);
     } catch (e) { console.error("Menu load error", e); }
     setLoading(false);
   };
 
-  useEffect(() => { load(); }, [qrToken]);
+  useEffect(() => { load(); }, [qrToken, storeSlugParam]);
 
   useEffect(() => {
     if (!successOrderId) return;
@@ -360,6 +383,7 @@ export default function CustomerMenu() {
         customer_name: table ? null : customerName.trim(),
         subtotal: totalVal, total: totalVal, status: "open",
         note: orderNote.trim() || null,
+        origin_store_id: currentStoreId,
       }).select().single();
       if (ordErr) throw ordErr;
       const itemsPayload = cart.map(c => ({
@@ -367,6 +391,7 @@ export default function CustomerMenu() {
         product_price: Number(c.product.price), final_price: calcPrice(c.product),
         quantity: c.quantity, kitchen_status: "pending", sent_to_kitchen: true,
         notes: c.note || null, selected_options: c.options || null,
+        store_id: c.product.store_id || currentStoreId,
       }));
       const { error: itErr } = await supabase.from("order_items").insert(itemsPayload);
       if (itErr) throw itErr;
