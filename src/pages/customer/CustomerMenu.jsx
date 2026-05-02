@@ -313,14 +313,24 @@ export default function CustomerMenu() {
     return list;
   }, [products, selectedCat, partyMode]);
 
-  const calcPrice = (p) => {
+  const calcPrice = (p, options) => {
+    let basePrice = Number(p.price);
+    // Add price modifiers from selected options (e.g. Single/Double pour size)
+    if (options && p.options_config?.groups) {
+      for (const group of p.options_config.groups) {
+        const selectedOpt = options[group.name];
+        if (selectedOpt && group.price_modifiers && group.price_modifiers[selectedOpt] != null) {
+          basePrice += Number(group.price_modifiers[selectedOpt]) || 0;
+        }
+      }
+    }
     let pct = 0;
     if (hh && (hh.category_ids?.length === 0 || hh.category_ids?.includes(p.category_id))) pct = Number(hh.discount_pct) || 0;
     if (Number(p.instant_discount_pct||0) > pct) pct = Number(p.instant_discount_pct);
-    return Math.round(Number(p.price) * (100 - pct) / 100);
+    return Math.round(basePrice * (100 - pct) / 100);
   };
 
-  const cartTotal = useMemo(() => cart.reduce((s, it) => s + calcPrice(it.product) * it.quantity, 0), [cart, hh]);
+  const cartTotal = useMemo(() => cart.reduce((s, it) => s + calcPrice(it.product, it.options) * it.quantity, 0), [cart, hh]);
   const cartCount = useMemo(() => cart.reduce((s, it) => s + it.quantity, 0), [cart]);
 
   const findInCart = (productId, options, note) => {
@@ -388,7 +398,7 @@ export default function CustomerMenu() {
       if (ordErr) throw ordErr;
       const itemsPayload = cart.map(c => ({
         order_id: ord.id, product_id: c.product.id, product_name: c.product.name,
-        product_price: Number(c.product.price), final_price: calcPrice(c.product),
+        product_price: Number(c.product.price), final_price: calcPrice(c.product, c.options),
         quantity: c.quantity, kitchen_status: "pending", sent_to_kitchen: true,
         notes: c.note || null, selected_options: c.options || null,
         store_id: c.product.store_id || currentStoreId,
@@ -541,7 +551,7 @@ export default function CustomerMenu() {
         <div onClick={() => setOptModal(null)} style={{position:"fixed",inset:0,background:"rgba(0,0,0,0.55)",display:"flex",alignItems:"flex-end",justifyContent:"center",zIndex:100}}>
           <div onClick={e=>e.stopPropagation()} style={{background:"#fff",borderRadius:"18px 18px 0 0",padding:20,width:"100%",maxWidth:500,maxHeight:"85vh",overflowY:"auto"}}>
             <div style={{fontSize:20,fontWeight:800,marginBottom:4}}>{pName(optModal)}</div>
-            <div style={{fontSize:13,color:"#666",marginBottom:18}}>₺{calcPrice(optModal)}</div>
+            <div style={{fontSize:13,color:"#666",marginBottom:18}}>₺{calcPrice(optModal, optSelected)}</div>
             {(optModal.options_config?.groups || []).map(group => (
               <div key={group.name} style={{marginBottom:14}}>
                 <div style={{fontSize:11,color:"#333",letterSpacing:"1px",fontWeight:700,marginBottom:6}}>
@@ -579,7 +589,7 @@ export default function CustomerMenu() {
                   <div style={{fontSize:14,fontWeight:700}}>{pName(c.product)}</div>
                   {c.options && <div style={{fontSize:11,color:"#C8973E",marginTop:2,fontWeight:600}}>{Object.values(c.options).join(" · ")}</div>}
                   {c.note && <div style={{fontSize:11,color:"#666",fontStyle:"italic",marginTop:2}}>{c.note}</div>}
-                  <div style={{fontSize:12,color:"#555",marginTop:3}}>₺{calcPrice(c.product)} × {c.quantity} = ₺{calcPrice(c.product) * c.quantity}</div>
+                  <div style={{fontSize:12,color:"#555",marginTop:3}}>₺{calcPrice(c.product, c.options)} × {c.quantity} = ₺{calcPrice(c.product, c.options) * c.quantity}</div>
                 </div>
                 <div style={{display:"flex",alignItems:"center",gap:6,background:"#f2f2f2",borderRadius:20,padding:"3px 5px"}}>
                   <button onClick={() => updateQty(idx, -1)} style={{width:26,height:26,background:"transparent",color:"#000",border:"none",borderRadius:"50%",fontSize:16,cursor:"pointer",fontWeight:700}}>−</button>
