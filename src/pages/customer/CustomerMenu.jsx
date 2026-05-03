@@ -235,9 +235,16 @@ export default function CustomerMenu() {
         const { data: kCats } = await supabase.from("categories").select("*").eq("is_active", true).eq("store_id", DONER_STORE_UUID).eq("name", "Kitchen");
         if (kCats && kCats.length > 0) {
           finalCats.push(...kCats);
+          const kitchenCatId = kCats[0].id;
           const kCatIds = kCats.map(c => c.id);
           const { data: kProds } = await supabase.from("products").select("*").eq("is_available", true).in("category_id", kCatIds).order("sort_order");
           if (kProds && kProds.length > 0) finalProds.push(...kProds);
+          // Visual alias: also show paris Brunch products under Kitchen tab. Order routing unchanged (same product_id => paris kitchen).
+          const brunchCat = finalCats.find(c => c.name === "Brunch" && c.store_id === storeId);
+          if (brunchCat) {
+            const brunchAliases = finalProds.filter(p => p.category_id === brunchCat.id).map(p => ({ ...p, category_id: kitchenCatId }));
+            finalProds.push(...brunchAliases);
+          }
         }
         finalCats.sort((a, b) => (a.sort_order || 0) - (b.sort_order || 0));
       }
@@ -523,7 +530,7 @@ export default function CustomerMenu() {
           const cartIdx = cart.findIndex(c => c.product.id === p.id && !c.options);
           const inCart = cartIdx >= 0 ? cart[cartIdx].quantity : 0;
           return (
-            <div key={p.id} style={{display:"flex",gap:12,padding:"14px 0",borderBottom:"1px solid #f0f0f0",opacity:soldOut?0.45:1}}>
+            <div key={p.id + "-" + p.category_id} style={{display:"flex",gap:12,padding:"14px 0",borderBottom:"1px solid #f0f0f0",opacity:soldOut?0.45:1}}>
               {p.image_url && <img src={p.image_url} alt="" style={{width:72,height:72,borderRadius:10,objectFit:"cover",flexShrink:0}}/>}
               <div style={{flex:1,minWidth:0}}>
                 <div style={{fontSize:15,fontWeight:700,color:"#000",lineHeight:1.3}}>{pName(p)}</div>
