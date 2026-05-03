@@ -226,8 +226,23 @@ export default function CustomerMenu() {
         supabase.from("app_settings").select("key,value").eq("store_id", storeId),
         supabase.rpc("get_active_happy_hour").then(r => r).catch(() => ({data: null})),
       ]);
-      setCategories(cats || []);
-      setProducts(prods || []);
+      // Cross-store: paris view also shows doner Kitchen category + its products
+      const PARIS_STORE_UUID = "c3c6e0c7-1821-4edd-993d-ad960cfbc452";
+      const DONER_STORE_UUID = "c39da530-7f73-4f69-a752-029bf03790b1";
+      const finalCats = [...(cats || [])];
+      const finalProds = [...(prods || [])];
+      if (storeId === PARIS_STORE_UUID) {
+        const { data: kCats } = await supabase.from("categories").select("*").eq("is_active", true).eq("store_id", DONER_STORE_UUID).eq("name", "Kitchen");
+        if (kCats && kCats.length > 0) {
+          finalCats.push(...kCats);
+          const kCatIds = kCats.map(c => c.id);
+          const { data: kProds } = await supabase.from("products").select("*").eq("is_available", true).in("category_id", kCatIds).order("sort_order");
+          if (kProds && kProds.length > 0) finalProds.push(...kProds);
+        }
+        finalCats.sort((a, b) => (a.sort_order || 0) - (b.sort_order || 0));
+      }
+      setCategories(finalCats);
+      setProducts(finalProds);
 
       // 3) Convert app_settings rows → flat object {key1: value1, key2: value2}
       const settingsObj = {};
