@@ -19,7 +19,7 @@ export default function TablesPage() {
     setLoading(true);
     const [{data: tabs}, {data: ords}] = await Promise.all([
       supabase.from("cafe_tables").select("*").order("sort_order").order("name"),
-      supabase.from("orders").select("id, table_id, customer_name, total, status, created_at").in("status", ["open","sent","preparing","ready"]),
+      supabase.from("orders").select("id, table_id, customer_name, total, status, created_at, origin_store_id, stores:origin_store_id(slug, name)").in("status", ["open","sent","preparing","ready"]),
     ]);
     setTables(tabs || []);
     setOrders(ords || []);
@@ -96,6 +96,7 @@ export default function TablesPage() {
           {orders.filter(o => !o.table_id).map(o => (
             <div key={o.id} onClick={() => navigate("/orders/" + o.id)} style={{background:"#1A1A1A",border:"1px solid #C8973E",borderRadius:12,padding:14,marginBottom:8,cursor:"pointer",display:"flex",justifyContent:"space-between",alignItems:"center"}}>
               <div>
+                {o.stores?.slug && <div style={{display:"inline-block",background:o.stores.slug==="doner"?"#C8973E":"#3ECF8E",color:"#000",padding:"2px 8px",borderRadius:6,fontSize:10,fontWeight:800,letterSpacing:"0.5px",marginBottom:4}}>{o.stores.slug==="doner"?"🥙 DÖNER":"🗼 PARIS"}</div>}
                 <div style={{fontSize:15,fontWeight:700,color:"#F0EDE8"}}>👤 {o.customer_name}</div>
                 <div style={{fontSize:11,color:"#888",marginTop:2}}>Acik hesap · ₺{o.total || 0}</div>
               </div>
