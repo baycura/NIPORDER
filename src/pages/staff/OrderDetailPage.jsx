@@ -22,7 +22,7 @@ export default function OrderDetailPage() {
   const load = async () => {
     setLoading(true);
     const [{data: o}, {data: its}, {data: cats}, {data: prods}, {data: tabs}] = await Promise.all([
-      supabase.from("orders").select("*").eq("id", orderId).maybeSingle(),
+      supabase.from("orders").select("*, stores:origin_store_id(slug, name)").eq("id", orderId).maybeSingle(),
       supabase.from("order_items").select("*").eq("order_id", orderId).order("created_at"),
       supabase.from("categories").select("*").eq("is_active", true).order("sort_order"),
       supabase.from("products").select("*").eq("is_available", true).order("sort_order"),
@@ -124,6 +124,7 @@ export default function OrderDetailPage() {
 
       <div style={{marginBottom:14}}>
         <div style={{display:"flex",alignItems:"center",gap:8,flexWrap:"wrap"}}>
+          {order.stores?.slug && <span style={{display:"inline-block",background:order.stores.slug==="doner"?"#C8973E":"#3ECF8E",color:"#000",padding:"3px 10px",borderRadius:6,fontSize:10,fontWeight:800,letterSpacing:"0.5px"}}>{order.stores.slug==="doner"?"🥙 DÖNER":"🗼 PARIS"}</span>}
           {where ? (
             <div style={{fontSize:24,fontWeight:800}}>{where}</div>
           ) : (
