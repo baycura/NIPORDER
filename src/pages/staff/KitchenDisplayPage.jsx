@@ -30,7 +30,7 @@ export default function KitchenDisplayPage() {
   const load = async () => {
     const { data: orders } = await supabase
       .from("orders")
-      .select("id, table_id, customer_name, created_at, status")
+      .select("id, table_id, customer_name, created_at, status, origin_store_id, stores:origin_store_id(slug, name)")
       .in("status", ["open","sent","preparing","ready"])
       .order("created_at", {ascending:true});
 
@@ -56,6 +56,7 @@ export default function KitchenDisplayPage() {
       .map(o => ({
         order: o, items: itemsByOrder[o.id],
         where: o.table_id ? (tabMap[o.table_id] || "Masa") : (o.customer_name || "Misafir"),
+        storeSlug: o.stores?.slug,
       }));
 
     setTickets(visible);
@@ -138,7 +139,10 @@ export default function KitchenDisplayPage() {
           return (
             <div key={t.order.id} style={{background:urgent?"#3d0808":"#141414",border:"2px solid "+(urgent?"#ff3333":"#222"),borderRadius:12,padding:14}}>
               <div style={{display:"flex",justifyContent:"space-between",alignItems:"center",marginBottom:10}}>
-                <div style={{fontSize:18,fontWeight:800}}>{t.where}</div>
+                <div style={{flex:1,minWidth:0}}>
+                  {t.storeSlug && <div style={{display:"inline-block",background:t.storeSlug==="doner"?"#C8973E":"#3ECF8E",color:"#000",padding:"2px 8px",borderRadius:6,fontSize:10,fontWeight:800,letterSpacing:"0.5px",marginBottom:4}}>{t.storeSlug==="doner"?"🥙 DÖNER":"🗼 PARIS"}</div>}
+                  <div style={{fontSize:18,fontWeight:800}}>{t.where}</div>
+                </div>
                 <div style={{fontSize:20,fontWeight:900,color:urgent?"#ff6666":"#C8973E"}}>{waitMin}'</div>
               </div>
               {t.items.map(it => {
