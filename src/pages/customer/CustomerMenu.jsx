@@ -220,11 +220,12 @@ export default function CustomerMenu() {
       setTable(tab);
 
       // 2) Load store-scoped data in parallel
-      const [{data: cats}, {data: prods}, {data: appRows}, hhRes] = await Promise.all([
+      const [{data: cats}, {data: prods}, {data: appRows}, hhRes, {data: scheduleRules}] = await Promise.all([
         supabase.from("categories").select("*").eq("is_active", true).eq("store_id", storeId).order("sort_order"),
         supabase.from("products").select("*").eq("is_available", true).eq("store_id", storeId).order("sort_order"),
         supabase.from("app_settings").select("key,value").eq("store_id", storeId),
         supabase.rpc("get_active_happy_hour").then(r => r).catch(() => ({data: null})),
+        supabase.from("category_schedule_rules").select("*").eq("is_active", true).eq("store_id", storeId),
       ]);
       // Cross-store: paris view also shows doner Kitchen category + its products
       const PARIS_STORE_UUID = "c3c6e0c7-1821-4edd-993d-ad960cfbc452";
@@ -261,7 +262,29 @@ export default function CustomerMenu() {
       }
       // Hide Brunch tab from paris view (all Brunch products visible under Kitchen tab now)
       const finalCatsFiltered = finalCats.filter(c => c.name !== "Brunch");
-      setCategories(finalCatsFiltered);
+      // Apply category schedule rules (hide categories during certain time windows)
+      const now = new Date();
+      const dayOfWeek = now.getDay();
+      const minutes = now.getHours() * 60 + now.getMinutes();
+      const hiddenCatIds = new Set();
+      (scheduleRules || []).forEach(rule => {
+        if (!rule.days_of_week?.includes(dayOfWeek)) return;
+        const [sh, sm] = rule.start_time.split(":").map(Number);
+        const [eh, em] = rule.end_time.split(":").map(Number);
+        const startMin = sh * 60 + sm;
+        const endMin = eh * 60 + em;
+        let inRange;
+        if (startMin <= endMin) {
+          inRange = minutes >= startMin && minutes < endMin;
+        } else {
+          inRange = minutes >= startMin || minutes < endMin;
+        }
+        if (inRange) {
+          Object.keys(rule.category_overrides || {}).forEach(cid => hiddenCatIds.add(cid));
+        }
+      });
+      const finalCatsAfterSchedule = finalCatsFiltered.filter(c => !hiddenCatIds.has(c.id));
+      setCategories(finalCatsAfterSchedule);
       setProducts(finalProds);
 
       // 3) Convert app_settings rows → flat object {key1: value1, key2: value2}
