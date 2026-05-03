@@ -20,7 +20,7 @@ export default function PaymentPage() {
   const load = async () => {
     setLoading(true);
     const [{data: ords}, {data: tabs}, {data: custs}] = await Promise.all([
-      supabase.from("orders").select("id, table_id, customer_name, total, status, created_at").in("status", ["open","sent","preparing","ready"]).order("created_at", { ascending: false }),
+      supabase.from("orders").select("id, table_id, customer_name, total, status, created_at, origin_store_id, stores:origin_store_id(slug, name)").in("status", ["open","sent","preparing","ready"]).order("created_at", { ascending: false }),
       supabase.from("cafe_tables").select("id, name"),
       supabase.from("customers").select("id, name, outstanding_balance").order("name"),
     ]);
@@ -83,9 +83,13 @@ export default function PaymentPage() {
 
       {orders.map(o => {
         const where = o.table_id ? tables[o.table_id] : "👤 " + (o.customer_name || "Misafir");
+        const storeSlug = o.stores?.slug;
+        const storeBadge = storeSlug === "doner" ? "🥙 DÖNER" : storeSlug === "paris" ? "🗼 PARIS" : null;
+        const storeBadgeColor = storeSlug === "doner" ? "#C8973E" : "#3ECF8E";
         return (
           <div key={o.id} style={{background:"#1A1A1A",border:"1px solid #2A2A2A",borderRadius:10,padding:14,marginBottom:8,display:"flex",alignItems:"center",gap:12}}>
             <div style={{flex:1,minWidth:0}}>
+              {storeBadge && <div style={{display:"inline-block",background:storeBadgeColor,color:"#000",padding:"2px 8px",borderRadius:6,fontSize:10,fontWeight:800,letterSpacing:"0.5px",marginBottom:4}}>{storeBadge}</div>}
               <div style={{fontSize:14,fontWeight:700,color:"#F0EDE8"}}>{where}</div>
               <div style={{fontSize:11,color:"#888",marginTop:2}}>{new Date(o.created_at).toLocaleTimeString("tr-TR", {hour:"2-digit", minute:"2-digit"})}</div>
             </div>
@@ -101,6 +105,7 @@ export default function PaymentPage() {
             <div style={{fontSize:18,fontWeight:800,color:"#F0EDE8",marginBottom:16}}>Odeme Al</div>
 
             <div style={{background:"#0C0C0C",border:"1px solid #2A2A2A",borderRadius:10,padding:14,marginBottom:14}}>
+              {modal.stores?.slug && <div style={{display:"inline-block",background:modal.stores.slug==="doner"?"#C8973E":"#3ECF8E",color:"#000",padding:"2px 8px",borderRadius:6,fontSize:10,fontWeight:800,letterSpacing:"0.5px",marginBottom:6}}>{modal.stores.slug==="doner"?"🥙 DÖNER":"🗼 PARIS"}</div>}
               <div style={{fontSize:11,color:"#888",marginBottom:4}}>{modal.table_id ? tables[modal.table_id] : "👤 " + (modal.customer_name || "Misafir")}</div>
               <div style={{fontSize:24,color:"#F0EDE8",fontWeight:800}}>₺{modal.total || 0}</div>
             </div>
