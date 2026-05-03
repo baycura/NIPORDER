@@ -35,7 +35,7 @@ export default function OrdersPage() {
     else statuses = ["open","sent","preparing","ready","paid","cancelled","debt"];
 
     const [{data: ords}, {data: tabs}] = await Promise.all([
-      supabase.from("orders").select("*").in("status", statuses).order("created_at", {ascending:false}).limit(80),
+      supabase.from("orders").select("*, stores:origin_store_id(slug, name)").in("status", statuses).order("created_at", {ascending:false}).limit(80),
       supabase.from("cafe_tables").select("id, name").order("sort_order"),
     ]);
     const tMap = {};
@@ -98,6 +98,7 @@ export default function OrdersPage() {
           <div key={o.id} onClick={() => navigate("/orders/" + o.id)} style={{background:"#1A1A1A",border:"1px solid #2A2A2A",borderRadius:10,padding:12,marginBottom:8,cursor:"pointer",display:"flex",alignItems:"center",gap:10}}>
             <div style={{flex:1,minWidth:0}}>
               <div style={{display:"flex",alignItems:"center",gap:8,flexWrap:"wrap"}}>
+                {o.stores?.slug && <span style={{display:"inline-block",background:o.stores.slug==="doner"?"#C8973E":"#3ECF8E",color:"#000",padding:"2px 8px",borderRadius:6,fontSize:9,fontWeight:800,letterSpacing:"0.5px"}}>{o.stores.slug==="doner"?"🥙 DÖNER":"🗼 PARIS"}</span>}
                 <div style={{fontSize:14,fontWeight:700,color:"#F0EDE8"}}>{where}</div>
                 <span style={{fontSize:9,padding:"2px 8px",background:st.color+"22",color:st.color,borderRadius:6,fontWeight:700,letterSpacing:"1px"}}>{st.label?.toUpperCase()}</span>
               </div>
