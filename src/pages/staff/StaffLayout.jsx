@@ -23,6 +23,7 @@ const MANAGER_NAV = [
   {to:"/staff-mgmt",  icon:"👥", label:"Personel"},
   {to:"/members",     icon:"🌟", label:"Üyeler & Borç"},
   {to:"/happy-hour",  icon:"🎉", label:"Happy Hour"},
+  {to:"/category-schedule", icon:"⏰", label:"Kategori Saatleri"},
   {to:"/merch-mgmt",  icon:"👕", label:"Merch"},
   {to:"/settings",    icon:"⚙",   label:"Ayarlar"},
 ];
