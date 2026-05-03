@@ -238,7 +238,18 @@ export default function CustomerMenu() {
           const kitchenCatId = kCats[0].id;
           const kCatIds = kCats.map(c => c.id);
           const { data: kProds } = await supabase.from("products").select("*").eq("is_available", true).in("category_id", kCatIds).order("sort_order");
-          if (kProds && kProds.length > 0) finalProds.push(...kProds);
+          if (kProds && kProds.length > 0) {
+            // Move drinks (Coke, Ayran, Water) to paris Cold Drinks tab
+            const coldDrinksCat = finalCats.find(c => c.name === "Cold Drinks");
+            const drinkNames = ["Coke", "Ayran", "Water"];
+            kProds.forEach(p => {
+              if (coldDrinksCat && drinkNames.includes(p.name)) {
+                finalProds.push({ ...p, category_id: coldDrinksCat.id });
+              } else {
+                finalProds.push(p);
+              }
+            });
+          }
           // Visual alias: also show paris Brunch products under Kitchen tab. Order routing unchanged (same product_id => paris kitchen).
           const brunchCat = finalCats.find(c => c.name === "Brunch" && c.store_id === storeId);
           if (brunchCat) {
@@ -248,7 +259,9 @@ export default function CustomerMenu() {
         }
         finalCats.sort((a, b) => (a.sort_order || 0) - (b.sort_order || 0));
       }
-      setCategories(finalCats);
+      // Hide Brunch tab from paris view (all Brunch products visible under Kitchen tab now)
+      const finalCatsFiltered = finalCats.filter(c => c.name !== "Brunch");
+      setCategories(finalCatsFiltered);
       setProducts(finalProds);
 
       // 3) Convert app_settings rows → flat object {key1: value1, key2: value2}
