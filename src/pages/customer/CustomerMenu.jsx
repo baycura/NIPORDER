@@ -240,11 +240,16 @@ export default function CustomerMenu() {
           const kCatIds = kCats.map(c => c.id);
           const { data: kProds } = await supabase.from("products").select("*").eq("is_available", true).eq("store_id", DONER_STORE_UUID).in("category_id", kCatIds).order("sort_order");
           if (kProds && kProds.length > 0) {
-            // Move drinks (Coke, Ayran, Water) to paris Cold Drinks tab
+            // Move drinks (Coke, Ayran) to paris Cold Drinks tab as visual alias
+            // Skip Water/Soda from doner — paris already has its own Water/Soda in Cold Drinks
             const coldDrinksCat = finalCats.find(c => c.name === "Cold Drinks");
-            const drinkNames = ["Coke", "Ayran", "Water"];
+            const drinkAliasNames = ["Coke", "Ayran"];
+            const skipNames = ["Water", "Soda"];
             kProds.forEach(p => {
-              if (coldDrinksCat && drinkNames.includes(p.name)) {
+              if (skipNames.includes(p.name)) {
+                return; // skip — paris view has its own Water/Soda
+              }
+              if (coldDrinksCat && drinkAliasNames.includes(p.name)) {
                 finalProds.push({ ...p, category_id: coldDrinksCat.id });
               } else {
                 finalProds.push(p);
