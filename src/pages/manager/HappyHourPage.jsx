@@ -87,7 +87,7 @@ export default function HappyHourPage() {
   return (
     <div style={{ padding: 24, fontFamily: cv, color: "#fff", minHeight: "100vh", background: "#000" }}>
       <div style={{ display: "flex", justifyContent: "space-between", alignItems: "center", marginBottom: 24 }}>
-        <h1 style={{ fontSize: 32, fontFamily: cvc, letterSpacing: "2px", margin: 0 }}>\u{1F389} HAPPY HOUR</h1>
+        <h1 style={{ fontSize: 32, fontFamily: cvc, letterSpacing: "2px", margin: 0 }}>🎉 HAPPY HOUR</h1>
         <button onClick={() => setShowAdd(true)} style={{ padding: "12px 20px", background: "#C8973E", color: "#000", border: "none", fontFamily: cvc, fontSize: 14, letterSpacing: "1px", cursor: "pointer", borderRadius: 8 }}>+ YEN\u0130 KURAL</button>
       </div>
 
