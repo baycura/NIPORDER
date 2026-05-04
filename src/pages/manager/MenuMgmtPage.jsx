@@ -157,6 +157,19 @@ export default function MenuMgmtPage() {
     gs[gIdx] = {...gs[gIdx], options:(gs[gIdx].options||[]).filter((_,i)=>i!==optIdx)};
     setProdForm({...prodForm, options_config:{groups:gs}});
   };
+  const moveProduct = async (p, dir) => {
+    const sameCategory = products.filter(x => x.category_id === p.category_id).sort((a,b) => (a.sort_order||0) - (b.sort_order||0));
+    const idx = sameCategory.findIndex(x => x.id === p.id);
+    const swapIdx = dir === "up" ? idx - 1 : idx + 1;
+    if (swapIdx < 0 || swapIdx >= sameCategory.length) return;
+    const other = sameCategory[swapIdx];
+    const aOrder = p.sort_order || 0;
+    const bOrder = other.sort_order || 0;
+    await supabase.from("products").update({ sort_order: bOrder }).eq("id", p.id);
+    await supabase.from("products").update({ sort_order: aOrder }).eq("id", other.id);
+    load();
+  };
+
   const applyBedenPreset = () => {
     setProdForm({...prodForm, has_options:true, options_config:{groups:[{name:"Beden", required:true, options:["XS","S","M","L","XL","XXL"]}]}});
   };
@@ -205,7 +218,11 @@ export default function MenuMgmtPage() {
           <div style={{display:"flex",justifyContent:"space-between",alignItems:"flex-start",gap:10}}>
             <div style={{flex:1,minWidth:0}}>
               <div style={{display:"flex",alignItems:"center",gap:6,flexWrap:"wrap"}}>
-                <div style={{fontSize:14,fontWeight:700,color:"#F0EDE8"}}>{p.name}</div>
+                <div style={{display:"flex",flexDirection:"column",gap:2,marginRight:8}}>
+                <button onClick={()=>moveProduct(p,"up")} style={{background:"#333",color:"#fff",border:"none",borderRadius:4,padding:"2px 8px",fontSize:11,cursor:"pointer",lineHeight:1}}>▲</button>
+                <button onClick={()=>moveProduct(p,"down")} style={{background:"#333",color:"#fff",border:"none",borderRadius:4,padding:"2px 8px",fontSize:11,cursor:"pointer",lineHeight:1}}>▼</button>
+              </div>
+              <div style={{fontSize:14,fontWeight:700,color:"#F0EDE8"}}>{p.name}</div>
                 {p.sold_out_today && <span style={{fontSize:9,padding:"2px 6px",background:"#552222",color:"#FFB0B0",borderRadius:6,fontWeight:700}}>TUKENDI</span>}
                 {p.show_in_party_menu && <span style={{fontSize:9,padding:"2px 6px",background:"#3D2D5C",color:"#D0B0FF",borderRadius:6,fontWeight:700}}>PARTI</span>}
                 {p.has_options && <span style={{fontSize:9,padding:"2px 6px",background:"#2D3D5C",color:"#B0D0FF",borderRadius:6,fontWeight:700}}>SEÇENEKLI</span>}
