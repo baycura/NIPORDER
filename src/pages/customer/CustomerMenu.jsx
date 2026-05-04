@@ -238,7 +238,7 @@ export default function CustomerMenu() {
           finalCats.push(...kCats);
           const kitchenCatId = kCats[0].id;
           const kCatIds = kCats.map(c => c.id);
-          const { data: kProds } = await supabase.from("products").select("*").eq("is_available", true).in("category_id", kCatIds).order("sort_order");
+          const { data: kProds } = await supabase.from("products").select("*").eq("is_available", true).eq("store_id", DONER_STORE_UUID).in("category_id", kCatIds).order("sort_order");
           if (kProds && kProds.length > 0) {
             // Move drinks (Coke, Ayran, Water) to paris Cold Drinks tab
             const coldDrinksCat = finalCats.find(c => c.name === "Cold Drinks");
