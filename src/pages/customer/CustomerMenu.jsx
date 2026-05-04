@@ -171,6 +171,7 @@ export default function CustomerMenu() {
   const [products, setProducts] = useState([]);
   const [settings, setSettings] = useState(null);
   const [hh, setHh] = useState(null);
+  const [hhProductPrices, setHhProductPrices] = useState({});
   const [loading, setLoading] = useState(true);
   const [selectedCat, setSelectedCat] = useState(null);
   const [cart, setCart] = useState([]);
@@ -220,12 +221,13 @@ export default function CustomerMenu() {
       setTable(tab);
 
       // 2) Load store-scoped data in parallel
-      const [{data: cats}, {data: prods}, {data: appRows}, hhRes, {data: scheduleRules}] = await Promise.all([
+      const [{data: cats}, {data: prods}, {data: appRows}, hhRes, {data: scheduleRules}, {data: hhRules}] = await Promise.all([
         supabase.from("categories").select("*").eq("is_active", true).eq("store_id", storeId).order("sort_order"),
         supabase.from("products").select("*").eq("is_available", true).eq("store_id", storeId).order("sort_order"),
         supabase.from("app_settings").select("key,value").eq("store_id", storeId),
         supabase.rpc("get_active_happy_hour").then(r => r).catch(() => ({data: null})),
         supabase.from("category_schedule_rules").select("*").eq("is_active", true).eq("store_id", storeId),
+        supabase.from("happy_hour_rules").select("*").eq("is_active", true).eq("store_id", storeId),
       ]);
       // Cross-store: paris view also shows doner Kitchen category + its products
       const PARIS_STORE_UUID = "c3c6e0c7-1821-4edd-993d-ad960cfbc452";
@@ -272,6 +274,7 @@ export default function CustomerMenu() {
       const dayOfWeek = now.getDay();
       const minutes = now.getHours() * 60 + now.getMinutes();
       const hiddenCatIds = new Set();
+      const hiddenProdIds = new Set();
       (scheduleRules || []).forEach(rule => {
         if (!rule.days_of_week?.includes(dayOfWeek)) return;
         const [sh, sm] = rule.start_time.split(":").map(Number);
@@ -286,11 +289,12 @@ export default function CustomerMenu() {
         }
         if (inRange) {
           Object.keys(rule.category_overrides || {}).forEach(cid => hiddenCatIds.add(cid));
+          Object.keys(rule.product_overrides || {}).forEach(pid => hiddenProdIds.add(pid));
         }
       });
       const finalCatsAfterSchedule = finalCatsFiltered.filter(c => !hiddenCatIds.has(c.id));
       setCategories(finalCatsAfterSchedule);
-      setProducts(finalProds);
+      setProducts(finalProds.filter(p => !hiddenProdIds.has(p.id)));
 
       // 3) Convert app_settings rows → flat object {key1: value1, key2: value2}
       const settingsObj = {};
@@ -298,6 +302,23 @@ export default function CustomerMenu() {
       setSettings(settingsObj);
 
       if (hhRes && hhRes.data && hhRes.data[0]) setHh(hhRes.data[0]);
+      // Compute product-based happy hour prices from new hhRules query
+      const _now = new Date();
+      const _dow = _now.getDay() === 0 ? 7 : _now.getDay();
+      const _mins = _now.getHours() * 60 + _now.getMinutes();
+      const _productPrices = {};
+      (hhRules || []).forEach(rule => {
+        if (!rule.days_of_week || !rule.days_of_week.includes(_dow)) return;
+        const [sh, sm] = rule.start_time.split(":").map(Number);
+        const [eh, em] = rule.end_time.split(":").map(Number);
+        const sMin = sh * 60 + sm;
+        const eMin = eh * 60 + em;
+        let inRng;
+        if (sMin <= eMin) inRng = _mins >= sMin && _mins < eMin;
+        else inRng = _mins >= sMin || _mins < eMin;
+        if (inRng) Object.assign(_productPrices, rule.product_overrides || {});
+      });
+      setHhProductPrices(_productPrices);
       if (cats && cats.length && !selectedCat) setSelectedCat(cats[0].id);
     } catch (e) { console.error("Menu load error", e); }
     setLoading(false);
@@ -377,7 +398,8 @@ export default function CustomerMenu() {
   }, [products, selectedCat, partyMode]);
 
   const calcPrice = (p, options) => {
-    let basePrice = Number(p.price);
+    // Product-based happy hour: use new price directly
+    let basePrice = hhProductPrices[p.id] != null ? Number(hhProductPrices[p.id]) : Number(p.price);
     // Add price modifiers from selected options (e.g. Single/Double pour size)
     if (options && p.options_config?.groups) {
       for (const group of p.options_config.groups) {
