@@ -24,6 +24,7 @@ const MANAGER_NAV = [
   {to:"/members",     icon:"🌟", label:"Üyeler & Borç"},
   {to:"/happy-hour",  icon:"🎉", label:"Happy Hour"},
   {to:"/category-schedule", icon:"⏰", label:"Kategori Saatleri"},
+  {to:"/qr-codes", icon:"📱", label:"QR Kodlar"},
   {to:"/merch-mgmt",  icon:"👕", label:"Merch"},
   {to:"/settings",    icon:"⚙",   label:"Ayarlar"},
 ];
