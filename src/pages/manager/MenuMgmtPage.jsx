@@ -161,7 +161,7 @@ export default function MenuMgmtPage() {
     // Filter same category AND same store (avoid cross-store mixing)
     // Secondary sort by name to break ties when sort_orders are equal
     const sameList = products
-      .filter(x => x.category_id === p.category_id && x.store_id === p.store_id)
+      .filter(x => x.category_id === p.category_id)
       .sort((a,b) => ((a.sort_order||0) - (b.sort_order||0)) || (a.name||"").localeCompare(b.name||""));
     const idx = sameList.findIndex(x => x.id === p.id);
     const swapIdx = dir === "up" ? idx - 1 : idx + 1;
@@ -184,7 +184,7 @@ export default function MenuMgmtPage() {
 
   if (loading) return (<div style={{color:"#888",fontFamily:cv,padding:20}}>Yukleniyor...</div>);
 
-  const visibleProducts = products.filter(p => p.category_id === selectedCat);
+  const visibleProducts = products.filter(p => p.category_id === selectedCat).sort((a,b) => ((a.sort_order||0) - (b.sort_order||0)) || (a.name||"").localeCompare(b.name||""));
 
   return (
     <div style={{fontFamily:cv,color:"#F0EDE8"}}>
