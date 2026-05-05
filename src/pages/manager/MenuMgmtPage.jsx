@@ -158,15 +158,23 @@ export default function MenuMgmtPage() {
     setProdForm({...prodForm, options_config:{groups:gs}});
   };
   const moveProduct = async (p, dir) => {
-    const sameCategory = products.filter(x => x.category_id === p.category_id).sort((a,b) => (a.sort_order||0) - (b.sort_order||0));
-    const idx = sameCategory.findIndex(x => x.id === p.id);
+    // Filter same category AND same store (avoid cross-store mixing)
+    // Secondary sort by name to break ties when sort_orders are equal
+    const sameList = products
+      .filter(x => x.category_id === p.category_id && x.store_id === p.store_id)
+      .sort((a,b) => ((a.sort_order||0) - (b.sort_order||0)) || (a.name||"").localeCompare(b.name||""));
+    const idx = sameList.findIndex(x => x.id === p.id);
     const swapIdx = dir === "up" ? idx - 1 : idx + 1;
-    if (swapIdx < 0 || swapIdx >= sameCategory.length) return;
-    const other = sameCategory[swapIdx];
-    const aOrder = p.sort_order || 0;
-    const bOrder = other.sort_order || 0;
-    await supabase.from("products").update({ sort_order: bOrder }).eq("id", p.id);
-    await supabase.from("products").update({ sort_order: aOrder }).eq("id", other.id);
+    if (idx < 0 || swapIdx < 0 || swapIdx >= sameList.length) return;
+    // Swap positions in the array
+    const reordered = [...sameList];
+    [reordered[idx], reordered[swapIdx]] = [reordered[swapIdx], reordered[idx]];
+    // Reassign UNIQUE sort_orders (10, 20, 30, ...) to entire category — guarantees unique values + room for future moves
+    await Promise.all(
+      reordered.map((prod, i) =>
+        supabase.from("products").update({ sort_order: (i + 1) * 10 }).eq("id", prod.id)
+      )
+    );
     load();
   };
 
