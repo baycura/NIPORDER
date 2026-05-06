@@ -13,6 +13,8 @@ export default function MenuMgmtPage() {
   const [catForm, setCatForm] = useState({});
   const [prodForm, setProdForm] = useState({});
   const [busy, setBusy] = useState(false);
+  const [dragSrc, setDragSrc] = useState(null);
+  const [dragOver, setDragOver] = useState(null);
 
   const load = async () => {
     setLoading(true);
@@ -157,6 +159,19 @@ export default function MenuMgmtPage() {
     gs[gIdx] = {...gs[gIdx], options:(gs[gIdx].options||[]).filter((_,i)=>i!==optIdx)};
     setProdForm({...prodForm, options_config:{groups:gs}});
   };
+  const reorderProducts = async (fromIdx, toIdx) => {
+    if (fromIdx == null || fromIdx === toIdx) return;
+    const reordered = [...visibleProducts];
+    const [moved] = reordered.splice(fromIdx, 1);
+    reordered.splice(toIdx, 0, moved);
+    await Promise.all(
+      reordered.map((prod, i) =>
+        supabase.from("products").update({ sort_order: (i + 1) * 10 }).eq("id", prod.id)
+      )
+    );
+    load();
+  };
+
   const moveProduct = async (p, dir) => {
     // Filter same category AND same store (avoid cross-store mixing)
     // Secondary sort by name to break ties when sort_orders are equal
@@ -221,11 +236,28 @@ export default function MenuMgmtPage() {
 
       {visibleProducts.length === 0 && <div style={{textAlign:"center",padding:30,color:"#666",fontSize:12}}>Bu kategoride urun yok</div>}
 
-      {visibleProducts.map(p => (
-        <div key={p.id} style={{background:"#1A1A1A",border:"1px solid #2A2A2A",borderRadius:10,padding:12,marginBottom:8,opacity:p.is_available===false?0.5:1}}>
+      {visibleProducts.map((p, idx) => (
+        <div
+          key={p.id}
+          draggable={true}
+          onDragStart={(e) => { e.dataTransfer.effectAllowed = "move"; setDragSrc(idx); }}
+          onDragOver={(e) => { e.preventDefault(); if (dragOver !== idx) setDragOver(idx); }}
+          onDrop={(e) => { e.preventDefault(); reorderProducts(dragSrc, idx); setDragSrc(null); setDragOver(null); }}
+          onDragEnd={() => { setDragSrc(null); setDragOver(null); }}
+          style={{
+            background: dragOver === idx && dragSrc !== idx ? "#2A2A2A" : "#1A1A1A",
+            border: dragOver === idx && dragSrc !== idx ? "2px dashed #C8973E" : "1px solid #2A2A2A",
+            borderRadius: 10,
+            padding: 12,
+            marginBottom: 8,
+            cursor: dragSrc === idx ? "grabbing" : "grab",
+            opacity: dragSrc === idx ? 0.4 : (p.is_available === false ? 0.5 : 1),
+            transition: "all 0.15s"
+          }}>
           <div style={{display:"flex",justifyContent:"space-between",alignItems:"flex-start",gap:10}}>
             <div style={{flex:1,minWidth:0}}>
               <div style={{display:"flex",alignItems:"center",gap:6,flexWrap:"wrap"}}>
+                <div style={{color:"#666",fontSize:18,marginRight:6,userSelect:"none",lineHeight:1}} title="Sürükleyerek sırala">⋮⋮</div>
                 <div style={{display:"flex",flexDirection:"column",gap:2,marginRight:8}}>
                 <button onClick={()=>moveProduct(p,"up")} style={{background:"#333",color:"#fff",border:"none",borderRadius:4,padding:"2px 8px",fontSize:11,cursor:"pointer",lineHeight:1}}>▲</button>
                 <button onClick={()=>moveProduct(p,"down")} style={{background:"#333",color:"#fff",border:"none",borderRadius:4,padding:"2px 8px",fontSize:11,cursor:"pointer",lineHeight:1}}>▼</button>
