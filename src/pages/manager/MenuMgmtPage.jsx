@@ -66,7 +66,7 @@ export default function MenuMgmtPage() {
     setProdForm({
       name:"", name_en:"", description:"", description_en:"", price:0, instant_discount_pct:0,
       sold_out_today:false, unavailable_reason:"",
-      show_in_party_menu:false, is_available:true,
+      show_in_party_menu:false, is_available:true, prep_time_minutes:null, show_prep_time:false,
       category_id: selectedCat,
       has_options:false,
       options_config:{groups:[]},
@@ -82,6 +82,8 @@ export default function MenuMgmtPage() {
       sold_out_today:!!p.sold_out_today,
       unavailable_reason:p.unavailable_reason||"",
       show_in_party_menu:!!p.show_in_party_menu,
+      prep_time_minutes:p.prep_time_minutes||null,
+      show_prep_time:!!p.show_prep_time,
       is_available:p.is_available!==false,
       category_id:p.category_id,
       has_options:!!p.has_options,
@@ -115,6 +117,8 @@ export default function MenuMgmtPage() {
       category_id: prodForm.category_id,
       has_options: prodForm.has_options,
       options_config: prodForm.has_options ? prodForm.options_config : null,
+      prep_time_minutes: prodForm.show_prep_time ? (prodForm.prep_time_minutes || null) : null,
+      show_prep_time: !!prodForm.show_prep_time,
     };
     const res = prodModal.mode === "new"
       ? await supabase.from("products").insert(payload)
@@ -368,6 +372,19 @@ export default function MenuMgmtPage() {
             <input type="checkbox" checked={prodForm.is_available!==false} onChange={e=>setProdForm({...prodForm,is_available:e.target.checked})}/>
             <span style={{fontSize:13,color:"#F0EDE8"}}>Menüde aktif</span>
           </label>
+
+          <div style={{display:"flex",alignItems:"center",gap:10,marginBottom:10,flexWrap:"wrap"}}>
+            <label style={{display:"flex",alignItems:"center",gap:8,cursor:"pointer",color:"#F0EDE8",fontSize:13}}>
+              <input type="checkbox" checked={!!prodForm.show_prep_time} onChange={e=>setProdForm({...prodForm,show_prep_time:e.target.checked})}/>
+              <span>⏱ Hazırlanma süresi göster</span>
+            </label>
+            {prodForm.show_prep_time && (
+              <div style={{display:"flex",alignItems:"center",gap:6}}>
+                <input type="number" min="1" max="240" placeholder="20" value={prodForm.prep_time_minutes||""} onChange={e=>setProdForm({...prodForm,prep_time_minutes:e.target.value?parseInt(e.target.value,10):null})} style={{width:70,padding:"6px 8px",background:"#000",color:"#F0EDE8",border:"1px solid #444",borderRadius:6,fontSize:13}}/>
+                <span style={{color:"#888",fontSize:12}}>dakika</span>
+              </div>
+            )}
+          </div>
 
           <div style={{display:"flex",gap:8,marginTop:10}}>
             <button onClick={()=>setProdModal(null)} style={cancelBtn}>İptal</button>
