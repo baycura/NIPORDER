@@ -567,7 +567,7 @@ export default function CustomerMenu() {
       <div style={{padding:"20px 16px 10px",borderBottom:"1px solid #eee",position:"sticky",top:0,background:"#fff",zIndex:20}}>
         <div style={{display:"flex",alignItems:"center",justifyContent:"space-between"}}>
           <div>
-            <div style={{fontSize:18,fontWeight:800,letterSpacing:"0.5px"}}>NOT IN PARIS</div>
+            <div style={{fontSize:22,fontWeight:900,letterSpacing:"1.5px",fontFamily:"'Coolvetica Condensed','Barlow Condensed','Bebas Neue',sans-serif"}}>NOT IN PARIS</div>
             <div style={{fontSize:10,color:"#888",letterSpacing:"2px",marginTop:2}}>
               {table ? table.name?.toUpperCase() : t.menu}
               {partyMode && <span style={{marginLeft:6,color:"#C8973E",fontWeight:700}}>· {t.partyMode} 🎉</span>}
@@ -604,6 +604,7 @@ export default function CustomerMenu() {
                 <div style={{fontSize:15,fontWeight:700,color:"#000",lineHeight:1.3}}>{pName(p)}</div>
                 {pDesc(p) && <div style={{fontSize:12,color:"#666",marginTop:3,lineHeight:1.4}}>{pDesc(p)}</div>}
                 {isFaded && fadedInfo && <div style={{fontSize:11,color:"#C8973E",marginTop:3,fontWeight:600}}>{fadedInfo.end.slice(0,5)} - {fadedInfo.start.slice(0,5)} arası mevcut</div>}
+                {p.show_prep_time && p.prep_time_minutes && <div style={{fontSize:12,color:"#888",marginTop:4,display:"flex",alignItems:"center",gap:4}}>⏱ <span>~{p.prep_time_minutes} dk</span></div>}
                 {soldOut && <div style={{fontSize:11,color:"#c44",marginTop:4,fontWeight:600}}>{p.unavailable_reason || t.sold_out}</div>}
                 {p.has_options && !soldOut && <div style={{fontSize:10,color:"#C8973E",marginTop:3,fontWeight:700,letterSpacing:"0.5px"}}>{t.optional}</div>}
                 <div style={{display:"flex",alignItems:"center",gap:10,marginTop:8}}>
