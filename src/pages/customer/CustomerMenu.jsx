@@ -172,7 +172,6 @@ export default function CustomerMenu() {
   const [settings, setSettings] = useState(null);
   const [hh, setHh] = useState(null);
   const [hhProductPrices, setHhProductPrices] = useState({});
-  const [fadedProdInfo, setFadedProdInfo] = useState({});
   const [loading, setLoading] = useState(true);
   const [selectedCat, setSelectedCat] = useState(null);
   const [cart, setCart] = useState([]);
@@ -276,7 +275,6 @@ export default function CustomerMenu() {
       const minutes = now.getHours() * 60 + now.getMinutes();
       const hiddenCatIds = new Set();
       const hiddenProdIds = new Set();
-      const fadedProdInfoLocal = {};
       (scheduleRules || []).forEach(rule => {
         if (!rule.days_of_week?.includes(dayOfWeek)) return;
         const [sh, sm] = rule.start_time.split(":").map(Number);
@@ -291,13 +289,12 @@ export default function CustomerMenu() {
         }
         if (inRange) {
           Object.keys(rule.category_overrides || {}).forEach(cid => hiddenCatIds.add(cid));
-          Object.keys(rule.product_overrides || {}).forEach(pid => { hiddenProdIds.add(pid); fadedProdInfoLocal[pid] = { start: rule.start_time, end: rule.end_time }; });
+          Object.keys(rule.product_overrides || {}).forEach(pid => hiddenProdIds.add(pid));
         }
       });
       const finalCatsAfterSchedule = finalCatsFiltered.filter(c => !hiddenCatIds.has(c.id));
       setCategories(finalCatsAfterSchedule);
-      setProducts(finalProds);
-      setFadedProdInfo(fadedProdInfoLocal);
+      setProducts(finalProds.filter(p => !hiddenProdIds.has(p.id)));
 
       // 3) Convert app_settings rows → flat object {key1: value1, key2: value2}
       const settingsObj = {};
@@ -592,18 +589,15 @@ export default function CustomerMenu() {
         {visibleProducts.map(p => {
           const fp = calcPrice(p);
           const dis = fp < Number(p.price);
-          const fadedInfo = fadedProdInfo[p.id];
-          const isFaded = !!fadedInfo;
           const soldOut = p.sold_out_today;
           const cartIdx = cart.findIndex(c => c.product.id === p.id && !c.options);
           const inCart = cartIdx >= 0 ? cart[cartIdx].quantity : 0;
           return (
-            <div key={p.id + "-" + p.category_id} style={{display:"flex",gap:12,padding:"14px 0",borderBottom:"1px solid #f0f0f0",opacity:soldOut||isFaded?0.45:1}}>
+            <div key={p.id + "-" + p.category_id} style={{display:"flex",gap:12,padding:"14px 0",borderBottom:"1px solid #f0f0f0",opacity:soldOut?0.45:1}}>
               {p.image_url && <img src={p.image_url} alt="" style={{width:72,height:72,borderRadius:10,objectFit:"cover",flexShrink:0}}/>}
               <div style={{flex:1,minWidth:0}}>
                 <div style={{fontSize:15,fontWeight:700,color:"#000",lineHeight:1.3}}>{pName(p)}</div>
                 {pDesc(p) && <div style={{fontSize:12,color:"#666",marginTop:3,lineHeight:1.4}}>{pDesc(p)}</div>}
-                {isFaded && fadedInfo && <div style={{fontSize:11,color:"#C8973E",marginTop:3,fontWeight:600}}>{fadedInfo.start.slice(0,5)} - {fadedInfo.end.slice(0,5)} arası kapalı</div>}
                 {soldOut && <div style={{fontSize:11,color:"#c44",marginTop:4,fontWeight:600}}>{p.unavailable_reason || t.sold_out}</div>}
                 {p.has_options && !soldOut && <div style={{fontSize:10,color:"#C8973E",marginTop:3,fontWeight:700,letterSpacing:"0.5px"}}>{t.optional}</div>}
                 <div style={{display:"flex",alignItems:"center",gap:10,marginTop:8}}>
