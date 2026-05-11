@@ -1,5 +1,6 @@
 import { useEffect, useState } from "react";
 import { supabase } from "../../lib/supabase.js";
+import { useAuth } from "../../contexts/AuthContext.jsx";
 
 const cv = "-apple-system,BlinkMacSystemFont,'Segoe UI',Roboto,sans-serif";
 
@@ -14,6 +15,7 @@ const PRESETS = [
 ];
 
 export default function TablesMgmtPage() {
+  const { staffUser } = useAuth();
   const [tables, setTables] = useState([]);
   const [loading, setLoading] = useState(true);
   const [modal, setModal] = useState(null);
@@ -23,7 +25,7 @@ export default function TablesMgmtPage() {
 
   const load = async () => {
     setLoading(true);
-    const { data } = await supabase.from("cafe_tables").select("*").order("sort_order").order("name");
+    const { data } = await supabase.from("cafe_tables").select("*").in("store_id", staffUser?.store_ids?.length ? staffUser.store_ids : ["00000000-0000-0000-0000-000000000000"]).order("sort_order").order("name");
     setTables(data || []);
     setLoading(false);
   };
@@ -49,6 +51,7 @@ export default function TablesMgmtPage() {
       name,
       capacity: Number(tCap) || 4,
       sort_order: Number(tSort) || 0,
+      store_id: editing?.store_id || staffUser?.store_ids?.[0],
       is_walkin: false,
     };
     if (modal.mode === "new") {
@@ -70,7 +73,7 @@ export default function TablesMgmtPage() {
 
   const addAllPresets = async () => {
     if (!confirm("7 hazir masayi ekle (Bar 1-2, Masa 1-3, Teras 1-2)?")) return;
-    const { error } = await supabase.from("cafe_tables").insert(PRESETS.map(p => ({...p, is_walkin: false})));
+    const { error } = await supabase.from("cafe_tables").insert(PRESETS.map(p => ({...p, store_id: staffUser?.store_ids?.[0], is_walkin: false})));
     if (error) { alert("Hata: " + error.message); return; }
     load();
   };
