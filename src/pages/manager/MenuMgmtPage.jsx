@@ -1,9 +1,11 @@
 import { useEffect, useState } from "react";
 import { supabase } from "../../lib/supabase.js";
+import { useAuth } from "../../contexts/AuthContext.jsx";
 
 const cv = "-apple-system,BlinkMacSystemFont,'Segoe UI',Roboto,sans-serif";
 
 export default function MenuMgmtPage() {
+  const { staffUser } = useAuth();
   const [categories, setCategories] = useState([]);
   const [products, setProducts] = useState([]);
   const [loading, setLoading] = useState(true);
@@ -19,8 +21,8 @@ export default function MenuMgmtPage() {
   const load = async () => {
     setLoading(true);
     const [{data: cats}, {data: prods}] = await Promise.all([
-      supabase.from("categories").select("*").order("sort_order"),
-      supabase.from("products").select("*").order("sort_order"),
+      supabase.from("categories").select("*").in("store_id", staffUser?.store_ids?.length ? staffUser.store_ids : ["00000000-0000-0000-0000-000000000000"]).order("sort_order"),
+      supabase.from("products").select("*").in("store_id", staffUser?.store_ids?.length ? staffUser.store_ids : ["00000000-0000-0000-0000-000000000000"]).order("sort_order"),
     ]);
     setCategories(cats || []);
     setProducts(prods || []);
