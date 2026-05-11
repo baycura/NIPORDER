@@ -12,6 +12,7 @@ const STAFF_NAV = [
 const STAFF_NAV_EXTRA = [
   {to:"/stock",   icon:"📦", label:"Stok"},
   {to:"/myshift", icon:"📊", label:"Vardiyam"},
+  {to:"/tasks",   icon:"📋", label:"Görevler"},
 ];
 
 const MANAGER_NAV = [
@@ -25,7 +26,6 @@ const MANAGER_NAV = [
   {to:"/happy-hour",  icon:"🎉", label:"Happy Hour"},
   {to:"/category-schedule", icon:"⏰", label:"Kategori Saatleri"},
   {to:"/qr-codes", icon:"📱", label:"QR Kodlar"},
-  {to:"/tasks", icon:"📋", label:"Görevler"},
   {to:"/merch-mgmt",  icon:"👕", label:"Merch"},
   {to:"/settings",    icon:"⚙",   label:"Ayarlar"},
 ];
