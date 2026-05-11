@@ -81,8 +81,8 @@ export function AuthProvider({ children }) {
   }, []);
 
   const signIn = async (email, password) => {
-    const res = await supabase.auth.signInWithPassword({ email, password });
-    if (res && res.error) throw res.error;
+    const { data, error } = await supabase.auth.signInWithPassword({ email, password });
+    return { data, error };
   };
 
   const signInWithGoogle = async () => {
