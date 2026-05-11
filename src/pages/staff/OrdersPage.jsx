@@ -1,6 +1,7 @@
 import { useEffect, useState } from "react";
 import { useNavigate } from "react-router-dom";
 import { supabase } from "../../lib/supabase.js";
+import { useAuth } from "../../contexts/AuthContext.jsx";
 
 const cv = "-apple-system,BlinkMacSystemFont,'Segoe UI',Roboto,sans-serif";
 
@@ -16,6 +17,7 @@ const STATUS_LABEL = {
 
 export default function OrdersPage() {
   const navigate = useNavigate();
+  const { staffUser } = useAuth();
   const [orders, setOrders] = useState([]);
   const [tables, setTables] = useState([]);
   const [tableMap, setTableMap] = useState({});
@@ -35,7 +37,8 @@ export default function OrdersPage() {
     else statuses = ["open","sent","preparing","ready","paid","cancelled","debt"];
 
     const [{data: ords}, {data: tabs}] = await Promise.all([
-      supabase.from("orders").select("*, stores:origin_store_id(slug, name)").in("status", statuses).order("created_at", {ascending:false}).limit(80),
+      supabase.from("orders").select("*, stores:origin_store_id(slug, name)").in("origin_store_id", staffUser?.store_ids?.length ? staffUser.store_ids : ["00000000-0000-0000-0000-000000000000"])
+        .in("status", statuses).order("created_at", {ascending:false}).limit(80),
       supabase.from("cafe_tables").select("id, name").order("sort_order"),
     ]);
     const tMap = {};
