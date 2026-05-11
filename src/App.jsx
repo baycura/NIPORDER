@@ -21,6 +21,7 @@ import MembersPage from "./pages/manager/MembersPage.jsx";
 import MerchMgmtPage from "./pages/manager/MerchMgmtPage.jsx";
 import SettingsPage from "./pages/manager/SettingsPage.jsx";
 import MenuMgmtPage from "./pages/manager/MenuMgmtPage.jsx";
+import TasksPage from "./pages/manager/TasksPage.jsx";
 import TablesMgmtPage from "./pages/manager/TablesMgmtPage.jsx";
 import RecipesMgmtPage from "./pages/manager/RecipesMgmtPage.jsx";
 import InvoicesPage from "./pages/manager/InvoicesPage.jsx";
@@ -57,6 +58,7 @@ function AppRoutes() {
         <Route path="happy-hour"       element={<PrivateRoute managerOnly><HappyHourPage /></PrivateRoute>} />
         <Route path="category-schedule" element={<PrivateRoute managerOnly><CategorySchedulePage /></PrivateRoute>} />
         <Route path="qr-codes" element={<PrivateRoute managerOnly><QRCodesPage /></PrivateRoute>} />
+        <Route path="tasks" element={<PrivateRoute><TasksPage /></PrivateRoute>} />
         <Route path="reports"          element={<PrivateRoute adminOnly><ReportsPage /></PrivateRoute>} />
         <Route path="members"          element={<PrivateRoute managerOnly><MembersPage /></PrivateRoute>} />
         <Route path="merch-mgmt"       element={<PrivateRoute managerOnly><MerchMgmtPage /></PrivateRoute>} />
