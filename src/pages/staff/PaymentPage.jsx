@@ -1,11 +1,13 @@
 import { useEffect, useState } from "react";
 import { useNavigate } from "react-router-dom";
 import { supabase } from "../../lib/supabase.js";
+import { useAuth } from "../../contexts/AuthContext.jsx";
 
 const cv = "-apple-system,BlinkMacSystemFont,'Segoe UI',Roboto,sans-serif";
 
 export default function PaymentPage() {
   const navigate = useNavigate();
+  const { staffUser } = useAuth();
   const [orders, setOrders] = useState([]);
   const [tables, setTables] = useState({});
   const [loading, setLoading] = useState(true);
@@ -20,8 +22,8 @@ export default function PaymentPage() {
   const load = async () => {
     setLoading(true);
     const [{data: ords}, {data: tabs}, {data: custs}] = await Promise.all([
-      supabase.from("orders").select("id, table_id, customer_name, total, status, created_at, origin_store_id, stores:origin_store_id(slug, name)").in("status", ["open","sent","preparing","ready"]).order("created_at", { ascending: false }),
-      supabase.from("cafe_tables").select("id, name"),
+      supabase.from("orders").select("id, table_id, customer_name, total, status, created_at, origin_store_id, stores:origin_store_id(slug, name)").in("origin_store_id", staffUser?.store_ids?.length ? staffUser.store_ids : ["00000000-0000-0000-0000-000000000000"]).in("status", ["open","sent","preparing","ready"]).order("created_at", { ascending: false }),
+      supabase.from("cafe_tables").select("id, name").in("store_id", staffUser?.store_ids?.length ? staffUser.store_ids : ["00000000-0000-0000-0000-000000000000"]),
       supabase.from("customers").select("id, name, outstanding_balance").order("name"),
     ]);
     const tabMap = {};
