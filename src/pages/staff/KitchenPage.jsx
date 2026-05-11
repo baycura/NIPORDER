@@ -1,5 +1,6 @@
 import { useEffect, useRef, useState } from "react";
 import { supabase } from "../../lib/supabase.js";
+import { useAuth } from "../../contexts/AuthContext.jsx";
 
 const cv = "-apple-system,BlinkMacSystemFont,'Segoe UI',Roboto,sans-serif";
 
@@ -30,6 +31,7 @@ async function playLoudDing(ctxRef) {
 }
 
 export default function KitchenPage() {
+  const { staffUser } = useAuth();
   const [tickets, setTickets] = useState([]);
   const [loading, setLoading] = useState(true);
   const [flash, setFlash] = useState(false);
@@ -44,6 +46,7 @@ export default function KitchenPage() {
     const { data: orders } = await supabase
       .from("orders")
       .select("id, table_id, customer_name, created_at, status, note, origin_store_id, stores:origin_store_id(slug, name)")
+      .in("origin_store_id", staffUser?.store_ids?.length ? staffUser.store_ids : ["00000000-0000-0000-0000-000000000000"])
       .in("status", ["open","sent","preparing","ready"])
       .order("created_at", {ascending:true});
 
