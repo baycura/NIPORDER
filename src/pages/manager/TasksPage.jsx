@@ -12,8 +12,9 @@ export default function TasksPage() {
   const [loading, setLoading] = useState(true);
   const [storeId, setStoreId] = useState(PARIS_STORE_UUID);
   const [modal, setModal] = useState(false);
-  const [form, setForm] = useState({ title: "", description: "" });
+  const [form, setForm] = useState({ title: "", description: "", assigned_to: [] });
   const [staffMap, setStaffMap] = useState({});
+  const [staffList, setStaffList] = useState([]);
 
   const isPatron = staffUser && PATRON_ROLES.includes(staffUser.role);
 
@@ -21,12 +22,13 @@ export default function TasksPage() {
     setLoading(true);
     const [{ data: tasksData }, { data: staffData }] = await Promise.all([
       supabase.from("tasks").select("*").eq("store_id", storeId).order("created_at", { ascending: false }),
-      supabase.from("staff").select("id, name")
+      supabase.from("staff").select("id, name, role, is_active").eq("is_active", true).order("name")
     ]);
     setTasks(tasksData || []);
     const map = {};
     (staffData || []).forEach(s => { map[s.id] = s.name; });
     setStaffMap(map);
+    setStaffList(staffData || []);
     setLoading(false);
   };
 
@@ -45,9 +47,10 @@ export default function TasksPage() {
       store_id: storeId,
       title: form.title.trim(),
       description: form.description.trim() || null,
+      assigned_to: form.assigned_to,
       created_by: staffUser.id
     });
-    setForm({ title: "", description: "" });
+    setForm({ title: "", description: "", assigned_to: [] });
     setModal(false);
   };
 
@@ -70,8 +73,9 @@ export default function TasksPage() {
     day: "2-digit", month: "2-digit", hour: "2-digit", minute: "2-digit"
   });
 
-  const active = tasks.filter(t => !t.done);
-  const done = tasks.filter(t => t.done);
+  const visibleTasks = isPatron ? tasks : tasks.filter(t => !t.assigned_to || t.assigned_to.length === 0 || (t.assigned_to || []).includes(staffUser?.id));
+  const active = visibleTasks.filter(t => !t.done);
+  const done = visibleTasks.filter(t => t.done);
 
   return (
     <div style={{ padding: 16, maxWidth: 900, margin: "0 auto", color: "#F0EDE8" }}>
@@ -99,6 +103,13 @@ export default function TasksPage() {
                 <div style={{ flex: 1, minWidth: 0 }}>
                   <div style={{ fontSize: 15, fontWeight: 600 }}>{t.title}</div>
                   {t.description && <div style={{ fontSize: 13, color: "#888", marginTop: 4 }}>{t.description}</div>}
+                  {t.assigned_to && t.assigned_to.length > 0 && (
+                    <div style={{ marginTop: 6, display: "flex", flexWrap: "wrap", gap: 4 }}>
+                      {t.assigned_to.map(aid => (
+                        <span key={aid} style={{ fontSize: 11, background: "#C8973E22", color: "#C8973E", padding: "2px 8px", borderRadius: 10, fontWeight: 600 }}>👤 {staffMap[aid] || "?"}</span>
+                      ))}
+                    </div>
+                  )}
                 </div>
                 {isPatron && (
                   <button onClick={() => deleteTask(t.id)} style={{ background: "transparent", border: "none", color: "#666", cursor: "pointer", fontSize: 18 }} title="Sil">🗑️</button>
@@ -139,12 +150,23 @@ export default function TasksPage() {
               <label style={{ display: "block", fontSize: 12, color: "#888", marginBottom: 4, fontWeight: 600, letterSpacing: 0.5 }}>BAŞLIK *</label>
               <input type="text" value={form.title} onChange={e => setForm({ ...form, title: e.target.value })} placeholder="Örn: Soğutucu temizliği" style={{ width: "100%", padding: "10px 12px", background: "#000", color: "#F0EDE8", border: "1px solid #444", borderRadius: 8, fontSize: 14, boxSizing: "border-box" }} autoFocus />
             </div>
+            <div style={{ marginBottom: 12 }}>
+              <label style={{ display: "block", fontSize: 12, color: "#888", marginBottom: 6, fontWeight: 600, letterSpacing: 0.5 }}>ATANANLAR (boş = herkese açık)</label>
+              <div style={{ display: "flex", flexWrap: "wrap", gap: 6 }}>
+                {staffList.map(s => {
+                  const sel = form.assigned_to.includes(s.id);
+                  return (
+                    <button key={s.id} type="button" onClick={() => setForm({ ...form, assigned_to: sel ? form.assigned_to.filter(id => id !== s.id) : [...form.assigned_to, s.id] })} style={{ padding: "6px 12px", background: sel ? "#C8973E" : "#0F0F0F", color: sel ? "#000" : "#888", border: "1px solid " + (sel ? "#C8973E" : "#333"), borderRadius: 16, cursor: "pointer", fontSize: 12, fontWeight: 600 }}>{sel ? "✓ " : ""}{s.name}</button>
+                  );
+                })}
+              </div>
+            </div>
             <div style={{ marginBottom: 16 }}>
               <label style={{ display: "block", fontSize: 12, color: "#888", marginBottom: 4, fontWeight: 600, letterSpacing: 0.5 }}>AÇIKLAMA (opsiyonel)</label>
               <textarea value={form.description} onChange={e => setForm({ ...form, description: e.target.value })} rows={3} placeholder="Detay yazabilirsin..." style={{ width: "100%", padding: "10px 12px", background: "#000", color: "#F0EDE8", border: "1px solid #444", borderRadius: 8, fontSize: 14, resize: "vertical", fontFamily: "inherit", boxSizing: "border-box" }} />
             </div>
             <div style={{ display: "flex", gap: 8, justifyContent: "flex-end" }}>
-              <button onClick={() => { setModal(false); setForm({ title: "", description: "" }); }} style={{ padding: "10px 18px", background: "transparent", color: "#888", border: "1px solid #444", borderRadius: 8, cursor: "pointer", fontSize: 14 }}>İptal</button>
+              <button onClick={() => { setModal(false); setForm({ title: "", description: "", assigned_to: [] }); }} style={{ padding: "10px 18px", background: "transparent", color: "#888", border: "1px solid #444", borderRadius: 8, cursor: "pointer", fontSize: 14 }}>İptal</button>
               <button onClick={addTask} style={{ padding: "10px 18px", background: "#C8973E", color: "#000", border: "none", borderRadius: 8, fontWeight: 700, cursor: "pointer", fontSize: 14 }}>Kaydet</button>
             </div>
           </div>
