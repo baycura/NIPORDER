@@ -34,7 +34,7 @@ export default function StaffMgmtPage() {
 
   const openNew = () => {
     setModal({ mode: "new" });
-    setForm({ name:"", email:"", password:"", role:"manager", display_role:"Yönetici", phone:"", is_active:true });
+    setForm({ name:"", email:"", password:"", role:"manager", display_role:"Yönetici", phone:"", is_active:true, store_ids:[] });
   };
 
   const openEdit = (s) => {
@@ -45,6 +45,7 @@ export default function StaffMgmtPage() {
       display_role: s.display_role || "Yönetici",
       phone: s.phone || "",
       is_active: s.is_active !== false,
+      store_ids: s.store_ids || [],
     });
   };
 
@@ -66,6 +67,7 @@ export default function StaffMgmtPage() {
       await supabase.from("staff").update({
         display_role: form.display_role || "Yönetici",
         phone: form.phone?.trim() || null,
+        store_ids: form.store_ids || [],
       }).eq("id", newId);
     } else {
       const payload = {
@@ -75,6 +77,7 @@ export default function StaffMgmtPage() {
         role: form.role,
         display_role: form.display_role || "Yönetici",
         is_active: form.is_active,
+        store_ids: form.store_ids || [],
       };
       const { error } = await supabase.from("staff").update(payload).eq("id", modal.data.id);
       if (error) { alert("Hata: " + error.message); setBusy(false); return; }
@@ -158,6 +161,17 @@ export default function StaffMgmtPage() {
               {ROLES.map(r => (
                 <button key={r.key} onClick={()=>setForm({...form,role:r.key})} style={{flex:"1 1 calc(50% - 6px)",minWidth:120,padding:"10px",background:form.role===r.key?(r.key==="admin"?"#FFD700":"#C8973E"):"#222",color:form.role===r.key?"#000":"#888",border:"1px solid "+(form.role===r.key?(r.key==="admin"?"#FFD700":"#C8973E"):"#333"),borderRadius:8,fontSize:11,fontWeight:700,cursor:"pointer"}}>{r.label}</button>
               ))}
+            </div>
+          </Field>
+
+          <Field label="MAGAZA YETKILERI (bos = sistem genelinde super yetki yok)">
+            <div style={{display:"flex",gap:6,flexWrap:"wrap"}}>
+              {[{id:"c3c6e0c7-1821-4edd-993d-ad960cfbc452",label:"Paris"},{id:"c39da530-7f73-4f69-a752-029bf03790b1",label:"Berlin"}].map(st => {
+                const sel = (form.store_ids||[]).includes(st.id);
+                return (
+                  <button key={st.id} type="button" onClick={()=>setForm({...form,store_ids:sel?(form.store_ids||[]).filter(id=>id!==st.id):[...(form.store_ids||[]),st.id]})} style={{flex:"1 1 calc(50% - 6px)",minWidth:120,padding:"10px",background:sel?"#C8973E":"#222",color:sel?"#000":"#888",border:"1px solid "+(sel?"#C8973E":"#333"),borderRadius:8,fontSize:13,fontWeight:700,cursor:"pointer"}}>{sel?"✓ ":""}{st.label}</button>
+                );
+              })}
             </div>
           </Field>
 
