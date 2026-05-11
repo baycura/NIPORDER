@@ -20,8 +20,8 @@ export default function TablesPage() {
   const load = async () => {
     setLoading(true);
     const [{data: tabs}, {data: ords}] = await Promise.all([
-      supabase.from("cafe_tables").select("*").order("sort_order").order("name"),
-      supabase.from("orders").select("id, table_id, customer_name, total, status, created_at, origin_store_id, stores:origin_store_id(slug, name)").in("status", ["open","sent","preparing","ready"]),
+      supabase.from("cafe_tables").select("*").in("store_id", staffUser?.store_ids?.length ? staffUser.store_ids : ["00000000-0000-0000-0000-000000000000"]).order("sort_order").order("name"),
+      supabase.from("orders").select("id, table_id, customer_name, total, status, created_at, origin_store_id, stores:origin_store_id(slug, name)").in("origin_store_id", staffUser?.store_ids?.length ? staffUser.store_ids : ["00000000-0000-0000-0000-000000000000"]).in("status", ["open","sent","preparing","ready"]),
     ]);
     setTables(tabs || []);
     setOrders(ords || []);
