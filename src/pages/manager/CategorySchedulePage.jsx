@@ -1,10 +1,9 @@
 import { useState, useEffect } from "react";
 import { supabase } from "../../lib/supabase.js";
+import { useAuth } from "../../contexts/AuthContext.jsx";
 
 const cv = "\u0027Coolvetica\u0027,\u0027Bebas Neue\u0027,sans-serif";
 const cvc = "\u0027Coolvetica Condensed\u0027,\u0027Barlow Condensed\u0027,sans-serif";
-
-const PARIS_STORE_UUID = "c3c6e0c7-1821-4edd-993d-ad960cfbc452";
 
 const DAYS = [
   { idx: 1, label: "Pzt" },
@@ -17,6 +16,7 @@ const DAYS = [
 ];
 
 export default function CategorySchedulePage() {
+  const { staffUser } = useAuth();
   const [rules, setRules] = useState([]);
   const [categories, setCategories] = useState([]);
   const [products, setProducts] = useState([]);
@@ -32,9 +32,9 @@ export default function CategorySchedulePage() {
 
   const load = async () => {
     const [{ data: r }, { data: c }, { data: p }] = await Promise.all([
-      supabase.from("category_schedule_rules").select("*").order("created_at", { ascending: false }),
-      supabase.from("categories").select("id, name, store_id").eq("is_active", true).order("sort_order"),
-      supabase.from("products").select("id, name, store_id, category_id").eq("is_available", true).order("name"),
+      supabase.from("category_schedule_rules").select("*").in("store_id", staffUser?.store_ids?.length ? staffUser.store_ids : ["00000000-0000-0000-0000-000000000000"]).order("created_at", { ascending: false }),
+      supabase.from("categories").select("id, name, store_id").in("store_id", staffUser?.store_ids?.length ? staffUser.store_ids : ["00000000-0000-0000-0000-000000000000"]).eq("is_active", true).order("sort_order"),
+      supabase.from("products").select("id, name, store_id, category_id").in("store_id", staffUser?.store_ids?.length ? staffUser.store_ids : ["00000000-0000-0000-0000-000000000000"]).eq("is_available", true).order("name"),
     ]);
     setRules(r || []);
     setCategories(c || []);
@@ -66,7 +66,7 @@ export default function CategorySchedulePage() {
       category_overrides: form.category_overrides,
       product_overrides: form.product_overrides,
       priority: 0,
-      store_id: PARIS_STORE_UUID,
+      store_id: staffUser?.store_ids?.[0],
       is_active: true,
     };
     const { error } = await supabase.from("category_schedule_rules").insert(payload);
