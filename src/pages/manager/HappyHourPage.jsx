@@ -1,10 +1,9 @@
 import { useState, useEffect } from "react";
 import { supabase } from "../../lib/supabase.js";
+import { useAuth } from "../../contexts/AuthContext.jsx";
 
 const cv = "\u0027Coolvetica\u0027,\u0027Bebas Neue\u0027,sans-serif";
 const cvc = "\u0027Coolvetica Condensed\u0027,\u0027Barlow Condensed\u0027,sans-serif";
-
-const PARIS_STORE_UUID = "c3c6e0c7-1821-4edd-993d-ad960cfbc452";
 
 const DAYS = [
   { idx: 1, label: "Pzt" },
@@ -17,6 +16,7 @@ const DAYS = [
 ];
 
 export default function HappyHourPage() {
+  const { staffUser } = useAuth();
   const [rules, setRules] = useState([]);
   const [products, setProducts] = useState([]);
   const [showAdd, setShowAdd] = useState(false);
@@ -30,7 +30,7 @@ export default function HappyHourPage() {
 
   const load = async () => {
     const [{ data: r }, { data: p }] = await Promise.all([
-      supabase.from("happy_hour_rules").select("*").order("created_at", { ascending: false }),
+      supabase.from("happy_hour_rules").select("*").in("store_id", staffUser?.store_ids?.length ? staffUser.store_ids : ["00000000-0000-0000-0000-000000000000"]).order("created_at", { ascending: false }),
       supabase.from("products").select("id, name, price, store_id").eq("is_available", true).order("name"),
     ]);
     setRules(r || []);
@@ -59,7 +59,7 @@ export default function HappyHourPage() {
       days_of_week: form.days_of_week,
       discount_pct: 0,
       product_overrides: form.product_overrides,
-      store_id: PARIS_STORE_UUID,
+      store_id: staffUser?.store_ids?.[0],
       is_active: true,
     };
     const { error } = await supabase.from("happy_hour_rules").insert(payload);
