@@ -1,9 +1,11 @@
 import { useEffect, useState } from "react";
 import { supabase } from "../../lib/supabase.js";
+import { useAuth } from "../../contexts/AuthContext.jsx";
 
 const cv = "-apple-system,BlinkMacSystemFont,'Segoe UI',Roboto,sans-serif";
 
 export default function RecipesMgmtPage() {
+  const { staffUser } = useAuth();
   const [products, setProducts] = useState([]);
   const [ingredients, setIngredients] = useState([]);
   const [recipes, setRecipes] = useState([]);
@@ -19,7 +21,7 @@ export default function RecipesMgmtPage() {
     const [{data: prods}, {data: ings}, {data: recs}] = await Promise.all([
       supabase.from("products").select("id, name, price, category_id, categories(name)").order("name"),
       supabase.from("ingredients").select("*").order("name"),
-      supabase.from("recipes").select("*"),
+      supabase.from("recipes").select("*").in("store_id", staffUser?.store_ids?.length ? staffUser.store_ids : ["00000000-0000-0000-0000-000000000000"]),
     ]);
     setProducts(prods || []);
     setIngredients(ings || []);
@@ -61,7 +63,7 @@ export default function RecipesMgmtPage() {
       qty_per_unit: Number(form.qty_per_unit),
     };
     if (modal.mode === "new") {
-      const { error } = await supabase.from("recipes").insert(payload);
+      const { error } = await supabase.from("recipes").insert({...payload, store_id: staffUser?.store_ids?.[0]});
       if (error) { alert("Hata: " + error.message); setBusy(false); return; }
     } else {
       const { error } = await supabase.from("recipes").update({ qty_per_unit: payload.qty_per_unit }).eq("id", modal.data.id);
