@@ -266,7 +266,11 @@ export default function MenuMgmtPage() {
           <div style={{display:"flex",justifyContent:"space-between",alignItems:"flex-start",gap:10}}>
             <div style={{flex:1,minWidth:0}}>
               <div style={{display:"flex",alignItems:"center",gap:6,flexWrap:"wrap"}}>
-                <div style={{color:"#666",fontSize:18,marginRight:6,userSelect:"none",lineHeight:1}} title="Sürükleyerek sırala">⋮⋮</div>
+                <div style={{color:"#666",fontSize:22,marginRight:6,userSelect:"none",lineHeight:1,touchAction:"none",cursor:"grab",padding:"6px 4px"}} title="Sürükleyerek sırala"
+                onTouchStart={(e)=>{ e.preventDefault(); setDragSrc(idx); }}
+                onTouchMove={(e)=>{ e.preventDefault(); const t=e.touches[0]; const el=document.elementFromPoint(t.clientX,t.clientY); const card=el?.closest('[draggable="true"]'); if(card){ const all=Array.from(document.querySelectorAll('[draggable="true"]')); const other=all.indexOf(card); if(other>=0 && other!==dragOver) setDragOver(other); } }}
+                onTouchEnd={async()=>{ if(dragSrc==null||dragOver==null||dragSrc===dragOver){ setDragSrc(null); setDragOver(null); return; } const reordered=[...visibleProducts]; const [moved]=reordered.splice(dragSrc,1); reordered.splice(dragOver,0,moved); setDragSrc(null); setDragOver(null); await Promise.all(reordered.map((prod,i)=>supabase.from("products").update({sort_order:(i+1)*10}).eq("id",prod.id))); load(); }}
+              >⋮⋮</div>
                 <div style={{display:"flex",flexDirection:"column",gap:2,marginRight:8}}>
                 <button onClick={()=>moveProduct(p,"up")} style={{background:"#333",color:"#fff",border:"none",borderRadius:4,padding:"2px 8px",fontSize:11,cursor:"pointer",lineHeight:1}}>▲</button>
                 <button onClick={()=>moveProduct(p,"down")} style={{background:"#333",color:"#fff",border:"none",borderRadius:4,padding:"2px 8px",fontSize:11,cursor:"pointer",lineHeight:1}}>▼</button>
