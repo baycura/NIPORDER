@@ -1,11 +1,13 @@
 import { useEffect, useState } from "react";
 import { supabase } from "../../lib/supabase.js";
 import { useAuth } from "../../contexts/AuthContext.jsx";
+import { useAuth } from "../../contexts/AuthContext.jsx";
 
 const cv = "-apple-system,BlinkMacSystemFont,'Segoe UI',Roboto,sans-serif";
 const UNITS = ["ml","l","g","kg","adet","sise","kasa"];
 
 export default function StockMgmtPage() {
+  const { staffUser } = useAuth();
   const { staffUser } = useAuth();
   const [items, setItems] = useState([]);
   const [loading, setLoading] = useState(true);
@@ -29,7 +31,7 @@ export default function StockMgmtPage() {
     if (!form.name?.trim()) { alert("Isim gerekli"); return; }
     setBusy(true);
     const payload = {
-      name: form.name.trim(), unit: form.unit,
+      name: form.name.trim(), unit: form.unit, store_id: staffUser?.store_ids?.[0],
       stock_qty: Number(form.stock_qty)||0,
       cost_per_unit: Number(form.cost_per_unit)||0,
       waste_pct: Number(form.waste_pct)||0,
