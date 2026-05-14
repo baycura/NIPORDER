@@ -1,9 +1,11 @@
 import{useState,useEffect}from"react";import{supabase}from"../../lib/supabase.js";
+import{useAuth}from"../../contexts/AuthContext.jsx";
 const cv="'Coolvetica','Bebas Neue',sans-serif";const cvc="'Coolvetica Condensed','Barlow Condensed',sans-serif";
 export default function ReportsPage(){
+  const{staffUser}=useAuth();
   const[period,setPeriod]=useState("week");const[orders,setOrders]=useState([]);const[topItems,setTopItems]=useState([]);const[loading,setLoading]=useState(true);
   useEffect(()=>{(async()=>{setLoading(true);const days=period==="week"?7:period==="month"?30:90;const start=new Date();start.setDate(start.getDate()-days);
-    const{data}=await supabase.from("orders").select("*,order_items(*)").eq("status","paid").gte("paid_at",start.toISOString());
+    const{data}=await supabase.from("orders").select("*,order_items(*)").in("origin_store_id", staffUser?.store_ids?.length ? staffUser.store_ids : ["00000000-0000-0000-0000-000000000000"]).eq("status","paid").gte("paid_at",start.toISOString());
     setOrders(data||[]);const map={};(data||[]).forEach(o=>(o.order_items||[]).forEach(item=>{if(!map[item.product_name])map[item.product_name]={name:item.product_name,qty:0,revenue:0};map[item.product_name].qty+=item.quantity;map[item.product_name].revenue+=item.final_price*item.quantity;}));
     setTopItems(Object.values(map).sort((a,b)=>b.revenue-a.revenue).slice(0,8));setLoading(false);})();},[period]);
   const totalRevenue=orders.reduce((s,o)=>s+(o.total||0),0);const totalDiscount=orders.reduce((s,o)=>s+(o.discount_amount||0),0);const avgOrder=orders.length>0?totalRevenue/orders.length:0;
