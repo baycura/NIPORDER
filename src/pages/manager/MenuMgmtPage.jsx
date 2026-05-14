@@ -68,7 +68,7 @@ export default function MenuMgmtPage() {
     setProdForm({
       name:"", name_en:"", description:"", description_en:"", price:0, instant_discount_pct:0,
       sold_out_today:false, unavailable_reason:"",
-      show_in_party_menu:false, is_available:true, prep_time_minutes:null, show_prep_time:false,
+      show_in_party_menu:false, store_id:"", kitchen_destination_store_id:"", is_available:true, prep_time_minutes:null, show_prep_time:false,
       category_id: selectedCat,
       has_options:false,
       options_config:{groups:[]},
@@ -83,7 +83,7 @@ export default function MenuMgmtPage() {
       instant_discount_pct:Number(p.instant_discount_pct)||0,
       sold_out_today:!!p.sold_out_today,
       unavailable_reason:p.unavailable_reason||"",
-      show_in_party_menu:!!p.show_in_party_menu,
+      show_in_party_menu:!!p.show_in_party_menu, store_id:p.store_id||"", kitchen_destination_store_id:p.kitchen_destination_store_id||"",
       prep_time_minutes:p.prep_time_minutes||null,
       show_prep_time:!!p.show_prep_time,
       is_available:p.is_available!==false,
@@ -115,6 +115,8 @@ export default function MenuMgmtPage() {
       sold_out_today: prodForm.sold_out_today,
       unavailable_reason: prodForm.unavailable_reason?.trim() || null,
       show_in_party_menu: prodForm.show_in_party_menu,
+      store_id: prodForm.store_id || staffUser?.store_ids?.[0],
+      kitchen_destination_store_id: prodForm.kitchen_destination_store_id || prodForm.store_id || staffUser?.store_ids?.[0],
       is_available: prodForm.is_available,
       category_id: prodForm.category_id,
       has_options: prodForm.has_options,
@@ -363,6 +365,20 @@ export default function MenuMgmtPage() {
               <span style={{fontSize:13,color:"#F0EDE8"}}>Bugün tükendi</span>
             </label>
             {prodForm.sold_out_today && (<input value={prodForm.unavailable_reason||""} onChange={e=>setProdForm({...prodForm,unavailable_reason:e.target.value})} placeholder="Neden (musteri gorecek)" style={{...inputS,fontSize:13}}/>)}
+          </div>
+
+          <div style={{marginBottom:10}}>
+            <label style={{display:"block",fontSize:11,color:"#888",marginBottom:4,fontWeight:600,letterSpacing:0.5}}>🏪 MAGAZA (gorunecegi yer)</label>
+            <div style={{display:"flex",gap:6}}>
+              {[{id:"c3c6e0c7-1821-4edd-993d-ad960cfbc452",label:"Paris"},{id:"c39da530-7f73-4f69-a752-029bf03790b1",label:"Berlin"}].map(s => { const sel = prodForm.store_id === s.id; return (<button key={s.id} type="button" onClick={()=>setProdForm({...prodForm,store_id:s.id})} style={{flex:1,padding:"8px",background:sel?"#C8973E":"#222",color:sel?"#000":"#888",border:"1px solid "+(sel?"#C8973E":"#333"),borderRadius:6,fontSize:13,fontWeight:700,cursor:"pointer"}}>{sel?"✓ ":""}{s.label}</button>); })}
+            </div>
+          </div>
+
+          <div style={{marginBottom:10}}>
+            <label style={{display:"block",fontSize:11,color:"#888",marginBottom:4,fontWeight:600,letterSpacing:0.5}}>🍳 MUTFAK HEDEFI (siparis gidecegi mutfak)</label>
+            <div style={{display:"flex",gap:6}}>
+              {[{id:"c3c6e0c7-1821-4edd-993d-ad960cfbc452",label:"Paris Mutfagi"},{id:"c39da530-7f73-4f69-a752-029bf03790b1",label:"Berlin/Doner Mutfagi"}].map(s => { const sel = prodForm.kitchen_destination_store_id === s.id; return (<button key={s.id} type="button" onClick={()=>setProdForm({...prodForm,kitchen_destination_store_id:s.id})} style={{flex:1,padding:"8px",background:sel?"#E07A3E":"#222",color:sel?"#000":"#888",border:"1px solid "+(sel?"#E07A3E":"#333"),borderRadius:6,fontSize:13,fontWeight:700,cursor:"pointer"}}>{sel?"✓ ":""}{s.label}</button>); })}
+            </div>
           </div>
 
           <label style={{display:"flex",alignItems:"center",gap:8,marginBottom:10,cursor:"pointer"}}>
