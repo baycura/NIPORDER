@@ -1,9 +1,11 @@
 import { useEffect, useState } from "react";
 import { supabase } from "../../lib/supabase.js";
+import { useAuth } from "../../contexts/AuthContext.jsx";
 
 const cv = "-apple-system,BlinkMacSystemFont,'Segoe UI',Roboto,sans-serif";
 
 export default function MembersPage() {
+  const { staffUser } = useAuth();
   const [members, setMembers] = useState([]);
   const [loading, setLoading] = useState(true);
   const [filter, setFilter] = useState("debtors");
@@ -15,7 +17,7 @@ export default function MembersPage() {
 
   const load = async () => {
     setLoading(true);
-    const { data } = await supabase.from("customers").select("*").order("outstanding_balance", { ascending: false });
+    const { data } = await supabase.from("customers").select("*").in("store_id", staffUser?.store_ids?.length ? staffUser.store_ids : ["00000000-0000-0000-0000-000000000000"]).order("outstanding_balance", { ascending: false });
     setMembers(data || []);
     setLoading(false);
   };
@@ -52,7 +54,7 @@ export default function MembersPage() {
       notes: form.notes?.trim() || null,
     };
     if (modal.mode === "new") {
-      const { error } = await supabase.from("customers").insert(payload);
+      const { error } = await supabase.from("customers").insert({ ...payload, store_id: staffUser?.store_ids?.[0] });
       if (error) { alert("Hata: " + error.message); setBusy(false); return; }
     } else {
       const { error } = await supabase.from("customers").update(payload).eq("id", modal.data.id);
