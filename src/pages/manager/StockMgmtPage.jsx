@@ -1,10 +1,12 @@
 import { useEffect, useState } from "react";
 import { supabase } from "../../lib/supabase.js";
+import { useAuth } from "../../contexts/AuthContext.jsx";
 
 const cv = "-apple-system,BlinkMacSystemFont,'Segoe UI',Roboto,sans-serif";
 const UNITS = ["ml","l","g","kg","adet","sise","kasa"];
 
 export default function StockMgmtPage() {
+  const { staffUser } = useAuth();
   const [items, setItems] = useState([]);
   const [loading, setLoading] = useState(true);
   const [modal, setModal] = useState(null);
@@ -13,7 +15,7 @@ export default function StockMgmtPage() {
 
   const load = async () => {
     setLoading(true);
-    const { data } = await supabase.from("ingredients").select("*").order("name");
+    const { data } = await supabase.from("ingredients").select("*").in("store_id", staffUser?.store_ids?.length ? staffUser.store_ids : ["00000000-0000-0000-0000-000000000000"]).order("name");
     setItems(data || []);
     setLoading(false);
   };
@@ -33,7 +35,7 @@ export default function StockMgmtPage() {
       waste_pct: Number(form.waste_pct)||0,
     };
     if (modal.mode === "new") {
-      const { error } = await supabase.from("ingredients").insert(payload);
+      const { error } = await supabase.from("ingredients").insert({ ...payload, store_id: staffUser?.store_ids?.[0] });
       if (error) { alert("Hata: " + error.message); setBusy(false); return; }
     } else {
       const { error } = await supabase.from("ingredients").update(payload).eq("id", modal.data.id);
