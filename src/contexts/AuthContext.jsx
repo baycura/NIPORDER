@@ -14,6 +14,9 @@ export function AuthProvider({ children }) {
 
     const loadSession = async (sess) => {
       if (!mounted) return;
+      const __uid = sess?.user?.id || null;
+      if (window.__nipLastUid === __uid) return;
+      window.__nipLastUid = __uid;
       setSession(sess);
       try {
         if (sess && sess.user) {
