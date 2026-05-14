@@ -46,14 +46,13 @@ export default function KitchenPage() {
     const { data: orders } = await supabase
       .from("orders")
       .select("id, table_id, customer_name, created_at, status, note, origin_store_id, stores:origin_store_id(slug, name)")
-      .in("origin_store_id", staffUser?.store_ids?.length ? staffUser.store_ids : ["00000000-0000-0000-0000-000000000000"])
       .in("status", ["open","sent","preparing","ready"])
       .order("created_at", {ascending:true});
 
     if (!orders || orders.length === 0) { setTickets([]); setLoading(false); return; }
 
     const { data: items } = await supabase
-      .from("order_items").select("*")
+      .from("order_items").select("*").in("kitchen_destination_store_id", staffUser?.store_ids?.length ? staffUser.store_ids : ["00000000-0000-0000-0000-000000000000"])
       .in("order_id", orders.map(o => o.id))
       .in("kitchen_status", ["pending","preparing","ready"])
       .order("created_at", {ascending:true});
