@@ -1,9 +1,11 @@
 import { useEffect, useState } from "react";
 import { supabase } from "../../lib/supabase.js";
+import { useAuth } from "../../contexts/AuthContext.jsx";
 
 const cv = "-apple-system,BlinkMacSystemFont,'Segoe UI',Roboto,sans-serif";
 
 export default function InvoicesPage() {
+  const { staffUser } = useAuth();
   const [invoices, setInvoices] = useState([]);
   const [ingredients, setIngredients] = useState([]);
   const [loading, setLoading] = useState(true);
@@ -18,7 +20,7 @@ export default function InvoicesPage() {
     setLoading(true);
     const [{data: invs}, {data: ings}] = await Promise.all([
       supabase.from("supplier_invoices").select("*, supplier_invoice_items(*, ingredients(name, unit))").order("invoice_date", {ascending: false}),
-      supabase.from("ingredients").select("*").order("name"),
+      supabase.from("ingredients").select("*").in("store_id", staffUser?.store_ids?.length ? staffUser.store_ids : ["00000000-0000-0000-0000-000000000000"]).order("name"),
     ]);
     setInvoices(invs || []);
     setIngredients(ings || []);
@@ -77,6 +79,7 @@ export default function InvoicesPage() {
       if (l.isNew) {
         if (!l.newName?.trim()) continue;
         const { data: newIng, error: e } = await supabase.from("ingredients").insert({
+          store_id: staffUser?.store_ids?.[0],
           name: l.newName.trim(), unit: l.newUnit, stock_qty: 0, cost_per_unit: Number(l.unit_cost)||0,
         }).select().single();
         if (e) { alert("Ingredient hatasi: " + e.message); continue; }
