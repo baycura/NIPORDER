@@ -1,39 +1,156 @@
-import{useState,useEffect}from"react";import{supabase}from"../../lib/supabase.js";
-import{useAuth}from"../../contexts/AuthContext.jsx";
-const cv="'Coolvetica','Bebas Neue',sans-serif";const cvc="'Coolvetica Condensed','Barlow Condensed',sans-serif";
-export default function ReportsPage(){
-  const{staffUser}=useAuth();
-  const[period,setPeriod]=useState("week");const[orders,setOrders]=useState([]);const[topItems,setTopItems]=useState([]);const[loading,setLoading]=useState(true);
-  useEffect(()=>{(async()=>{setLoading(true);const days=period==="week"?7:period==="month"?30:90;const start=new Date();start.setDate(start.getDate()-days);
-    const{data}=await supabase.from("orders").select("*,order_items(*)").in("origin_store_id", staffUser?.store_ids?.length ? staffUser.store_ids : ["00000000-0000-0000-0000-000000000000"]).eq("status","paid").gte("paid_at",start.toISOString());
-    setOrders(data||[]);const map={};(data||[]).forEach(o=>(o.order_items||[]).forEach(item=>{if(!map[item.product_name])map[item.product_name]={name:item.product_name,qty:0,revenue:0};map[item.product_name].qty+=item.quantity;map[item.product_name].revenue+=item.final_price*item.quantity;}));
-    setTopItems(Object.values(map).sort((a,b)=>b.revenue-a.revenue).slice(0,8));setLoading(false);})();},[period]);
-  const totalRevenue=orders.reduce((s,o)=>s+(o.total||0),0);const totalDiscount=orders.reduce((s,o)=>s+(o.discount_amount||0),0);const avgOrder=orders.length>0?totalRevenue/orders.length:0;
-  const byDay={};orders.forEach(o=>{const day=new Date(o.paid_at).toLocaleDateString("tr",{weekday:"short",day:"numeric"});byDay[day]=(byDay[day]||0)+(o.total||0);});
-  const dayEntries=Object.entries(byDay).slice(-7);const maxDay=Math.max(...dayEntries.map(([,v])=>v),1);
-  return(<div>
-    <div style={{display:"flex",justifyContent:"space-between",alignItems:"center",marginBottom:20}}>
-      <h1 style={{color:"#F0EDE8",fontFamily:cv,fontSize:28,letterSpacing:"-0.5px",margin:0}}>Raporlar</h1>
-      <div style={{display:"flex",gap:6}}>{[["week","7 Gün"],["month","30 Gün"],["quarter","90 Gün"]].map(([id,lbl])=>(<button key={id} onClick={()=>setPeriod(id)} style={{padding:"6px 14px",borderRadius:8,border:"none",fontFamily:cvc,fontSize:11,letterSpacing:"1px",cursor:"pointer",background:period===id?"#C8973E":"transparent",color:period===id?"#000":"#888",outline:period!==id?"1px solid #2A2A2A":"none"}}>{lbl}</button>))}</div>
+import { useEffect, useState } from "react";
+import { supabase } from "../../lib/supabase.js";
+import { useAuth } from "../../contexts/AuthContext.jsx";
+
+const cv = "-apple-system,BlinkMacSystemFont,'Segoe UI',Roboto,sans-serif";
+const hv = "'Bebas Neue','Barlow Condensed','Coolvetica Condensed',sans-serif";
+
+export default function ReportsPage() {
+  const { staffUser } = useAuth();
+  const storeIds = staffUser?.store_ids || [];
+  const [stores, setStores] = useState([]);
+  const [selectedStore, setSelectedStore] = useState(null);
+  const [data, setData] = useState({ today: 0, yesterday: 0, activeOrders: 0, completed: 0, topProducts: [], hourly: [], weekTotal: 0 });
+  const [loading, setLoading] = useState(true);
+
+  useEffect(() => {
+    if (storeIds.length === 0) return;
+    supabase.from("stores").select("id,name,slug").in("id", storeIds).then(r => {
+      const list = r.data || [];
+      setStores(list);
+      if (list.length > 0 && !selectedStore) setSelectedStore(list[0].id);
+    });
+  }, [staffUser?.id]);
+
+  useEffect(() => { if (selectedStore) loadData(); }, [selectedStore]);
+
+  async function loadData() {
+    setLoading(true);
+    const now = new Date();
+    const todayStart = new Date(now.getFullYear(), now.getMonth(), now.getDate()).toISOString();
+    const yesterdayStart = new Date(now.getFullYear(), now.getMonth(), now.getDate() - 1).toISOString();
+    const weekStart = new Date(now.getFullYear(), now.getMonth(), now.getDate() - 7).toISOString();
+
+    const [todayRes, yesterdayRes, weekRes] = await Promise.all([
+      supabase.from("orders").select("id,total,status,created_at,order_items(quantity,unit_price,product_id,products(name))").eq("origin_store_id", selectedStore).gte("created_at", todayStart),
+      supabase.from("orders").select("total,status").eq("origin_store_id", selectedStore).gte("created_at", yesterdayStart).lt("created_at", todayStart),
+      supabase.from("orders").select("total,status").eq("origin_store_id", selectedStore).gte("created_at", weekStart),
+    ]);
+
+    const paid = ['paid','completed','served','closed'];
+    const todayOrders = todayRes.data || [];
+    const todayPaid = todayOrders.filter(o => paid.includes(o.status));
+    const yesterdayPaid = (yesterdayRes.data || []).filter(o => paid.includes(o.status));
+    const weekPaid = (weekRes.data || []).filter(o => paid.includes(o.status));
+
+    const todayTotal = todayPaid.reduce((s,o) => s + Number(o.total||0), 0);
+    const yesterdayTotal = yesterdayPaid.reduce((s,o) => s + Number(o.total||0), 0);
+    const weekTotal = weekPaid.reduce((s,o) => s + Number(o.total||0), 0);
+    const active = todayOrders.filter(o => !paid.includes(o.status)).length;
+
+    const pCount = {};
+    todayPaid.forEach(o => (o.order_items||[]).forEach(oi => {
+      const n = oi.products?.name || 'Bilinmeyen';
+      pCount[n] = (pCount[n]||0) + (oi.quantity||0);
+    }));
+    const topProducts = Object.entries(pCount).sort((a,b) => b[1]-a[1]).slice(0,5);
+
+    const hourly = Array.from({length:16}, (_,i) => ({ hour: 8+i, total: 0 }));
+    todayPaid.forEach(o => {
+      const h = new Date(o.created_at).getHours();
+      const slot = hourly.find(x => x.hour === h);
+      if (slot) slot.total += Number(o.total||0);
+    });
+
+    setData({ today: todayTotal, yesterday: yesterdayTotal, activeOrders: active, completed: todayPaid.length, topProducts, hourly, weekTotal });
+    setLoading(false);
+  }
+
+  const diff = data.yesterday > 0 ? ((data.today - data.yesterday) / data.yesterday * 100) : null;
+  const maxHour = Math.max(...data.hourly.map(h => h.total), 1);
+
+  return (
+    <div style={{ padding: 16, fontFamily: cv, maxWidth: 900, margin: "0 auto", paddingBottom: 80 }}>
+      <h1 style={{ fontFamily: hv, fontWeight: 900, fontSize: 36, margin: "0 0 8px", letterSpacing: 1 }}>
+        📊 DASHBOARD
+      </h1>
+      <div style={{ fontSize: 12, color: "#999", marginBottom: 16 }}>{new Date().toLocaleDateString('tr-TR', { weekday:'long', day:'numeric', month:'long', year:'numeric' })}</div>
+
+      {stores.length > 1 && (
+        <div style={{ display: "flex", gap: 8, marginBottom: 16, flexWrap: "wrap" }}>
+          {stores.map(s => (
+            <button key={s.id} onClick={() => setSelectedStore(s.id)} style={{
+              padding: "8px 16px", borderRadius: 8, border: "none", cursor: "pointer",
+              background: selectedStore === s.id ? (s.slug === 'paris' ? "#000" : "#a02020") : "#eee",
+              color: selectedStore === s.id ? "#fff" : "#666", fontWeight: 600, fontSize: 14
+            }}>
+              {s.slug === 'paris' ? '🗼' : '🍩'} {s.name}
+            </button>
+          ))}
+        </div>
+      )}
+
+      {loading ? (
+        <div style={{ padding: 60, textAlign: "center", color: "#999" }}>Yükleniyor...</div>
+      ) : (
+        <>
+          <div style={{ background: "#000", color: "#fff", padding: 24, borderRadius: 12, marginBottom: 12 }}>
+            <div style={{ fontSize: 12, opacity: 0.6, letterSpacing: 1 }}>💰 BUGÜN CİRO</div>
+            <div style={{ fontSize: 52, fontWeight: 900, fontFamily: hv, lineHeight: 1, marginTop: 4 }}>
+              ₺{data.today.toFixed(2)}
+            </div>
+            {diff !== null && (
+              <div style={{ fontSize: 14, marginTop: 8, color: diff >= 0 ? "#9f9" : "#f99" }}>
+                {diff >= 0 ? "↗" : "↘"} %{Math.abs(diff).toFixed(0)} dünden (₺{data.yesterday.toFixed(2)})
+              </div>
+            )}
+          </div>
+
+          <div style={{ display: "grid", gridTemplateColumns: "1fr 1fr 1fr", gap: 8, marginBottom: 16 }}>
+            <div style={{ background: "#f5f5f5", padding: 14, borderRadius: 10 }}>
+              <div style={{ fontSize: 11, color: "#666" }}>⏱️ AKTİF</div>
+              <div style={{ fontSize: 28, fontWeight: 700 }}>{data.activeOrders}</div>
+            </div>
+            <div style={{ background: "#f5f5f5", padding: 14, borderRadius: 10 }}>
+              <div style={{ fontSize: 11, color: "#666" }}>✅ BUGÜN</div>
+              <div style={{ fontSize: 28, fontWeight: 700 }}>{data.completed}</div>
+            </div>
+            <div style={{ background: "#f5f5f5", padding: 14, borderRadius: 10 }}>
+              <div style={{ fontSize: 11, color: "#666" }}>📅 7 GÜN</div>
+              <div style={{ fontSize: 22, fontWeight: 700 }}>₺{data.weekTotal.toFixed(0)}</div>
+            </div>
+          </div>
+
+          <div style={{ background: "#fff", border: "1px solid #eee", padding: 16, borderRadius: 10, marginBottom: 12 }}>
+            <div style={{ fontSize: 12, color: "#666", marginBottom: 14, letterSpacing: 1 }}>📈 SAATLİK SATIŞ</div>
+            <div style={{ display: "flex", alignItems: "flex-end", gap: 3, height: 110 }}>
+              {data.hourly.map(h => (
+                <div key={h.hour} style={{ flex: 1, textAlign: "center", display:"flex", flexDirection:"column", justifyContent:"flex-end", height:"100%" }}>
+                  <div style={{
+                    background: h.total > 0 ? "#d4af37" : "#f0f0f0",
+                    height: `${Math.max((h.total / maxHour) * 100, 2)}%`,
+                    borderRadius: "3px 3px 0 0",
+                    transition: "all 0.3s"
+                  }} title={`${h.hour}:00 - ₺${h.total.toFixed(0)}`} />
+                  <div style={{ fontSize: 9, color: "#bbb", marginTop: 4 }}>{h.hour}</div>
+                </div>
+              ))}
+            </div>
+          </div>
+
+          <div style={{ background: "#fff", border: "1px solid #eee", padding: 16, borderRadius: 10 }}>
+            <div style={{ fontSize: 12, color: "#666", marginBottom: 12, letterSpacing: 1 }}>🏆 EN ÇOK SATAN (BUGÜN)</div>
+            {data.topProducts.length === 0 ? (
+              <div style={{ color: "#bbb", fontSize: 13, padding: 12 }}>Bugün henüz satış yok</div>
+            ) : data.topProducts.map(([name, qty], i) => (
+              <div key={name} style={{ display: "flex", justifyContent: "space-between", alignItems:"center", padding: "10px 0", borderBottom: i < data.topProducts.length-1 ? "1px solid #f5f5f5" : "none" }}>
+                <span style={{ fontSize: 14 }}><b style={{ color: "#d4af37", marginRight: 8 }}>{i+1}.</b> {name}</span>
+                <span style={{ fontWeight: 700, fontSize: 16 }}>× {qty}</span>
+              </div>
+            ))}
+          </div>
+        </>
+      )}
     </div>
-    <div style={{display:"grid",gridTemplateColumns:"repeat(4,1fr)",gap:12,marginBottom:24}}>
-      {[["CİRO",`₺${Math.round(totalRevenue).toLocaleString()}`,"#3ECF8E","💰"],["SİPARİŞ",orders.length.toString(),"#5A8FE0","📋"],["ORT. SEPET",`₺${Math.round(avgOrder).toLocaleString()}`,"#C8973E","📊"],["İNDİRİM",`₺${Math.round(totalDiscount).toLocaleString()}`,"#E05A5A","🏷️"]].map(([l,v,c,icon])=>(<div key={l} style={{background:"#1E1E1E",border:"1px solid #2A2A2A",borderRadius:12,padding:16}}><div style={{display:"flex",justifyContent:"space-between"}}><div><div style={{color:"#888",fontFamily:cvc,fontSize:10,letterSpacing:"1.5px",marginBottom:4}}>{l}</div><div style={{color:c,fontFamily:cv,fontSize:24}}>{v}</div></div><span style={{fontSize:22,opacity:.5}}>{icon}</span></div></div>))}
-    </div>
-    <div style={{display:"grid",gridTemplateColumns:"1.6fr 1fr",gap:16}}>
-      <div style={{background:"#1E1E1E",border:"1px solid #2A2A2A",borderRadius:12,padding:20}}>
-        <div style={{color:"#F0EDE8",fontFamily:cv,fontSize:16,marginBottom:16}}>Günlük Ciro</div>
-        {loading?<div style={{color:"#888",fontFamily:cvc,fontSize:12,textAlign:"center",padding:20}}>YÜKLENİYOR...</div>:
-        <div style={{display:"flex",alignItems:"flex-end",gap:8,height:160}}>
-          {dayEntries.map(([day,val],i)=>(<div key={day} style={{flex:1,display:"flex",flexDirection:"column",alignItems:"center",gap:4,height:"100%",justifyContent:"flex-end"}}>
-            <div style={{color:"#888",fontFamily:cvc,fontSize:9}}>₺{(val/1000).toFixed(1)}k</div>
-            <div style={{width:"100%",borderRadius:"4px 4px 0 0",minHeight:4,background:i===dayEntries.length-1?"#C8973E":"#C8973E44",height:`${(val/maxDay)*100}%`}}/>
-            <div style={{color:"#888",fontFamily:cvc,fontSize:9}}>{day}</div>
-          </div>))}
-        </div>}
-      </div>
-      <div style={{background:"#1E1E1E",border:"1px solid #2A2A2A",borderRadius:12,padding:20}}>
-        <div style={{color:"#F0EDE8",fontFamily:cv,fontSize:16,marginBottom:14}}>En Çok Satan</div>
-        {topItems.map((item,i)=>(<div key={i} style={{marginBottom:12}}><div style={{display:"flex",justifyContent:"space-between",marginBottom:3}}><span style={{color:"#F0EDE8",fontFamily:cvc,fontSize:12}}>{item.name}</span><span style={{color:"#C8973E",fontFamily:cvc,fontSize:12}}>{item.qty} adet</span></div><div style={{background:"#2A2A2A",borderRadius:3,height:3}}><div style={{background:"#C8973E",height:"100%",borderRadius:3,width:`${(item.qty/(topItems[0]?.qty||1))*100}%`}}/></div></div>))}
-      </div>
-    </div>
-  </div>);}
+  );
+}
