@@ -14,10 +14,10 @@ export function AuthProvider({ children }) {
 
     const loadSession = async (sess) => {
       if (!mounted) return;
+      setSession(sess); // ALWAYS update session for token refresh
       const __uid = sess?.user?.id || null;
-      if (window.__nipLastUid === __uid) return;
+      if (window.__nipLastUid === __uid) return; // skip staff/customer DB query only
       window.__nipLastUid = __uid;
-      setSession(sess);
       try {
         if (sess && sess.user) {
           const userId = sess.user.id;
