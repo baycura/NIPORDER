@@ -19,7 +19,7 @@ export default function InvoicesPage() {
   const load = async () => {
     setLoading(true);
     const [{data: invs}, {data: ings}] = await Promise.all([
-      supabase.from("supplier_invoices").select("*, supplier_invoice_items(*, ingredients(name, unit))").order("invoice_date", {ascending: false}),
+      supabase.from("supplier_invoices").select("*, supplier_invoice_items(*, ingredients(name, unit))").in("store_id", staffUser?.store_ids?.length ? staffUser.store_ids : ["00000000-0000-0000-0000-000000000000"]).order("invoice_date", {ascending: false}),
       supabase.from("ingredients").select("*").in("store_id", staffUser?.store_ids?.length ? staffUser.store_ids : ["00000000-0000-0000-0000-000000000000"]).order("name"),
     ]);
     setInvoices(invs || []);
@@ -70,6 +70,7 @@ export default function InvoicesPage() {
       total_amount: linesTotal,
       photo_url: photoUrl,
       notes: form.notes?.trim() || null,
+      store_id: staffUser?.store_ids?.[0],
     }).select().single();
     if (invErr) { alert("Hata: " + invErr.message); setBusy(false); return; }
 
@@ -89,7 +90,7 @@ export default function InvoicesPage() {
       const qty = Number(l.qty)||0;
       const unitCost = Number(l.unit_cost)||0;
       await supabase.from("supplier_invoice_items").insert({
-        invoice_id: inv.id, ingredient_id: ingId, qty, unit_cost: unitCost, total_cost: qty * unitCost,
+        invoice_id: inv.id, store_id: inv.store_id, ingredient_id: ingId, qty, unit_cost: unitCost, total_cost: qty * unitCost,
       });
       // Increment stock + update cost
       const ing = ingredients.find(i => i.id === ingId);
