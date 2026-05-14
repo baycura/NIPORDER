@@ -226,7 +226,7 @@ export default function CustomerMenu() {
         supabase.from("categories").select("*").eq("is_active", true).eq("store_id", storeId).order("sort_order"),
         supabase.from("products").select("*").eq("is_available", true).eq("store_id", storeId).order("sort_order"),
         supabase.from("app_settings").select("key,value").eq("store_id", storeId),
-        supabase.rpc("get_active_happy_hour").then(r => r).catch(() => ({data: null})),
+        Promise.resolve({data: null}),
         supabase.from("category_schedule_rules").select("*").eq("is_active", true).eq("store_id", storeId),
         supabase.from("happy_hour_rules").select("*").eq("is_active", true).eq("store_id", storeId),
       ]);
