@@ -8,7 +8,6 @@ const UNITS = ["ml","l","g","kg","adet","sise","kasa"];
 
 export default function StockMgmtPage() {
   const { staffUser } = useAuth();
-  const { staffUser } = useAuth();
   const [items, setItems] = useState([]);
   const [loading, setLoading] = useState(true);
   const [modal, setModal] = useState(null);
