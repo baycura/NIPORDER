@@ -487,7 +487,7 @@ export default function CustomerMenu() {
       const itemsPayload = cart.map(c => ({
         order_id: ord.id, product_id: c.product.id, product_name: c.product.name,
         product_price: Number(c.product.price), final_price: calcPrice(c.product, c.options),
-        quantity: c.quantity, kitchen_status: "pending", sent_to_kitchen: true,
+        quantity: c.quantity, kitchen_status: "pending", sent_to_kitchen: true, kitchen_destination_store_id: c.product.kitchen_destination_store_id || c.product.store_id,
         notes: c.note || null, selected_options: c.options || null,
         store_id: c.product.store_id || currentStoreId,
       }));
