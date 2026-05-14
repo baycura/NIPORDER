@@ -32,8 +32,8 @@ export default function MenuMgmtPage() {
   useEffect(() => { load(); }, []);
 
   // -------- CATEGORIES --------
-  const openNewCat = () => { setCatModal({mode:"new"}); setCatForm({name:"", name_en:"", icon:"", sort_order:100, available_from:"", available_until:"", is_active:true}); };
-  const openEditCat = (c) => { setCatModal({mode:"edit", data:c}); setCatForm({name:c.name||"", name_en:c.name_en||"", icon:c.icon||"", sort_order:c.sort_order||100, available_from:c.available_from||"", available_until:c.available_until||"", is_active:c.is_active!==false}); };
+  const openNewCat = () => { setCatModal({mode:"new"}); setCatForm({name:"", name_en:"", icon:"", sort_order:100, available_from:"", available_until:"", show_in_party_menu:true, is_active:true}); };
+  const openEditCat = (c) => { setCatModal({mode:"edit", data:c}); setCatForm({name:c.name||"", name_en:c.name_en||"", icon:c.icon||"", sort_order:c.sort_order||100, available_from:c.available_from||"", available_until:c.available_until||"", show_in_party_menu:c.show_in_party_menu!==false, is_active:c.is_active!==false}); };
 
   const saveCat = async () => {
     if (busy) return;
@@ -44,6 +44,7 @@ export default function MenuMgmtPage() {
       sort_order: Number(catForm.sort_order)||100,
       available_from: catForm.available_from || null,
       available_until: catForm.available_until || null,
+      show_in_party_menu: catForm.show_in_party_menu!==false,
       is_active: catForm.is_active,
     };
     const res = catModal.mode === "new"
@@ -298,6 +299,10 @@ export default function MenuMgmtPage() {
             <Field label="BASLANGIC SAATI"><input type="time" value={catForm.available_from||""} onChange={e=>setCatForm({...catForm,available_from:e.target.value})} style={inputS}/></Field>
             <Field label="BITIS SAATI"><input type="time" value={catForm.available_until||""} onChange={e=>setCatForm({...catForm,available_until:e.target.value})} style={inputS}/></Field>
           </div>
+          <label style={{display:"flex",alignItems:"center",gap:8,marginBottom:12,cursor:"pointer"}}>
+            <input type="checkbox" checked={catForm.show_in_party_menu!==false} onChange={e=>setCatForm({...catForm,show_in_party_menu:e.target.checked})}/>
+            <span style={{fontSize:13,color:"#F0EDE8"}}>🎉 Parti menusunde goster</span>
+          </label>
           <label style={{display:"flex",alignItems:"center",gap:8,marginBottom:12,cursor:"pointer"}}>
             <input type="checkbox" checked={catForm.is_active!==false} onChange={e=>setCatForm({...catForm,is_active:e.target.checked})}/>
             <span style={{fontSize:13,color:"#F0EDE8"}}>Aktif</span>
