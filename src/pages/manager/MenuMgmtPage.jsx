@@ -325,8 +325,8 @@ export default function MenuMgmtPage() {
           <Field label="NAME (English)"><input value={prodForm.name_en||""} onChange={e=>setProdForm({...prodForm,name_en:e.target.value})} placeholder="Optional - shown when customer selects EN" style={inputS}/></Field>
           <Field label="AÇIKLAMA (Türkçe)"><textarea value={prodForm.description||""} onChange={e=>setProdForm({...prodForm,description:e.target.value})} rows={2} style={{...inputS,resize:"vertical"}}/></Field>
           <Field label="DESCRIPTION (English)"><textarea value={prodForm.description_en||""} onChange={e=>setProdForm({...prodForm,description_en:e.target.value})} rows={2} placeholder="Optional - shown when customer selects EN" style={{...inputS,resize:"vertical"}}/></Field>
-          <Field label="FIYAT (₺)"><input type="number" step="0.01" value={prodForm.price||0} onChange={e=>setProdForm({...prodForm,price:e.target.value})} style={inputS}/></Field>
-          <Field label="ANLIK INDIRIM (%)"><input type="number" step="1" min="0" max="99" value={prodForm.instant_discount_pct||0} onChange={e=>setProdForm({...prodForm,instant_discount_pct:e.target.value})} style={inputS}/></Field>
+          <Field label="FIYAT (₺)"><input type="number" step="0.01" value={prodForm.price??''} onChange={e=>setProdForm({...prodForm,price:e.target.value})} style={inputS}/></Field>
+          <Field label="ANLIK INDIRIM (%)"><input type="number" step="1" min="0" max="99" value={prodForm.instant_discount_pct??''} onChange={e=>setProdForm({...prodForm,instant_discount_pct:e.target.value})} style={inputS}/></Field>
 
           {/* OPTIONS SYSTEM */}
           <div style={{background:"#0C0C0C",border:"1px solid "+(prodForm.has_options?"#C8973E":"#2A2A2A"),borderRadius:10,padding:12,marginBottom:12}}>
