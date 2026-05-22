@@ -463,7 +463,7 @@ export default function CustomerMenu() {
     if (!optModal) return;
     const cfg = optModal.options_config || {};
     for (const group of cfg.groups || []) {
-      if (group.required && !optSelected[group.name]) { alert(t.please_choose + " " + group.name); return; }
+      if (group.required && (group.multi?!((optSelected[group.name]||[]).length):!optSelected[group.name])) { alert(t.please_choose + " " + group.name); return; }
     }
     addToCart(optModal, optSelected, optNote.trim() || null);
     setOptModal(null);
@@ -651,7 +651,7 @@ export default function CustomerMenu() {
                 </div>
                 <div style={{display:"flex",flexWrap:"wrap",gap:6}}>
                   {(group.options || []).map(opt => (
-                    <button key={opt} onClick={()=>setOptSelected({...optSelected, [group.name]: opt})} style={{padding:"10px 14px",background:optSelected[group.name]===opt?"#000":"#f2f2f2",color:optSelected[group.name]===opt?"#fff":"#333",border:"none",borderRadius:10,fontSize:13,fontWeight:700,cursor:"pointer"}}>{opt}</button>
+                    <button key={opt} onClick={()=>setOptSelected(group.multi?{...optSelected,[group.name]:((optSelected[group.name]||[]).includes(opt)?(optSelected[group.name]||[]).filter(x=>x!==opt):[...(optSelected[group.name]||[]),opt])}:{...optSelected,[group.name]:opt})} style={{padding:"10px 14px",background:(group.multi?(optSelected[group.name]||[]).includes(opt):optSelected[group.name]===opt)?"#000":"#f2f2f2",color:(group.multi?(optSelected[group.name]||[]).includes(opt):optSelected[group.name]===opt)?"#fff":"#333",border:"none",borderRadius:10,fontSize:13,fontWeight:700,cursor:"pointer"}}>{opt}</button>
                   ))}
                 </div>
               </div>
@@ -679,7 +679,7 @@ export default function CustomerMenu() {
               <div key={idx} style={{display:"flex",alignItems:"center",gap:10,padding:"12px 0",borderBottom:"1px solid #f0f0f0"}}>
                 <div style={{flex:1,minWidth:0}}>
                   <div style={{fontSize:14,fontWeight:700}}>{pName(c.product)}</div>
-                  {c.options && <div style={{fontSize:11,color:"#C8973E",marginTop:2,fontWeight:600}}>{Object.values(c.options).join(" · ")}</div>}
+                  {c.options && <div style={{fontSize:11,color:"#C8973E",marginTop:2,fontWeight:600}}>{Object.values(c.options).flat().join(" · ")}</div>}
                   {c.note && <div style={{fontSize:11,color:"#666",fontStyle:"italic",marginTop:2}}>{c.note}</div>}
                   <div style={{fontSize:12,color:"#555",marginTop:3}}>₺{calcPrice(c.product, c.options)} × {c.quantity} = ₺{calcPrice(c.product, c.options) * c.quantity}</div>
                 </div>
