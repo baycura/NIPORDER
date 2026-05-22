@@ -67,7 +67,7 @@ export default function MenuMgmtPage() {
     if (!selectedCat) { alert("Once kategori sec"); return; }
     setProdModal({mode:"new"});
     setProdForm({
-      name:"", name_en:"", description:"", description_en:"", price:0, instant_discount_pct:0,
+      name:"", name_en:"", description:"", description_en:"", price:'', instant_discount_pct:'',
       sold_out_today:false, unavailable_reason:"",
       show_in_party_menu:false, store_id:"", kitchen_destination_store_id:"", is_available:true, prep_time_minutes:null, show_prep_time:false,
       category_id: selectedCat,
