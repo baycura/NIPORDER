@@ -25,6 +25,7 @@ export default function KitchenDisplayPage() {
   const [tickets, setTickets] = useState([]);
   const [loading, setLoading] = useState(true);
   const [flash, setFlash] = useState(false);
+  const [audioUnlocked, setAudioUnlocked] = useState(false);
   const audioUnlockedRef = useRef(false);
   const wakeLockRef = useRef(null);
   const knownItemIdsRef = useRef(new Set());
@@ -96,7 +97,7 @@ export default function KitchenDisplayPage() {
         const o = ctx.createOscillator(); const g = ctx.createGain();
         g.gain.value = 0.001; o.connect(g); g.connect(ctx.destination);
         o.start(); o.stop(ctx.currentTime + 0.01);
-        audioUnlockedRef.current = true;
+        audioUnlockedRef.current = true; setAudioUnlocked(true);
       } catch (e) {}
     }
     if ("wakeLock" in navigator && !wakeLockRef.current) {
@@ -114,7 +115,7 @@ export default function KitchenDisplayPage() {
         </div>
       )}
 
-      {!audioUnlockedRef.current && (
+      {!audioUnlocked && (
         <div style={{position:"fixed",inset:0,background:"rgba(0,0,0,0.95)",display:"flex",alignItems:"center",justifyContent:"center",zIndex:300,cursor:"pointer"}}>
           <div style={{textAlign:"center",color:"#C8973E"}}>
             <div style={{fontSize:80,marginBottom:20}}>🔊</div>
