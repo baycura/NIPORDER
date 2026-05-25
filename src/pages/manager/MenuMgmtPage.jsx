@@ -84,7 +84,7 @@ export default function MenuMgmtPage() {
       instant_discount_pct:Number(p.instant_discount_pct)||0,
       sold_out_today:!!p.sold_out_today,
       unavailable_reason:p.unavailable_reason||"",
-      show_in_party_menu:!!p.show_in_party_menu, store_id:p.store_id||"", kitchen_destination_store_id:p.kitchen_destination_store_id||"",
+      show_in_party_menu:!!p.show_in_party_menu, store_id:p.store_id||"", additional_store_ids:Array.isArray(p.additional_store_ids)?p.additional_store_ids:[], kitchen_destination_store_id:p.kitchen_destination_store_id||"",
       prep_time_minutes:p.prep_time_minutes||null,
       show_prep_time:!!p.show_prep_time,
       is_available:p.is_available!==false,
@@ -117,6 +117,7 @@ export default function MenuMgmtPage() {
       unavailable_reason: prodForm.unavailable_reason?.trim() || null,
       show_in_party_menu: prodForm.show_in_party_menu,
       store_id: prodForm.store_id || staffUser?.store_ids?.[0],
+      additional_store_ids: prodForm.additional_store_ids || [],
       kitchen_destination_store_id: prodForm.kitchen_destination_store_id || prodForm.store_id || staffUser?.store_ids?.[0],
       is_available: prodForm.is_available,
       category_id: prodForm.category_id,
@@ -377,9 +378,9 @@ export default function MenuMgmtPage() {
           </div>
 
           <div style={{marginBottom:10}}>
-            <label style={{display:"block",fontSize:11,color:"#888",marginBottom:4,fontWeight:600,letterSpacing:0.5}}>🏪 MAGAZA (gorunecegi yer)</label>
+            <label style={{display:"block",fontSize:11,color:"#888",marginBottom:4,fontWeight:600,letterSpacing:0.5}}>🏪 MAGAZA (birden fazla secilebilir)</label>
             <div style={{display:"flex",gap:6}}>
-              {[{id:"c3c6e0c7-1821-4edd-993d-ad960cfbc452",label:"Paris"},{id:"c39da530-7f73-4f69-a752-029bf03790b1",label:"Berlin"}].map(s => { const sel = prodForm.store_id === s.id; return (<button key={s.id} type="button" onClick={()=>setProdForm({...prodForm,store_id:s.id})} style={{flex:1,padding:"8px",background:sel?"#C8973E":"#222",color:sel?"#000":"#888",border:"1px solid "+(sel?"#C8973E":"#333"),borderRadius:6,fontSize:13,fontWeight:700,cursor:"pointer"}}>{sel?"✓ ":""}{s.label}</button>); })}
+              {[{id:"c3c6e0c7-1821-4edd-993d-ad960cfbc452",label:"Paris"},{id:"c39da530-7f73-4f69-a752-029bf03790b1",label:"Berlin"}].map(s => { const sel = [prodForm.store_id,...(prodForm.additional_store_ids||[])].filter(Boolean).includes(s.id); return (<button key={s.id} type="button" onClick={()=>{const cur=[prodForm.store_id,...(prodForm.additional_store_ids||[])].filter(Boolean);const next=cur.includes(s.id)?cur.filter(x=>x!==s.id):[...cur,s.id];setProdForm({...prodForm,store_id:next[0]||"",additional_store_ids:next.slice(1)});}} style={{flex:1,padding:"8px",background:sel?"#C8973E":"#222",color:sel?"#000":"#888",border:"1px solid "+(sel?"#C8973E":"#333"),borderRadius:6,fontSize:13,fontWeight:700,cursor:"pointer"}}>{sel?"✓ ":""}{s.label}</button>); })}
             </div>
           </div>
 
