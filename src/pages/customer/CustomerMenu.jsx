@@ -236,7 +236,7 @@ export default function CustomerMenu() {
       const finalCats = [...(cats || [])];
       const finalProds = [...(prods || [])];
       if (storeId === PARIS_STORE_UUID) {
-        const { data: kCats } = await supabase.from("categories").select("*").eq("is_active", true).eq("store_id", DONER_STORE_UUID).eq("name", "Kitchen");
+        const { data: kCats } = await supabase.from("categories").select("*").eq("is_active", true).eq("store_id", DONER_STORE_UUID).eq("name_en", "Kitchen");
         if (kCats && kCats.length > 0) {
           finalCats.push(...kCats);
           const kitchenCatId = kCats[0].id;
