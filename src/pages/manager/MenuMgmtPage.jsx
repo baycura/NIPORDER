@@ -67,7 +67,7 @@ export default function MenuMgmtPage() {
     if (!selectedCat) { alert("Once kategori sec"); return; }
     setProdModal({mode:"new"});
     setProdForm({
-      name:"", name_en:"", description:"", description_en:"", price:'', instant_discount_pct:'',
+      name:"", name_en:"", description:"", description_en:"", price:'', instant_discount_pct:'', hh_enabled:false, hh_price:'', hh_start:'', hh_end:'', hh_days:[0,1,2,3,4,5,6],
       sold_out_today:false, unavailable_reason:"",
       show_in_party_menu:false, store_id:"", kitchen_destination_store_id:"", is_available:true, prep_time_minutes:null, show_prep_time:false,
       category_id: selectedCat,
@@ -84,7 +84,7 @@ export default function MenuMgmtPage() {
       instant_discount_pct:Number(p.instant_discount_pct)||0,
       sold_out_today:!!p.sold_out_today,
       unavailable_reason:p.unavailable_reason||"",
-      show_in_party_menu:!!p.show_in_party_menu, store_id:p.store_id||"", additional_store_ids:Array.isArray(p.additional_store_ids)?p.additional_store_ids:[], kitchen_destination_store_id:p.kitchen_destination_store_id||"",
+      show_in_party_menu:!!p.show_in_party_menu, store_id:p.store_id||"", additional_store_ids:Array.isArray(p.additional_store_ids)?p.additional_store_ids:[], hh_enabled:!!p.hh_enabled, hh_price:p.hh_price??'', hh_start:p.hh_start||'', hh_end:p.hh_end||'', hh_days:Array.isArray(p.hh_days)?p.hh_days:[0,1,2,3,4,5,6], kitchen_destination_store_id:p.kitchen_destination_store_id||"",
       prep_time_minutes:p.prep_time_minutes||null,
       show_prep_time:!!p.show_prep_time,
       is_available:p.is_available!==false,
@@ -118,6 +118,11 @@ export default function MenuMgmtPage() {
       show_in_party_menu: prodForm.show_in_party_menu,
       store_id: prodForm.store_id || staffUser?.store_ids?.[0],
       additional_store_ids: prodForm.additional_store_ids || [],
+      hh_enabled: !!prodForm.hh_enabled,
+      hh_price: (prodForm.hh_price===''||prodForm.hh_price==null)?null:Number(prodForm.hh_price),
+      hh_start: prodForm.hh_start||null,
+      hh_end: prodForm.hh_end||null,
+      hh_days: Array.isArray(prodForm.hh_days)?prodForm.hh_days:[0,1,2,3,4,5,6],
       kitchen_destination_store_id: prodForm.kitchen_destination_store_id || prodForm.store_id || staffUser?.store_ids?.[0],
       is_available: prodForm.is_available,
       category_id: prodForm.category_id,
@@ -329,7 +334,27 @@ export default function MenuMgmtPage() {
           <Field label="FIYAT (₺)"><input type="number" step="0.01" value={prodForm.price??''} onChange={e=>setProdForm({...prodForm,price:e.target.value})} style={inputS}/></Field>
           <Field label="ANLIK INDIRIM (%)"><input type="number" step="1" min="0" max="99" value={prodForm.instant_discount_pct??''} onChange={e=>setProdForm({...prodForm,instant_discount_pct:e.target.value})} style={inputS}/></Field>
 
-          {/* OPTIONS SYSTEM */}
+          {/* HAPPY HOUR */}
+        <div style={{background:"#0C0C0C",border:"1px solid #222",borderRadius:10,padding:12,marginBottom:10}}>
+          <label style={{display:"flex",alignItems:"center",gap:8,cursor:"pointer",fontSize:14,fontWeight:600,color:"#f2ece1"}}>
+            <input type="checkbox" checked={!!prodForm.hh_enabled} onChange={e=>setProdForm({...prodForm,hh_enabled:e.target.checked})}/>
+            🎉 Happy Hour
+          </label>
+          {prodForm.hh_enabled && (<div style={{marginTop:10}}>
+            <div style={{display:"flex",gap:10,marginBottom:10}}>
+              <div style={{flex:1}}><div style={{fontSize:11,color:"#888",fontWeight:600,marginBottom:4}}>BAŞLANGIÇ</div><input type="time" value={prodForm.hh_start||""} onChange={e=>setProdForm({...prodForm,hh_start:e.target.value})} style={{width:"100%",padding:8,background:"#1a1a1a",border:"1px solid #333",borderRadius:8,color:"#fff",boxSizing:"border-box"}}/></div>
+              <div style={{flex:1}}><div style={{fontSize:11,color:"#888",fontWeight:600,marginBottom:4}}>BİTİŞ</div><input type="time" value={prodForm.hh_end||""} onChange={e=>setProdForm({...prodForm,hh_end:e.target.value})} style={{width:"100%",padding:8,background:"#1a1a1a",border:"1px solid #333",borderRadius:8,color:"#fff",boxSizing:"border-box"}}/></div>
+            </div>
+            <div style={{fontSize:11,color:"#888",fontWeight:600,marginBottom:6}}>GÜNLER</div>
+            <div style={{display:"flex",gap:6,marginBottom:10,flexWrap:"wrap"}}>
+              {["Pzt","Sal","Çar","Per","Cum","Cmt","Paz"].map((d,i)=>{const dn=(i+1)%7;const days=Array.isArray(prodForm.hh_days)?prodForm.hh_days:[0,1,2,3,4,5,6];const on=days.includes(dn);return(<button key={d} type="button" onClick={()=>{const nd=on?days.filter(x=>x!==dn):[...days,dn];setProdForm({...prodForm,hh_days:nd});}} style={{padding:"6px 11px",borderRadius:8,fontSize:13,fontWeight:600,border:"1px solid "+(on?"#C8973E":"#333"),background:on?"#C8973E":"#1a1a1a",color:on?"#000":"#888",cursor:"pointer"}}>{d}</button>);})}
+            </div>
+            <div style={{fontSize:11,color:"#888",fontWeight:600,marginBottom:4}}>HAPPY HOUR FİYATI (₺)</div>
+            <input type="number" step="0.01" value={prodForm.hh_price??""} onChange={e=>setProdForm({...prodForm,hh_price:e.target.value})} placeholder="örn: 200" style={{width:"100%",padding:8,background:"#1a1a1a",border:"1px solid #333",borderRadius:8,color:"#fff",boxSizing:"border-box"}}/>
+          </div>)}
+        </div>
+
+        {/* OPTIONS SYSTEM */}
           <div style={{background:"#0C0C0C",border:"1px solid "+(prodForm.has_options?"#C8973E":"#2A2A2A"),borderRadius:10,padding:12,marginBottom:12}}>
             <label style={{display:"flex",alignItems:"center",gap:8,cursor:"pointer",marginBottom:prodForm.has_options?10:0}}>
               <input type="checkbox" checked={!!prodForm.has_options} onChange={e=>setProdForm({...prodForm,has_options:e.target.checked, options_config: e.target.checked ? (prodForm.options_config||{groups:[]}) : {groups:[]}})}/>
