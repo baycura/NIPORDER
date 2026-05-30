@@ -1,18 +1,19 @@
 import { useState } from "react";
+import { useNavigate } from "react-router-dom";
 import { supabase } from "../lib/supabase.js";
 import { useRideAuth } from "../auth/RideAuthContext.jsx";
-import { todayStr, PACE_OPTIONS, START_POINT, STRAVA_CLUB_URL, OFFICIAL_HOST } from "../lib/format.js";
+import { todayStr, PACE_OPTIONS, START_POINT, OFFICIAL_HOST } from "../lib/format.js";
 
-// Official Not In Paris "Social Ride". Published under the brand (is_official),
-// and on submit the admin is redirected to the Strava club.
+// Official Not In Paris "Social Ride". Published under the brand (is_official);
+// members RSVP to it like any other ride.
 export default function SocialRideForm() {
   const { userId } = useRideAuth();
+  const nav = useNavigate();
   const [busy, setBusy] = useState(false);
   const [err, setErr] = useState("");
   const [f, setF] = useState({
     title: "", ride_date: todayStr(), ride_time: "", pace: PACE_OPTIONS[0],
     distance_km: "", elevation_m: "", capacity: 30, route_url: "", notes: "",
-    strava_url: STRAVA_CLUB_URL,
   });
   const set = (k) => (e) => setF({ ...f, [k]: e.target.value });
 
@@ -21,7 +22,7 @@ export default function SocialRideForm() {
     if (busy) return;
     if (!f.title.trim()) { setErr("Başlık gerekli."); return; }
     setBusy(true); setErr("");
-    const { error } = await supabase.from("ride_posts").insert({
+    const { data, error } = await supabase.from("ride_posts").insert({
       user_id: userId,
       is_official: true,
       title: f.title.trim(),
@@ -33,19 +34,18 @@ export default function SocialRideForm() {
       capacity: Math.min(50, Math.max(1, Number(f.capacity) || 1)),
       meet_point: START_POINT,
       route_url: f.route_url.trim() || null,
-      strava_url: f.strava_url.trim() || STRAVA_CLUB_URL,
       notes: f.notes.trim() || null,
-    });
-    if (error) { setErr(error.message); setBusy(false); return; }
-    // Auto-redirect to the Strava club after publishing.
-    window.location.href = f.strava_url.trim() || STRAVA_CLUB_URL;
+    }).select("id").single();
+    setBusy(false);
+    if (error) { setErr(error.message); return; }
+    nav(`/ride/${data.id}`);
   };
 
   return (
     <div>
       <p style={{ color: "var(--nip-muted)", fontSize: 13, marginBottom: 14 }}>
         <strong style={{ color: "var(--nip-ink)" }}>{OFFICIAL_HOST}</strong> adına resmi sürüş. Başlangıç: 📍 {START_POINT} (sabit).
-        Yayınlayınca Strava kulübüne yönlendirilirsin.
+        Üyeler bu sürüşe normal şekilde katılır (RSVP).
       </p>
       <form onSubmit={submit} style={{ display: "flex", flexDirection: "column", gap: 12 }}>
         <L label="BAŞLIK *"><input value={f.title} onChange={set("title")} placeholder="Cumartesi Social Ride" style={input} /></L>
@@ -62,11 +62,10 @@ export default function SocialRideForm() {
           <L label="TIRMANIŞ (m)"><input type="number" min={0} value={f.elevation_m} onChange={set("elevation_m")} style={input} /></L>
         </Row>
         <L label="ROTA LİNKİ"><input value={f.route_url} onChange={set("route_url")} placeholder="https://" style={input} /></L>
-        <L label="STRAVA KULÜP LİNKİ (yönlendirme)"><input value={f.strava_url} onChange={set("strava_url")} style={input} /></L>
         <L label="NOTLAR"><textarea value={f.notes} onChange={set("notes")} rows={3} style={{ ...input, resize: "vertical" }} /></L>
         {err && <div style={{ color: "var(--nip-danger)", fontSize: 13 }}>{err}</div>}
         <button type="submit" disabled={busy} style={{ background: "var(--nip-accent)", color: "var(--nip-ink)", border: "none", borderRadius: 2, padding: "13px", fontFamily: "var(--nip-font-mono)", fontSize: 13, letterSpacing: "0.08em", opacity: busy ? 0.5 : 1 }}>
-          {busy ? "Yayınlanıyor..." : "Yayınla & Strava kulübüne git →"}
+          {busy ? "Yayınlanıyor..." : "Social Ride'ı Yayınla"}
         </button>
       </form>
     </div>

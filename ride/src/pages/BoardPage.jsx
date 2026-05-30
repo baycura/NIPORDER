@@ -2,7 +2,7 @@ import { useEffect, useState, useCallback } from "react";
 import { Link } from "react-router-dom";
 import { supabase } from "../lib/supabase.js";
 import { fetchHostsByAuthIds } from "../lib/hosts.js";
-import { todayStr } from "../lib/format.js";
+import { todayStr, STRAVA_CLUB_URL } from "../lib/format.js";
 import { useRideAuth } from "../auth/RideAuthContext.jsx";
 import RideCard from "../components/RideCard.jsx";
 
@@ -39,6 +39,11 @@ export default function BoardPage() {
 
   return (
     <div>
+      <div style={{ display: "flex", justifyContent: "flex-end", marginBottom: 8 }}>
+        <a href={STRAVA_CLUB_URL} target="_blank" rel="noreferrer" style={{ textDecoration: "none", display: "inline-flex", alignItems: "center", gap: 6, fontFamily: "var(--nip-font-mono)", fontSize: 11, letterSpacing: "0.08em", color: "var(--nip-muted)", border: "1px solid var(--nip-divider)", borderRadius: 999, padding: "5px 11px" }}>
+          <span style={{ color: "#FC4C02", fontWeight: 700 }}>STRAVA</span> Join our club ↗
+        </a>
+      </div>
       <div style={{ display: "flex", justifyContent: "space-between", alignItems: "flex-end", marginBottom: 16 }}>
         <div>
           <h1 style={{ fontSize: 44 }}>Sürüş Panosu</h1>

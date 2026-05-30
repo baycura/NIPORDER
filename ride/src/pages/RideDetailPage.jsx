@@ -2,7 +2,7 @@ import { useEffect, useState, useCallback } from "react";
 import { useParams, useNavigate, Link } from "react-router-dom";
 import { supabase } from "../lib/supabase.js";
 import { fetchHostsByAuthIds } from "../lib/hosts.js";
-import { fmtDate, STATUS_LABEL, OFFICIAL_HOST, STRAVA_CLUB_URL } from "../lib/format.js";
+import { fmtDate, STATUS_LABEL, OFFICIAL_HOST } from "../lib/format.js";
 import { useRideAuth } from "../auth/RideAuthContext.jsx";
 
 export default function RideDetailPage() {
@@ -163,18 +163,6 @@ export default function RideDetailPage() {
       <div style={{ marginTop: 20 }}>
         {ride.status === "cancelled" ? (
           <div style={{ color: "var(--nip-muted)", fontFamily: "var(--nip-font-mono)" }}>Bu sürüş iptal edildi.</div>
-        ) : ride.is_official ? (
-          <div>
-            <a href={ride.strava_url || STRAVA_CLUB_URL} target="_blank" rel="noreferrer" style={{ ...primaryBtn, display: "inline-block", textDecoration: "none" }}>
-              Strava kulübüne katıl →
-            </a>
-            {isHost && (
-              <div style={{ display: "flex", gap: 10, marginTop: 12 }}>
-                <button onClick={cancelRide} disabled={busy} style={ghostBtn}>Sürüşü iptal et</button>
-                <button onClick={deleteRide} disabled={busy} style={{ ...ghostBtn, color: "var(--nip-danger)", borderColor: "var(--nip-danger)" }}>Sil</button>
-              </div>
-            )}
-          </div>
         ) : !session ? (
           <PrimaryBtn onClick={() => nav("/login")}>Giriş yap & katıl</PrimaryBtn>
         ) : isHost ? (
