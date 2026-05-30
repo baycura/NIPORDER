@@ -26,10 +26,13 @@ export default function SettingsPage() {
   const save = async () => {
     if (busy) return;
     setBusy(true);
+    let saveErr = null;
     for (const [key, value] of Object.entries(settings)) {
-      await supabase.from("app_settings").upsert({ key, value }, { onConflict: "key" });
+      const { error } = await supabase.from("app_settings").upsert({ key, value }, { onConflict: "key" });
+      if (error) saveErr = error;
     }
     setBusy(false);
+    if (saveErr) { alert("Kaydetme hatasi: " + saveErr.message); return; }
     setSaved(true);
     setTimeout(() => setSaved(false), 2000);
   };

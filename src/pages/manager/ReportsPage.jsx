@@ -55,7 +55,7 @@ export default function ReportsPage() {
     }));
     const topProducts = Object.entries(pCount).sort((a,b) => b[1]-a[1]).slice(0,5);
 
-    const hourly = Array.from({length:16}, (_,i) => ({ hour: 8+i, total: 0 }));
+    const hourly = Array.from({length:24}, (_,i) => ({ hour: i, total: 0 }));
     todayPaid.forEach(o => {
       const h = new Date(o.created_at).getHours();
       const slot = hourly.find(x => x.hour === h);
@@ -132,7 +132,7 @@ export default function ReportsPage() {
                     borderRadius: "3px 3px 0 0",
                     transition: "all 0.3s"
                   }} title={`${h.hour}:00 - ₺${h.total.toFixed(0)}`} />
-                  <div style={{ fontSize: 9, color: "#bbb", marginTop: 4 }}>{h.hour}</div>
+                  <div style={{ fontSize: 9, color: "#bbb", marginTop: 4 }}>{h.hour % 2 === 0 ? h.hour : ""}</div>
                 </div>
               ))}
             </div>

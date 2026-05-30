@@ -102,7 +102,7 @@ export default function OrderDetailPage() {
     navigate("/orders");
   };
 
-  const goToPayment = () => navigate("/payment");
+  const goToPayment = () => navigate("/payment?order=" + orderId);
 
   if (loading) return (<div style={{color:"#888",fontFamily:cv,padding:20}}>Yukleniyor...</div>);
   if (!order) return (<div style={{color:"#888",fontFamily:cv,padding:20}}>Sipariş bulunamadı</div>);

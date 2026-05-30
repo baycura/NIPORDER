@@ -74,7 +74,11 @@ export default function InvoicesPage() {
     }).select().single();
     if (invErr) { alert("Hata: " + invErr.message); setBusy(false); return; }
 
-    // Create new ingredients if needed and insert items + bump stock
+    // Create new ingredients if needed, insert items, and accumulate per-ingredient
+    // stock increments so an ingredient listed on multiple lines isn't lost-updated.
+    const baseStock = {};   // ingId -> starting stock (read once)
+    const stockDelta = {};  // ingId -> total qty to add
+    const latestCost = {};  // ingId -> last unit cost seen
     for (const l of lines) {
       let ingId = l.ingredient_id;
       if (l.isNew) {
@@ -85,6 +89,7 @@ export default function InvoicesPage() {
         }).select().single();
         if (e) { alert("Ingredient hatasi: " + e.message); continue; }
         ingId = newIng.id;
+        baseStock[ingId] = 0;
       }
       if (!ingId) continue;
       const qty = Number(l.qty)||0;
@@ -92,12 +97,15 @@ export default function InvoicesPage() {
       await supabase.from("supplier_invoice_items").insert({
         invoice_id: inv.id, store_id: inv.store_id, ingredient_id: ingId, qty, unit_cost: unitCost, total_cost: qty * unitCost,
       });
-      // Increment stock + update cost
-      const ing = ingredients.find(i => i.id === ingId);
-      const currentStock = Number(ing?.stock_qty)||0;
+      if (baseStock[ingId] == null) baseStock[ingId] = Number(ingredients.find(i => i.id === ingId)?.stock_qty)||0;
+      stockDelta[ingId] = (stockDelta[ingId] || 0) + qty;
+      latestCost[ingId] = unitCost;
+    }
+    // Apply accumulated stock increments + cost once per ingredient
+    for (const ingId of Object.keys(stockDelta)) {
       await supabase.from("ingredients").update({
-        stock_qty: currentStock + qty,
-        cost_per_unit: unitCost,
+        stock_qty: baseStock[ingId] + stockDelta[ingId],
+        cost_per_unit: latestCost[ingId],
       }).eq("id", ingId);
     }
 

@@ -1,5 +1,5 @@
 import { useEffect, useState } from "react";
-import { useNavigate } from "react-router-dom";
+import { useNavigate, useSearchParams } from "react-router-dom";
 import { supabase } from "../../lib/supabase.js";
 import { useAuth } from "../../contexts/AuthContext.jsx";
 
@@ -7,6 +7,7 @@ const cv = "-apple-system,BlinkMacSystemFont,'Segoe UI',Roboto,sans-serif";
 
 export default function PaymentPage() {
   const navigate = useNavigate();
+  const [searchParams] = useSearchParams();
   const { staffUser } = useAuth();
   const [orders, setOrders] = useState([]);
   const [tables, setTables] = useState({});
@@ -40,6 +41,14 @@ export default function PaymentPage() {
     setCustomerId(null); setCustomerSearch("");
   };
 
+  // Auto-open the pay modal when navigated here with ?order=<id> (e.g. from OrderDetail)
+  useEffect(() => {
+    const oid = searchParams.get("order");
+    if (!oid || !orders.length || modal) return;
+    const o = orders.find(x => x.id === oid);
+    if (o) openPay(o);
+  }, [orders, searchParams]);
+
   const completePayment = async () => {
     if (busy) return;
     const amt = Number(amount);
@@ -54,13 +63,14 @@ export default function PaymentPage() {
         supabase.from("customers").update({ outstanding_balance: newBalance }).eq("id", customerId),
         supabase.from("orders").update({ status: "paid", paid_at: new Date().toISOString(), customer_id: customerId }).eq("id", modal.id),
       ]);
-      await supabase.from("payments").insert({ order_id: modal.id, amount: amt, method: "debt", customer_id: customerId });
+      const { error: payErr } = await supabase.from("payments").insert({ order_id: modal.id, amount: amt, method: "debt", customer_id: customerId });
       setBusy(false);
-      if (custRes.error || ordRes.error) { alert("Hata: " + (custRes.error?.message || ordRes.error?.message)); return; }
+      if (custRes.error || ordRes.error || payErr) { alert("Hata: " + (custRes.error?.message || ordRes.error?.message || payErr?.message)); return; }
       alert("Borc kaydedildi: ₺" + amt + " (Kalan: ₺" + newBalance + ")");
     } else {
       setBusy(true);
-      await supabase.from("payments").insert({ order_id: modal.id, amount: amt, method });
+      const { error: payErr } = await supabase.from("payments").insert({ order_id: modal.id, amount: amt, method });
+      if (payErr) { setBusy(false); alert("Hata: " + payErr.message); return; }
       const { error } = await supabase.from("orders").update({ status: "paid", paid_at: new Date().toISOString() }).eq("id", modal.id);
       setBusy(false);
       if (error) { alert("Hata: " + error.message); return; }

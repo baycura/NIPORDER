@@ -29,7 +29,9 @@ export default function SettlementPage() {
     if (!grouped[pk]) grouped[pk] = { period: pk, items: [] };
     grouped[pk].items.push(r);
   });
-  const sortedPeriods = Object.values(grouped).sort((a, b) => b.period.localeCompare(a.period));
+  const sortedPeriods = Object.values(grouped)
+    .filter(g => g.period != null)
+    .sort((a, b) => String(b.period).localeCompare(String(a.period)));
 
   const fmt = (n) => Number(n || 0).toLocaleString("tr-TR", { minimumFractionDigits: 2, maximumFractionDigits: 2 });
   const dateLabel = (ds) => new Date(ds).toLocaleDateString("tr-TR", { year: "numeric", month: "long", day: "numeric" });

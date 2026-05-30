@@ -52,6 +52,7 @@ export default function TasksPage() {
     });
     setForm({ title: "", description: "", assigned_to: [] });
     setModal(false);
+    load();
   };
 
   const toggle = async (task) => {
@@ -62,11 +63,13 @@ export default function TasksPage() {
       done_at: newDone ? new Date().toISOString() : null,
       updated_at: new Date().toISOString()
     }).eq("id", task.id);
+    load();
   };
 
   const deleteTask = async (id) => {
     if (!confirm("Görevi silmek istediğine emin misin?")) return;
     await supabase.from("tasks").delete().eq("id", id);
+    load();
   };
 
   const formatDate = (iso) => new Date(iso).toLocaleString("tr-TR", {

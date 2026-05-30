@@ -21,12 +21,22 @@ export default function QRCodesPage() {
     }, 100);
   };
 
-  const downloadQR = (url, filename) => {
-    const link = document.createElement("a");
-    link.href = qrSrc(url, 1000);
-    link.download = filename;
-    link.target = "_blank";
-    link.click();
+  const downloadQR = async (url, filename) => {
+    try {
+      const res = await fetch(qrSrc(url, 1000));
+      const blob = await res.blob();
+      const objUrl = URL.createObjectURL(blob);
+      const link = document.createElement("a");
+      link.href = objUrl;
+      link.download = filename;
+      document.body.appendChild(link);
+      link.click();
+      link.remove();
+      setTimeout(() => URL.revokeObjectURL(objUrl), 1000);
+    } catch (e) {
+      // Fallback: open in a new tab so the user can save manually
+      window.open(qrSrc(url, 1000), "_blank");
+    }
   };
 
   const Card = ({ title, subtitle, url, color }) => (

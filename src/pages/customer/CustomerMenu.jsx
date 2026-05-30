@@ -323,7 +323,7 @@ export default function CustomerMenu() {
       });
       (finalProds||[]).forEach(function(p){ if(p && p.hh_enabled && p.hh_price!=null && p.hh_price!=='' && p.hh_start && p.hh_end){ var _d=new Date(); var _day=_d.getDay(); var _days=Array.isArray(p.hh_days)?p.hh_days:[0,1,2,3,4,5,6]; if(_days.indexOf(_day)>=0){ var _ps=String(p.hh_start).split(':'); var _pe=String(p.hh_end).split(':'); var _sMin=Number(_ps[0])*60+Number(_ps[1]); var _eMin=Number(_pe[0])*60+Number(_pe[1]); var _cur=_d.getHours()*60+_d.getMinutes(); var _inR=_sMin<=_eMin?(_cur>=_sMin && _cur<_eMin):(_cur>=_sMin || _cur<_eMin); if(_inR) _productPrices[p.id]=Number(p.hh_price); } } });
       setHhProductPrices(_productPrices);
-      if (cats && cats.length && !selectedCat) setSelectedCat(cats[0].id);
+      if (finalCatsAfterSchedule.length && !selectedCat) setSelectedCat(finalCatsAfterSchedule[0].id);
     } catch (e) { console.error("Menu load error", e); }
     setLoading(false);
   };

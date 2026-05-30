@@ -1,11 +1,11 @@
 import{useState,useEffect}from"react";import{supabase}from"../../lib/supabase.js";import{useAuth}from"../../contexts/AuthContext.jsx";
 const cv="'Coolvetica','Bebas Neue',sans-serif";const cvc="'Coolvetica Condensed','Barlow Condensed',sans-serif";
-function alertLevel(i){if(i.current_stock<=0)return"out";if(i.current_stock<i.min_stock*.5)return"critical";if(i.current_stock<i.min_stock)return"low";return"ok";}
+function alertLevel(i){const cur=Number(i.current_stock)||0;const min=Number(i.min_stock)||0;if(cur<=0)return"out";if(min>0&&cur<min*.5)return"critical";if(min>0&&cur<min)return"low";return"ok";}
 const AC={out:"#E05A5A",critical:"#E05A5A",low:"#E07A3E",ok:"#3ECF8E"};
 const AL={out:"Tükendi",critical:"Kritik",low:"Düşük",ok:"Yeterli"};
 function EntryModal({item,staffId,onClose,onDone}){
   const[qty,setQty]=useState("");const[note,setNote]=useState("");const[saving,setSaving]=useState(false);
-  const save=async()=>{const n=parseFloat(qty);if(!n||n<=0)return;setSaving(true);const before=item.current_stock;const after=before+n;await supabase.from("stock_movements").insert({stock_item_id:item.id,type:"in",quantity:n,before_stock:before,after_stock:after,note:note||"Stok girişi",staff_id:staffId});await supabase.from("stock_items").update({current_stock:after,updated_at:new Date()}).eq("id",item.id);setSaving(false);onDone();onClose();};
+  const save=async()=>{const n=parseFloat(qty);if(!n||n<=0)return;setSaving(true);const{data:fresh}=await supabase.from("stock_items").select("current_stock").eq("id",item.id).maybeSingle();const before=Number(fresh?.current_stock??item.current_stock)||0;const after=before+n;const{error:mErr}=await supabase.from("stock_movements").insert({stock_item_id:item.id,type:"in",quantity:n,before_stock:before,after_stock:after,note:note||"Stok girişi",staff_id:staffId});const{error:uErr}=await supabase.from("stock_items").update({current_stock:after,updated_at:new Date().toISOString()}).eq("id",item.id);setSaving(false);if(mErr||uErr){alert("Hata: "+(uErr?.message||mErr?.message));return;}onDone();onClose();};
   return(<div onClick={onClose} style={{position:"fixed",inset:0,background:"#000000bb",zIndex:300,display:"flex",alignItems:"center",justifyContent:"center"}}><div onClick={e=>e.stopPropagation()} style={{background:"#161616",border:"1px solid #2A2A2A",borderRadius:16,padding:28,width:360}}>
     <div style={{color:"#F0EDE8",fontFamily:cv,fontSize:22,marginBottom:4}}>Stok Girişi</div>
     <div style={{color:"#888",fontFamily:cvc,fontSize:12,marginBottom:20}}>{item.name} · Mevcut: {item.current_stock} {item.unit}</div>
