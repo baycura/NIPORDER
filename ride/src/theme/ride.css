@@ -1,0 +1,57 @@
+/* ============================================================
+   Not In Paris — Ride (working-system styling)
+   Reuses the brand palette (black + cream + mustard). This is
+   intentionally lean; the final unified design pass replaces it.
+   ============================================================ */
+
+:root {
+  --nip-bg:       #FAFAF7;
+  --nip-surface:  #FFFFFF;
+  --nip-ink:      #0A0A0A;
+  --nip-ink-soft: #1A1A1A;
+  --nip-muted:    #8A8A86;
+  --nip-divider:  #E5E3DC;
+  --nip-cream:    #EFEAE0;
+  --nip-accent:   #C8973E;
+  --nip-danger:   #C83E3E;
+  --nip-success:  #2F7D4F;
+
+  --nip-font-display: "Bebas Neue", "Archivo Narrow", system-ui, sans-serif;
+  --nip-font-body:    "IBM Plex Sans", -apple-system, BlinkMacSystemFont, "Segoe UI", sans-serif;
+  --nip-font-mono:    "IBM Plex Mono", ui-monospace, monospace;
+}
+
+* { box-sizing: border-box; }
+html, body, #root { margin: 0; min-height: 100%; }
+
+body {
+  background: var(--nip-bg);
+  color: var(--nip-ink);
+  font-family: var(--nip-font-body);
+  -webkit-font-smoothing: antialiased;
+  text-rendering: optimizeLegibility;
+}
+
+h1, h2, h3 {
+  font-family: var(--nip-font-display);
+  font-weight: 400;
+  letter-spacing: 0.02em;
+  text-transform: uppercase;
+  line-height: 1.0;
+  margin: 0;
+}
+
+a { color: inherit; }
+
+button { font-family: inherit; cursor: pointer; }
+input, select, textarea { font-family: inherit; }
+
+.nip-mono { font-family: var(--nip-font-mono); }
+
+/* Status pill colors */
+.pill-open      { background: var(--nip-ink);    color: var(--nip-bg); }
+.pill-full      { background: var(--nip-accent);  color: var(--nip-ink); }
+.pill-cancelled { background: var(--nip-divider); color: var(--nip-muted); }
+
+@keyframes nip-spin { to { transform: rotate(360deg); } }
+.nip-spin { width: 22px; height: 22px; border: 2px solid var(--nip-divider); border-top-color: var(--nip-ink); border-radius: 50%; animation: nip-spin 0.7s linear infinite; }
