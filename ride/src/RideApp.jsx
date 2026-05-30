@@ -11,6 +11,7 @@ import RentalDetailPage from "./pages/RentalDetailPage.jsx";
 import CreateRentalPage from "./pages/CreateRentalPage.jsx";
 import MyRidesPage from "./pages/MyRidesPage.jsx";
 import LoginPage from "./pages/LoginPage.jsx";
+import AdminPage from "./admin/AdminPage.jsx";
 
 function RequireAuth({ children }) {
   const { session, loading } = useRideAuth();
@@ -36,6 +37,9 @@ export default function RideApp() {
         <Route path="/rentals" element={<RentalsPage />} />
         <Route path="/rentals/new" element={<RequireAuth><CreateRentalPage /></RequireAuth>} />
         <Route path="/rentals/:id" element={<RentalDetailPage />} />
+
+        {/* Shared admin (staff-gated). Portable to reservation/#admin. */}
+        <Route path="/admin" element={<AdminPage />} />
 
         {/* Account + auth */}
         <Route path="/me" element={<RequireAuth><MyRidesPage /></RequireAuth>} />

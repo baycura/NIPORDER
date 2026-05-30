@@ -37,3 +37,7 @@ export const PACE_OPTIONS = [
 
 // Every Ride Buddy ride starts from the café.
 export const START_POINT = "Not In Paris";
+
+// Official "Social Ride" branding + default Strava club for the join CTA.
+export const OFFICIAL_HOST = "Not In Paris";
+export const STRAVA_CLUB_URL = "https://www.strava.com/clubs/notinparis";

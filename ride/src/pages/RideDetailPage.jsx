@@ -2,7 +2,7 @@ import { useEffect, useState, useCallback } from "react";
 import { useParams, useNavigate, Link } from "react-router-dom";
 import { supabase } from "../lib/supabase.js";
 import { fetchHostsByAuthIds } from "../lib/hosts.js";
-import { fmtDate, STATUS_LABEL } from "../lib/format.js";
+import { fmtDate, STATUS_LABEL, OFFICIAL_HOST, STRAVA_CLUB_URL } from "../lib/format.js";
 import { useRideAuth } from "../auth/RideAuthContext.jsx";
 
 export default function RideDetailPage() {
@@ -121,10 +121,20 @@ export default function RideDetailPage() {
       </div>
 
       <div style={{ display: "flex", alignItems: "center", gap: 8, margin: "10px 0 18px", color: "var(--nip-muted)", fontSize: 13 }}>
-        {host?.avatar_url
-          ? <img src={host.avatar_url} alt="" style={{ width: 26, height: 26, borderRadius: "50%" }} />
-          : <span style={{ width: 26, height: 26, borderRadius: "50%", background: "var(--nip-cream)", display: "inline-flex", alignItems: "center", justifyContent: "center", fontSize: 12, fontWeight: 700 }}>{(host?.name || "?")[0]}</span>}
-        <span>Düzenleyen: <strong style={{ color: "var(--nip-ink)" }}>{host?.name || "Üye"}</strong></span>
+        {ride.is_official ? (
+          <>
+            <span style={{ width: 26, height: 26, borderRadius: "50%", background: "var(--nip-ink)", color: "var(--nip-bg)", display: "inline-flex", alignItems: "center", justifyContent: "center", fontSize: 13 }}>★</span>
+            <span>Düzenleyen: <strong style={{ color: "var(--nip-ink)" }}>{OFFICIAL_HOST}</strong></span>
+            <span style={{ fontFamily: "var(--nip-font-mono)", fontSize: 9, letterSpacing: "0.1em", background: "var(--nip-accent)", color: "var(--nip-ink)", padding: "2px 6px", borderRadius: 2 }}>SOCIAL RIDE</span>
+          </>
+        ) : (
+          <>
+            {host?.avatar_url
+              ? <img src={host.avatar_url} alt="" style={{ width: 26, height: 26, borderRadius: "50%" }} />
+              : <span style={{ width: 26, height: 26, borderRadius: "50%", background: "var(--nip-cream)", display: "inline-flex", alignItems: "center", justifyContent: "center", fontSize: 12, fontWeight: 700 }}>{(host?.name || "?")[0]}</span>}
+            <span>Düzenleyen: <strong style={{ color: "var(--nip-ink)" }}>{host?.name || "Üye"}</strong></span>
+          </>
+        )}
       </div>
 
       <div style={{ display: "grid", gridTemplateColumns: "repeat(auto-fit,minmax(120px,1fr))", gap: 12, marginBottom: 18 }}>
@@ -153,6 +163,18 @@ export default function RideDetailPage() {
       <div style={{ marginTop: 20 }}>
         {ride.status === "cancelled" ? (
           <div style={{ color: "var(--nip-muted)", fontFamily: "var(--nip-font-mono)" }}>Bu sürüş iptal edildi.</div>
+        ) : ride.is_official ? (
+          <div>
+            <a href={ride.strava_url || STRAVA_CLUB_URL} target="_blank" rel="noreferrer" style={{ ...primaryBtn, display: "inline-block", textDecoration: "none" }}>
+              Strava kulübüne katıl →
+            </a>
+            {isHost && (
+              <div style={{ display: "flex", gap: 10, marginTop: 12 }}>
+                <button onClick={cancelRide} disabled={busy} style={ghostBtn}>Sürüşü iptal et</button>
+                <button onClick={deleteRide} disabled={busy} style={{ ...ghostBtn, color: "var(--nip-danger)", borderColor: "var(--nip-danger)" }}>Sil</button>
+              </div>
+            )}
+          </div>
         ) : !session ? (
           <PrimaryBtn onClick={() => nav("/login")}>Giriş yap & katıl</PrimaryBtn>
         ) : isHost ? (

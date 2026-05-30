@@ -1,5 +1,5 @@
 import { Link } from "react-router-dom";
-import { fmtDate, STATUS_LABEL } from "../lib/format.js";
+import { fmtDate, STATUS_LABEL, OFFICIAL_HOST } from "../lib/format.js";
 
 export default function RideCard({ ride, host }) {
   const pillClass =
@@ -39,10 +39,20 @@ export default function RideCard({ ride, host }) {
 
         <div style={{ display: "flex", justifyContent: "space-between", alignItems: "center", borderTop: "1px solid var(--nip-divider)", paddingTop: 10 }}>
           <span style={{ display: "flex", alignItems: "center", gap: 8, fontSize: 12, color: "var(--nip-muted)" }}>
-            {host?.avatar_url
-              ? <img src={host.avatar_url} alt="" style={{ width: 22, height: 22, borderRadius: "50%" }} />
-              : <span style={{ width: 22, height: 22, borderRadius: "50%", background: "var(--nip-cream)", display: "inline-flex", alignItems: "center", justifyContent: "center", fontSize: 11, fontWeight: 700 }}>{(host?.name || "?")[0]}</span>}
-            {host?.name || "Üye"}
+            {ride.is_official ? (
+              <>
+                <span style={{ width: 22, height: 22, borderRadius: "50%", background: "var(--nip-ink)", color: "var(--nip-bg)", display: "inline-flex", alignItems: "center", justifyContent: "center", fontSize: 12 }}>★</span>
+                <span style={{ color: "var(--nip-ink)" }}>{OFFICIAL_HOST}</span>
+                <span style={{ fontFamily: "var(--nip-font-mono)", fontSize: 9, letterSpacing: "0.1em", background: "var(--nip-accent)", color: "var(--nip-ink)", padding: "2px 6px", borderRadius: 2 }}>SOCIAL RIDE</span>
+              </>
+            ) : (
+              <>
+                {host?.avatar_url
+                  ? <img src={host.avatar_url} alt="" style={{ width: 22, height: 22, borderRadius: "50%" }} />
+                  : <span style={{ width: 22, height: 22, borderRadius: "50%", background: "var(--nip-cream)", display: "inline-flex", alignItems: "center", justifyContent: "center", fontSize: 11, fontWeight: 700 }}>{(host?.name || "?")[0]}</span>}
+                {host?.name || "Üye"}
+              </>
+            )}
           </span>
           <span style={{ fontFamily: "var(--nip-font-mono)", fontSize: 12, color: ride.seats_open > 0 ? "var(--nip-success)" : "var(--nip-danger)" }}>
             {ride.seats_open > 0 ? `${ride.seats_open} koltuk boş` : "Dolu"}

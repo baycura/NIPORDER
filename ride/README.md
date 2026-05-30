@@ -63,6 +63,9 @@ Supabase SQL editöründe sırayla bir kez çalıştır:
    — camps + camp_applications (`camp_board` view), bike_rentals +
    `bike_rentals_public` view (üyeye özel fiyat/telefon gizleme), RLS,
    örnek "Gates of Sahara" kampı seed'i.
+3. [`../design/ride/schema-admin.sql`](../design/ride/schema-admin.sql)
+   — `nip_is_staff()` yetki fonksiyonu, ride_posts'a `is_official` +
+   `strava_url` (Social Ride), staff'a moderasyon RLS'i (sürüş/kamp/kiralık).
 
 **Üyeye özel mantığı:** `bike_rentals` tablosu sadece giriş yapmış üyeler
 tarafından okunabilir (RLS), dolayısıyla anonim kullanıcı telefon/fiyata
@@ -73,6 +76,23 @@ tabloyu, yoksa view'i sorgular.
 **Kamp yönetimi:** Kamp oluşturma/başvuru onayı için client write policy yok;
 admin Supabase dashboard/service role ile yönetir (başvuruları `accepted`
 yapar). İstersen sonra bir admin paneli ekleriz.
+
+## Ortak Admin (`ride/src/admin/`)
+
+Tek admin, iki dünya: bisiklet (sürüş/kamp/kiralık) + müzik rezervasyonları.
+Yetki ortak Supabase `staff` tablosundaki rol (admin/owner/manager) ile verilir
+(`nip_is_staff()` RLS'i sayesinde moderasyon DB seviyesinde zorlanır).
+
+- `/admin` (ride app içinde) — sekmeler: **Sürüşler** (iptal/sil), **Kamplar**
+  (oluştur/düzenle + başvuru kabul/red/bekleme), **Kiralık** (gizle/sil),
+  **Social Ride** (Not In Paris adına resmi sürüş; yayınlayınca Strava kulübüne
+  yönlendirir).
+
+**Taşınabilirlik:** `ride/src/admin/` klasörünü olduğu gibi
+`reservation.notinparis.me/#admin` uygulamasına taşıyabilirsin. Beklediği
+bağımlılıklar: `../lib/supabase.js` (aynı proje), `../auth/RideAuthContext.jsx`
+(`{ session, isAdmin, staff }`) veya host app'in kendi admin-auth hook'u, ve
+`../lib/format.js`. Strava kulüp linki `src/lib/format.js → STRAVA_CLUB_URL`.
 
 ## Yapı
 

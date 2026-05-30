@@ -11,6 +11,7 @@ const RideAuthContext = createContext(null);
 export function RideAuthProvider({ children }) {
   const [session, setSession] = useState(null);
   const [customer, setCustomer] = useState(null);
+  const [staff, setStaff] = useState(null);
   const [loading, setLoading] = useState(true);
 
   useEffect(() => {
@@ -24,6 +25,11 @@ export function RideAuthProvider({ children }) {
           const uid = sess.user.id;
           const email = sess.user.email;
           const md = sess.user.user_metadata || {};
+
+          // Is this a staff member? (shared admin authorization)
+          const { data: s } = await supabase
+            .from("staff").select("*").eq("auth_id", uid).maybeSingle();
+          setStaff(s || null);
 
           // Look up the shared membership pool by auth id, then email.
           let { data: c } = await supabase
@@ -56,6 +62,7 @@ export function RideAuthProvider({ children }) {
           setCustomer(c || null);
         } else {
           setCustomer(null);
+          setStaff(null);
         }
       } catch (e) {
         console.error("ride auth load error", e);
@@ -83,11 +90,16 @@ export function RideAuthProvider({ children }) {
   const signOut = async () => {
     await supabase.auth.signOut();
     setCustomer(null);
+    setStaff(null);
   };
+
+  const isAdmin = !!staff && ["admin", "owner", "manager"].includes(staff.role);
 
   const value = {
     session,
     customer,
+    staff,
+    isAdmin,
     userId: session?.user?.id || null,
     loading,
     signInWithGoogle,

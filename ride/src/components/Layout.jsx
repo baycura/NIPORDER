@@ -2,7 +2,7 @@ import { Link, useNavigate, useLocation } from "react-router-dom";
 import { useRideAuth } from "../auth/RideAuthContext.jsx";
 
 export default function Layout({ children }) {
-  const { session, customer, signOut } = useRideAuth();
+  const { session, customer, isAdmin, signOut } = useRideAuth();
   const nav = useNavigate();
   const loc = useLocation();
 
@@ -28,6 +28,7 @@ export default function Layout({ children }) {
           <Link to="/" style={navLink(loc.pathname === "/" || loc.pathname.startsWith("/ride"))}>SÜRÜŞ</Link>
           <Link to="/camps" style={navLink(loc.pathname.startsWith("/camps"))}>KAMP</Link>
           <Link to="/rentals" style={navLink(loc.pathname.startsWith("/rentals"))}>KİRALA</Link>
+          {isAdmin && <Link to="/admin" style={navLink(loc.pathname === "/admin")}>ADMIN</Link>}
           {session ? (
             <>
               <Link to="/me" style={navLink(loc.pathname === "/me")}>HESABIM</Link>
