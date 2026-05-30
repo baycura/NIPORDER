@@ -79,7 +79,7 @@ export default function HappyHourPage() {
     if (newPrice === "" || newPrice == null) {
       delete po[pid];
     } else {
-      po[pid] = parseInt(newPrice, 10) || 0;
+      po[pid] = Number(newPrice) || 0;
     }
     setForm({ ...form, product_overrides: po });
   };
@@ -143,7 +143,7 @@ export default function HappyHourPage() {
                 const isSelected = newPrice != null;
                 return (
                   <div key={p.id} style={{ display: "flex", alignItems: "center", gap: 8, padding: "6px 0", borderBottom: "1px solid #222" }}>
-                    <input type="checkbox" checked={isSelected} onChange={e => setProductPrice(p.id, p.price, e.target.checked ? Math.round(p.price) : "")} style={{ accentColor: "#C8973E" }} />
+                    <input type="checkbox" checked={isSelected} onChange={e => setProductPrice(p.id, p.price, e.target.checked ? p.price : "")} style={{ accentColor: "#C8973E" }} />
                     <div style={{ flex: 1, fontSize: 14 }}>
                       <span style={{ color: "#fff" }}>{p.name}</span>
                       <span style={{ color: "#666", fontSize: 12, marginLeft: 8 }}>(\u20ba{Math.round(p.price)})</span>

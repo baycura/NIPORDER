@@ -51,7 +51,7 @@ export default function TablesMgmtPage() {
       name,
       capacity: Number(tCap) || 4,
       sort_order: Number(tSort) || 0,
-      store_id: editing?.store_id || staffUser?.store_ids?.[0],
+      store_id: modal?.data?.store_id || staffUser?.store_ids?.[0],
       is_walkin: false,
     };
     if (modal.mode === "new") {

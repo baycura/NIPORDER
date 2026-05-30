@@ -75,6 +75,7 @@ export default function MembersPage() {
     if (error) { alert("Hata: " + error.message); return; }
     setPayAmount("");
     setForm({...form, outstanding_balance: newBalance});
+    setModal({...modal, data: {...modal.data, outstanding_balance: newBalance}});
     alert("Odeme kaydedildi. Yeni borc: ₺" + newBalance);
     load();
   };

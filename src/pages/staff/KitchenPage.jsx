@@ -83,7 +83,7 @@ export default function KitchenPage() {
     const ch = supabase
       .channel("kitchen-page")
       .on("postgres_changes", {event:"*", schema:"public", table:"order_items"}, (payload) => {
-        if (payload.eventType === "INSERT" && payload.new?.kitchen_status === "pending") {
+        if (payload.eventType === "INSERT" && payload.new?.kitchen_status === "pending" && staffUser?.store_ids?.includes(payload.new.kitchen_destination_store_id)) {
           if (!knownItemIdsRef.current.has(payload.new.id)) {
             knownItemIdsRef.current.add(payload.new.id);
             if (soundOn) playLoudDing(audioCtxRef);
@@ -99,7 +99,9 @@ export default function KitchenPage() {
     const poller = setInterval(async () => {
       const { data: newItems } = await supabase
         .from("order_items").select("id,kitchen_status,created_at")
-        .eq("kitchen_status", "pending").order("created_at", {ascending:false}).limit(10);
+        .eq("kitchen_status", "pending")
+        .in("kitchen_destination_store_id", staffUser?.store_ids?.length ? staffUser.store_ids : ["00000000-0000-0000-0000-000000000000"])
+        .order("created_at", {ascending:false}).limit(10);
       if (newItems && newItems.length) {
         let foundNew = false;
         newItems.forEach(it => {

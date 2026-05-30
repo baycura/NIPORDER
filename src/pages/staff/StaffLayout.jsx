@@ -37,12 +37,13 @@ const ADMIN_NAV = [
 ];
 
 const roleColor = {admin:"#FFD700", manager:"#C8973E", owner:"#C8973E", waiter:"#3ECF8E", kitchen:"#E07A3E", cashier:"#5A8FE0"};
+const roleLabel = {admin:"Yönetici", manager:"Müdür", owner:"Patron", waiter:"Garson", kitchen:"Mutfak", cashier:"Kasiyer"};
 
 export default function StaffLayout() {
   const {staffUser, isManager, isAdmin, signOut} = useAuth();
   const navigate = useNavigate();
   const color = roleColor[staffUser?.role] || "#888";
-  const displayRole = staffUser?.display_role || "Yönetici";
+  const displayRole = staffUser?.display_role || roleLabel[staffUser?.role] || staffUser?.role || "";
   const [drawerOpen, setDrawerOpen] = useState(false);
   const [isMobile, setIsMobile] = useState(typeof window !== "undefined" ? window.innerWidth < 900 : true);
 

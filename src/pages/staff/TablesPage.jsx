@@ -44,7 +44,7 @@ export default function TablesPage() {
     const existing = tableHasOpenOrder(table.id);
     if (existing) { navigate("/orders/" + existing.id); return; }
     const { data: newOrd, error } = await supabase.from("orders").insert({
-      table_id: table.id, origin_store_id: table.store_id, status: "open", subtotal: 0, total: 0, discount_amount: 0,
+      table_id: table.id, origin_store_id: table.store_id, staff_id: staffUser?.id, status: "open", subtotal: 0, total: 0, discount_amount: 0,
     }).select().single();
     if (error) { alert("Hata: " + error.message); return; }
     navigate("/orders/" + newOrd.id);
@@ -54,7 +54,7 @@ export default function TablesPage() {
     const name = walkinName.trim();
     if (!name) { alert("İsim giriniz"); return; }
     const { data: newOrd, error } = await supabase.from("orders").insert({
-      table_id: null, customer_name: name, origin_store_id: staffUser?.store_ids?.[0], status: "open", subtotal: 0, total: 0, discount_amount: 0,
+      table_id: null, customer_name: name, origin_store_id: staffUser?.store_ids?.[0], staff_id: staffUser?.id, status: "open", subtotal: 0, total: 0, discount_amount: 0,
     }).select().single();
     if (error) { alert("Hata: " + error.message); return; }
     setWalkinOpen(false); setWalkinName("");

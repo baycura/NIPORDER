@@ -71,7 +71,7 @@ export default function KitchenDisplayPage() {
     const ch = supabase
       .channel("kitchen-display")
       .on("postgres_changes", {event:"*", schema:"public", table:"order_items"}, (payload) => {
-        if (payload.eventType === "INSERT" && payload.new?.kitchen_status === "pending") {
+        if (payload.eventType === "INSERT" && payload.new?.kitchen_status === "pending" && staffUser?.store_ids?.includes(payload.new.kitchen_destination_store_id)) {
           if (!knownItemIdsRef.current.has(payload.new.id)) {
             knownItemIdsRef.current.add(payload.new.id);
             playDing();
