@@ -2,7 +2,7 @@ import { useState } from "react";
 import { useNavigate } from "react-router-dom";
 import { supabase } from "../lib/supabase.js";
 import { useRideAuth } from "../auth/RideAuthContext.jsx";
-import { todayStr, PACE_OPTIONS } from "../lib/format.js";
+import { todayStr, PACE_OPTIONS, START_POINT } from "../lib/format.js";
 
 export default function CreateRidePage() {
   const { userId } = useRideAuth();
@@ -11,7 +11,7 @@ export default function CreateRidePage() {
   const [err, setErr] = useState("");
   const [f, setF] = useState({
     title: "", ride_date: todayStr(), ride_time: "", pace: PACE_OPTIONS[0],
-    distance_km: "", elevation_m: "", capacity: 6, meet_point: "", route_url: "", notes: "",
+    distance_km: "", elevation_m: "", capacity: 6, route_url: "", notes: "",
   });
   const set = (k) => (e) => setF({ ...f, [k]: e.target.value });
 
@@ -30,7 +30,7 @@ export default function CreateRidePage() {
       distance_km: f.distance_km === "" ? null : Number(f.distance_km),
       elevation_m: f.elevation_m === "" ? null : Number(f.elevation_m),
       capacity: Math.min(50, Math.max(1, Number(f.capacity) || 1)),
-      meet_point: f.meet_point.trim() || null,
+      meet_point: START_POINT, // start point is always the café
       route_url: f.route_url.trim() || null,
       notes: f.notes.trim() || null,
     };
@@ -65,7 +65,12 @@ export default function CreateRidePage() {
           <Field label="TIRMANIŞ (m)"><input type="number" min={0} value={f.elevation_m} onChange={set("elevation_m")} placeholder="450" style={input} /></Field>
         </Row>
 
-        <Field label="BULUŞMA NOKTASI"><input value={f.meet_point} onChange={set("meet_point")} placeholder="Bebek sahil, saat kulesi" style={input} /></Field>
+        <Field label="BAŞLANGIÇ NOKTASI">
+          <div style={{ ...input, display: "flex", alignItems: "center", gap: 8, background: "var(--nip-cream)", color: "var(--nip-ink)" }}>
+            <span>📍 {START_POINT}</span>
+            <span style={{ fontFamily: "var(--nip-font-mono)", fontSize: 10, color: "var(--nip-muted)", letterSpacing: "0.1em" }}>SABİT</span>
+          </div>
+        </Field>
         <Field label="ROTA LİNKİ (Strava/Komoot)"><input value={f.route_url} onChange={set("route_url")} placeholder="https://" style={input} /></Field>
         <Field label="NOTLAR"><textarea value={f.notes} onChange={set("notes")} rows={4} placeholder="Tempo, kafe molası, ekipman..." style={{ ...input, resize: "vertical" }} /></Field>
 

@@ -34,3 +34,6 @@ export const PACE_OPTIONS = [
   "Hızlı",
   "Yarış temposu",
 ];
+
+// Every Ride Buddy ride starts from the café.
+export const START_POINT = "Not In Paris";

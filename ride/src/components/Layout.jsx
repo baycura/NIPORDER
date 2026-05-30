@@ -24,13 +24,13 @@ export default function Layout({ children }) {
           </span>
         </Link>
 
-        <nav style={{ display: "flex", alignItems: "center", gap: 14 }}>
-          {session && (
-            <Link to="/new" style={navLink(loc.pathname === "/new")}>YENİ SÜRÜŞ</Link>
-          )}
+        <nav style={{ display: "flex", alignItems: "center", gap: 14, flexWrap: "wrap", justifyContent: "flex-end" }}>
+          <Link to="/" style={navLink(loc.pathname === "/" || loc.pathname.startsWith("/ride"))}>SÜRÜŞ</Link>
+          <Link to="/camps" style={navLink(loc.pathname.startsWith("/camps"))}>KAMP</Link>
+          <Link to="/rentals" style={navLink(loc.pathname.startsWith("/rentals"))}>KİRALA</Link>
           {session ? (
             <>
-              <Link to="/me" style={navLink(loc.pathname === "/me")}>SÜRÜŞLERİM</Link>
+              <Link to="/me" style={navLink(loc.pathname === "/me")}>HESABIM</Link>
               <button
                 onClick={async () => { await signOut(); nav("/"); }}
                 title={customer?.name || "Çıkış"}
