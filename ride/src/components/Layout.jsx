@@ -1,5 +1,6 @@
 import { Link, useNavigate, useLocation } from "react-router-dom";
 import { useRideAuth } from "../auth/RideAuthContext.jsx";
+import { IS_DEMO } from "../lib/supabase.js";
 
 export default function Layout({ children }) {
   const { session, customer, isAdmin, signOut } = useRideAuth();
@@ -8,6 +9,11 @@ export default function Layout({ children }) {
 
   return (
     <div style={{ minHeight: "100vh", display: "flex", flexDirection: "column" }}>
+      {IS_DEMO && (
+        <div style={{ background: "var(--nip-accent)", color: "var(--nip-ink)", textAlign: "center", fontFamily: "var(--nip-font-mono)", fontSize: 11, letterSpacing: "0.08em", padding: "5px 10px" }}>
+          DEMO — örnek verilerle önizleme · admin olarak giriş yapılmış
+        </div>
+      )}
       <header style={{
         position: "sticky", top: 0, zIndex: 20,
         background: "var(--nip-ink)", color: "var(--nip-bg)",
