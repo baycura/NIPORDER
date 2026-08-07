@@ -45,9 +45,11 @@
 
 ## Bildirim kararları
 - **Sahip kanalı: Telegram.** Gün sonu özeti + uyarılar Telegram botundan.
-  - Uyarı içerikleri: (1) her gece **gün sonu ciro & kâr özeti**
+  - Uyarı içerikleri: (1) **her sabah 09:00'da önceki günün özeti**
     (ciro, tahmini kâr, mutfağa ödenecek, en çok satan), (2) **anormal
-    maliyet/fiyat artışı** — fatura kalemi önceki alıma göre ör. %20+ pahalıysa.
+    maliyet/fiyat artışı** — fatura kalemi önceki alıma göre **%10+** pahalıysa.
+  - Özet zamanı: sabah 09:00 (Türkiye saati, UTC+3 → cron UTC 06:00), önceki gün.
+  - Anormal fiyat eşiği: **%10** (hassas; sonradan ayarlanabilir).
 - **Personel telefon bildirimi (web push):**
   - (1) **Yeni sipariş → mutfak/hazırlık** sorumlusu.
   - (2) **Sipariş hazır → garson** ("servise hazır").

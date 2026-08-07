@@ -4,6 +4,10 @@ import { useAuth } from "../../contexts/AuthContext.jsx";
 
 const cv = "-apple-system,BlinkMacSystemFont,'Segoe UI',Roboto,sans-serif";
 
+// Bir hammadde birim maliyeti onceki alima gore bu yuzdeden fazla artarsa
+// "anormal fiyat" uyarisi verilir (sahip icin kacak/israf kontrolu).
+const PRICE_ALERT_PCT = 10;
+
 export default function InvoicesPage() {
   const { staffUser } = useAuth();
   const [invoices, setInvoices] = useState([]);
@@ -15,6 +19,7 @@ export default function InvoicesPage() {
   const [photoFile, setPhotoFile] = useState(null);
   const [photoPreview, setPhotoPreview] = useState(null);
   const [busy, setBusy] = useState(false);
+  const [priceAlerts, setPriceAlerts] = useState([]);
 
   const load = async () => {
     setLoading(true);
@@ -75,6 +80,7 @@ export default function InvoicesPage() {
     if (invErr) { alert("Hata: " + invErr.message); setBusy(false); return; }
 
     // Create new ingredients if needed and insert items + bump stock
+    const anomalies = [];
     for (const l of lines) {
       let ingId = l.ingredient_id;
       if (l.isNew) {
@@ -92,17 +98,25 @@ export default function InvoicesPage() {
       await supabase.from("supplier_invoice_items").insert({
         invoice_id: inv.id, store_id: inv.store_id, ingredient_id: ingId, qty, unit_cost: unitCost, total_cost: qty * unitCost,
       });
-      // Increment stock + update cost
+      // Increment stock + update cost (+ anormal fiyat artisi tespiti)
       const ing = ingredients.find(i => i.id === ingId);
       const currentStock = Number(ing?.stock_qty)||0;
+      const prevCost = Number(ing?.cost_per_unit)||0;
+      if (!l.isNew && prevCost > 0 && unitCost > prevCost) {
+        const pct = ((unitCost - prevCost) / prevCost) * 100;
+        if (pct >= PRICE_ALERT_PCT) anomalies.push({ name: ing?.name || "?", unit: ing?.unit || "", prev: prevCost, now: unitCost, pct });
+      }
       await supabase.from("ingredients").update({
         stock_qty: currentStock + qty,
         cost_per_unit: unitCost,
       }).eq("id", ingId);
     }
 
+    setPriceAlerts(anomalies);
     setBusy(false); setModal(null); load();
-    alert("Fatura kaydedildi! Stok guncellendi.");
+    alert(anomalies.length
+      ? "Fatura kaydedildi. ⚠️ " + anomalies.length + " üründe anormal fiyat artışı (%" + PRICE_ALERT_PCT + "+) — listede işaretlendi."
+      : "Fatura kaydedildi! Stok guncellendi.");
   };
 
   const del = async (inv) => {
@@ -121,6 +135,21 @@ export default function InvoicesPage() {
       <div style={{fontSize:11,color:"#888",letterSpacing:"1px",marginBottom:14}}>{invoices.length} FATURA · TOPLAM ₺{Math.round(totalSpent).toLocaleString("tr-TR")}</div>
 
       <button onClick={openNew} style={{padding:"10px 16px",background:"#C8973E",color:"#000",border:"none",borderRadius:10,fontSize:13,fontWeight:800,cursor:"pointer",marginBottom:14}}>+ Yeni Fatura</button>
+
+      {priceAlerts.length > 0 && (
+        <div style={{background:"#3A1A1A",border:"1px solid #7A3A3A",borderRadius:10,padding:12,marginBottom:12}}>
+          <div style={{display:"flex",justifyContent:"space-between",alignItems:"center",marginBottom:6}}>
+            <div style={{fontSize:13,fontWeight:800,color:"#FF9F80"}}>⚠️ Anormal fiyat artışı (%{PRICE_ALERT_PCT}+)</div>
+            <button onClick={()=>setPriceAlerts([])} style={{background:"transparent",border:"none",color:"#FF9F80",fontSize:18,cursor:"pointer",lineHeight:1}}>×</button>
+          </div>
+          {priceAlerts.map((a,i)=>(
+            <div key={i} style={{fontSize:12,color:"#F0C0B0",padding:"3px 0"}}>
+              <b>{a.name}</b>: ₺{a.prev.toFixed(2)} → <b style={{color:"#FF7A5A"}}>₺{a.now.toFixed(2)}</b>{a.unit ? " /"+a.unit : ""} <span style={{color:"#FF5A5A",fontWeight:700}}>(+%{a.pct.toFixed(0)})</span>
+            </div>
+          ))}
+          <div style={{fontSize:11,color:"#B08070",marginTop:6}}>Bu artışlar kaydedildi. (Uzaktan Telegram uyarısı bot bağlanınca aktifleşecek.)</div>
+        </div>
+      )}
 
       {invoices.length === 0 && <div style={{textAlign:"center",padding:40,color:"#666",fontSize:13}}>Henuz fatura yok</div>}
 
