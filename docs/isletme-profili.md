@@ -79,8 +79,21 @@
   Gönderimi Supabase Edge Function yapar (o erişebilir); testi Supabase logları +
   tarayıcı üzerinden yaparız.
 
+## KURULUM DURUMU (2026-08-07)
+- ✅ bot_config (kilitli, RLS policy'siz) — token + webhook_secret DB'de.
+- ✅ staff.telegram_chat_id + shifts.checked_out_at alanları eklendi.
+- ✅ Edge fn `telegram` v2 deploy (setup/send/webhook/notify; verify_jwt=false, secret korumalı).
+- ✅ Telegram webhook kuruldu ("Webhook was set") — pg_net ile DB'den.
+- ✅ DB trigger'ları: order_items sent_to_kitchen → new_order; tüm kalemler ready →
+  order_ready. 90 sn debounce (tg_notify_log). Hedefleme edge fn'de: bugünkü shift
+  status=active + telegram_chat_id dolu (kitchen rolü öncelikli; hazır → siparişi açan).
+- ✅ Siparişe staff_id yazılıyor; Vardiyadan Çık butonu; Vardiyam'da Telegram bağlama butonu.
+- ⏳ Sahip (Omer) henüz /start ile bağlanmadı → bağlanınca uçtan uca test.
+- ⏳ Gece otomatik vardiya kapanışı (cron) + sabah 09:00 gün-sonu özeti + %10 fiyat
+  uyarısının Telegram'a bağlanması — sıradaki.
+
 ## Teknik notlar
 - Stack: React + Vite + Supabase, Vercel'de yayında.
 - ⚠️ Supabase ücretsiz katman ~1 hafta işlem olmazsa projeyi duraklatıyor
   (uygulama o zaman açılmıyor). En az bir kez bu yüzden takıldık.
-- Siparişlerde henüz personel (created_by) alanı YOK — personel raporu öncesi eklenecek.
+- orders.staff_id artık sipariş açılışında dolduruluyor (personel raporu hazır olacak).
