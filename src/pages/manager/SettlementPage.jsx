@@ -1,17 +1,18 @@
 import { useEffect, useState } from "react";
 import { supabase } from "../../lib/supabase.js";
 import { useAuth } from "../../contexts/AuthContext.jsx";
+import { PARIS_STORE_ID, DONER_STORE_ID } from "../../lib/stores.js";
 
 const cv = "-apple-system,BlinkMacSystemFont,'Segoe UI',Roboto,sans-serif";
 const hv = "'Bebas Neue','Barlow Condensed',sans-serif";
 
 // NIP kendi menusunden doner (mutfak) urunlerini de satar. Bir urunun mutfak
 // hedefi Doner ise, o urunun NIP'te satilan cirosu ay sonu mutfaga odenir.
-// inter_company_settlement view'i bu cross-store siparisleri haftalik/aylik toplar:
-//   origin_store_name  = kasayi/parayi alan magaza (NIP = "paris")
-//   kitchen_store_name = urunu yapan mutfak (Doner = "paris" degil)
+// inter_company_settlement view'i bu cross-store (paid) siparisleri toplar:
+//   origin_store_id             = kasayi/parayi alan magaza (NIP = Paris)
+//   kitchen_destination_store_id = urunu yapan mutfak (Doner)
 //   total_amount, order_count, week_start, month_start
-const isParis = (name) => (name || "").toLowerCase().includes("paris");
+// Not: iki magaza adi da "Paris" icerdigi icin isim degil ID ile eslestiriyoruz.
 
 export default function SettlementPage() {
   const { staffUser } = useAuth();
@@ -82,9 +83,9 @@ export default function SettlementPage() {
 
       {!loading && sortedPeriods.map(({ period: ps, items }) => {
         // NIP kasasi aldi, doner mutfagi yapti => mutfaga odenecek
-        const toKitchen = items.filter(r => isParis(r.origin_store_name) && !isParis(r.kitchen_store_name));
+        const toKitchen = items.filter(r => r.origin_store_id === PARIS_STORE_ID && r.kitchen_destination_store_id === DONER_STORE_ID);
         // Doner tarafi sattikca NIP mutfagi yapti => mutfak bize borclu (nadir)
-        const fromKitchen = items.filter(r => !isParis(r.origin_store_name) && isParis(r.kitchen_store_name));
+        const fromKitchen = items.filter(r => r.origin_store_id === DONER_STORE_ID && r.kitchen_destination_store_id === PARIS_STORE_ID);
         const payable = toKitchen.reduce((s, r) => s + Number(r.total_amount || 0), 0);
         const receivable = fromKitchen.reduce((s, r) => s + Number(r.total_amount || 0), 0);
         const net = payable - receivable;
