@@ -43,6 +43,19 @@
 - **Faz 3 — Kâr/zarar & aksiyon paneli:** net kâr + "şunu düzelt" önerileri.
 - **Kesişen:** personel için aşırı kolay kullanım + telefon bildirimleri.
 
+## Bildirim kararları
+- **Sahip kanalı: Telegram.** Gün sonu özeti + uyarılar Telegram botundan.
+  - Uyarı içerikleri: (1) her gece **gün sonu ciro & kâr özeti**
+    (ciro, tahmini kâr, mutfağa ödenecek, en çok satan), (2) **anormal
+    maliyet/fiyat artışı** — fatura kalemi önceki alıma göre ör. %20+ pahalıysa.
+- **Personel telefon bildirimi (web push):**
+  - (1) **Yeni sipariş → mutfak/hazırlık** sorumlusu.
+  - (2) **Sipariş hazır → garson** ("servise hazır").
+  - Hedef: ortak kasa/mutfak tableti + kişisel telefonlar. iOS'ta PWA kurulumu gerekir.
+- **Mimari (planlanan):** Telegram tarafı Supabase Edge Function + cron (gecelik)
+  ve fatura kaydında olay-tetikli. Bot token'ı Supabase secret olarak saklanır
+  (repoya asla yazılmaz). Personel push'u için service worker + VAPID + abonelik tablosu.
+
 ## Teknik notlar
 - Stack: React + Vite + Supabase, Vercel'de yayında.
 - ⚠️ Supabase ücretsiz katman ~1 hafta işlem olmazsa projeyi duraklatıyor
