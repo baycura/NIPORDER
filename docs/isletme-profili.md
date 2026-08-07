@@ -12,6 +12,20 @@
 - **Çalışma tarzı tercihi:** "Bir sürü sor, hiç sormayı bırakma." → varsaymak
   yerine sor, iş ve sahip hakkında öğrendikçe daha isabetli kur.
 
+## Kadro (2026-08-07 itibarıyla — sürekli değişebilir, koda gömme!)
+- **Omer (sahip, admin):** tam yetki, Telegram bağlı.
+- **Ceren (eş, `viewer`/Gözlemci):** ÇALIŞMIYOR, personel değil. Satış/rapor,
+  mutfağa ödenecek, stok ve ürün/fiyatları GÖREBİLİR; sipariş/kasa/vardiya
+  ekranlarına girmez. Sabah özeti bağlanırsa ona da gider (admin+viewer hedefli).
+- **Çalışanlar:** Mustafa (manager), Fatih (manager), Burcu (waiter).
+- **Tolgacan:** ayrıldı → staff kaydı `is_active=false` (silinmedi, geçmiş raporlar için).
+- **Part-time hafta sonu servis ekibi:** kişiler sürekli değişiyor, sabit değil.
+  Bu yüzden TEK ORTAK HESAP: `parttime@notinparis.me` (rol `parttime`) — sadece
+  Masalar + Sipariş + Kasa görür; mutfak/stok/vardiya/görevler kapalı.
+  Kişi bazlı takip gerekirse Personel sayfasından gerçek hesap açılır.
+- Pasif (`is_active=false`) personel GİRİŞ YAPAMAZ (AuthContext engeli) ve
+  hiçbir Telegram bildirimi almaz.
+
 ## İşletme yapısı
 - **İki store, TEK veritabanı** (Supabase proje: "Order" / gbbxxcduuwdmvfayxzeg):
   - `Not In Paris` (slug: paris) — ana işletme/bar.
@@ -91,7 +105,8 @@
 - ✅ pg_cron: `nip-close-shifts` 03:00 UTC (06:00 TR, açık vardiyaları kapatır) +
   `nip-daily-summary` 06:00 UTC (09:00 TR, admin'lere gün-sonu özeti). İkisi de aktif.
 - ✅ Omer /start ile bağlandı; test mesajı + canlı özet denemesi gönderildi (2026-08-07).
-- ⏳ Diğer admin/personel henüz bağlanmadı (Vardiyam > 'Telegram bildirimlerini aç').
+- ⏳ Diğer personel (Mustafa, Fatih, Burcu) henüz Telegram'a bağlanmadı
+  (Vardiyam > 'Telegram bildirimlerini aç'). Ceren de bağlanırsa sabah özeti alır.
 - ⏳ %10 fiyat uyarısının Telegram'a bağlanması — sıradaki.
 
 ## Teknik notlar

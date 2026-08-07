@@ -27,18 +27,20 @@ import TablesMgmtPage from "./pages/manager/TablesMgmtPage.jsx";
 import RecipesMgmtPage from "./pages/manager/RecipesMgmtPage.jsx";
 import InvoicesPage from "./pages/manager/InvoicesPage.jsx";
 
-function PrivateRoute({ children, managerOnly = false, adminOnly = false }) {
-  const { session, staffUser, isManager, isAdmin, loading } = useAuth();
+function PrivateRoute({ children, managerOnly = false, adminOnly = false, allowViewer = false, deny = [] }) {
+  const { session, staffUser, isManager, isAdmin, isViewer, loading } = useAuth();
   if (loading) return (<div style={{display:"flex",alignItems:"center",justifyContent:"center",height:"100vh",color:"#888",fontSize:14,letterSpacing:"2px"}}>YUKLENIYOR...</div>);
   if (!session || !staffUser) return (<Navigate to="/login" replace />);
-  if (adminOnly && !isAdmin) return (<Navigate to="/tables" replace />);
-  if (managerOnly && !isManager) return (<Navigate to="/tables" replace />);
+  const home = isViewer ? "/reports" : "/tables";
+  if (adminOnly && !isAdmin && !(allowViewer && isViewer)) return (<Navigate to={home} replace />);
+  if (managerOnly && !isManager) return (<Navigate to={home} replace />);
+  if (deny.includes(staffUser.role)) return (<Navigate to={home} replace />);
   return children;
 }
 
 function AppRoutes() {
-  const { session, staffUser, isKitchen, isCashier } = useAuth();
-  const defaultRoute = isKitchen ? "/kitchen" : isCashier ? "/payment" : "/tables";
+  const { session, staffUser, isKitchen, isCashier, isViewer } = useAuth();
+  const defaultRoute = isViewer ? "/reports" : isKitchen ? "/kitchen" : isCashier ? "/payment" : "/tables";
   return (
     <Routes>
       <Route path="/login" element={session && staffUser ? (<Navigate to={defaultRoute} replace />) : (<LoginPage />)}/>
@@ -47,21 +49,21 @@ function AppRoutes() {
       <Route path="/kitchen-display" element={<PrivateRoute><KitchenDisplayPage /></PrivateRoute>} />
       <Route path="/" element={<PrivateRoute><StaffLayout /></PrivateRoute>}>
         <Route index element={<Navigate to={defaultRoute} replace />} />
-        <Route path="tables"           element={<TablesPage />} />
-        <Route path="orders"           element={<OrdersPage />} />
-        <Route path="orders/:orderId"  element={<OrderDetailPage />} />
-        <Route path="kitchen"          element={<KitchenPage />} />
-        <Route path="payment"          element={<PaymentPage />} />
-        <Route path="stock"            element={<StockViewPage />} />
-        <Route path="myshift"          element={<MyShiftPage />} />
+        <Route path="tables"           element={<PrivateRoute deny={["viewer"]}><TablesPage /></PrivateRoute>} />
+        <Route path="orders"           element={<PrivateRoute deny={["viewer"]}><OrdersPage /></PrivateRoute>} />
+        <Route path="orders/:orderId"  element={<PrivateRoute deny={["viewer"]}><OrderDetailPage /></PrivateRoute>} />
+        <Route path="kitchen"          element={<PrivateRoute deny={["viewer","parttime"]}><KitchenPage /></PrivateRoute>} />
+        <Route path="payment"          element={<PrivateRoute deny={["viewer"]}><PaymentPage /></PrivateRoute>} />
+        <Route path="stock"            element={<PrivateRoute deny={["parttime"]}><StockViewPage /></PrivateRoute>} />
+        <Route path="myshift"          element={<PrivateRoute deny={["viewer","parttime"]}><MyShiftPage /></PrivateRoute>} />
         <Route path="stock-mgmt"       element={<PrivateRoute managerOnly><StockMgmtPage /></PrivateRoute>} />
         <Route path="staff-mgmt"       element={<PrivateRoute managerOnly><StaffMgmtPage /></PrivateRoute>} />
         <Route path="happy-hour"       element={<PrivateRoute managerOnly><HappyHourPage /></PrivateRoute>} />
         <Route path="category-schedule" element={<PrivateRoute managerOnly><CategorySchedulePage /></PrivateRoute>} />
         <Route path="qr-codes" element={<PrivateRoute managerOnly><QRCodesPage /></PrivateRoute>} />
-        <Route path="tasks" element={<PrivateRoute><TasksPage /></PrivateRoute>} />
-        <Route path="reports"          element={<PrivateRoute adminOnly><ReportsPage /></PrivateRoute>} />
-          <Route path="settlement"       element={<PrivateRoute adminOnly><SettlementPage /></PrivateRoute>} />
+        <Route path="tasks" element={<PrivateRoute deny={["viewer","parttime"]}><TasksPage /></PrivateRoute>} />
+        <Route path="reports"          element={<PrivateRoute adminOnly allowViewer><ReportsPage /></PrivateRoute>} />
+          <Route path="settlement"       element={<PrivateRoute adminOnly allowViewer><SettlementPage /></PrivateRoute>} />
         <Route path="members"          element={<PrivateRoute managerOnly><MembersPage /></PrivateRoute>} />
         <Route path="merch-mgmt"       element={<PrivateRoute managerOnly><MerchMgmtPage /></PrivateRoute>} />
         <Route path="settings"         element={<PrivateRoute managerOnly><SettingsPage /></PrivateRoute>} />

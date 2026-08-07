@@ -7,9 +7,9 @@
 //   notify&secret= -> DB trigger'lari cagirir (yeni siparis / hazir)
 //   daily_summary&secret= -> sabah 09:00 TR sahip ozeti (pg_cron cagirir)
 //
-// Hedefleme kurali: bildirim SADECE "su an vardiyasi aktif" (shifts.status='active')
-// VE Telegram'a bagli (staff.telegram_chat_id dolu) personele gider. Izinli/mesai
-// disi kimse rahatsiz edilmez. Sahip ozeti: role='admin' + bagli olanlara.
+// Hedefleme kurali: bildirim SADECE "su an vardiyasi aktif" (shifts.status='active'),
+// is_active=true VE Telegram'a bagli (staff.telegram_chat_id dolu) personele gider.
+// Izinli/mesai disi kimse rahatsiz edilmez. Sabah ozeti: admin + viewer (aile) bagli olanlara.
 
 import { createClient } from "jsr:@supabase/supabase-js@2";
 
@@ -52,7 +52,7 @@ async function activeStaff() {
   if (!ids.length) return [];
   const { data: staff } = await supabase
     .from("staff").select("id, name, role, telegram_chat_id")
-    .in("id", ids).not("telegram_chat_id", "is", null);
+    .in("id", ids).eq("is_active", true).not("telegram_chat_id", "is", null);
   return staff || [];
 }
 
@@ -178,7 +178,9 @@ Deno.serve(async (req) => {
       if (isPartyDay) text += `\n🎉 Parti (22:00+): ${fmt(partyRevenue)}`;
 
       const { data: admins } = await supabase
-        .from("staff").select("telegram_chat_id").eq("role", "admin").not("telegram_chat_id", "is", null);
+        .from("staff").select("telegram_chat_id")
+        .in("role", ["admin", "viewer"]).eq("is_active", true)
+        .not("telegram_chat_id", "is", null);
       const n = await sendTo((admins || []).map((a: any) => a.telegram_chat_id), text);
       return Response.json({ ok: true, sent: n, revenue, kitchenOwed });
     }

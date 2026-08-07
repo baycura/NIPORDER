@@ -28,10 +28,16 @@ export function AuthProvider({ children }) {
           const s = staffRes && staffRes.data;
 
           if (s) {
-            setStaffUser(s);
-            setCustomer(null);
-            // Update last_login (fire and forget)
-            supabase.from("staff").update({ last_login: new Date().toISOString() }).eq("id", s.id);
+            if (s.is_active === false) {
+              // Pasif personel: giris yapamaz, musteri hesabi da acilmaz
+              setStaffUser(null);
+              setCustomer(null);
+            } else {
+              setStaffUser(s);
+              setCustomer(null);
+              // Update last_login (fire and forget)
+              supabase.from("staff").update({ last_login: new Date().toISOString() }).eq("id", s.id);
+            }
           } else {
             // Try customer by auth_user_id first
             let cRes = await supabase.from("customers").select("*").eq("auth_user_id", userId).maybeSingle();
@@ -104,15 +110,17 @@ export function AuthProvider({ children }) {
   const role = staffUser && staffUser.role;
   const isAdmin   = role === "admin";
   const isManager = role === "admin" || role === "manager" || role === "owner";
-  const isWaiter  = role === "waiter" || role === "cashier";
+  const isWaiter  = role === "waiter" || role === "cashier" || role === "parttime";
   const isKitchen = role === "kitchen";
-  const isCashier = role === "cashier" || role === "waiter";
+  const isCashier = role === "cashier" || role === "waiter" || role === "parttime";
+  const isViewer  = role === "viewer";
+  const isParttime = role === "parttime";
 
   return (
     <AuthContext.Provider value={{
       session, staffUser, customer, loading,
       signIn, signInWithGoogle, signOut,
-      isAdmin, isManager, isWaiter, isKitchen, isCashier,
+      isAdmin, isManager, isWaiter, isKitchen, isCashier, isViewer, isParttime,
     }}>
       {children}
     </AuthContext.Provider>
