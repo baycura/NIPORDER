@@ -82,15 +82,17 @@
 ## KURULUM DURUMU (2026-08-07)
 - ✅ bot_config (kilitli, RLS policy'siz) — token + webhook_secret DB'de.
 - ✅ staff.telegram_chat_id + shifts.checked_out_at alanları eklendi.
-- ✅ Edge fn `telegram` v2 deploy (setup/send/webhook/notify; verify_jwt=false, secret korumalı).
+- ✅ Edge fn `telegram` v3 deploy (setup/send/webhook/notify/daily_summary; verify_jwt=false, secret korumalı).
 - ✅ Telegram webhook kuruldu ("Webhook was set") — pg_net ile DB'den.
-- ✅ DB trigger'ları: order_items sent_to_kitchen → new_order; tüm kalemler ready →
-  order_ready. 90 sn debounce (tg_notify_log). Hedefleme edge fn'de: bugünkü shift
-  status=active + telegram_chat_id dolu (kitchen rolü öncelikli; hazır → siparişi açan).
+- ✅ DB trigger'ları (migration `20260807_telegram_triggers_and_cron.sql`): order_items
+  insert/update → items_sent; kitchen_status→ready → items_ready. Hedefleme edge fn'de:
+  shift status=active + telegram_chat_id dolu (kitchen rolü öncelikli; hazır → siparişi açan).
 - ✅ Siparişe staff_id yazılıyor; Vardiyadan Çık butonu; Vardiyam'da Telegram bağlama butonu.
-- ⏳ Sahip (Omer) henüz /start ile bağlanmadı → bağlanınca uçtan uca test.
-- ⏳ Gece otomatik vardiya kapanışı (cron) + sabah 09:00 gün-sonu özeti + %10 fiyat
-  uyarısının Telegram'a bağlanması — sıradaki.
+- ✅ pg_cron: `nip-close-shifts` 03:00 UTC (06:00 TR, açık vardiyaları kapatır) +
+  `nip-daily-summary` 06:00 UTC (09:00 TR, admin'lere gün-sonu özeti). İkisi de aktif.
+- ✅ Omer /start ile bağlandı; test mesajı + canlı özet denemesi gönderildi (2026-08-07).
+- ⏳ Diğer admin/personel henüz bağlanmadı (Vardiyam > 'Telegram bildirimlerini aç').
+- ⏳ %10 fiyat uyarısının Telegram'a bağlanması — sıradaki.
 
 ## Teknik notlar
 - Stack: React + Vite + Supabase, Vercel'de yayında.
