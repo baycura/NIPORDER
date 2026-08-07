@@ -57,9 +57,16 @@
     bildirim role/kişiye göre gider.
   - **Kayıt akışı:** uygulamada kişiye özel "Telegram'a bağlan" butonu →
     `t.me/BaycuraBot?start=<kod>` → webhook chat_id'yi o personele bağlar.
-  - **⚠️ Bağımlılık:** "hazır → garson" doğru kişiye gitmesi için siparişte
-    "açan personel" alanı gerekir (şu an YOK). Bu alan aynı zamanda personel
-    satış raporunu da açar → önce eklenecek (orders.created_by_staff_id).
+  - **Kime gider? "O an vardiyada olan" kişiler.** Sabit çizelge/izin YOK;
+    personelin "Vardiyaya Gir/Çık" dokunuşu canlı gerçektir:
+    - izin/gelmeyen → vardiya yok → bildirim yok
+    - değişken saat / aynı anda çok kişi → hepsi otomatik doğru çalışır
+    - Bildirim koşulu: bugünkü shift status=active **ve** staff.telegram_chat_id dolu.
+  - **`orders.staff_id`** alanı ZATEN VAR ama sipariş açılışında doldurulmuyor →
+    doldurulacak (hazır→garson yönlendirmesi + personel satış raporu). Migration gerekmez.
+  - **Vardiya çıkışı eklenecek:** shifts.status active→done + checked_out_at;
+    unutanlar için gece otomatik kapanış (cron).
+  - shifts tablosu: staff_id, date, checked_in_at, status (active). "VARDIYAYA GİR" var, çıkış YOK.
 - **Bot:** @BaycuraBot (t.me/BaycuraBot). Token repoya ASLA yazılmaz; Supabase
   tarafında saklanır (edge secret veya service-role-only tablo).
 - **Mimari (planlanan):** Tek Supabase Edge Function `telegram`:
