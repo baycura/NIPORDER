@@ -65,6 +65,7 @@ export default function OrdersPage() {
       table_id: newMode === "table" ? newTableId : null,
       customer_name: newMode === "walkin" ? newCustomerName.trim() : null,
       origin_store_id: newMode === "table" ? (tables.find(t => t.id === newTableId)?.store_id) : staffUser?.store_ids?.[0],
+      staff_id: staffUser?.id,
     };
     const { data, error } = await supabase.from("orders").insert(payload).select().single();
     setBusy(false);
