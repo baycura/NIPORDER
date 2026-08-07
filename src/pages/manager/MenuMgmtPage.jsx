@@ -1,6 +1,7 @@
 import { useEffect, useState } from "react";
 import { supabase } from "../../lib/supabase.js";
 import { useAuth } from "../../contexts/AuthContext.jsx";
+import { PARIS_STORE_ID, DONER_STORE_ID } from "../../lib/stores.js";
 
 const cv = "-apple-system,BlinkMacSystemFont,'Segoe UI',Roboto,sans-serif";
 
@@ -403,17 +404,22 @@ export default function MenuMgmtPage() {
           </div>
 
           <div style={{marginBottom:10}}>
-            <label style={{display:"block",fontSize:11,color:"#888",marginBottom:4,fontWeight:600,letterSpacing:0.5}}>🏪 MAGAZA (birden fazla secilebilir)</label>
+            <label style={{display:"block",fontSize:11,color:"#888",marginBottom:4,fontWeight:600,letterSpacing:0.5}}>🏪 HANGİ MENÜDE GÖRÜNSÜN? (birden fazla seçilebilir)</label>
             <div style={{display:"flex",gap:6}}>
-              {[{id:"c3c6e0c7-1821-4edd-993d-ad960cfbc452",label:"Paris"},{id:"c39da530-7f73-4f69-a752-029bf03790b1",label:"Berlin"}].map(s => { const sel = [prodForm.store_id,...(prodForm.additional_store_ids||[])].filter(Boolean).includes(s.id); return (<button key={s.id} type="button" onClick={()=>{const cur=[prodForm.store_id,...(prodForm.additional_store_ids||[])].filter(Boolean);const next=cur.includes(s.id)?cur.filter(x=>x!==s.id):[...cur,s.id];setProdForm({...prodForm,store_id:next[0]||"",additional_store_ids:next.slice(1)});}} style={{flex:1,padding:"8px",background:sel?"#C8973E":"#222",color:sel?"#000":"#888",border:"1px solid "+(sel?"#C8973E":"#333"),borderRadius:6,fontSize:13,fontWeight:700,cursor:"pointer"}}>{sel?"✓ ":""}{s.label}</button>); })}
+              {[{id:PARIS_STORE_ID,label:"🗼 Not In Paris"},{id:DONER_STORE_ID,label:"🥙 Döner"}].map(s => { const sel = [prodForm.store_id,...(prodForm.additional_store_ids||[])].filter(Boolean).includes(s.id); return (<button key={s.id} type="button" onClick={()=>{const cur=[prodForm.store_id,...(prodForm.additional_store_ids||[])].filter(Boolean);const next=cur.includes(s.id)?cur.filter(x=>x!==s.id):[...cur,s.id];setProdForm({...prodForm,store_id:next[0]||"",additional_store_ids:next.slice(1)});}} style={{flex:1,padding:"8px",background:sel?"#C8973E":"#222",color:sel?"#000":"#888",border:"1px solid "+(sel?"#C8973E":"#333"),borderRadius:6,fontSize:13,fontWeight:700,cursor:"pointer"}}>{sel?"✓ ":""}{s.label}</button>); })}
             </div>
           </div>
 
           <div style={{marginBottom:10}}>
-            <label style={{display:"block",fontSize:11,color:"#888",marginBottom:4,fontWeight:600,letterSpacing:0.5}}>🍳 MUTFAK HEDEFI (siparis gidecegi mutfak)</label>
+            <label style={{display:"block",fontSize:11,color:"#888",marginBottom:4,fontWeight:600,letterSpacing:0.5}}>🍽️ BU ÜRÜNÜ KİM YAPIYOR? (mutfak)</label>
             <div style={{display:"flex",gap:6}}>
-              {[{id:"c3c6e0c7-1821-4edd-993d-ad960cfbc452",label:"Paris Mutfagi"},{id:"c39da530-7f73-4f69-a752-029bf03790b1",label:"Berlin/Doner Mutfagi"}].map(s => { const sel = prodForm.kitchen_destination_store_id === s.id; return (<button key={s.id} type="button" onClick={()=>setProdForm({...prodForm,kitchen_destination_store_id:s.id})} style={{flex:1,padding:"8px",background:sel?"#E07A3E":"#222",color:sel?"#000":"#888",border:"1px solid "+(sel?"#E07A3E":"#333"),borderRadius:6,fontSize:13,fontWeight:700,cursor:"pointer"}}>{sel?"✓ ":""}{s.label}</button>); })}
+              {[{id:PARIS_STORE_ID,label:"🗼 Kendi Mutfağımız"},{id:DONER_STORE_ID,label:"🥙 Döner Mutfağı"}].map(s => { const sel = prodForm.kitchen_destination_store_id === s.id; return (<button key={s.id} type="button" onClick={()=>setProdForm({...prodForm,kitchen_destination_store_id:s.id})} style={{flex:1,padding:"8px",background:sel?"#E07A3E":"#222",color:sel?"#000":"#888",border:"1px solid "+(sel?"#E07A3E":"#333"),borderRadius:6,fontSize:13,fontWeight:700,cursor:"pointer"}}>{sel?"✓ ":""}{s.label}</button>); })}
             </div>
+            {prodForm.kitchen_destination_store_id === DONER_STORE_ID && (
+              <div style={{marginTop:6,fontSize:11,color:"#E0A060",background:"rgba(224,122,62,0.1)",border:"1px solid #4A3320",borderRadius:6,padding:"6px 8px",lineHeight:1.4}}>
+                ℹ️ Bu bir <b>mutfak ürünü</b>. NIP'te satılan cirosu <b>ay sonu mutfağa ödenecek</b> listesine eklenir (Mahsuplaşma sayfası).
+              </div>
+            )}
           </div>
 
           <label style={{display:"flex",alignItems:"center",gap:8,marginBottom:10,cursor:"pointer"}}>
