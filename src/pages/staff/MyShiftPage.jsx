@@ -34,6 +34,13 @@ export default function MyShiftPage(){
         <span style={{color:"#2AABEE",fontSize:18}}>›</span>
       </a>
     )}
+    <a href={"https://t.me/BaycuraBot?start="+staffUser?.id} target="_blank" rel="noreferrer" style={{display:"flex",alignItems:"center",gap:10,background:"#17212B",border:"1px solid #2AABEE",borderRadius:12,padding:"12px 16px",marginBottom:24,textDecoration:"none"}}>
+      <span style={{fontSize:22}}>✈️</span>
+      <div>
+        <div style={{color:"#2AABEE",fontFamily:cvc,fontSize:13,fontWeight:700}}>Telegram bildirimlerini aç</div>
+        <div style={{color:"#888",fontFamily:cvc,fontSize:11,marginTop:2}}>Vardiyadayken yeni sipariş ve "hazır" bildirimleri telefonuna gelsin</div>
+      </div>
+    </a>
     <div style={{background:"#1E1E1E",border:"1px solid #2A2A2A",borderRadius:12,padding:18,marginBottom:24}}>
       <div style={{color:"#F0EDE8",fontFamily:cv,fontSize:18,marginBottom:14}}>Vardiya Bilgisi</div>
       <div style={{display:"grid",gridTemplateColumns:"repeat(3,1fr)",gap:12}}>
