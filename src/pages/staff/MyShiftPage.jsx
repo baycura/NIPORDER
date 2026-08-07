@@ -24,6 +24,16 @@ export default function MyShiftPage(){
     <div style={{display:"grid",gridTemplateColumns:"repeat(3,1fr)",gap:12,marginBottom:24}}>
       {[["BUGÜNKÜ CİRO",`₺${Math.round(revenue).toLocaleString()}`,"#3ECF8E","💰"],["SİPARİŞ",orderCount.toString(),"#C8973E","📋"],["ORT. SEPET",`₺${avg.toLocaleString()}`,"#F0EDE8","📊"]].map(([l,v,c,icon])=>(<div key={l} style={{background:"#1E1E1E",border:"1px solid #2A2A2A",borderRadius:12,padding:16}}><div style={{display:"flex",justifyContent:"space-between"}}><div><div style={{color:"#888",fontFamily:cvc,fontSize:10,letterSpacing:"1.5px",marginBottom:4}}>{l}</div><div style={{color:c,fontFamily:cv,fontSize:26}}>{v}</div></div><span style={{fontSize:22,opacity:.5}}>{icon}</span></div></div>))}
     </div>
+    {!staffUser?.telegram_chat_id&&(
+      <a href={"https://t.me/BaycuraBot?start="+staffUser?.id} target="_blank" rel="noreferrer" style={{display:"flex",alignItems:"center",gap:10,background:"#1C2733",border:"1px solid #2AABEE",borderRadius:12,padding:"14px 16px",marginBottom:24,textDecoration:"none"}}>
+        <span style={{fontSize:22}}>✈️</span>
+        <div style={{flex:1}}>
+          <div style={{color:"#F0EDE8",fontFamily:cvc,fontSize:14,fontWeight:700}}>Telegram bildirimlerini aç</div>
+          <div style={{color:"#8AB4D8",fontFamily:cvc,fontSize:11,marginTop:2}}>Vardiyadayken yeni sipariş ve "hazır" bildirimleri telefonuna gelsin</div>
+        </div>
+        <span style={{color:"#2AABEE",fontSize:18}}>›</span>
+      </a>
+    )}
     <div style={{background:"#1E1E1E",border:"1px solid #2A2A2A",borderRadius:12,padding:18,marginBottom:24}}>
       <div style={{color:"#F0EDE8",fontFamily:cv,fontSize:18,marginBottom:14}}>Vardiya Bilgisi</div>
       <div style={{display:"grid",gridTemplateColumns:"repeat(3,1fr)",gap:12}}>
