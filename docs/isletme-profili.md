@@ -50,13 +50,21 @@
     maliyet/fiyat artışı** — fatura kalemi önceki alıma göre **%10+** pahalıysa.
   - Özet zamanı: sabah 09:00 (Türkiye saati, UTC+3 → cron UTC 06:00), önceki gün.
   - Anormal fiyat eşiği: **%10** (hassas; sonradan ayarlanabilir).
-- **Personel telefon bildirimi (web push):**
-  - (1) **Yeni sipariş → mutfak/hazırlık** sorumlusu.
-  - (2) **Sipariş hazır → garson** ("servise hazır").
-  - Hedef: ortak kasa/mutfak tableti + kişisel telefonlar. iOS'ta PWA kurulumu gerekir.
-- **Mimari (planlanan):** Telegram tarafı Supabase Edge Function + cron (gecelik)
-  ve fatura kaydında olay-tetikli. Bot token'ı Supabase secret olarak saklanır
-  (repoya asla yazılmaz). Personel push'u için service worker + VAPID + abonelik tablosu.
+- **Personel bildirimi de TELEGRAM** (kullanıcı önerisi — web push yerine):
+  - Web push'un zahmeti yok (service worker/VAPID/iOS PWA gerekmez), her telefonda çalışır.
+  - (1) **Yeni sipariş → mutfak/hazırlık**, (2) **Sipariş hazır → garson**.
+  - Hedef: bir personel Telegram grubu (ortak tablet + herkesin telefonu grupta).
+- **Bot:** @BaycuraBot (t.me/BaycuraBot). Token repoya ASLA yazılmaz; Supabase
+  tarafında saklanır (edge secret veya service-role-only tablo).
+- **Mimari (planlanan):** Tek Supabase Edge Function `telegram`:
+  - Telegram webhook alıcısı → gelen mesajdan chat_id öğrenip `telegram_chats`'e yazar.
+  - Gönderim: sahip DM (özet/uyarı) + personel grubu (sipariş bildirimleri).
+  - Gün-sonu özeti: pg_cron 06:00 UTC (=09:00 TR) → fonksiyonu çağırır.
+  - Yeni sipariş / hazır: orders/order_items üzerinde DB webhook/trigger → fonksiyon.
+  - Anormal fiyat: fatura kaydında client `functions.invoke` ile fonksiyonu tetikler.
+- ⚠️ Not: Bu geliştirme sandbox'ı `api.telegram.org`'a çıkamıyor (ağ politikası).
+  Gönderimi Supabase Edge Function yapar (o erişebilir); testi Supabase logları +
+  tarayıcı üzerinden yaparız.
 
 ## Teknik notlar
 - Stack: React + Vite + Supabase, Vercel'de yayında.
