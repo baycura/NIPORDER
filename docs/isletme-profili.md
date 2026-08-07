@@ -53,7 +53,13 @@
 - **Personel bildirimi de TELEGRAM** (kullanıcı önerisi — web push yerine):
   - Web push'un zahmeti yok (service worker/VAPID/iOS PWA gerekmez), her telefonda çalışır.
   - (1) **Yeni sipariş → mutfak/hazırlık**, (2) **Sipariş hazır → garson**.
-  - Hedef: bir personel Telegram grubu (ortak tablet + herkesin telefonu grupta).
+  - **Yönlendirme: KİŞİYE ÖZEL DM** (grup değil). Her personel bota bağlanır,
+    bildirim role/kişiye göre gider.
+  - **Kayıt akışı:** uygulamada kişiye özel "Telegram'a bağlan" butonu →
+    `t.me/BaycuraBot?start=<kod>` → webhook chat_id'yi o personele bağlar.
+  - **⚠️ Bağımlılık:** "hazır → garson" doğru kişiye gitmesi için siparişte
+    "açan personel" alanı gerekir (şu an YOK). Bu alan aynı zamanda personel
+    satış raporunu da açar → önce eklenecek (orders.created_by_staff_id).
 - **Bot:** @BaycuraBot (t.me/BaycuraBot). Token repoya ASLA yazılmaz; Supabase
   tarafında saklanır (edge secret veya service-role-only tablo).
 - **Mimari (planlanan):** Tek Supabase Edge Function `telegram`:
