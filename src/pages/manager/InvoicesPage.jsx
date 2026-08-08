@@ -180,9 +180,15 @@ export default function InvoicesPage() {
     }
 
     setPriceAlerts(anomalies);
+    if (anomalies.length) {
+      // Sahibe Telegram uyarisi (arka planda; basarisiz olsa da kayit tamam)
+      supabase.functions.invoke("telegram?action=price_alert", {
+        body: { supplier: form.supplier_name.trim(), alerts: anomalies },
+      }).catch(() => {});
+    }
     setBusy(false); setModal(null); load();
     alert(anomalies.length
-      ? "Fatura kaydedildi. ⚠️ " + anomalies.length + " üründe anormal fiyat artışı (%" + PRICE_ALERT_PCT + "+) — listede işaretlendi."
+      ? "Fatura kaydedildi. ⚠️ " + anomalies.length + " üründe anormal fiyat artışı (%" + PRICE_ALERT_PCT + "+) — sahibe Telegram uyarısı gönderildi."
       : "Fatura kaydedildi! Stok guncellendi.");
   };
 
@@ -214,7 +220,7 @@ export default function InvoicesPage() {
               <b>{a.name}</b>: ₺{a.prev.toFixed(2)} → <b style={{color:"#FF7A5A"}}>₺{a.now.toFixed(2)}</b>{a.unit ? " /"+a.unit : ""} <span style={{color:"#FF5A5A",fontWeight:700}}>(+%{a.pct.toFixed(0)})</span>
             </div>
           ))}
-          <div style={{fontSize:11,color:"#B08070",marginTop:6}}>Bu artışlar kaydedildi. (Uzaktan Telegram uyarısı bot bağlanınca aktifleşecek.)</div>
+          <div style={{fontSize:11,color:"#B08070",marginTop:6}}>Bu artışlar kaydedildi ve sahibe Telegram'dan iletildi.</div>
         </div>
       )}
 

@@ -185,6 +185,34 @@ Deno.serve(async (req) => {
       return Response.json({ ok: true, sent: n, revenue, kitchenOwed });
     }
 
+    // --- Fatura kaydinda anormal fiyat artisi -> sahibe uyari ---
+    // Secret degil personel JWT'siyle korunur: Faturalar sayfasi dogrudan cagirir.
+    if (action === "price_alert") {
+      const token = (req.headers.get("Authorization") || "").replace(/^Bearer\s+/i, "");
+      const { data: userData } = await supabase.auth.getUser(token);
+      const uid = userData?.user?.id;
+      if (!uid) return new Response("forbidden", { status: 403 });
+      const { data: caller } = await supabase
+        .from("staff").select("id, role, is_active").eq("auth_id", uid).maybeSingle();
+      if (!caller || (caller as any).is_active === false || !["admin", "manager", "owner"].includes((caller as any).role)) {
+        return new Response("forbidden", { status: 403 });
+      }
+      const payload = await req.json().catch(() => ({}));
+      const alerts: Array<{ name: string; unit?: string; prev: number; now: number; pct: number }> = payload.alerts || [];
+      if (!alerts.length) return Response.json({ ok: true, sent: 0 });
+      const money = (n: number) => "₺" + Number(n).toFixed(2);
+      const lines = alerts.slice(0, 20).map((a) =>
+        `• ${a.name}: ${money(a.prev)} → ${money(a.now)}${a.unit ? "/" + a.unit : ""} (+%${Math.round(a.pct)})`
+      ).join("\n");
+      const text = `⚠️ Anormal fiyat artışı — ${payload.supplier || "fatura"}\n${lines}`;
+      const { data: owners } = await supabase
+        .from("staff").select("telegram_chat_id")
+        .in("role", ["admin", "viewer"]).eq("is_active", true)
+        .not("telegram_chat_id", "is", null);
+      const n = await sendTo((owners || []).map((a: any) => a.telegram_chat_id), text);
+      return Response.json({ ok: true, sent: n });
+    }
+
     // --- Telegram webhook (kayit akisi) ---
     if (action === "webhook") {
       const secret = await cfg("webhook_secret");
