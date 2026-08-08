@@ -1,4 +1,4 @@
-import { useEffect, useState } from "react";
+import { useEffect, useState, useRef } from "react";
 import { useNavigate } from "react-router-dom";
 import { supabase } from "../../lib/supabase.js";
 import { useAuth } from "../../contexts/AuthContext.jsx";
@@ -29,8 +29,9 @@ export default function OrdersPage() {
   const [newCustomerName, setNewCustomerName] = useState("");
   const [busy, setBusy] = useState(false);
 
+  const firstLoad = useRef(true);
   const load = async () => {
-    setLoading(true);
+    if (firstLoad.current) setLoading(true); // yoklamalarda "Yukleniyor" parlamasin
     let statuses;
     if (filter === "active") statuses = ["open","sent","preparing","ready"];
     else if (filter === "paid") statuses = ["paid","debt"];
@@ -59,7 +60,7 @@ export default function OrdersPage() {
       });
       setItemStats(stats);
     } else setItemStats({});
-    setLoading(false);
+    if (firstLoad.current) { setLoading(false); firstLoad.current = false; }
   };
 
   const [itemStats, setItemStats] = useState({});
@@ -89,7 +90,17 @@ export default function OrdersPage() {
       .on("postgres_changes", {event:"*", schema:"public", table:"orders"}, load)
       .on("postgres_changes", {event:"*", schema:"public", table:"order_items"}, load)
       .subscribe();
-    return () => supabase.removeChannel(ch);
+    // Telefon kilitlenince canli baglanti kopabiliyor: ekrana donunce tazele + 15 sn'de bir yedek yoklama
+    const onWake = () => { if (document.visibilityState === "visible") load(); };
+    document.addEventListener("visibilitychange", onWake);
+    window.addEventListener("focus", onWake);
+    const iv = setInterval(() => { if (document.visibilityState === "visible") load(); }, 15000);
+    return () => {
+      supabase.removeChannel(ch);
+      document.removeEventListener("visibilitychange", onWake);
+      window.removeEventListener("focus", onWake);
+      clearInterval(iv);
+    };
   }, [filter]);
 
   const createOrder = async () => {

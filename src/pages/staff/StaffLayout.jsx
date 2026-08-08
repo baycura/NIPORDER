@@ -1,5 +1,5 @@
 import { Outlet, NavLink, useNavigate } from "react-router-dom";
-import { useState, useEffect } from "react";
+import { useState, useEffect, useRef } from "react";
 import { useAuth } from "../../contexts/AuthContext.jsx";
 
 const STAFF_NAV = [
@@ -67,6 +67,24 @@ export default function StaffLayout() {
     return () => window.removeEventListener("resize", onResize);
   }, []);
 
+  // Kenardan kaydirma ile ileri/geri gezinme (mobil):
+  // sol kenardan saga kaydir = geri, sag kenardan sola kaydir = ileri
+  const swipeRef = useRef(null);
+  const onTouchStart = (e) => {
+    const t = e.touches[0];
+    const edge = t.clientX < 36 ? "L" : (window.innerWidth - t.clientX < 36 ? "R" : null);
+    swipeRef.current = edge ? { x: t.clientX, y: t.clientY, edge, at: Date.now() } : null;
+  };
+  const onTouchEnd = (e) => {
+    const s = swipeRef.current; swipeRef.current = null;
+    if (!s) return;
+    const t = e.changedTouches[0];
+    const dx = t.clientX - s.x, dy = Math.abs(t.clientY - s.y);
+    if (Date.now() - s.at > 600 || dy > 70) return;
+    if (s.edge === "L" && dx > 60) navigate(-1);
+    else if (s.edge === "R" && dx < -60) navigate(1);
+  };
+
   const cv = "-apple-system,BlinkMacSystemFont,'Segoe UI',Roboto,sans-serif";
   const mainNav = isViewer ? VIEWER_NAV : isParttime ? PARTTIME_NAV : [...STAFF_NAV, ...STAFF_NAV_EXTRA];
   const tabNav  = isViewer ? VIEWER_NAV : isParttime ? PARTTIME_NAV : STAFF_NAV;
@@ -126,7 +144,7 @@ export default function StaffLayout() {
     </div>);
   }
 
-  return (<div style={{background:"#0C0C0C",minHeight:"100vh",fontFamily:cv}}>
+  return (<div style={{background:"#0C0C0C",minHeight:"100vh",fontFamily:cv}} onTouchStart={onTouchStart} onTouchEnd={onTouchEnd}>
     <header style={{display:"flex",alignItems:"center",justifyContent:"space-between",padding:"10px 14px",background:"#161616",borderBottom:"1px solid #2A2A2A",position:"sticky",top:0,zIndex:40}}>
       <button onClick={()=>setDrawerOpen(true)} style={{background:"none",border:"none",color:"#F0EDE8",cursor:"pointer",padding:6,display:"flex",flexDirection:"column",gap:4}}>
         <div style={{width:22,height:2,background:"#F0EDE8"}}/>
