@@ -122,7 +122,9 @@ Deno.serve(async (req: Request) => {
     }
 
     // --- PayTR bildirim (Bildirim URL buraya ayarlanmali) ---
-    if (action === "callback") {
+    // Panel soru isaretli URL kabul etmezse diye: action'siz form POST da bildirim sayilir
+    const isFormPost = req.method === "POST" && (req.headers.get("content-type") || "").includes("form");
+    if (action === "callback" || (!action && isFormPost)) {
       const form = await req.formData().catch(() => null);
       if (!form) return new Response("bad request", { status: 400 });
       const merchantOid = String(form.get("merchant_oid") || "");
