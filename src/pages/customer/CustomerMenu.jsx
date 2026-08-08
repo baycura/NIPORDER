@@ -5,6 +5,17 @@ import { useAuth } from "../../contexts/AuthContext.jsx";
 
 const cv = "-apple-system,BlinkMacSystemFont,'Segoe UI',Roboto,sans-serif";
 
+// Alt sekmeler — QR menu ayni zamanda vitrin: etkinlik/rezervasyon, surusler, shop, blog
+const CUST_TABS = [
+  { key: "menu",   icon: "🍽", tr: "Menü",     en: "Menu" },
+  { key: "events", icon: "🎟", tr: "Etkinlik", en: "Events" },
+  { key: "rides",  icon: "🚴", tr: "Sürüş",    en: "Rides" },
+  { key: "shop",   icon: "👕", tr: "Shop",     en: "Shop" },
+  { key: "blog",   icon: "📰", tr: "Blog",     en: "Blog" },
+];
+const FEED_URL = "https://gbbxxcduuwdmvfayxzeg.supabase.co/functions/v1/shopify-feed";
+const RESERVATION_URL = "https://reservation.notinparis.me";
+
 const T = {
   tr: {
     menu: "MENÜ",
@@ -209,6 +220,26 @@ export default function CustomerMenu() {
       });
   }, [customer?.id]);
 
+  // Alt sekmeler + siparis beklerken gezinme
+  const [custTab, setCustTab] = useState("menu");
+  const [browsing, setBrowsing] = useState(false);
+  const [feeds, setFeeds] = useState({});         // shopify-feed: events/rides
+  const [postFeeds, setPostFeeds] = useState({}); // posts: shop(urun)/blog
+  useEffect(() => {
+    if ((custTab === "events" || custTab === "rides") && !feeds[custTab]) {
+      fetch(FEED_URL + "?section=" + custTab)
+        .then(r => r.json())
+        .then(d => setFeeds(f => ({ ...f, [custTab]: d.items || [] })))
+        .catch(() => setFeeds(f => ({ ...f, [custTab]: [] })));
+    }
+    if ((custTab === "shop" || custTab === "blog") && !postFeeds[custTab]) {
+      supabase.from("posts").select("*")
+        .eq("kind", custTab === "shop" ? "urun" : "blog").eq("is_active", true)
+        .order("sort_order").order("created_at", { ascending: false })
+        .then(({ data }) => setPostFeeds(f => ({ ...f, [custTab]: data || [] })));
+    }
+  }, [custTab]);
+
   const pName = (p) => (lang === "en" && p?.name_en) ? p.name_en : p?.name;
   const pDesc = (p) => (lang === "en" && p?.description_en) ? p.description_en : p?.description;
   const cName = (c) => (lang === "en" && c?.name_en) ? c.name_en : c?.name;
@@ -362,6 +393,7 @@ export default function CustomerMenu() {
           if (prev === "ready" || prev === "served") return prev;
           playDing(); vibrate();
           showBrowserNotification(t.notif_title, t.notif_body);
+          setBrowsing(false); // sekmelerde geziyorsa buyuk HAZIR ekranina don
           return "ready";
         });
       }
@@ -517,6 +549,7 @@ export default function CustomerMenu() {
       if (itErr) throw itErr;
       setSuccessOrderId(ord.id);
       setOrderStage("pending");
+      setBrowsing(false); setCustTab("menu");
       setCart([]); setOrderNote(""); setCheckoutOpen(false);
     } catch (e) { alert(t.submit_failed + e.message); }
     setSubmitting(false);
@@ -533,7 +566,7 @@ export default function CustomerMenu() {
     return (<div className="nip-customer" style={{fontFamily:cv,background:"#fff",minHeight:"100vh",display:"flex",alignItems:"center",justifyContent:"center",color:"#888"}}>...</div>);
   }
 
-  if (successOrderId) {
+  if (successOrderId && !browsing) {
     const bg = orderStage === "ready" ? "#FFF8E1" : orderStage === "served" ? "#E8F5E9" : "#fff";
     const isReady = orderStage === "ready";
     const isServed = orderStage === "served";
@@ -576,7 +609,12 @@ export default function CustomerMenu() {
                   <button onClick={askNotifPermissionSync} style={{padding:"10px 18px",background:"#C8973E",color:"#000",border:"none",borderRadius:10,fontSize:12,fontWeight:800,cursor:"pointer"}}>{t.notif_ask}</button>
                 )}
               </div>
-              <button onClick={() => { setSuccessOrderId(null); setOrderStage("pending"); load(); }} style={{padding:"10px 22px",background:"transparent",color:"#888",border:"1px solid #ddd",borderRadius:10,fontSize:12,cursor:"pointer"}}>{t.back_to_menu}</button>
+              <button onClick={() => setBrowsing(true)} style={{padding:"12px 24px",background:"#000",color:"#fff",border:"none",borderRadius:12,fontSize:13,fontWeight:700,cursor:"pointer"}}>
+                {lang==="en" ? "Browse while you wait →" : "Beklerken göz at →"}
+              </button>
+              <div style={{fontSize:11,color:"#999",marginTop:10,lineHeight:1.5}}>
+                {lang==="en" ? "Events, rides, shop & blog — we'll ring when it's ready 🔔" : "Etkinlikler, sürüşler, shop & blog — hazır olunca zili çalarız 🔔"}
+              </div>
             </>
           )}
         </div>
@@ -584,22 +622,25 @@ export default function CustomerMenu() {
     );
   }
 
+  const susBarActive = browsing && successOrderId && orderStage === "pending";
+
   return (
-    <div className="nip-customer nip-customer-shell" style={{fontFamily:cv,background:"#fff",minHeight:"100vh",color:"#000",paddingBottom:cart.length>0?96:24}}>
+    <div className="nip-customer nip-customer-shell" style={{fontFamily:cv,background:"#fff",minHeight:"100vh",color:"#000",paddingBottom:cart.length>0?156:96}}>
       <div style={{padding:"20px 16px 10px",borderBottom:"1px solid #eee",position:"sticky",top:0,background:"#fff",zIndex:20}}>
         <div style={{display:"flex",alignItems:"center",justifyContent:"space-between"}}>
           <div>
             <div style={{fontSize:22,fontWeight:900,letterSpacing:"1.5px",fontFamily:"'Coolvetica Condensed','Barlow Condensed','Bebas Neue',sans-serif"}}>NOT IN PARIS</div>
             <div style={{fontSize:10,color:"#888",letterSpacing:"2px",marginTop:2}}>
-              {table ? table.name?.toUpperCase() : t.menu}
-              {partyMode && <span style={{marginLeft:6,color:"#C8973E",fontWeight:700}}>· {t.partyMode} 🎉</span>}
+              {custTab !== "menu" ? (CUST_TABS.find(x=>x.key===custTab)?.[lang==="en"?"en":"tr"] || "").toUpperCase() : (table ? table.name?.toUpperCase() : t.menu)}
+              {partyMode && custTab === "menu" && <span style={{marginLeft:6,color:"#C8973E",fontWeight:700}}>· {t.partyMode} 🎉</span>}
             </div>
           </div>
           <div style={{display:"flex",alignItems:"center",gap:8}}>
-            {hh && <div style={{background:"#C8973E",color:"#000",padding:"4px 10px",borderRadius:10,fontSize:10,fontWeight:800,letterSpacing:"0.5px"}}>{t.happy_hour} -%{hh.discount_pct}</div>}
+            {hh && custTab === "menu" && <div style={{background:"#C8973E",color:"#000",padding:"4px 10px",borderRadius:10,fontSize:10,fontWeight:800,letterSpacing:"0.5px"}}>{t.happy_hour} -%{hh.discount_pct}</div>}
             <LangSwitcher/>
           </div>
         </div>
+        {custTab === "menu" && (
         <div style={{display:"flex",gap:6,overflowX:"auto",marginTop:12,paddingBottom:4}}>
           {visibleCategories.map(c => (
             <button key={c.id} onClick={() => setSelectedCat(c.id)} style={{flexShrink:0,padding:"8px 14px",border:"none",borderRadius:16,fontSize:12,fontWeight:700,background:selectedCat===c.id?"#000":"#f2f2f2",color:selectedCat===c.id?"#fff":"#333",cursor:"pointer",whiteSpace:"nowrap",letterSpacing:"0.3px"}}>
@@ -607,8 +648,10 @@ export default function CustomerMenu() {
             </button>
           ))}
         </div>
+        )}
       </div>
 
+      {custTab === "menu" && (
       <div style={{padding:"8px 16px",background:"#faf6ee",borderBottom:"1px solid #f0e8d8",display:"flex",alignItems:"center",justifyContent:"space-between",gap:8}}>
         {customer ? (
           <span style={{fontSize:12,color:"#7a5c1e",fontWeight:600}}>
@@ -624,7 +667,79 @@ export default function CustomerMenu() {
           </>
         )}
       </div>
+      )}
 
+      {custTab !== "menu" && (
+        <div style={{padding:"14px 16px"}}>
+          {custTab === "events" && (
+            <a href={RESERVATION_URL} target="_blank" rel="noreferrer" style={{display:"flex",justifyContent:"space-between",alignItems:"center",padding:"16px 18px",background:"#000",color:"#fff",borderRadius:14,textDecoration:"none",marginBottom:14}}>
+              <span style={{fontSize:14,fontWeight:800}}>🎟 {lang==="en"?"Make a reservation":"Rezervasyon yap"}</span>
+              <span style={{fontSize:16}}>→</span>
+            </a>
+          )}
+          {(custTab === "events" || custTab === "rides") && (
+            <>
+              {feeds[custTab] === undefined && <div style={{textAlign:"center",color:"#888",padding:30,fontSize:13}}>...</div>}
+              {feeds[custTab]?.length === 0 && (
+                <div style={{textAlign:"center",color:"#888",padding:30,fontSize:13,lineHeight:1.6}}>
+                  {custTab === "events"
+                    ? (lang==="en" ? "Upcoming events will appear here soon 🎉" : "Yaklaşan etkinlikler yakında burada 🎉")
+                    : (lang==="en" ? "Planned rides will appear here soon 🚴" : "Planlı sürüşler yakında burada 🚴")}
+                </div>
+              )}
+              {(feeds[custTab] || []).map((it, i) => (
+                <a key={i} href={it.url} target="_blank" rel="noreferrer" style={{display:"block",background:"#fafafa",border:"1px solid #eee",borderRadius:14,overflow:"hidden",marginBottom:12,textDecoration:"none",color:"#000"}}>
+                  {it.image && <img src={it.image} alt="" style={{width:"100%",height:170,objectFit:"cover",display:"block"}}/>}
+                  <div style={{padding:"12px 14px"}}>
+                    <div style={{fontSize:15,fontWeight:800}}>{it.title}</div>
+                    {it.body && <div style={{fontSize:12,color:"#666",marginTop:4,lineHeight:1.5}}>{it.body}</div>}
+                    <div style={{display:"flex",justifyContent:"space-between",alignItems:"center",marginTop:8}}>
+                      {it.price != null && <span style={{fontSize:14,fontWeight:800,color:"#C8973E"}}>₺{Math.round(it.price).toLocaleString("tr-TR")}</span>}
+                      <span style={{fontSize:12,fontWeight:700,color:"#000"}}>{lang==="en"?"View":"İncele"} →</span>
+                    </div>
+                  </div>
+                </a>
+              ))}
+            </>
+          )}
+          {(custTab === "shop" || custTab === "blog") && (
+            <>
+              {postFeeds[custTab] === undefined && <div style={{textAlign:"center",color:"#888",padding:30,fontSize:13}}>...</div>}
+              {postFeeds[custTab]?.length === 0 && (
+                <div style={{textAlign:"center",color:"#888",padding:30,fontSize:13}}>
+                  {lang==="en" ? "Coming soon ✨" : "Yakında ✨"}
+                </div>
+              )}
+              {(postFeeds[custTab] || []).map(p => (
+                <div key={p.id} style={{background:"#fafafa",border:"1px solid #eee",borderRadius:14,overflow:"hidden",marginBottom:14}}>
+                  {(p.images || []).length > 0 && (
+                    <div style={{display:"flex",gap:6,overflowX:"auto",padding:(p.images.length>1?"10px 10px 0":"0")}}>
+                      {p.images.map((u, i) => (
+                        <img key={i} src={u} alt="" style={p.images.length > 1
+                          ? {width:230,height:230,borderRadius:10,objectFit:"cover",flexShrink:0}
+                          : {width:"100%",height:230,objectFit:"cover",display:"block"}}/>
+                      ))}
+                    </div>
+                  )}
+                  <div style={{padding:"12px 14px"}}>
+                    <div style={{fontSize:16,fontWeight:800}}>{p.title}</div>
+                    {p.body && <div style={{fontSize:13,color:"#444",marginTop:6,lineHeight:1.6,whiteSpace:"pre-wrap"}}>{p.body}</div>}
+                    {custTab === "shop" ? (
+                      <div style={{display:"inline-block",marginTop:10,padding:"6px 12px",background:"#000",color:"#FFD700",borderRadius:10,fontSize:11,fontWeight:800}}>
+                        💳 {lang==="en"?"Available at the counter":"Kasadan alabilirsin"}
+                      </div>
+                    ) : (
+                      <div style={{fontSize:10,color:"#999",marginTop:8}}>{new Date(p.created_at).toLocaleDateString(lang==="en"?"en-GB":"tr-TR",{day:"numeric",month:"long"})}</div>
+                    )}
+                  </div>
+                </div>
+              ))}
+            </>
+          )}
+        </div>
+      )}
+
+      {custTab === "menu" && (
       <div style={{padding:"14px 16px"}}>
         {visibleProducts.length === 0 && <div style={{textAlign:"center",color:"#888",padding:40,fontSize:13}}>{t.category_empty}</div>}
         {visibleProducts.map(p => {
@@ -668,15 +783,32 @@ export default function CustomerMenu() {
           );
         })}
       </div>
+      )}
 
       {cart.length > 0 && (
-        <div style={{position:"fixed",bottom:14,left:14,right:14,zIndex:40}}>
+        <div style={{position:"fixed",bottom:susBarActive?128:84,left:14,right:14,zIndex:40}}>
           <button onClick={() => setCheckoutOpen(true)} style={{width:"100%",padding:"16px 20px",background:"#000",color:"#fff",border:"none",borderRadius:14,fontSize:15,fontWeight:800,cursor:"pointer",boxShadow:"0 6px 20px rgba(0,0,0,0.35)",display:"flex",justifyContent:"space-between",alignItems:"center"}}>
             <span>{t.cart} ({cartCount})</span>
             <span>₺{cartTotal} · {t.continue} →</span>
           </button>
         </div>
       )}
+
+      {susBarActive && (
+        <button onClick={() => setBrowsing(false)} style={{position:"fixed",bottom:76,left:14,right:14,zIndex:45,display:"flex",justifyContent:"space-between",alignItems:"center",padding:"12px 16px",background:"#C8973E",color:"#000",border:"none",borderRadius:12,fontSize:13,fontWeight:800,cursor:"pointer",boxShadow:"0 4px 16px rgba(0,0,0,0.25)"}}>
+          <span>🍳 {lang==="en"?"Your order is being prepared":"Siparişin hazırlanıyor"}</span>
+          <span>→</span>
+        </button>
+      )}
+
+      <nav style={{position:"fixed",bottom:0,left:0,right:0,background:"#fff",borderTop:"1px solid #eee",display:"flex",justifyContent:"space-around",padding:"8px 0 16px",zIndex:50,boxShadow:"0 -2px 12px rgba(0,0,0,0.06)"}}>
+        {CUST_TABS.map(tab => (
+          <button key={tab.key} onClick={() => setCustTab(tab.key)} style={{display:"flex",flexDirection:"column",alignItems:"center",gap:2,background:"none",border:"none",cursor:"pointer",color:custTab===tab.key?"#000":"#999",padding:"4px 8px",minWidth:52}}>
+            <span style={{fontSize:20,filter:custTab===tab.key?"none":"grayscale(1)"}}>{tab.icon}</span>
+            <span style={{fontSize:9,fontWeight:custTab===tab.key?800:600,letterSpacing:"0.3px"}}>{lang==="en"?tab.en:tab.tr}</span>
+          </button>
+        ))}
+      </nav>
 
       {optModal && (
         <div onClick={() => setOptModal(null)} style={{position:"fixed",inset:0,background:"rgba(0,0,0,0.55)",display:"flex",alignItems:"flex-end",justifyContent:"center",zIndex:100}}>

@@ -27,6 +27,7 @@ const MANAGER_NAV = [
   {to:"/category-schedule", icon:"⏰", label:"Kategori Saatleri"},
   {to:"/qr-codes", icon:"📱", label:"QR Kodlar"},
   {to:"/merch-mgmt",  icon:"👕", label:"Merch"},
+  {to:"/content",     icon:"📰", label:"Vitrin & Blog"},
   {to:"/settings",    icon:"⚙",   label:"Ayarlar"},
 ];
 

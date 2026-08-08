@@ -36,10 +36,23 @@
   "ÜYE" rozetiyle görür. Siparişe `customer_id` yazılır → müşteri karnesi
   (sipariş sıklığı, harcama, favoriler) Üyeler sayfasında.
 - **Amaç:** Eş-dost indirimlerini kayıt altına almak + müşteri alışkanlık verisi.
-- **reservation.notinparis.me:** ayrı bir hazır rezervasyon programı (üyelik
-  satın alınmış, etkinlik rezervasyonları orada). Doğrudan entegrasyon YOK;
-  üyeler bizim tarafta e-postayla (Google hesabı) eşleşir. API/CSV çıkışı
-  varsa ileride içeri aktarım düşünülebilir.
+- **reservation.notinparis.me = Shopify** (doğrulandı: bağlı mağaza NOT IN PARIS
+  / notinparis.me, Basic plan, TRY). Katalog: Pas Normal Studios (bisiklet giyim,
+  ~200 ürün — QR menüde GÖSTERİLMEZ) + "Not in Paris" koleksiyonu (11 NIP merch).
+- **QR menü = vitrin (KURULDU, 5 alt sekme):** Menü 🍽 | Etkinlik 🎟 | Sürüş 🚴 |
+  Shop 👕 | Blog 📰 (YouTube alt bar benzeri — sahibin ekran görüntüsüyle onaylandı).
+  - Etkinlik/Sürüş: Shopify koleksiyonlarından (`etkinlikler`, `surusler` — bizim
+    açtığımız manuel koleksiyonlar) `shopify-feed` edge fn ile çekilir (public
+    products.json, token yok, 10 dk cache). Etkinlik sekmesinde "Rezervasyon yap"
+    → reservation.notinparis.me. Kartlar notinparis.me ürün sayfasına gider.
+  - Shop: Shopify'dan ÇEKİLMEZ (sahip kararı) — `posts` tablosu (kind='urun'),
+    tişört hikayeleri/fotoğrafları; satış yok, "kasadan alabilirsin" notu.
+  - Blog: `posts` (kind='blog') — haberler + Fethiye tavsiyeleri. Amaç: sipariş
+    hazırlanırken müşteri uygulamada kalsın, hazır bildirimi şansı artsın.
+  - İçerik yönetimi: Yönetim > "Vitrin & Blog" sayfası (foto: product-images
+    bucket, posts/ klasörü).
+  - Sipariş sonrası "Beklerken göz at" → sekmelerde gezinirken takip arkada sürer,
+    sarı "Siparişin hazırlanıyor" çubuğu görünür, hazır olunca büyük 🔔 ekranı döner.
 
 ## İşletme yapısı
 - **İki store, TEK veritabanı** (Supabase proje: "Order" / gbbxxcduuwdmvfayxzeg):

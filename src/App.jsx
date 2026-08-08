@@ -23,6 +23,7 @@ import MerchMgmtPage from "./pages/manager/MerchMgmtPage.jsx";
 import SettingsPage from "./pages/manager/SettingsPage.jsx";
 import MenuMgmtPage from "./pages/manager/MenuMgmtPage.jsx";
 import TasksPage from "./pages/manager/TasksPage.jsx";
+import ContentPage from "./pages/manager/ContentPage.jsx";
 import TablesMgmtPage from "./pages/manager/TablesMgmtPage.jsx";
 import RecipesMgmtPage from "./pages/manager/RecipesMgmtPage.jsx";
 import InvoicesPage from "./pages/manager/InvoicesPage.jsx";
@@ -66,6 +67,7 @@ function AppRoutes() {
           <Route path="settlement"       element={<PrivateRoute adminOnly allowViewer><SettlementPage /></PrivateRoute>} />
         <Route path="members"          element={<PrivateRoute managerOnly><MembersPage /></PrivateRoute>} />
         <Route path="merch-mgmt"       element={<PrivateRoute managerOnly><MerchMgmtPage /></PrivateRoute>} />
+        <Route path="content"          element={<PrivateRoute managerOnly><ContentPage /></PrivateRoute>} />
         <Route path="settings"         element={<PrivateRoute managerOnly><SettingsPage /></PrivateRoute>} />
         <Route path="menu-mgmt"        element={<PrivateRoute managerOnly><MenuMgmtPage /></PrivateRoute>} />
         <Route path="tables-mgmt"      element={<PrivateRoute managerOnly><TablesMgmtPage /></PrivateRoute>} />
