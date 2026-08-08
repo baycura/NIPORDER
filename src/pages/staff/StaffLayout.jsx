@@ -89,7 +89,7 @@ export default function StaffLayout() {
         <div style={{display:"flex",alignItems:"center",gap:10}}>
           <div style={{width:38,height:38,borderRadius:10,background:"#C8973E",display:"flex",alignItems:"center",justifyContent:"center",fontSize:20,color:"#000",fontWeight:900,fontFamily:cv}}>N</div>
           <div>
-            <div style={{color:"#F0EDE8",fontSize:15,fontWeight:700,fontFamily:cv}}>NotInParis</div>
+            <div style={{color:"#F0EDE8",fontSize:16,fontWeight:400,fontFamily:"'Coolvetica Heavy',"+cv,textTransform:"uppercase",letterSpacing:"0.005em"}}>Not in Paris</div>
             <div style={{color:"#888",fontSize:10,fontFamily:cv}}>order.notinparis.me</div>
           </div>
         </div>
@@ -135,7 +135,7 @@ export default function StaffLayout() {
       </button>
       <div style={{display:"flex",alignItems:"center",gap:8}}>
         <div style={{width:30,height:30,borderRadius:8,background:"#C8973E",display:"flex",alignItems:"center",justifyContent:"center",fontSize:16,color:"#000",fontWeight:900}}>N</div>
-        <div style={{color:"#F0EDE8",fontSize:14,fontWeight:700}}>NotInParis</div>
+        <div style={{color:"#F0EDE8",fontSize:15,fontWeight:400,fontFamily:"'Coolvetica Heavy',"+cv,textTransform:"uppercase",letterSpacing:"0.005em"}}>Not in Paris</div>
       </div>
       <div style={{width:30,height:30,borderRadius:"50%",background:color+"33",display:"flex",alignItems:"center",justifyContent:"center",color,fontSize:13,fontWeight:700}}>{staffUser?.name?.[0]||"?"}</div>
     </header>

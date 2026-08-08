@@ -678,7 +678,7 @@ export default function CustomerMenu() {
       <div style={{padding:"20px 16px 10px",borderBottom:"1px solid #eee",position:"sticky",top:0,background:"#fff",zIndex:20}}>
         <div style={{display:"flex",alignItems:"center",justifyContent:"space-between"}}>
           <div>
-            <div style={{fontSize:22,fontWeight:900,letterSpacing:"1.5px",fontFamily:"'Coolvetica Condensed','Barlow Condensed','Bebas Neue',sans-serif"}}>NOT IN PARIS</div>
+            <div style={{fontSize:24,fontWeight:400,letterSpacing:"0.005em",fontFamily:"'Coolvetica Heavy','Coolvetica Condensed','Barlow Condensed',sans-serif",textTransform:"uppercase"}}>Not in Paris</div>
             <div style={{fontSize:10,color:"#888",letterSpacing:"2px",marginTop:2}}>
               {custTab !== "menu" ? (CUST_TABS.find(x=>x.key===custTab)?.[["en","ru"].includes(lang)?lang:"tr"] || "").toUpperCase() : (table ? table.name?.toUpperCase() : t.menu)}
               {partyMode && custTab === "menu" && <span style={{marginLeft:6,color:"#C8973E",fontWeight:700}}>· {t.partyMode} 🎉</span>}
