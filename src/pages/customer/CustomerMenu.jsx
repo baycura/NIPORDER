@@ -601,6 +601,34 @@ export default function CustomerMenu() {
     setOptModal(null);
   };
 
+  // Online odeme (PayTR iframe) — Ayarlar'dan acilip kapanir
+  const [payToken, setPayToken] = useState(null);
+  const [payBusy, setPayBusy] = useState(false);
+  const [orderPaid, setOrderPaid] = useState(false);
+  const onlinePayEnabled = settings && (settings.online_payment_enabled === true || settings.online_payment_enabled === "true");
+
+  const startPay = async () => {
+    if (payBusy || !successOrderId) return;
+    setPayBusy(true);
+    try {
+      const { data, error } = await supabase.functions.invoke("paytr?action=token", { body: { order_id: successOrderId } });
+      if (error) throw new Error(error.message || "Sunucu hatasi");
+      if (data?.error) throw new Error(data.error);
+      setPayToken(data.token);
+    } catch (e) { alert(L("Ödeme başlatılamadı: ", "Payment could not start: ", "Не удалось начать оплату: ") + (e?.message || e)); }
+    setPayBusy(false);
+  };
+
+  // Odeme penceresi acikken siparis durumunu izle — PayTR bildirimi 'paid' yapinca kapat
+  useEffect(() => {
+    if (!payToken || !successOrderId) return;
+    const iv = setInterval(async () => {
+      const { data } = await supabase.from("orders").select("status").eq("id", successOrderId).maybeSingle();
+      if (data?.status === "paid") { setOrderPaid(true); setPayToken(null); }
+    }, 4000);
+    return () => clearInterval(iv);
+  }, [payToken, successOrderId]);
+
   // Siparise ozel push aboneligi: hazir olunca kilitli telefona da bildirim gider.
   // iPhone'da yalnizca ana ekrana eklenmis (PWA) halde calisir; Android Chrome'da direkt calisir.
   const subscribePush = async (orderId) => {
@@ -646,6 +674,7 @@ export default function CustomerMenu() {
       const { error: itErr } = await supabase.from("order_items").insert(itemsPayload);
       if (itErr) throw itErr;
       subscribePush(ord.id); // arka planda; basarisiz olsa da siparis akisini etkilemez
+      setOrderPaid(false); setPayToken(null);
       setSuccessOrderId(ord.id);
       setOrderStage("pending");
       setBrowsing(false); setCustTab("menu");
@@ -670,8 +699,26 @@ export default function CustomerMenu() {
     const bg = orderStage === "ready" ? "#FFF8E1" : orderStage === "served" ? "#E8F5E9" : "#fff";
     const isReady = orderStage === "ready";
     const isServed = orderStage === "served";
+    const PayBlock = () => orderPaid ? (
+      <div style={{padding:"12px 18px",background:"#E8F5E9",border:"1px solid #A5D6A7",borderRadius:12,fontSize:14,fontWeight:800,color:"#2e7d32",marginBottom:14}}>
+        {L("Ödendi ✅ Teşekkürler!","Paid ✅ Thank you!","Оплачено ✅ Спасибо!")}
+      </div>
+    ) : onlinePayEnabled ? (
+      <button onClick={startPay} disabled={payBusy} style={{padding:"14px 28px",background:"#000",color:"#fff",border:"none",borderRadius:12,fontSize:14,fontWeight:800,cursor:"pointer",marginBottom:14,opacity:payBusy?0.6:1}}>
+        {payBusy ? L("Açılıyor...","Opening...","Открывается...") : L("💳 Kart ile Öde","💳 Pay by Card","💳 Оплатить картой")}
+      </button>
+    ) : null;
     return (
       <div className="nip-customer" style={{fontFamily:cv,background:bg,minHeight:"100vh",padding:"40px 20px",color:"#000",transition:"background 0.4s"}}>
+        {payToken && (
+          <div style={{position:"fixed",inset:0,background:"#fff",zIndex:200,display:"flex",flexDirection:"column"}}>
+            <div style={{display:"flex",justifyContent:"space-between",alignItems:"center",padding:"12px 16px",borderBottom:"1px solid #eee"}}>
+              <div style={{fontSize:14,fontWeight:800}}>{L("Güvenli Ödeme — PayTR","Secure Payment — PayTR","Безопасная оплата — PayTR")}</div>
+              <button onClick={()=>setPayToken(null)} style={{background:"#f2f2f2",border:"none",borderRadius:8,padding:"8px 14px",fontSize:13,fontWeight:700,cursor:"pointer"}}>{L("Kapat","Close","Закрыть")}</button>
+            </div>
+            <iframe src={"https://www.paytr.com/odeme/guvenli/" + payToken} title="PayTR" style={{flex:1,border:"none",width:"100%"}}/>
+          </div>
+        )}
         <div style={{maxWidth:460,margin:"0 auto",textAlign:"center"}}>
           {isReady ? (
             <>
@@ -680,7 +727,8 @@ export default function CustomerMenu() {
               <div style={{fontSize:15,color:"#555",marginBottom:24,lineHeight:1.5}}>
                 {table ? (table.name + " · ") : ""}{t.pick_from_cashier}
               </div>
-              <button onClick={() => { playDing(); vibrate(); }} style={{padding:"12px 24px",background:"#C8973E",color:"#000",border:"none",borderRadius:12,fontSize:13,fontWeight:800,cursor:"pointer"}}>{t.play_again}</button>
+              <PayBlock/>
+              <div><button onClick={() => { playDing(); vibrate(); }} style={{padding:"12px 24px",background:"#C8973E",color:"#000",border:"none",borderRadius:12,fontSize:13,fontWeight:800,cursor:"pointer"}}>{t.play_again}</button></div>
             </>
           ) : isServed ? (
             <>
@@ -709,7 +757,8 @@ export default function CustomerMenu() {
                   <button onClick={askNotifPermissionSync} style={{padding:"10px 18px",background:"#C8973E",color:"#000",border:"none",borderRadius:10,fontSize:12,fontWeight:800,cursor:"pointer"}}>{t.notif_ask}</button>
                 )}
               </div>
-              <button onClick={() => setBrowsing(true)} style={{padding:"12px 24px",background:"#000",color:"#fff",border:"none",borderRadius:12,fontSize:13,fontWeight:700,cursor:"pointer"}}>
+              <PayBlock/>
+              <button onClick={() => setBrowsing(true)} style={{padding:"12px 24px",background:orderPaid?"#000":"#f2f2f2",color:orderPaid?"#fff":"#333",border:"none",borderRadius:12,fontSize:13,fontWeight:700,cursor:"pointer"}}>
                 {L("Beklerken göz at →","Browse while you wait →","Полистайте, пока ждёте →")}
               </button>
               <div style={{fontSize:11,color:"#999",marginTop:10,lineHeight:1.5}}>

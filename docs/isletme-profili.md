@@ -182,3 +182,15 @@
 - ⏳ iyzico online ödeme: kullanıcının sanal POS'u var; API Anahtarı + Güvenlik Anahtarı
   (merchant.iyzipay.com > Ayarlar > API) gelince Checkout Form entegrasyonu yapılacak.
 - ⏳ Anthropic API anahtarı bekleniyor (fatura OCR); Pazartesi gerçek faturayla test.
+
+## GÜNCELLEME (2026-08-08, gece) — PayTR online ödeme + menü senkronu
+- ✅ Basılı menü dijitale işlendi (Menemen 0→250 düzeltildi!); tüm menü TR/EN/RU;
+  süt +50 yalnız sütlü kahvelerde, şurup +20 yalnız sütlü kahvelerde; 5'li shot 1000.
+- ✅ PayTR iFrame API (edge fn `paytr` v1, mağaza no 390494, anahtarlar bot_config'te):
+  müşteri sipariş sonrası "💳 Kart ile Öde" → PayTR güvenli sayfası → callback hash
+  doğrulanır → sipariş otomatik "paid" (payments.method='online') ve kasadan düşer.
+  Aç/kapa: Ayarlar > Online Ödeme (app_settings.online_payment_enabled). Canlı token
+  testi başarılı (gerçek 1 TL'lik token alındı, test siparişi silindi).
+  ⏳ Kullanıcı aksiyonu: PayTR panel > Destek & Kurulum > Ayarlar > Bildirim URL:
+  https://gbbxxcduuwdmvfayxzeg.supabase.co/functions/v1/paytr?action=callback
+  Sonrasında 1 TL'lik gerçek kart ödemesiyle uçtan uca test edilecek.
