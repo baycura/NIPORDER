@@ -397,7 +397,7 @@ export default function CustomerMenu() {
       const finalCatsFiltered = finalCats.filter(c => c.name !== "Brunch");
       // Apply category schedule rules (hide categories during certain time windows)
       const now = new Date();
-      const dayOfWeek = now.getDay();
+      const dayOfWeek = now.getDay() === 0 ? 7 : now.getDay(); // kurallar 1=Pzt..7=Paz saklanir
       const minutes = now.getHours() * 60 + now.getMinutes();
       const hiddenCatIds = new Set();
       const hiddenProdIds = new Set();

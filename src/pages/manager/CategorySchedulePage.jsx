@@ -2,8 +2,7 @@ import { useState, useEffect } from "react";
 import { supabase } from "../../lib/supabase.js";
 import { useAuth } from "../../contexts/AuthContext.jsx";
 
-const cv = "\u0027Coolvetica\u0027,\u0027Bebas Neue\u0027,sans-serif";
-const cvc = "\u0027Coolvetica Condensed\u0027,\u0027Barlow Condensed\u0027,sans-serif";
+const cv = "-apple-system,BlinkMacSystemFont,'Segoe UI',Roboto,sans-serif";
 
 const DAYS = [
   { idx: 1, label: "Pzt" },
@@ -94,10 +93,13 @@ export default function CategorySchedulePage() {
   };
 
   return (
-    <div style={{ padding: 24, fontFamily: cv, color: "#fff", minHeight: "100vh", background: "#000" }}>
+    <div style={{ fontFamily: cv, color: "#F0EDE8" }}>
       <div style={{ display: "flex", justifyContent: "space-between", alignItems: "center", marginBottom: 24 }}>
-        <h1 style={{ fontSize: 32, fontFamily: cvc, letterSpacing: "2px", margin: 0 }}>\u23f0 KATEGOR\u0130 / \u00dcR\u00dcN SAATLER\u0130</h1>
-        <button onClick={() => setShowAdd(true)} style={{ padding: "12px 20px", background: "#C8973E", color: "#000", border: "none", fontFamily: cvc, fontSize: 14, letterSpacing: "1px", cursor: "pointer", borderRadius: 8 }}>+ YEN\u0130 KURAL</button>
+        <div>
+          <h1 style={{ fontSize: 24, fontWeight: 800, margin: 0 }}>\u23f0 Kategori Saatleri</h1>
+          <div style={{ fontSize: 12, color: "#888", marginTop: 4 }}>Se\u00e7ilen saat aral\u0131\u011f\u0131nda i\u015faretli kategori ve \u00fcr\u00fcnler m\u00fc\u015fteri men\u00fcs\u00fcnden otomatik gizlenir (\u00f6rn. gece mutfak kapal\u0131).</div>
+        </div>
+        <button onClick={() => setShowAdd(true)} style={{ padding: "12px 20px", background: "#C8973E", color: "#000", border: "none", fontWeight: 800, fontSize: 13, cursor: "pointer", borderRadius: 8 }}>+ YEN\u0130 KURAL</button>
       </div>
 
       {rules.length === 0 && <div style={{ color: "#888", marginTop: 32, textAlign: "center" }}>Hen\u00fcz kural yok. Yukar\u0131dan yeni kural ekleyin.</div>}
@@ -109,17 +111,17 @@ export default function CategorySchedulePage() {
           <div key={r.id} style={{ background: "#111", padding: 16, marginBottom: 12, borderRadius: 8, border: "1px solid #333" }}>
             <div style={{ display: "flex", justifyContent: "space-between", alignItems: "center" }}>
               <div>
-                <div style={{ fontFamily: cvc, fontSize: 18, letterSpacing: "1px" }}>{r.name}</div>
+                <div style={{ fontWeight: 700, fontSize: 16 }}>{r.name}</div>
                 <div style={{ color: "#888", fontSize: 13, marginTop: 4 }}>
                   {r.start_time?.slice(0, 5)} - {r.end_time?.slice(0, 5)} | {r.days_of_week?.map(d => DAYS.find(x => x.idx === d)?.label).join(", ")}
                 </div>
                 <div style={{ color: "#C8973E", fontSize: 13, marginTop: 4 }}>
-                  {catCount > 0 && (catCount + " kategori")}{catCount > 0 && prodCount > 0 && " + "}{prodCount > 0 && (prodCount + " \u00fcr\u00fcn")} gizli
+                  Bu saatlerde gizlenir: {catCount > 0 && (catCount + " kategori")}{catCount > 0 && prodCount > 0 && " + "}{prodCount > 0 && (prodCount + " \u00fcr\u00fcn")}
                 </div>
               </div>
               <div style={{ display: "flex", gap: 8 }}>
-                <button onClick={() => toggle(r.id, !r.is_active)} style={{ padding: "8px 16px", background: r.is_active ? "#22c55e" : "#444", color: "#fff", border: "none", borderRadius: 6, fontFamily: cvc, cursor: "pointer" }}>{r.is_active ? "AKT\u0130F" : "PAS\u0130F"}</button>
-                <button onClick={() => remove(r.id)} style={{ padding: "8px 16px", background: "#ef4444", color: "#fff", border: "none", borderRadius: 6, fontFamily: cvc, cursor: "pointer" }}>S\u0130L</button>
+                <button onClick={() => toggle(r.id, !r.is_active)} style={{ padding: "8px 16px", background: r.is_active ? "#22c55e" : "#444", color: "#fff", border: "none", borderRadius: 6, fontWeight: 700, fontSize: 12, cursor: "pointer" }}>{r.is_active ? "AKT\u0130F" : "PAS\u0130F"}</button>
+                <button onClick={() => remove(r.id)} style={{ padding: "8px 16px", background: "#ef4444", color: "#fff", border: "none", borderRadius: 6, fontWeight: 700, fontSize: 12, cursor: "pointer" }}>S\u0130L</button>
               </div>
             </div>
           </div>
@@ -129,7 +131,7 @@ export default function CategorySchedulePage() {
       {showAdd && (
         <div style={{ position: "fixed", inset: 0, background: "rgba(0,0,0,0.85)", display: "flex", alignItems: "flex-start", justifyContent: "center", overflowY: "auto", zIndex: 100, padding: 24 }}>
           <div style={{ background: "#111", padding: 24, borderRadius: 12, width: "100%", maxWidth: 700, border: "1px solid #333" }}>
-            <h2 style={{ fontFamily: cvc, fontSize: 24, letterSpacing: "2px", margin: "0 0 16px 0" }}>YEN\u0130 KURAL</h2>
+            <h2 style={{ fontWeight: 800, fontSize: 20, margin: "0 0 16px 0" }}>YEN\u0130 KURAL</h2>
             <label style={{ display: "block", color: "#aaa", fontSize: 12, marginBottom: 4 }}>\u0130S\u0130M</label>
             <input value={form.name} onChange={e => setForm({ ...form, name: e.target.value })} placeholder="\u00d6rn: Gece Mutfak Kapal\u0131" style={{ width: "100%", padding: 10, background: "#000", color: "#fff", border: "1px solid #333", borderRadius: 6, marginBottom: 12 }} />
             <div style={{ display: "flex", gap: 12, marginBottom: 12 }}>
@@ -145,7 +147,7 @@ export default function CategorySchedulePage() {
             <label style={{ display: "block", color: "#aaa", fontSize: 12, marginBottom: 4 }}>G\u00dcNLER</label>
             <div style={{ display: "flex", gap: 6, marginBottom: 16, flexWrap: "wrap" }}>
               {DAYS.map(d => (
-                <button key={d.idx} onClick={() => toggleDay(d.idx)} style={{ padding: "8px 12px", background: form.days_of_week.includes(d.idx) ? "#C8973E" : "#222", color: form.days_of_week.includes(d.idx) ? "#000" : "#aaa", border: "none", borderRadius: 6, fontFamily: cvc, cursor: "pointer", minWidth: 50 }}>{d.label}</button>
+                <button key={d.idx} onClick={() => toggleDay(d.idx)} style={{ padding: "8px 12px", background: form.days_of_week.includes(d.idx) ? "#C8973E" : "#222", color: form.days_of_week.includes(d.idx) ? "#000" : "#aaa", border: "none", borderRadius: 6, fontWeight: 700, fontSize: 12, cursor: "pointer", minWidth: 50 }}>{d.label}</button>
               ))}
             </div>
             <label style={{ display: "block", color: "#aaa", fontSize: 12, marginBottom: 8 }}>G\u0130ZLENECEK KATEGOR\u0130LER</label>
@@ -169,8 +171,8 @@ export default function CategorySchedulePage() {
               {products.length === 0 && <div style={{ color: "#666", textAlign: "center", padding: 8 }}>Y\u00fckleniyor\u2026</div>}
             </div>
             <div style={{ display: "flex", gap: 8, justifyContent: "flex-end" }}>
-              <button onClick={() => setShowAdd(false)} style={{ padding: "10px 20px", background: "#333", color: "#fff", border: "none", borderRadius: 6, fontFamily: cvc, cursor: "pointer" }}>\u0130PTAL</button>
-              <button onClick={save} style={{ padding: "10px 20px", background: "#C8973E", color: "#000", border: "none", borderRadius: 6, fontFamily: cvc, cursor: "pointer" }}>KAYDET</button>
+              <button onClick={() => setShowAdd(false)} style={{ padding: "10px 20px", background: "#333", color: "#fff", border: "none", borderRadius: 6, fontWeight: 700, fontSize: 12, cursor: "pointer" }}>\u0130PTAL</button>
+              <button onClick={save} style={{ padding: "10px 20px", background: "#C8973E", color: "#000", border: "none", borderRadius: 6, fontWeight: 700, fontSize: 12, cursor: "pointer" }}>KAYDET</button>
             </div>
           </div>
         </div>
