@@ -7,7 +7,7 @@ const cv = "-apple-system,BlinkMacSystemFont,'Segoe UI',Roboto,sans-serif";
 const DAYS = [
   { idx: 1, label: "Pzt" },
   { idx: 2, label: "Sal" },
-  { idx: 3, label: "\u00c7ar" },
+  { idx: 3, label: "Çar" },
   { idx: 4, label: "Per" },
   { idx: 5, label: "Cum" },
   { idx: 6, label: "Cmt" },
@@ -43,14 +43,14 @@ export default function HappyHourPage() {
   };
 
   const remove = async (id) => {
-    if (!confirm("Bu kural\u0131 silmek istedi\u011finizden emin misiniz?")) return;
+    if (!confirm("Bu kuralı silmek istediğinizden emin misiniz?")) return;
     await supabase.from("happy_hour_rules").delete().eq("id", id);
     load();
   };
 
   const save = async () => {
     if (!form.name) return alert("Kural ismi gerekli");
-    if (Object.keys(form.product_overrides).length === 0) return alert("En az bir \u00fcr\u00fcn se\u00e7in");
+    if (Object.keys(form.product_overrides).length === 0) return alert("En az bir ürün seçin");
     const payload = {
       name: form.name,
       start_time: form.start_time,
@@ -90,10 +90,10 @@ export default function HappyHourPage() {
           <h1 style={{ fontSize: 24, fontWeight: 800, margin: 0 }}>🎉 Happy Hour</h1>
           <div style={{ fontSize: 12, color: "#888", marginTop: 4 }}>Seçilen gün ve saatlerde işaretli ürünlerin fiyatı otomatik düşer; saat bitince normale döner.</div>
         </div>
-        <button onClick={() => setShowAdd(true)} style={{ padding: "12px 20px", background: "#C8973E", color: "#000", border: "none", fontWeight: 800, fontSize: 13, cursor: "pointer", borderRadius: 8 }}>+ YEN\u0130 KURAL</button>
+        <button onClick={() => setShowAdd(true)} style={{ padding: "12px 20px", background: "#C8973E", color: "#000", border: "none", fontWeight: 800, fontSize: 13, cursor: "pointer", borderRadius: 8 }}>+ YENİ KURAL</button>
       </div>
 
-      {rules.length === 0 && <div style={{ color: "#888", marginTop: 32, textAlign: "center" }}>Hen\u00fcz kural yok. Yukar\u0131dan yeni kural ekleyin.</div>}
+      {rules.length === 0 && <div style={{ color: "#888", marginTop: 32, textAlign: "center" }}>Henüz kural yok. Yukarıdan yeni kural ekleyin.</div>}
 
       {rules.map(r => {
         const productCount = Object.keys(r.product_overrides || {}).length;
@@ -105,11 +105,11 @@ export default function HappyHourPage() {
                 <div style={{ color: "#888", fontSize: 13, marginTop: 4 }}>
                   {r.start_time?.slice(0, 5)} - {r.end_time?.slice(0, 5)} | {r.days_of_week?.map(d => DAYS.find(x => x.idx === d)?.label).join(", ")}
                 </div>
-                <div style={{ color: "#C8973E", fontSize: 13, marginTop: 4 }}>{productCount} \u00fcr\u00fcnde \u00f6zel fiyat</div>
+                <div style={{ color: "#C8973E", fontSize: 13, marginTop: 4 }}>{productCount} üründe özel fiyat</div>
               </div>
               <div style={{ display: "flex", gap: 8 }}>
-                <button onClick={() => toggle(r.id, !r.is_active)} style={{ padding: "8px 16px", background: r.is_active ? "#22c55e" : "#444", color: "#fff", border: "none", borderRadius: 6, fontWeight: 700, fontSize: 12, cursor: "pointer" }}>{r.is_active ? "AKT\u0130F" : "PAS\u0130F"}</button>
-                <button onClick={() => remove(r.id)} style={{ padding: "8px 16px", background: "#ef4444", color: "#fff", border: "none", borderRadius: 6, fontWeight: 700, fontSize: 12, cursor: "pointer" }}>S\u0130L</button>
+                <button onClick={() => toggle(r.id, !r.is_active)} style={{ padding: "8px 16px", background: r.is_active ? "#22c55e" : "#444", color: "#fff", border: "none", borderRadius: 6, fontWeight: 700, fontSize: 12, cursor: "pointer" }}>{r.is_active ? "AKTİF" : "PASİF"}</button>
+                <button onClick={() => remove(r.id)} style={{ padding: "8px 16px", background: "#ef4444", color: "#fff", border: "none", borderRadius: 6, fontWeight: 700, fontSize: 12, cursor: "pointer" }}>SİL</button>
               </div>
             </div>
           </div>
@@ -119,26 +119,26 @@ export default function HappyHourPage() {
       {showAdd && (
         <div style={{ position: "fixed", inset: 0, background: "rgba(0,0,0,0.85)", display: "flex", alignItems: "flex-start", justifyContent: "center", overflowY: "auto", zIndex: 100, padding: 24 }}>
           <div style={{ background: "#111", padding: 24, borderRadius: 12, width: "100%", maxWidth: 700, border: "1px solid #333" }}>
-            <h2 style={{ fontWeight: 800, fontSize: 20, margin: "0 0 16px 0" }}>YEN\u0130 HAPPY HOUR</h2>
-            <label style={{ display: "block", color: "#aaa", fontSize: 12, marginBottom: 4 }}>\u0130S\u0130M</label>
-            <input value={form.name} onChange={e => setForm({ ...form, name: e.target.value })} placeholder="\u00d6rn: Ak\u015fam Kokteyl Saati" style={{ width: "100%", padding: 10, background: "#000", color: "#fff", border: "1px solid #333", borderRadius: 6, marginBottom: 12 }} />
+            <h2 style={{ fontWeight: 800, fontSize: 20, margin: "0 0 16px 0" }}>YENİ HAPPY HOUR</h2>
+            <label style={{ display: "block", color: "#aaa", fontSize: 12, marginBottom: 4 }}>İSİM</label>
+            <input value={form.name} onChange={e => setForm({ ...form, name: e.target.value })} placeholder="Örn: Akşam Kokteyl Saati" style={{ width: "100%", padding: 10, background: "#000", color: "#fff", border: "1px solid #333", borderRadius: 6, marginBottom: 12 }} />
             <div style={{ display: "flex", gap: 12, marginBottom: 12 }}>
               <div style={{ flex: 1 }}>
-                <label style={{ display: "block", color: "#aaa", fontSize: 12, marginBottom: 4 }}>BA\u015eLANGI\u00c7</label>
+                <label style={{ display: "block", color: "#aaa", fontSize: 12, marginBottom: 4 }}>BAŞLANGIÇ</label>
                 <input type="time" value={form.start_time} onChange={e => setForm({ ...form, start_time: e.target.value })} style={{ width: "100%", padding: 10, background: "#000", color: "#fff", border: "1px solid #333", borderRadius: 6 }} />
               </div>
               <div style={{ flex: 1 }}>
-                <label style={{ display: "block", color: "#aaa", fontSize: 12, marginBottom: 4 }}>B\u0130T\u0130\u015e</label>
+                <label style={{ display: "block", color: "#aaa", fontSize: 12, marginBottom: 4 }}>BİTİŞ</label>
                 <input type="time" value={form.end_time} onChange={e => setForm({ ...form, end_time: e.target.value })} style={{ width: "100%", padding: 10, background: "#000", color: "#fff", border: "1px solid #333", borderRadius: 6 }} />
               </div>
             </div>
-            <label style={{ display: "block", color: "#aaa", fontSize: 12, marginBottom: 4 }}>G\u00dcNLER</label>
+            <label style={{ display: "block", color: "#aaa", fontSize: 12, marginBottom: 4 }}>GÜNLER</label>
             <div style={{ display: "flex", gap: 6, marginBottom: 16, flexWrap: "wrap" }}>
               {DAYS.map(d => (
                 <button key={d.idx} onClick={() => toggleDay(d.idx)} style={{ padding: "8px 12px", background: form.days_of_week.includes(d.idx) ? "#C8973E" : "#222", color: form.days_of_week.includes(d.idx) ? "#000" : "#aaa", border: "none", borderRadius: 6, fontWeight: 700, fontSize: 12, cursor: "pointer", minWidth: 50 }}>{d.label}</button>
               ))}
             </div>
-            <label style={{ display: "block", color: "#aaa", fontSize: 12, marginBottom: 8 }}>\u00dcR\u00dcNLER VE YEN\u0130 F\u0130YATLAR</label>
+            <label style={{ display: "block", color: "#aaa", fontSize: 12, marginBottom: 8 }}>ÜRÜNLER VE YENİ FİYATLAR</label>
             <div style={{ background: "#000", padding: 12, borderRadius: 6, border: "1px solid #333", maxHeight: 300, overflowY: "auto", marginBottom: 16 }}>
               {products.map(p => {
                 const newPrice = form.product_overrides[p.id];
@@ -148,21 +148,21 @@ export default function HappyHourPage() {
                     <input type="checkbox" checked={isSelected} onChange={e => setProductPrice(p.id, p.price, e.target.checked ? Math.round(p.price) : "")} style={{ accentColor: "#C8973E" }} />
                     <div style={{ flex: 1, fontSize: 14 }}>
                       <span style={{ color: "#fff" }}>{p.name}</span>
-                      <span style={{ color: "#666", fontSize: 12, marginLeft: 8 }}>(\u20ba{Math.round(p.price)})</span>
+                      <span style={{ color: "#666", fontSize: 12, marginLeft: 8 }}>(₺{Math.round(p.price)})</span>
                     </div>
                     {isSelected && (
                       <div style={{ display: "flex", alignItems: "center", gap: 4 }}>
-                        <span style={{ color: "#aaa", fontSize: 12 }}>\u20ba</span>
+                        <span style={{ color: "#aaa", fontSize: 12 }}>₺</span>
                         <input type="number" value={newPrice} onChange={e => setProductPrice(p.id, p.price, e.target.value)} style={{ width: 70, padding: 6, background: "#111", color: "#C8973E", border: "1px solid #C8973E", borderRadius: 4, fontWeight: 700, fontSize: 14 }} />
                       </div>
                     )}
                   </div>
                 );
               })}
-              {products.length === 0 && <div style={{ color: "#666", textAlign: "center", padding: 16 }}>\u00dcr\u00fcn y\u00fckleniyor\u2026</div>}
+              {products.length === 0 && <div style={{ color: "#666", textAlign: "center", padding: 16 }}>Ürün yükleniyor…</div>}
             </div>
             <div style={{ display: "flex", gap: 8, justifyContent: "flex-end" }}>
-              <button onClick={() => setShowAdd(false)} style={{ padding: "10px 20px", background: "#333", color: "#fff", border: "none", borderRadius: 6, fontWeight: 700, fontSize: 12, cursor: "pointer" }}>\u0130PTAL</button>
+              <button onClick={() => setShowAdd(false)} style={{ padding: "10px 20px", background: "#333", color: "#fff", border: "none", borderRadius: 6, fontWeight: 700, fontSize: 12, cursor: "pointer" }}>İPTAL</button>
               <button onClick={save} style={{ padding: "10px 20px", background: "#C8973E", color: "#000", border: "none", borderRadius: 6, fontWeight: 700, fontSize: 12, cursor: "pointer" }}>KAYDET</button>
             </div>
           </div>
