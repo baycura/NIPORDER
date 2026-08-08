@@ -33,8 +33,8 @@ export default function MenuMgmtPage() {
   useEffect(() => { load(); }, []);
 
   // -------- CATEGORIES --------
-  const openNewCat = () => { setCatModal({mode:"new"}); setCatForm({name:"", name_en:"", name_ru:"", icon:"", sort_order:100, available_from:"", available_until:"", show_in_party_menu:true, is_active:true}); };
-  const openEditCat = (c) => { setCatModal({mode:"edit", data:c}); setCatForm({name:c.name||"", name_en:c.name_en||"", name_ru:c.name_ru||"", icon:c.icon||"", sort_order:c.sort_order||100, available_from:c.available_from||"", available_until:c.available_until||"", show_in_party_menu:c.show_in_party_menu!==false, is_active:c.is_active!==false}); };
+  const openNewCat = () => { setCatModal({mode:"new"}); setCatForm({name:"", name_en:"", name_ru:"", icon:"", sort_order:100, available_from:"", available_until:"", show_in_party_menu:true, staff_only:false, is_active:true}); };
+  const openEditCat = (c) => { setCatModal({mode:"edit", data:c}); setCatForm({name:c.name||"", name_en:c.name_en||"", name_ru:c.name_ru||"", icon:c.icon||"", sort_order:c.sort_order||100, available_from:c.available_from||"", available_until:c.available_until||"", show_in_party_menu:c.show_in_party_menu!==false, staff_only:!!c.staff_only, is_active:c.is_active!==false}); };
 
   const saveCat = async () => {
     if (busy) return;
@@ -46,6 +46,7 @@ export default function MenuMgmtPage() {
       available_from: catForm.available_from || null,
       available_until: catForm.available_until || null,
       show_in_party_menu: catForm.show_in_party_menu!==false,
+      staff_only: !!catForm.staff_only,
       is_active: catForm.is_active,
     };
     const res = catModal.mode === "new"
@@ -68,7 +69,7 @@ export default function MenuMgmtPage() {
     if (!selectedCat) { alert("Once kategori sec"); return; }
     setProdModal({mode:"new"});
     setProdForm({
-      name:"", name_en:"", name_ru:"", description:"", description_en:"", description_ru:"", price:'', instant_discount_pct:'', hh_enabled:false, hh_price:'', hh_start:'', hh_end:'', hh_days:[0,1,2,3,4,5,6],
+      name:"", name_en:"", name_ru:"", brand:"", description:"", description_en:"", description_ru:"", price:'', instant_discount_pct:'', hh_enabled:false, hh_price:'', hh_start:'', hh_end:'', hh_days:[0,1,2,3,4,5,6],
       sold_out_today:false, unavailable_reason:"",
       show_in_party_menu:false, store_id:"", kitchen_destination_store_id:"", is_available:true, prep_time_minutes:null, show_prep_time:false,
       category_id: selectedCat,
@@ -80,7 +81,7 @@ export default function MenuMgmtPage() {
   const openEditProd = (p) => {
     setProdModal({mode:"edit", data:p});
     setProdForm({
-      name:p.name||"", name_en:p.name_en||"", name_ru:p.name_ru||"", description:p.description||"", description_en:p.description_en||"", description_ru:p.description_ru||"",
+      name:p.name||"", name_en:p.name_en||"", name_ru:p.name_ru||"", brand:p.brand||"", description:p.description||"", description_en:p.description_en||"", description_ru:p.description_ru||"",
       price:Number(p.price)||0,
       instant_discount_pct:Number(p.instant_discount_pct)||0,
       sold_out_today:!!p.sold_out_today,
@@ -111,6 +112,7 @@ export default function MenuMgmtPage() {
       name: prodForm.name.trim(),
       name_en: prodForm.name_en?.trim() || null,
       name_ru: prodForm.name_ru?.trim() || null,
+      brand: prodForm.brand?.trim() || null,
       description: prodForm.description?.trim() || null,
       description_en: prodForm.description_en?.trim() || null,
       description_ru: prodForm.description_ru?.trim() || null,
@@ -318,6 +320,10 @@ export default function MenuMgmtPage() {
             <span style={{fontSize:13,color:"#F0EDE8"}}>🎉 Parti menusunde goster</span>
           </label>
           <label style={{display:"flex",alignItems:"center",gap:8,marginBottom:12,cursor:"pointer"}}>
+            <input type="checkbox" checked={!!catForm.staff_only} onChange={e=>setCatForm({...catForm,staff_only:e.target.checked})}/>
+            <span style={{fontSize:13,color:"#F0EDE8"}}>🛍 Yalnız kasada (müşteri menüsünde gizli — tişört, seramik gibi satış ürünleri için)</span>
+          </label>
+          <label style={{display:"flex",alignItems:"center",gap:8,marginBottom:12,cursor:"pointer"}}>
             <input type="checkbox" checked={catForm.is_active!==false} onChange={e=>setCatForm({...catForm,is_active:e.target.checked})}/>
             <span style={{fontSize:13,color:"#F0EDE8"}}>Aktif</span>
           </label>
@@ -334,6 +340,7 @@ export default function MenuMgmtPage() {
           <Field label="AD (Türkçe)"><input value={prodForm.name||""} onChange={e=>setProdForm({...prodForm,name:e.target.value})} style={inputS}/></Field>
           <Field label="NAME (English)"><input value={prodForm.name_en||""} onChange={e=>setProdForm({...prodForm,name_en:e.target.value})} placeholder="Optional - shown when customer selects EN" style={inputS}/></Field>
           <Field label="НАЗВАНИЕ (Rusca)"><input value={prodForm.name_ru||""} onChange={e=>setProdForm({...prodForm,name_ru:e.target.value})} placeholder="Opsiyonel - RU secilince gorunur" style={inputS}/></Field>
+          <Field label="MARKA (opsiyonel)"><input value={prodForm.brand||""} onChange={e=>setProdForm({...prodForm,brand:e.target.value})} placeholder="Orn: Rapha, Le Bon Bain..." style={inputS}/></Field>
           <Field label="AÇIKLAMA (Türkçe)"><textarea value={prodForm.description||""} onChange={e=>setProdForm({...prodForm,description:e.target.value})} rows={2} style={{...inputS,resize:"vertical"}}/></Field>
           <Field label="DESCRIPTION (English)"><textarea value={prodForm.description_en||""} onChange={e=>setProdForm({...prodForm,description_en:e.target.value})} rows={2} placeholder="Optional - shown when customer selects EN" style={{...inputS,resize:"vertical"}}/></Field>
           <Field label="ОПИСАНИЕ (Rusca)"><textarea value={prodForm.description_ru||""} onChange={e=>setProdForm({...prodForm,description_ru:e.target.value})} rows={2} placeholder="Opsiyonel - RU secilince gorunur" style={{...inputS,resize:"vertical"}}/></Field>

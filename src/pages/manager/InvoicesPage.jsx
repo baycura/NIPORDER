@@ -41,6 +41,15 @@ export default function InvoicesPage() {
     setPhotoFile(null); setPhotoPreview(null);
   };
 
+  // Faturasiz stok girisi: eldeki mevcut urunleri sayip sisteme eklemek icin.
+  // Ayni kayit akisini kullanir; birim maliyet 0 birakilirsa mevcut maliyet KORUNUR.
+  const openManualStock = () => {
+    setModal({mode:"manual"});
+    setForm({supplier_name:"Manuel stok girişi", invoice_date: new Date().toISOString().slice(0,10), total_amount:0, notes:"Eldeki stok sayımı"});
+    setLines([{ingredient_id:"", qty:0, unit_cost:0, isNew:false, newName:"", newUnit:"adet"}]);
+    setPhotoFile(null); setPhotoPreview(null);
+  };
+
   const onPhoto = (e) => {
     const f = e.target.files?.[0];
     if (!f) return;
@@ -169,13 +178,15 @@ export default function InvoicesPage() {
       const ing = ingredients.find(i => i.id === ingId);
       const currentStock = Number(ing?.stock_qty)||0;
       const prevCost = Number(ing?.cost_per_unit)||0;
-      if (!l.isNew && prevCost > 0 && unitCost > prevCost) {
+      const isManual = modal?.mode === "manual";
+      if (!isManual && !l.isNew && prevCost > 0 && unitCost > prevCost) {
         const pct = ((unitCost - prevCost) / prevCost) * 100;
         if (pct >= PRICE_ALERT_PCT) anomalies.push({ name: ing?.name || "?", unit: ing?.unit || "", prev: prevCost, now: unitCost, pct });
       }
       await supabase.from("ingredients").update({
         stock_qty: currentStock + qty,
-        cost_per_unit: unitCost,
+        // Maliyet 0 girildiyse mevcut maliyet korunur (manuel sayimda fiyat zorunlu degil)
+        cost_per_unit: unitCost > 0 ? unitCost : prevCost,
       }).eq("id", ingId);
     }
 
@@ -207,7 +218,10 @@ export default function InvoicesPage() {
       <div style={{fontSize:24,fontWeight:800,marginBottom:4}}>Faturalar</div>
       <div style={{fontSize:11,color:"#888",letterSpacing:"1px",marginBottom:14}}>{invoices.length} FATURA · TOPLAM ₺{Math.round(totalSpent).toLocaleString("tr-TR")}</div>
 
-      <button onClick={openNew} style={{padding:"10px 16px",background:"#C8973E",color:"#000",border:"none",borderRadius:10,fontSize:13,fontWeight:800,cursor:"pointer",marginBottom:14}}>+ Yeni Fatura</button>
+      <div style={{display:"flex",gap:8,marginBottom:14,flexWrap:"wrap"}}>
+        <button onClick={openNew} style={{padding:"10px 16px",background:"#C8973E",color:"#000",border:"none",borderRadius:10,fontSize:13,fontWeight:800,cursor:"pointer"}}>+ Yeni Fatura</button>
+        <button onClick={openManualStock} style={{padding:"10px 16px",background:"transparent",color:"#C8973E",border:"1px solid #C8973E",borderRadius:10,fontSize:13,fontWeight:800,cursor:"pointer"}}>📦 Manuel Stok Girişi</button>
+      </div>
 
       {priceAlerts.length > 0 && (
         <div style={{background:"#3A1A1A",border:"1px solid #7A3A3A",borderRadius:10,padding:12,marginBottom:12}}>
@@ -247,12 +261,13 @@ export default function InvoicesPage() {
       ))}
 
       {modal && (
-        <Modal onClose={()=>setModal(null)} title="Yeni Fatura">
+        <Modal onClose={()=>setModal(null)} title={modal.mode === "manual" ? "Manuel Stok Girişi" : "Yeni Fatura"}>
           <Field label="TEDARIKCI"><input value={form.supplier_name||""} onChange={e=>setForm({...form,supplier_name:e.target.value})} placeholder="orn: Anadolu Efes" style={inputS}/></Field>
           <div style={{display:"flex",gap:8}}>
             <Field label="TARIH"><input type="date" value={form.invoice_date||""} onChange={e=>setForm({...form,invoice_date:e.target.value})} style={inputS}/></Field>
           </div>
 
+          {modal.mode !== "manual" && (
           <div style={{marginBottom:14,background:"rgba(200,151,62,0.06)",border:"1px dashed #C8973E",borderRadius:10,padding:12}}>
             <div style={{fontSize:10,color:"#C8973E",letterSpacing:"1.5px",fontWeight:700,marginBottom:5}}>🤖 FATURA FOTOSUNDAN OTOMATIK DOLDUR</div>
             <input type="file" accept="image/*" capture="environment" onChange={onPhoto} style={{...inputS, padding:"8px"}}/>
@@ -264,6 +279,12 @@ export default function InvoicesPage() {
             )}
             <div style={{fontSize:10,color:"#888",marginTop:6}}>Fotograf saklanmaz. Birim fiyatlar KDV DAHIL hesaplanir (satirdaki KDV orani uygulanir). Okunan kalemleri kontrol edip kaydet.</div>
           </div>
+          )}
+          {modal.mode === "manual" && (
+            <div style={{marginBottom:14,background:"rgba(111,179,192,0.08)",border:"1px dashed #6FB3C0",borderRadius:10,padding:10,fontSize:11,color:"#9CC",lineHeight:1.5}}>
+              📦 Eldeki mevcut stogu sayip giriyorsun — fatura gerekmez. Birim maliyeti bos (0) birakirsan urunun mevcut maliyeti korunur; biliyorsan girmen maliyet hesaplarini iyilestirir.
+            </div>
+          )}
 
           <div style={{borderTop:"1px solid #2A2A2A",paddingTop:14,marginBottom:10}}>
             <div style={{fontSize:11,color:"#888",letterSpacing:"1px",marginBottom:8,fontWeight:700}}>KALEMLER</div>
