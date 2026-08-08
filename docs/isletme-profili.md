@@ -167,3 +167,18 @@
     API anahtarı alıp bot_config'e eklemek (yoksa buton "AI anahtarı tanımlı değil" der).
 - ✅ Tolgacan hesabı kapatıldı (is_active=false, şifre rastgele, oturumlar silindi).
 - ✅ Canlı uçtan uca test: sipariş → mutfak bildirimi → hazır bildirimi (Telegram'a ulaştı).
+
+## GÜNCELLEME (2026-08-08, akşam) — Tek QR + Web Push + Anormal fiyat uyarısı
+- ✅ Tek QR self-servis: order.notinparis.me/menu — isim yazılmadan "Sipariş Ver" çalışmaz.
+- ✅ Web push (edge fn `web-push` v1 + `push_subscriptions` tablosu + `wp_items_ready`
+  trigger'ı): sipariş hazır olunca müşterinin KİLİTLİ telefonuna da bildirim gider.
+  VAPID anahtarları bot_config'te; abonelik sipariş başına, gönderim sonrası silinir;
+  gece 06:30 TR eski abonelik temizliği (nip-clean-push-subs cron).
+  ⚠️ iPhone: yalnız ana ekrana eklenmiş (PWA) halde çalışır; Android Chrome direkt.
+- ✅ PWA: manifest.json + sw.js + ikonlar (Coolvetica "N"); uygulama ana ekrana eklenebilir.
+- ✅ Anormal fiyat artışı (%10+) artık sahibe Telegram'dan gidiyor (telegram fn v5,
+  `price_alert` rotası — personel JWT korumalı; admin+viewer bağlı olanlara).
+- ✅ Google "rate us" linki gerçek işletme linkiyle değişti (share.google/AA07eYRVqpAoNFL8P).
+- ⏳ iyzico online ödeme: kullanıcının sanal POS'u var; API Anahtarı + Güvenlik Anahtarı
+  (merchant.iyzipay.com > Ayarlar > API) gelince Checkout Form entegrasyonu yapılacak.
+- ⏳ Anthropic API anahtarı bekleniyor (fatura OCR); Pazartesi gerçek faturayla test.

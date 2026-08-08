@@ -21,7 +21,16 @@ const RIDES_URL = "https://notinparis.me/pages/rides";
 const YOUTUBE_URL = "https://www.youtube.com/@notinparis";
 const STRAVA_URL = "https://www.strava.com/clubs/notinparis";
 const INSTAGRAM_URL = "https://instagram.com/notinparis.me";
-const GOOGLE_RATE_URL = "https://www.google.com/maps/search/?api=1&query=Not+in+Paris+Fethiye";
+const GOOGLE_RATE_URL = "https://share.google/AA07eYRVqpAoNFL8P";
+
+// Web push (kilitli telefonda "siparisin hazir" bildirimi) — public VAPID anahtari
+const VAPID_PUBLIC_KEY = "BM2CUicnXTjYU2PNZXrDmBN6qu_FkENcsLiiiYW4xzJh9mm8v27eUEPPAnybqN1uJoO7i2LAbcgl7oAjQomvcVM";
+const urlB64ToUint8 = (b64) => {
+  const pad = "=".repeat((4 - (b64.length % 4)) % 4);
+  const base = (b64 + pad).replace(/-/g, "+").replace(/_/g, "/");
+  const raw = atob(base);
+  return Uint8Array.from([...raw].map((c) => c.charCodeAt(0)));
+};
 
 const T = {
   tr: {
@@ -592,6 +601,24 @@ export default function CustomerMenu() {
     setOptModal(null);
   };
 
+  // Siparise ozel push aboneligi: hazir olunca kilitli telefona da bildirim gider.
+  // iPhone'da yalnizca ana ekrana eklenmis (PWA) halde calisir; Android Chrome'da direkt calisir.
+  const subscribePush = async (orderId) => {
+    try {
+      if (!("serviceWorker" in navigator) || !("PushManager" in window)) return;
+      if (typeof Notification === "undefined" || Notification.permission !== "granted") return;
+      const reg = await navigator.serviceWorker.ready;
+      let sub = await reg.pushManager.getSubscription();
+      if (!sub) {
+        sub = await reg.pushManager.subscribe({
+          userVisibleOnly: true,
+          applicationServerKey: urlB64ToUint8(VAPID_PUBLIC_KEY),
+        });
+      }
+      await supabase.from("push_subscriptions").insert({ order_id: orderId, subscription: sub.toJSON() });
+    } catch (e) { console.log("push aboneligi olmadi:", e?.message || e); }
+  };
+
   const submitOrder = async () => {
     if (submitting || cart.length === 0) return;
     if ((!table || table.shared) && !customerName.trim() && !customer) { alert(t.please_enter_name); return; }
@@ -618,6 +645,7 @@ export default function CustomerMenu() {
       }));
       const { error: itErr } = await supabase.from("order_items").insert(itemsPayload);
       if (itErr) throw itErr;
+      subscribePush(ord.id); // arka planda; basarisiz olsa da siparis akisini etkilemez
       setSuccessOrderId(ord.id);
       setOrderStage("pending");
       setBrowsing(false); setCustTab("menu");
