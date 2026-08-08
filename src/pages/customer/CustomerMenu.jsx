@@ -1,6 +1,7 @@
 import { useEffect, useMemo, useRef, useState } from "react";
 import { useParams, useNavigate, useSearchParams } from "react-router-dom";
 import { supabase } from "../../lib/supabase.js";
+import { useAuth } from "../../contexts/AuthContext.jsx";
 
 const cv = "-apple-system,BlinkMacSystemFont,'Segoe UI',Roboto,sans-serif";
 
@@ -193,6 +194,20 @@ export default function CustomerMenu() {
   const now = new Date();
   const partyMode = settings && settings.party_mode_enabled &&
     isInRange(now, settings.party_mode_from, settings.party_mode_until);
+
+  // Uye sistemi: Google ile giren musteri + urun bazli sabit (₺) indirimleri
+  const { customer, signInWithGoogle } = useAuth();
+  const [memberDiscounts, setMemberDiscounts] = useState({});
+  useEffect(() => {
+    if (!customer?.id) { setMemberDiscounts({}); return; }
+    supabase.from("member_discounts").select("product_id, amount")
+      .eq("customer_id", customer.id).eq("is_active", true)
+      .then(({ data }) => {
+        const map = {};
+        (data || []).forEach(d => { map[d.product_id] = Number(d.amount) || 0; });
+        setMemberDiscounts(map);
+      });
+  }, [customer?.id]);
 
   const pName = (p) => (lang === "en" && p?.name_en) ? p.name_en : p?.name;
   const pDesc = (p) => (lang === "en" && p?.description_en) ? p.description_en : p?.description;
@@ -402,24 +417,29 @@ export default function CustomerMenu() {
   }, [products, selectedCat, partyMode]);
 
   const calcPrice = (p, options) => {
-    // Product-based happy hour: use new price directly
-    let basePrice = hhProductPrices[p.id] != null ? Number(hhProductPrices[p.id]) : Number(p.price);
     // Add price modifiers from selected options (e.g. Single/Double pour size)
+    let mod = 0;
     if (options && p.options_config?.groups) {
       for (const group of p.options_config.groups) {
         const selectedOpt = options[group.name];
         if (selectedOpt && group.price_modifiers && group.price_modifiers[selectedOpt] != null) {
-          basePrice += Number(group.price_modifiers[selectedOpt]) || 0;
+          mod += Number(group.price_modifiers[selectedOpt]) || 0;
         }
       }
     }
+    // Product-based happy hour: use new price directly
+    const basePrice = (hhProductPrices[p.id] != null ? Number(hhProductPrices[p.id]) : Number(p.price)) + mod;
     let pct = 0;
     if (hh && (hh.category_ids?.length === 0 || hh.category_ids?.includes(p.category_id))) pct = Number(hh.discount_pct) || 0;
     if (Number(p.instant_discount_pct||0) > pct) pct = Number(p.instant_discount_pct);
-    return Math.round(basePrice * (100 - pct) / 100);
+    let final = Math.round(basePrice * (100 - pct) / 100);
+    // Uye indirimi: normal fiyattan sabit ₺ dusulur; musteriye dusuk olan fiyat gosterilir
+    const memberAmt = Number(memberDiscounts[p.id] || 0);
+    if (memberAmt > 0) final = Math.min(final, Math.max(0, Math.round(Number(p.price) + mod - memberAmt)));
+    return final;
   };
 
-  const cartTotal = useMemo(() => cart.reduce((s, it) => s + calcPrice(it.product, it.options) * it.quantity, 0), [cart, hh]);
+  const cartTotal = useMemo(() => cart.reduce((s, it) => s + calcPrice(it.product, it.options) * it.quantity, 0), [cart, hh, memberDiscounts]);
   const cartCount = useMemo(() => cart.reduce((s, it) => s + it.quantity, 0), [cart]);
 
   const findInCart = (productId, options, note) => {
@@ -472,14 +492,15 @@ export default function CustomerMenu() {
 
   const submitOrder = async () => {
     if (submitting || cart.length === 0) return;
-    if (!table && !customerName.trim()) { alert(t.please_enter_name); return; }
+    if (!table && !customerName.trim() && !customer) { alert(t.please_enter_name); return; }
     unlockAudio(); askNotifPermissionSync();
     setSubmitting(true);
     try {
       const totalVal = cartTotal;
       const { data: ord, error: ordErr } = await supabase.from("orders").insert({
         table_id: table ? table.id : null,
-        customer_name: table ? null : customerName.trim(),
+        customer_name: table ? null : (customerName.trim() || customer?.name || null),
+        customer_id: customer?.id || null,
         subtotal: totalVal, total: totalVal, status: "open",
         note: orderNote.trim() || null,
         origin_store_id: currentStoreId,
@@ -588,6 +609,22 @@ export default function CustomerMenu() {
         </div>
       </div>
 
+      <div style={{padding:"8px 16px",background:"#faf6ee",borderBottom:"1px solid #f0e8d8",display:"flex",alignItems:"center",justifyContent:"space-between",gap:8}}>
+        {customer ? (
+          <span style={{fontSize:12,color:"#7a5c1e",fontWeight:600}}>
+            ⭐ {lang==="en"?"Hi":"Merhaba"} {customer.name?.split(" ")[0] || ""}
+            {Object.keys(memberDiscounts).length > 0 && <span> — {lang==="en"?"member prices active":"üye fiyatların aktif"}</span>}
+          </span>
+        ) : (
+          <>
+            <span style={{fontSize:12,color:"#7a5c1e"}}>⭐ {lang==="en"?"Member?":"Üye misin?"}</span>
+            <button onClick={signInWithGoogle} style={{padding:"6px 12px",background:"#000",color:"#fff",border:"none",borderRadius:10,fontSize:11,fontWeight:700,cursor:"pointer",whiteSpace:"nowrap"}}>
+              {lang==="en"?"Sign in with Google":"Google ile giriş yap"}
+            </button>
+          </>
+        )}
+      </div>
+
       <div style={{padding:"14px 16px"}}>
         {visibleProducts.length === 0 && <div style={{textAlign:"center",color:"#888",padding:40,fontSize:13}}>{t.category_empty}</div>}
         {visibleProducts.map(p => {
@@ -611,6 +648,7 @@ export default function CustomerMenu() {
                 <div style={{display:"flex",alignItems:"center",gap:10,marginTop:8}}>
                   {dis && <span style={{fontSize:12,color:"#999",textDecoration:"line-through"}}>₺{p.price}</span>}
                   <span style={{fontSize:15,fontWeight:800,color:dis?"#C8973E":"#000"}}>₺{fp}</span>
+                  {Number(memberDiscounts[p.id]||0) > 0 && <span style={{fontSize:9,padding:"2px 6px",background:"#000",color:"#FFD700",borderRadius:6,fontWeight:800,letterSpacing:"0.5px"}}>ÜYE</span>}
                 </div>
               </div>
               {!soldOut && (
