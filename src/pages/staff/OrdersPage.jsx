@@ -46,12 +46,49 @@ export default function OrdersPage() {
     setTableMap(tMap);
     setTables(tabs || []);
     setOrders(ords || []);
+    // Mutfak durumu: siparis basina bekleyen/hazir kalem sayilari (Hazir butonu icin)
+    const ids = (ords || []).map(o => o.id);
+    if (ids.length) {
+      const { data: its } = await supabase.from("order_items").select("order_id, kitchen_status").in("order_id", ids);
+      const stats = {};
+      (its || []).forEach(i => {
+        const s = stats[i.order_id] || (stats[i.order_id] = { unready: 0, ready: 0, total: 0 });
+        s.total++;
+        if (i.kitchen_status === "pending" || i.kitchen_status === "preparing") s.unready++;
+        if (i.kitchen_status === "ready") s.ready++;
+      });
+      setItemStats(stats);
+    } else setItemStats({});
     setLoading(false);
+  };
+
+  const [itemStats, setItemStats] = useState({});
+
+  // Mutfak kontrolu artik siparis ekranindan da yapilabilir (kucuk ekip icin tek ekran)
+  const markReady = async (e, orderId) => {
+    e.stopPropagation();
+    const { error } = await supabase.from("order_items")
+      .update({ kitchen_status: "ready" })
+      .eq("order_id", orderId)
+      .in("kitchen_status", ["pending", "preparing"]);
+    if (error) { alert("Hazır işaretlenemedi: " + error.message); return; }
+    await supabase.from("orders").update({ status: "ready" }).eq("id", orderId).in("status", ["open", "sent", "preparing"]);
+    load();
+  };
+  const markServed = async (e, orderId) => {
+    e.stopPropagation();
+    const { error } = await supabase.from("order_items")
+      .update({ kitchen_status: "served" }).eq("order_id", orderId);
+    if (error) { alert("Hata: " + error.message); return; }
+    load();
   };
 
   useEffect(() => {
     load();
-    const ch = supabase.channel("orders-list").on("postgres_changes", {event:"*", schema:"public", table:"orders"}, load).subscribe();
+    const ch = supabase.channel("orders-list")
+      .on("postgres_changes", {event:"*", schema:"public", table:"orders"}, load)
+      .on("postgres_changes", {event:"*", schema:"public", table:"order_items"}, load)
+      .subscribe();
     return () => supabase.removeChannel(ch);
   }, [filter]);
 
@@ -112,8 +149,23 @@ export default function OrdersPage() {
                 <span style={{marginLeft:10}}>{waitMin} dk önce</span>
               </div>
             </div>
-            <div style={{textAlign:"right"}}>
+            <div style={{textAlign:"right",display:"flex",flexDirection:"column",alignItems:"flex-end",gap:6}}>
               <div style={{fontSize:16,fontWeight:800,color:"#C8973E"}}>₺{o.total || 0}</div>
+              {(() => {
+                const s = itemStats[o.id];
+                if (!s || o.status === "paid" || o.status === "cancelled" || o.status === "debt") return null;
+                if (s.unready > 0) return (
+                  <button onClick={(e) => markReady(e, o.id)} style={{padding:"8px 14px",background:"#3ECF8E",color:"#000",border:"none",borderRadius:8,fontSize:12,fontWeight:800,cursor:"pointer",whiteSpace:"nowrap"}}>
+                    🔔 Hazır ({s.unready})
+                  </button>
+                );
+                if (s.ready > 0) return (
+                  <button onClick={(e) => markServed(e, o.id)} style={{padding:"8px 14px",background:"transparent",color:"#3ECF8E",border:"1px solid #3ECF8E",borderRadius:8,fontSize:12,fontWeight:700,cursor:"pointer",whiteSpace:"nowrap"}}>
+                    ✓ Teslim Edildi
+                  </button>
+                );
+                return null;
+              })()}
             </div>
           </div>
         );
