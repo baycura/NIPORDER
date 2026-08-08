@@ -1,5 +1,5 @@
-import { useEffect, useState } from "react";
-import { useNavigate } from "react-router-dom";
+import { useEffect, useState, useRef } from "react";
+import { useNavigate, useSearchParams } from "react-router-dom";
 import { supabase } from "../../lib/supabase.js";
 import { useAuth } from "../../contexts/AuthContext.jsx";
 
@@ -39,6 +39,16 @@ export default function PaymentPage() {
     setModal(o); setMethod("cash"); setAmount(String(o.total || 0));
     setCustomerId(null); setCustomerSearch("");
   };
+
+  // Siparis ekranindaki "Odeme Al" butonundan gelindi: ?order=<id> ile modali direkt ac
+  const [searchParams] = useSearchParams();
+  const autoOpened = useRef(false);
+  useEffect(() => {
+    const oid = searchParams.get("order");
+    if (!oid || autoOpened.current || !orders.length) return;
+    const o = orders.find(x => x.id === oid);
+    if (o) { autoOpened.current = true; openPay(o); }
+  }, [orders]);
 
   const completePayment = async () => {
     if (busy) return;

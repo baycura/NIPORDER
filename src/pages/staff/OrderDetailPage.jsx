@@ -105,7 +105,8 @@ export default function OrderDetailPage() {
     navigate("/orders");
   };
 
-  const goToPayment = () => navigate("/payment");
+  // Kasada devamlilik: bu siparisin odeme penceresi direkt acilir
+  const goToPayment = () => navigate("/payment?order=" + orderId);
 
   if (loading) return (<div style={{color:"#888",fontFamily:cv,padding:20}}>Yukleniyor...</div>);
   if (!order) return (<div style={{color:"#888",fontFamily:cv,padding:20}}>Sipariş bulunamadı</div>);
@@ -176,10 +177,10 @@ export default function OrderDetailPage() {
         })}
       </div>
 
-      {allReady && (
+      {items.length > 0 && order.status !== "paid" && order.status !== "cancelled" && (
         <div style={{position:"fixed",bottom:14,left:14,right:14,zIndex:40}}>
-          <button onClick={goToPayment} style={{width:"100%",padding:"14px",background:"#C8973E",color:"#000",border:"none",borderRadius:12,fontSize:14,fontWeight:800,cursor:"pointer"}}>
-            ✓ Servis tamamlandı · Kasaya git
+          <button onClick={goToPayment} style={{width:"100%",padding:"14px",background:allReady?"#3ECF8E":"#C8973E",color:"#000",border:"none",borderRadius:12,fontSize:14,fontWeight:800,cursor:"pointer",boxShadow:"0 4px 16px rgba(0,0,0,0.4)"}}>
+            {allReady ? "✓ Servis tamamlandı · " : ""}💰 Ödeme Al · ₺{order.total || 0}
           </button>
         </div>
       )}
