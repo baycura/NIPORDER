@@ -11,18 +11,43 @@ export default function MyShiftPage(){
   const workedMins=shift?.checked_in_at?Math.floor((Date.now()-new Date(shift.checked_in_at))/60000):0;
   const workedStr=workedMins>0?`${Math.floor(workedMins/60)}s ${workedMins%60}dk`:"—";
   const handleCheckIn=async()=>{const today=new Date().toISOString().split("T")[0];const{data}=await supabase.from("shifts").upsert({staff_id:staffUser.id,date:today,checked_in_at:new Date().toISOString(),status:"active"},{onConflict:"staff_id,date"}).select().single();setShift(data);};
+  const handleCheckOut=async()=>{if(!confirm("Vardiyadan çıkış yapılsın mı? (Bildirimler kesilir)"))return;const today=new Date().toISOString().split("T")[0];const{data}=await supabase.from("shifts").update({status:"done"}).eq("staff_id",staffUser.id).eq("date",today).select().single();setShift(data);};
   return(<div>
     <div style={{display:"flex",justifyContent:"space-between",alignItems:"center",marginBottom:24}}>
       <h1 style={{color:"#F0EDE8",fontFamily:cv,fontSize:28,letterSpacing:"-0.5px",margin:0}}>Vardiyam</h1>
-      {!shift?.checked_in_at&&<button onClick={handleCheckIn} style={{padding:"10px 18px",background:"#3ECF8E",border:"none",color:"#000",fontFamily:cv,fontSize:16,cursor:"pointer",borderRadius:8}}>VARDIYAYA GİR</button>}
+      {!shift?.checked_in_at
+        ? <button onClick={handleCheckIn} style={{padding:"10px 18px",background:"#3ECF8E",border:"none",color:"#000",fontFamily:cv,fontSize:16,cursor:"pointer",borderRadius:8}}>VARDIYAYA GİR</button>
+        : shift?.status==="active"
+          ? <button onClick={handleCheckOut} style={{padding:"10px 18px",background:"#E0554A",border:"none",color:"#fff",fontFamily:cv,fontSize:16,cursor:"pointer",borderRadius:8}}>VARDIYADAN ÇIK</button>
+          : <button onClick={handleCheckIn} style={{padding:"10px 18px",background:"#3ECF8E",border:"none",color:"#000",fontFamily:cv,fontSize:16,cursor:"pointer",borderRadius:8}}>TEKRAR GİR</button>}
     </div>
+    {staffUser?.telegram_chat_id
+      ? <div style={{background:"#12241B",border:"1px solid #1F4A35",borderRadius:10,padding:"10px 14px",marginBottom:16,color:"#3ECF8E",fontFamily:cvc,fontSize:12,fontWeight:700,letterSpacing:"0.5px"}}>✈️ Telegram bildirimleri açık — vardiyadayken siparişler telefonuna gelir</div>
+      : <a href={"https://t.me/BaycuraBot?start="+staffUser?.id} target="_blank" rel="noreferrer" style={{display:"block",background:"#1C2B3A",border:"1px solid #2E4A66",borderRadius:10,padding:"12px 14px",marginBottom:16,color:"#5FB0E8",fontFamily:cvc,fontSize:13,fontWeight:700,letterSpacing:"0.5px",textDecoration:"none",textAlign:"center"}}>✈️ Telegram bildirimlerini aç — sipariş geldiğinde telefonuna mesaj gelsin</a>}
     <div style={{display:"grid",gridTemplateColumns:"repeat(3,1fr)",gap:12,marginBottom:24}}>
       {[["BUGÜNKÜ CİRO",`₺${Math.round(revenue).toLocaleString()}`,"#3ECF8E","💰"],["SİPARİŞ",orderCount.toString(),"#C8973E","📋"],["ORT. SEPET",`₺${avg.toLocaleString()}`,"#F0EDE8","📊"]].map(([l,v,c,icon])=>(<div key={l} style={{background:"#1E1E1E",border:"1px solid #2A2A2A",borderRadius:12,padding:16}}><div style={{display:"flex",justifyContent:"space-between"}}><div><div style={{color:"#888",fontFamily:cvc,fontSize:10,letterSpacing:"1.5px",marginBottom:4}}>{l}</div><div style={{color:c,fontFamily:cv,fontSize:26}}>{v}</div></div><span style={{fontSize:22,opacity:.5}}>{icon}</span></div></div>))}
     </div>
+    {!staffUser?.telegram_chat_id&&(
+      <a href={"https://t.me/BaycuraBot?start="+staffUser?.id} target="_blank" rel="noreferrer" style={{display:"flex",alignItems:"center",gap:10,background:"#1C2733",border:"1px solid #2AABEE",borderRadius:12,padding:"14px 16px",marginBottom:24,textDecoration:"none"}}>
+        <span style={{fontSize:22}}>✈️</span>
+        <div style={{flex:1}}>
+          <div style={{color:"#F0EDE8",fontFamily:cvc,fontSize:14,fontWeight:700}}>Telegram bildirimlerini aç</div>
+          <div style={{color:"#8AB4D8",fontFamily:cvc,fontSize:11,marginTop:2}}>Vardiyadayken yeni sipariş ve "hazır" bildirimleri telefonuna gelsin</div>
+        </div>
+        <span style={{color:"#2AABEE",fontSize:18}}>›</span>
+      </a>
+    )}
+    <a href={"https://t.me/BaycuraBot?start="+staffUser?.id} target="_blank" rel="noreferrer" style={{display:"flex",alignItems:"center",gap:10,background:"#17212B",border:"1px solid #2AABEE",borderRadius:12,padding:"12px 16px",marginBottom:24,textDecoration:"none"}}>
+      <span style={{fontSize:22}}>✈️</span>
+      <div>
+        <div style={{color:"#2AABEE",fontFamily:cvc,fontSize:13,fontWeight:700}}>Telegram bildirimlerini aç</div>
+        <div style={{color:"#888",fontFamily:cvc,fontSize:11,marginTop:2}}>Vardiyadayken yeni sipariş ve "hazır" bildirimleri telefonuna gelsin</div>
+      </div>
+    </a>
     <div style={{background:"#1E1E1E",border:"1px solid #2A2A2A",borderRadius:12,padding:18,marginBottom:24}}>
       <div style={{color:"#F0EDE8",fontFamily:cv,fontSize:18,marginBottom:14}}>Vardiya Bilgisi</div>
       <div style={{display:"grid",gridTemplateColumns:"repeat(3,1fr)",gap:12}}>
-        {[["GİRİŞ",checkedIn],["SÜRE",workedStr],["DURUM",shift?.status==="active"?"Aktif":"—"]].map(([l,v])=>(<div key={l} style={{background:"#111",borderRadius:8,padding:"10px 12px"}}><div style={{color:"#444",fontFamily:cvc,fontSize:9,letterSpacing:"1.5px",marginBottom:4}}>{l}</div><div style={{color:"#F0EDE8",fontFamily:cvc,fontSize:14,fontWeight:700}}>{v}</div></div>))}
+        {[["GİRİŞ",checkedIn],["SÜRE",workedStr],["DURUM",shift?.status==="active"?"Aktif":shift?.status==="done"?"Bitti":"—"]].map(([l,v])=>(<div key={l} style={{background:"#111",borderRadius:8,padding:"10px 12px"}}><div style={{color:"#444",fontFamily:cvc,fontSize:9,letterSpacing:"1.5px",marginBottom:4}}>{l}</div><div style={{color:"#F0EDE8",fontFamily:cvc,fontSize:14,fontWeight:700}}>{v}</div></div>))}
       </div>
     </div>
     <div style={{color:"#F0EDE8",fontFamily:cv,fontSize:18,marginBottom:12}}>Son Siparişlerim</div>

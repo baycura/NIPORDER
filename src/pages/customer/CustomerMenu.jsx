@@ -1,8 +1,27 @@
 import { useEffect, useMemo, useRef, useState } from "react";
 import { useParams, useNavigate, useSearchParams } from "react-router-dom";
 import { supabase } from "../../lib/supabase.js";
+import { useAuth } from "../../contexts/AuthContext.jsx";
 
 const cv = "-apple-system,BlinkMacSystemFont,'Segoe UI',Roboto,sans-serif";
+
+// Alt sekmeler — QR menu ayni zamanda vitrin: etkinlik/rezervasyon, surusler, shop, blog
+const CUST_TABS = [
+  { key: "menu",   icon: "🍽", tr: "Menü",     en: "Menu",   ru: "Меню" },
+  { key: "events", icon: "🎟", tr: "Etkinlik", en: "Events", ru: "События" },
+  { key: "rides",  icon: "🚴", tr: "Sürüş",    en: "Rides",  ru: "Заезды" },
+  { key: "shop",   icon: "👕", tr: "Shop",     en: "Shop",   ru: "Шоп" },
+  { key: "blog",   icon: "📰", tr: "Blog",     en: "Blog",   ru: "Блог" },
+];
+// Etkinlik + surusler dogrudan rezervasyon sisteminin (NIP RESERVE) public verisinden okunur
+const RESERVE_URL = "https://diqparjrtvvfxvwxebov.supabase.co";
+const RESERVE_KEY = "eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJpc3MiOiJzdXBhYmFzZSIsInJlZiI6ImRpcXBhcmpydHZ2Znh2d3hlYm92Iiwicm9sZSI6ImFub24iLCJpYXQiOjE3NzM5Mzc3OTMsImV4cCI6MjA4OTUxMzc5M30.pNI2yU6LDG8583HBPq-5puxkpEVEAYwhGp9ibJ1WBsI";
+const RESERVATION_URL = "https://reservation.notinparis.me";
+const RIDES_URL = "https://notinparis.me/pages/rides";
+const YOUTUBE_URL = "https://www.youtube.com/@notinparis";
+const STRAVA_URL = "https://www.strava.com/clubs/notinparis";
+const INSTAGRAM_URL = "https://instagram.com/notinparis.me";
+const GOOGLE_RATE_URL = "https://www.google.com/maps/search/?api=1&query=Not+in+Paris+Fethiye";
 
 const T = {
   tr: {
@@ -89,6 +108,49 @@ const T = {
     submit_failed: "Failed to send order: ",
     notif_title: "🔔 Your order is ready!",
     notif_body: "Pick it up from the cashier — Not In Paris",
+    happy_hour: "HAPPY HOUR",
+  },
+  ru: {
+    menu: "МЕНЮ",
+    partyMode: "PARTY MODE",
+    category_empty: "В этой категории пока нет позиций",
+    sold_out: "Закончилось",
+    optional: "ОПЦИИ",
+    cart: "🛒 Корзина",
+    continue: "Далее",
+    note_optional: "напр.: без льда, без сахара",
+    optional_label: "ПРИМЕЧАНИЕ (НЕОБЯЗАТЕЛЬНО)",
+    cancel: "Отмена",
+    add_to_cart: "В корзину",
+    my_cart: "Моя корзина",
+    your_name: "ВАШЕ ИМЯ (чтобы официант вас нашёл)",
+    name_placeholder: "напр.: Иван",
+    order_note_label: "ПРИМЕЧАНИЕ К ЗАКАЗУ (увидит кухня)",
+    order_note_placeholder: "напр.: средняя прожарка, без специй...",
+    total: "ИТОГО",
+    submit_order: "Отправить заказ",
+    submitting: "Отправляем...",
+    waiter_will_bring: "Официант принесёт заказ к вашему столу",
+    notif_promise: "Мы сообщим, когда заказ будет готов",
+    please_choose: "Пожалуйста, выберите",
+    please_enter_name: "Пожалуйста, введите имя",
+    sold_out_alert: "Эта позиция закончилась: ",
+    order_kitchen_msg: "тправлено на кухню. Готовится…",
+    order_received: "Заказ принят!",
+    preparing: "Готовится...",
+    notif_granted: "🔔 Сообщим, когда будет готово",
+    notif_denied: "⚠️ Уведомления заблокированы. Не закрывайте страницу — прозвучит сигнал.",
+    notif_ask: "🔔 Разрешить уведомления",
+    back_to_menu: "Вернуться в меню",
+    order_ready_big: "ВАШ ЗАКАЗ ГОТОВ!",
+    pick_from_cashier: "Заберите на кассе.",
+    play_again: "🔊 Повторить",
+    enjoy: "Приятного аппетита!",
+    thanks: "Ждём вас снова ♥",
+    new_order: "Новый заказ",
+    submit_failed: "Не удалось отправить заказ: ",
+    notif_title: "🔔 Ваш заказ готов!",
+    notif_body: "Заберите на кассе — Not In Paris",
     happy_hour: "HAPPY HOUR",
   }
 };
@@ -194,9 +256,58 @@ export default function CustomerMenu() {
   const partyMode = settings && settings.party_mode_enabled &&
     isInRange(now, settings.party_mode_from, settings.party_mode_until);
 
-  const pName = (p) => (lang === "en" && p?.name_en) ? p.name_en : p?.name;
-  const pDesc = (p) => (lang === "en" && p?.description_en) ? p.description_en : p?.description;
-  const cName = (c) => (lang === "en" && c?.name_en) ? c.name_en : c?.name;
+  // Uye sistemi: Google ile giren musteri + urun bazli sabit (₺) indirimleri
+  const { customer, signInWithGoogle } = useAuth();
+  const [memberDiscounts, setMemberDiscounts] = useState({});
+  useEffect(() => {
+    if (!customer?.id) { setMemberDiscounts({}); return; }
+    supabase.from("member_discounts").select("product_id, amount")
+      .eq("customer_id", customer.id).eq("is_active", true)
+      .then(({ data }) => {
+        const map = {};
+        (data || []).forEach(d => { map[d.product_id] = Number(d.amount) || 0; });
+        setMemberDiscounts(map);
+      });
+  }, [customer?.id]);
+
+  // Alt sekmeler + siparis beklerken gezinme
+  const [custTab, setCustTab] = useState("menu");
+  const [browsing, setBrowsing] = useState(false);
+  const [feeds, setFeeds] = useState({});         // shopify-feed: events/rides
+  const [postFeeds, setPostFeeds] = useState({}); // posts: shop(urun)/blog
+  useEffect(() => {
+    const today = new Date(Date.now() + 3 * 3600 * 1000).toISOString().slice(0, 10); // TR gunu
+    if (custTab === "events" && !feeds.events) {
+      fetch(RESERVE_URL + "/rest/v1/events?select=name,subtitle,date,time,genre,access_type&status=eq.active&date=gte." + today + "&order=date.asc&limit=12",
+        { headers: { apikey: RESERVE_KEY } })
+        .then(r => r.json())
+        .then(d => setFeeds(f => ({ ...f, events: Array.isArray(d) ? d : [] })))
+        .catch(() => setFeeds(f => ({ ...f, events: [] })));
+    }
+    if (custTab === "rides" && !feeds.rides) {
+      fetch(RESERVE_URL + "/rest/v1/ride_posts?select=title,ride_date,ride_time,pace,distance_km,elevation_m,meet_point&ride_date=gte." + today + "&order=ride_date.asc&limit=12",
+        { headers: { apikey: RESERVE_KEY } })
+        .then(r => r.json())
+        .then(d => setFeeds(f => ({ ...f, rides: Array.isArray(d) ? d : [] })))
+        .catch(() => setFeeds(f => ({ ...f, rides: [] })));
+    }
+    if ((custTab === "shop" || custTab === "blog") && !postFeeds[custTab]) {
+      supabase.from("posts").select("*")
+        .eq("kind", custTab === "shop" ? "urun" : "blog").eq("is_active", true)
+        .order("sort_order").order("created_at", { ascending: false })
+        .then(({ data }) => setPostFeeds(f => ({ ...f, [custTab]: data || [] })));
+    }
+  }, [custTab]);
+
+  const pName = (p) => (lang === "en" && p?.name_en) ? p.name_en : (lang === "ru" && p?.name_ru) ? p.name_ru : p?.name;
+  const pDesc = (p) => (lang === "en" && p?.description_en) ? p.description_en : (lang === "ru" && p?.description_ru) ? p.description_ru : p?.description;
+  const cName = (c) => (lang === "en" && c?.name_en) ? c.name_en : (lang === "ru" && c?.name_ru) ? c.name_ru : c?.name;
+  // Inline uc-dil yardimcisi: L(tr, en, ru)
+  const L = (trS, enS, ruS) => lang === "en" ? enS : lang === "ru" ? ruS : trS;
+  const postTitle = (p) => (lang === "en" && p?.title_en) ? p.title_en : (lang === "ru" && p?.title_ru) ? p.title_ru : p?.title;
+  const postBody = (p) => (lang === "en" && p?.body_en) ? p.body_en : (lang === "ru" && p?.body_ru) ? p.body_ru : p?.body;
+  const dateLocale = lang === "en" ? "en-GB" : lang === "ru" ? "ru-RU" : "tr-TR";
+  const fmtDay = (d) => { try { return new Date(d + "T12:00:00").toLocaleDateString(dateLocale, { weekday: "short", day: "numeric", month: "short" }); } catch (e) { return d; } };
 
   const load = async () => {
     setLoading(true);
@@ -347,6 +458,7 @@ export default function CustomerMenu() {
           if (prev === "ready" || prev === "served") return prev;
           playDing(); vibrate();
           showBrowserNotification(t.notif_title, t.notif_body);
+          setBrowsing(false); // sekmelerde geziyorsa buyuk HAZIR ekranina don
           return "ready";
         });
       }
@@ -402,24 +514,29 @@ export default function CustomerMenu() {
   }, [products, selectedCat, partyMode]);
 
   const calcPrice = (p, options) => {
-    // Product-based happy hour: use new price directly
-    let basePrice = hhProductPrices[p.id] != null ? Number(hhProductPrices[p.id]) : Number(p.price);
     // Add price modifiers from selected options (e.g. Single/Double pour size)
+    let mod = 0;
     if (options && p.options_config?.groups) {
       for (const group of p.options_config.groups) {
         const selectedOpt = options[group.name];
         if (selectedOpt && group.price_modifiers && group.price_modifiers[selectedOpt] != null) {
-          basePrice += Number(group.price_modifiers[selectedOpt]) || 0;
+          mod += Number(group.price_modifiers[selectedOpt]) || 0;
         }
       }
     }
+    // Product-based happy hour: use new price directly
+    const basePrice = (hhProductPrices[p.id] != null ? Number(hhProductPrices[p.id]) : Number(p.price)) + mod;
     let pct = 0;
     if (hh && (hh.category_ids?.length === 0 || hh.category_ids?.includes(p.category_id))) pct = Number(hh.discount_pct) || 0;
     if (Number(p.instant_discount_pct||0) > pct) pct = Number(p.instant_discount_pct);
-    return Math.round(basePrice * (100 - pct) / 100);
+    let final = Math.round(basePrice * (100 - pct) / 100);
+    // Uye indirimi: normal fiyattan sabit ₺ dusulur; musteriye dusuk olan fiyat gosterilir
+    const memberAmt = Number(memberDiscounts[p.id] || 0);
+    if (memberAmt > 0) final = Math.min(final, Math.max(0, Math.round(Number(p.price) + mod - memberAmt)));
+    return final;
   };
 
-  const cartTotal = useMemo(() => cart.reduce((s, it) => s + calcPrice(it.product, it.options) * it.quantity, 0), [cart, hh]);
+  const cartTotal = useMemo(() => cart.reduce((s, it) => s + calcPrice(it.product, it.options) * it.quantity, 0), [cart, hh, memberDiscounts]);
   const cartCount = useMemo(() => cart.reduce((s, it) => s + it.quantity, 0), [cart]);
 
   const findInCart = (productId, options, note) => {
@@ -472,14 +589,15 @@ export default function CustomerMenu() {
 
   const submitOrder = async () => {
     if (submitting || cart.length === 0) return;
-    if (!table && !customerName.trim()) { alert(t.please_enter_name); return; }
+    if (!table && !customerName.trim() && !customer) { alert(t.please_enter_name); return; }
     unlockAudio(); askNotifPermissionSync();
     setSubmitting(true);
     try {
       const totalVal = cartTotal;
       const { data: ord, error: ordErr } = await supabase.from("orders").insert({
         table_id: table ? table.id : null,
-        customer_name: table ? null : customerName.trim(),
+        customer_name: table ? null : (customerName.trim() || customer?.name || null),
+        customer_id: customer?.id || null,
         subtotal: totalVal, total: totalVal, status: "open",
         note: orderNote.trim() || null,
         origin_store_id: currentStoreId,
@@ -496,6 +614,7 @@ export default function CustomerMenu() {
       if (itErr) throw itErr;
       setSuccessOrderId(ord.id);
       setOrderStage("pending");
+      setBrowsing(false); setCustTab("menu");
       setCart([]); setOrderNote(""); setCheckoutOpen(false);
     } catch (e) { alert(t.submit_failed + e.message); }
     setSubmitting(false);
@@ -505,6 +624,7 @@ export default function CustomerMenu() {
     <div style={{display:"flex",gap:4,background:"#f2f2f2",borderRadius:18,padding:3}}>
       <button onClick={() => setLanguage("tr")} style={{padding:"10px 16px",minWidth:48,minHeight:36,background:lang==="tr"?"#000":"transparent",color:lang==="tr"?"#fff":"#666",border:"none",borderRadius:14,fontSize:11,fontWeight:700,cursor:"pointer"}}>🇹🇷 TR</button>
       <button onClick={() => setLanguage("en")} style={{padding:"10px 16px",minWidth:48,minHeight:36,background:lang==="en"?"#000":"transparent",color:lang==="en"?"#fff":"#666",border:"none",borderRadius:14,fontSize:11,fontWeight:700,cursor:"pointer"}}>🇬🇧 EN</button>
+      <button onClick={() => setLanguage("ru")} style={{padding:"10px 16px",minWidth:48,minHeight:36,background:lang==="ru"?"#000":"transparent",color:lang==="ru"?"#fff":"#666",border:"none",borderRadius:14,fontSize:11,fontWeight:700,cursor:"pointer"}}>🇷🇺 RU</button>
     </div>
   );
 
@@ -512,7 +632,7 @@ export default function CustomerMenu() {
     return (<div className="nip-customer" style={{fontFamily:cv,background:"#fff",minHeight:"100vh",display:"flex",alignItems:"center",justifyContent:"center",color:"#888"}}>...</div>);
   }
 
-  if (successOrderId) {
+  if (successOrderId && !browsing) {
     const bg = orderStage === "ready" ? "#FFF8E1" : orderStage === "served" ? "#E8F5E9" : "#fff";
     const isReady = orderStage === "ready";
     const isServed = orderStage === "served";
@@ -540,7 +660,7 @@ export default function CustomerMenu() {
               <div style={{fontSize:60,marginBottom:14}}>✅</div>
               <div style={{fontSize:24,fontWeight:800,marginBottom:8}}>{t.order_received}</div>
               <div style={{fontSize:14,color:"#555",marginBottom:18,lineHeight:1.5}}>
-                {table ? (table.name + (lang==="en"?": s":": m")) : (lang==="en"?"S":"M")}{t.order_kitchen_msg}
+                {table ? (table.name + L(": m", ": s", ": о")) : L("M", "S", "О")}{t.order_kitchen_msg}
               </div>
               <div style={{display:"inline-flex",alignItems:"center",gap:8,padding:"10px 16px",background:"#f6f6f6",borderRadius:24,marginBottom:24,fontSize:13,color:"#555"}}>
                 <span style={{width:10,height:10,borderRadius:"50%",background:"#C8973E",display:"inline-block"}}></span>
@@ -555,7 +675,12 @@ export default function CustomerMenu() {
                   <button onClick={askNotifPermissionSync} style={{padding:"10px 18px",background:"#C8973E",color:"#000",border:"none",borderRadius:10,fontSize:12,fontWeight:800,cursor:"pointer"}}>{t.notif_ask}</button>
                 )}
               </div>
-              <button onClick={() => { setSuccessOrderId(null); setOrderStage("pending"); load(); }} style={{padding:"10px 22px",background:"transparent",color:"#888",border:"1px solid #ddd",borderRadius:10,fontSize:12,cursor:"pointer"}}>{t.back_to_menu}</button>
+              <button onClick={() => setBrowsing(true)} style={{padding:"12px 24px",background:"#000",color:"#fff",border:"none",borderRadius:12,fontSize:13,fontWeight:700,cursor:"pointer"}}>
+                {L("Beklerken göz at →","Browse while you wait →","Полистайте, пока ждёте →")}
+              </button>
+              <div style={{fontSize:11,color:"#999",marginTop:10,lineHeight:1.5}}>
+                {L("Etkinlikler, sürüşler, shop & blog — hazır olunca zili çalarız 🔔","Events, rides, shop & blog — we'll ring when it's ready 🔔","События, заезды, шоп и блог — позвоним, когда будет готово 🔔")}
+              </div>
             </>
           )}
         </div>
@@ -563,22 +688,25 @@ export default function CustomerMenu() {
     );
   }
 
+  const susBarActive = browsing && successOrderId && orderStage === "pending";
+
   return (
-    <div className="nip-customer nip-customer-shell" style={{fontFamily:cv,background:"#fff",minHeight:"100vh",color:"#000",paddingBottom:cart.length>0?96:24}}>
+    <div className="nip-customer nip-customer-shell" style={{fontFamily:cv,background:"#fff",minHeight:"100vh",color:"#000",paddingBottom:cart.length>0?156:96}}>
       <div style={{padding:"20px 16px 10px",borderBottom:"1px solid #eee",position:"sticky",top:0,background:"#fff",zIndex:20}}>
         <div style={{display:"flex",alignItems:"center",justifyContent:"space-between"}}>
           <div>
-            <div style={{fontSize:22,fontWeight:900,letterSpacing:"1.5px",fontFamily:"'Coolvetica Condensed','Barlow Condensed','Bebas Neue',sans-serif"}}>NOT IN PARIS</div>
+            <div style={{fontSize:24,fontWeight:400,letterSpacing:"0.005em",fontFamily:"'Coolvetica Heavy','Coolvetica Condensed','Barlow Condensed',sans-serif",textTransform:"uppercase"}}>Not in Paris</div>
             <div style={{fontSize:10,color:"#888",letterSpacing:"2px",marginTop:2}}>
-              {table ? table.name?.toUpperCase() : t.menu}
-              {partyMode && <span style={{marginLeft:6,color:"#C8973E",fontWeight:700}}>· {t.partyMode} 🎉</span>}
+              {custTab !== "menu" ? (CUST_TABS.find(x=>x.key===custTab)?.[["en","ru"].includes(lang)?lang:"tr"] || "").toUpperCase() : (table ? table.name?.toUpperCase() : t.menu)}
+              {partyMode && custTab === "menu" && <span style={{marginLeft:6,color:"#C8973E",fontWeight:700}}>· {t.partyMode} 🎉</span>}
             </div>
           </div>
           <div style={{display:"flex",alignItems:"center",gap:8}}>
-            {hh && <div style={{background:"#C8973E",color:"#000",padding:"4px 10px",borderRadius:10,fontSize:10,fontWeight:800,letterSpacing:"0.5px"}}>{t.happy_hour} -%{hh.discount_pct}</div>}
+            {hh && custTab === "menu" && <div style={{background:"#C8973E",color:"#000",padding:"4px 10px",borderRadius:10,fontSize:10,fontWeight:800,letterSpacing:"0.5px"}}>{t.happy_hour} -%{hh.discount_pct}</div>}
             <LangSwitcher/>
           </div>
         </div>
+        {custTab === "menu" && (
         <div style={{display:"flex",gap:6,overflowX:"auto",marginTop:12,paddingBottom:4}}>
           {visibleCategories.map(c => (
             <button key={c.id} onClick={() => setSelectedCat(c.id)} style={{flexShrink:0,padding:"8px 14px",border:"none",borderRadius:16,fontSize:12,fontWeight:700,background:selectedCat===c.id?"#000":"#f2f2f2",color:selectedCat===c.id?"#fff":"#333",cursor:"pointer",whiteSpace:"nowrap",letterSpacing:"0.3px"}}>
@@ -586,8 +714,144 @@ export default function CustomerMenu() {
             </button>
           ))}
         </div>
+        )}
       </div>
 
+      {custTab === "menu" && (
+      <div style={{padding:"8px 16px",background:"#faf6ee",borderBottom:"1px solid #f0e8d8",display:"flex",alignItems:"center",justifyContent:"space-between",gap:8}}>
+        {customer ? (
+          <span style={{fontSize:12,color:"#7a5c1e",fontWeight:600}}>
+            ⭐ {L("Merhaba","Hi","Привет")} {customer.name?.split(" ")[0] || ""}
+            {Object.keys(memberDiscounts).length > 0 && <span> — {L("üye fiyatların aktif","member prices active","цены для участников активны")}</span>}
+          </span>
+        ) : (
+          <>
+            <span style={{fontSize:12,color:"#7a5c1e"}}>⭐ {L("Üye misin?","Member?","Участник клуба?")}</span>
+            <button onClick={signInWithGoogle} style={{padding:"6px 12px",background:"#000",color:"#fff",border:"none",borderRadius:10,fontSize:11,fontWeight:700,cursor:"pointer",whiteSpace:"nowrap"}}>
+              {L("Google ile giriş yap","Sign in with Google","Войти через Google")}
+            </button>
+          </>
+        )}
+      </div>
+      )}
+
+      {custTab !== "menu" && (
+        <div style={{padding:"14px 16px"}}>
+          {custTab === "events" && (
+            <a href={RESERVATION_URL} target="_blank" rel="noreferrer" style={{display:"flex",justifyContent:"space-between",alignItems:"center",padding:"16px 18px",background:"#000",color:"#fff",borderRadius:14,textDecoration:"none",marginBottom:14}}>
+              <span style={{fontSize:14,fontWeight:800}}>🎟 {L("Rezervasyon yap","Make a reservation","Забронировать")}</span>
+              <span style={{fontSize:16}}>→</span>
+            </a>
+          )}
+          {custTab === "events" && (
+            <>
+              {feeds.events === undefined && <div style={{textAlign:"center",color:"#888",padding:30,fontSize:13}}>...</div>}
+              {feeds.events?.length === 0 && (
+                <div style={{textAlign:"center",color:"#888",padding:30,fontSize:13,lineHeight:1.6}}>
+                  {L("Yaklaşan etkinlikler yakında burada 🎉","Upcoming events will appear here soon 🎉","Скоро здесь появятся события 🎉")}
+                </div>
+              )}
+              {(feeds.events || []).map((ev, i) => (
+                <a key={i} href={RESERVATION_URL} target="_blank" rel="noreferrer" style={{display:"flex",alignItems:"center",gap:10,padding:"14px 2px",borderBottom:"1px solid #f0f0f0",textDecoration:"none",color:"#000"}}>
+                  <div style={{flex:1,minWidth:0}}>
+                    <div style={{fontSize:15,fontWeight:800,lineHeight:1.3}}>
+                      {ev.name}
+                      {ev.subtitle && <span style={{fontSize:11,fontWeight:600,color:"#888",marginLeft:6}}>{ev.subtitle}</span>}
+                    </div>
+                    <div style={{fontSize:12,color:"#666",marginTop:3}}>
+                      {fmtDay(ev.date)}{ev.time ? " · " + ev.time : ""}{ev.genre ? " · " + ev.genre : ""}
+                    </div>
+                  </div>
+                  {ev.access_type && ev.access_type !== "open" && (
+                    <span style={{fontSize:9,padding:"3px 7px",background:"#000",color:"#fff",borderRadius:6,fontWeight:800,letterSpacing:"0.5px",flexShrink:0}}>{L("ÜYE","MEMBERS","КЛУБ")}</span>
+                  )}
+                  <span style={{fontSize:12,fontWeight:700,flexShrink:0}}>{L("Rezerve","Reserve","Бронь")} →</span>
+                </a>
+              ))}
+              <a href={YOUTUBE_URL} target="_blank" rel="noreferrer" style={{display:"flex",justifyContent:"space-between",alignItems:"center",padding:"14px 16px",background:"#fafafa",border:"1px solid #eee",borderRadius:14,textDecoration:"none",color:"#000",marginTop:14}}>
+                <span style={{fontSize:13,fontWeight:800}}>▶️ Dance Till They Come — YouTube</span>
+                <span>↗</span>
+              </a>
+            </>
+          )}
+          {custTab === "rides" && (
+            <>
+              {feeds.rides === undefined && <div style={{textAlign:"center",color:"#888",padding:30,fontSize:13}}>...</div>}
+              {feeds.rides?.length === 0 && (
+                <div style={{textAlign:"center",color:"#888",padding:30,fontSize:13,lineHeight:1.6}}>
+                  {L("Planlı sürüşler yakında burada 🚴","Planned rides will appear here soon 🚴","Скоро здесь появятся заезды 🚴")}
+                </div>
+              )}
+              {(feeds.rides || []).map((r, i) => (
+                <a key={i} href={RIDES_URL} target="_blank" rel="noreferrer" style={{display:"flex",alignItems:"center",gap:10,padding:"14px 2px",borderBottom:"1px solid #f0f0f0",textDecoration:"none",color:"#000"}}>
+                  <div style={{flex:1,minWidth:0}}>
+                    <div style={{fontSize:15,fontWeight:800,lineHeight:1.3}}>{r.title}</div>
+                    <div style={{fontSize:12,color:"#666",marginTop:3}}>
+                      {fmtDay(r.ride_date)}{r.ride_time ? " · " + r.ride_time : ""}
+                    </div>
+                    <div style={{fontSize:11,color:"#888",marginTop:2}}>
+                      {[r.pace, r.distance_km ? Math.round(r.distance_km) + " km" : null, r.elevation_m ? Math.round(r.elevation_m) + " m↑" : null, r.meet_point].filter(Boolean).join(" · ")}
+                    </div>
+                  </div>
+                  <span style={{fontSize:12,fontWeight:700,flexShrink:0}}>{L("Katıl","Join","Поехали")} →</span>
+                </a>
+              ))}
+              <a href={STRAVA_URL} target="_blank" rel="noreferrer" style={{display:"flex",justifyContent:"space-between",alignItems:"center",padding:"14px 16px",background:"#fafafa",border:"1px solid #eee",borderRadius:14,textDecoration:"none",color:"#000",marginTop:14}}>
+                <span style={{fontSize:13,fontWeight:800}}>🟠 NIP Cycling Club — Strava</span>
+                <span>↗</span>
+              </a>
+            </>
+          )}
+          {(custTab === "shop" || custTab === "blog") && (
+            <>
+              {postFeeds[custTab] === undefined && <div style={{textAlign:"center",color:"#888",padding:30,fontSize:13}}>...</div>}
+              {postFeeds[custTab]?.length === 0 && (
+                <div style={{textAlign:"center",color:"#888",padding:30,fontSize:13}}>
+                  {L("Yakında ✨","Coming soon ✨","Скоро ✨")}
+                </div>
+              )}
+              {(postFeeds[custTab] || []).map(p => (
+                <div key={p.id} style={{background:"#fafafa",border:"1px solid #eee",borderRadius:14,overflow:"hidden",marginBottom:14}}>
+                  {(p.images || []).length > 0 && (
+                    <div style={{display:"flex",gap:6,overflowX:"auto",padding:(p.images.length>1?"10px 10px 0":"0")}}>
+                      {p.images.map((u, i) => (
+                        <img key={i} src={u} alt="" style={p.images.length > 1
+                          ? {width:230,height:230,borderRadius:10,objectFit:"cover",flexShrink:0}
+                          : {width:"100%",height:230,objectFit:"cover",display:"block"}}/>
+                      ))}
+                    </div>
+                  )}
+                  <div style={{padding:"12px 14px"}}>
+                    <div style={{fontSize:16,fontWeight:800}}>{postTitle(p)}</div>
+                    {postBody(p) && <div style={{fontSize:13,color:"#444",marginTop:6,lineHeight:1.6,whiteSpace:"pre-wrap"}}>{postBody(p)}</div>}
+                    {custTab === "shop" ? (
+                      <div style={{display:"inline-block",marginTop:10,padding:"6px 12px",background:"#000",color:"#FFD700",borderRadius:10,fontSize:11,fontWeight:800}}>
+                        💳 {L("Kasadan alabilirsin","Available at the counter","Можно купить на кассе")}
+                      </div>
+                    ) : (
+                      <div style={{fontSize:10,color:"#999",marginTop:8}}>{new Date(p.created_at).toLocaleDateString(dateLocale,{day:"numeric",month:"long"})}</div>
+                    )}
+                  </div>
+                </div>
+              ))}
+              {custTab === "shop" && (
+                <a href={INSTAGRAM_URL} target="_blank" rel="noreferrer" style={{display:"flex",justifyContent:"space-between",alignItems:"center",padding:"14px 16px",background:"#fafafa",border:"1px solid #eee",borderRadius:14,textDecoration:"none",color:"#000",marginTop:4}}>
+                  <span style={{fontSize:13,fontWeight:800}}>📷 Instagram — @notinparis.me</span>
+                  <span>↗</span>
+                </a>
+              )}
+              {custTab === "blog" && (
+                <a href={GOOGLE_RATE_URL} target="_blank" rel="noreferrer" style={{display:"flex",justifyContent:"space-between",alignItems:"center",padding:"14px 16px",background:"#000",color:"#fff",borderRadius:14,textDecoration:"none",marginTop:4}}>
+                  <span style={{fontSize:13,fontWeight:800}}>⭐ {L("Bizi Google'da değerlendir","Rate us on Google","Оцените нас в Google")}</span>
+                  <span>↗</span>
+                </a>
+              )}
+            </>
+          )}
+        </div>
+      )}
+
+      {custTab === "menu" && (
       <div style={{padding:"14px 16px"}}>
         {visibleProducts.length === 0 && <div style={{textAlign:"center",color:"#888",padding:40,fontSize:13}}>{t.category_empty}</div>}
         {visibleProducts.map(p => {
@@ -600,7 +864,6 @@ export default function CustomerMenu() {
           const inCart = cartIdx >= 0 ? cart[cartIdx].quantity : 0;
           return (
             <div key={p.id + "-" + p.category_id} style={{display:"flex",gap:12,padding:"14px 0",borderBottom:"1px solid #f0f0f0",opacity:soldOut||isFaded?0.45:1}}>
-              {p.image_url && <img src={p.image_url} alt="" style={{width:72,height:72,borderRadius:10,objectFit:"cover",flexShrink:0}}/>}
               <div style={{flex:1,minWidth:0}}>
                 <div style={{fontSize:15,fontWeight:700,color:"#000",lineHeight:1.3}}>{pName(p)}</div>
                 {pDesc(p) && <div style={{fontSize:12,color:"#666",marginTop:3,lineHeight:1.4}}>{pDesc(p)}</div>}
@@ -611,6 +874,7 @@ export default function CustomerMenu() {
                 <div style={{display:"flex",alignItems:"center",gap:10,marginTop:8}}>
                   {dis && <span style={{fontSize:12,color:"#999",textDecoration:"line-through"}}>₺{p.price}</span>}
                   <span style={{fontSize:15,fontWeight:800,color:dis?"#C8973E":"#000"}}>₺{fp}</span>
+                  {Number(memberDiscounts[p.id]||0) > 0 && <span style={{fontSize:9,padding:"2px 6px",background:"#000",color:"#FFD700",borderRadius:6,fontWeight:800,letterSpacing:"0.5px"}}>ÜYE</span>}
                 </div>
               </div>
               {!soldOut && (
@@ -630,15 +894,32 @@ export default function CustomerMenu() {
           );
         })}
       </div>
+      )}
 
       {cart.length > 0 && (
-        <div style={{position:"fixed",bottom:14,left:14,right:14,zIndex:40}}>
+        <div style={{position:"fixed",bottom:susBarActive?128:84,left:14,right:14,zIndex:40}}>
           <button onClick={() => setCheckoutOpen(true)} style={{width:"100%",padding:"16px 20px",background:"#000",color:"#fff",border:"none",borderRadius:14,fontSize:15,fontWeight:800,cursor:"pointer",boxShadow:"0 6px 20px rgba(0,0,0,0.35)",display:"flex",justifyContent:"space-between",alignItems:"center"}}>
             <span>{t.cart} ({cartCount})</span>
             <span>₺{cartTotal} · {t.continue} →</span>
           </button>
         </div>
       )}
+
+      {susBarActive && (
+        <button onClick={() => setBrowsing(false)} style={{position:"fixed",bottom:76,left:14,right:14,zIndex:45,display:"flex",justifyContent:"space-between",alignItems:"center",padding:"12px 16px",background:"#C8973E",color:"#000",border:"none",borderRadius:12,fontSize:13,fontWeight:800,cursor:"pointer",boxShadow:"0 4px 16px rgba(0,0,0,0.25)"}}>
+          <span>🍳 {L("Siparişin hazırlanıyor","Your order is being prepared","Ваш заказ готовится")}</span>
+          <span>→</span>
+        </button>
+      )}
+
+      <nav style={{position:"fixed",bottom:0,left:0,right:0,background:"#fff",borderTop:"1px solid #eee",display:"flex",justifyContent:"space-around",padding:"8px 0 16px",zIndex:50,boxShadow:"0 -2px 12px rgba(0,0,0,0.06)"}}>
+        {CUST_TABS.map(tab => (
+          <button key={tab.key} onClick={() => setCustTab(tab.key)} style={{display:"flex",flexDirection:"column",alignItems:"center",gap:2,background:"none",border:"none",cursor:"pointer",color:custTab===tab.key?"#000":"#999",padding:"4px 8px",minWidth:52}}>
+            <span style={{fontSize:20,filter:custTab===tab.key?"none":"grayscale(1)"}}>{tab.icon}</span>
+            <span style={{fontSize:9,fontWeight:custTab===tab.key?800:600,letterSpacing:"0.3px"}}>{tab[["en","ru"].includes(lang)?lang:"tr"]}</span>
+          </button>
+        ))}
+      </nav>
 
       {optModal && (
         <div onClick={() => setOptModal(null)} style={{position:"fixed",inset:0,background:"rgba(0,0,0,0.55)",display:"flex",alignItems:"flex-end",justifyContent:"center",zIndex:100}}>

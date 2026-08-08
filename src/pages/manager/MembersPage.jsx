@@ -14,18 +14,46 @@ export default function MembersPage() {
   const [form, setForm] = useState({});
   const [payAmount, setPayAmount] = useState("");
   const [busy, setBusy] = useState(false);
+  const [products, setProducts] = useState([]);
+  const [prodSearch, setProdSearch] = useState("");
+  const [prodDiscounts, setProdDiscounts] = useState({});
+  const [stats, setStats] = useState(null);
+
+  const storeFilter = staffUser?.store_ids?.length ? staffUser.store_ids : ["00000000-0000-0000-0000-000000000000"];
 
   const load = async () => {
     setLoading(true);
-    const { data } = await supabase.from("customers").select("*").in("store_id", staffUser?.store_ids?.length ? staffUser.store_ids : ["00000000-0000-0000-0000-000000000000"]).order("outstanding_balance", { ascending: false });
-    setMembers(data || []);
+    const [{ data }, { data: prods }] = await Promise.all([
+      supabase.from("customers").select("*").order("outstanding_balance", { ascending: false }),
+      supabase.from("products").select("id, name, price").in("store_id", storeFilter).eq("is_available", true).order("name"),
+    ]);
+    // store_id bos olanlar da listelensin (menuden Google ile girenler magazasiz olusur)
+    setMembers((data || []).filter(m => !m.store_id || storeFilter.includes(m.store_id)));
+    setProducts(prods || []);
     setLoading(false);
   };
   useEffect(() => { load(); }, []);
 
+  const PAID = ["paid", "completed", "served", "closed"];
+  const loadStats = async (customerId) => {
+    const { data: ords } = await supabase.from("orders").select("id, total, status, created_at").eq("customer_id", customerId).order("created_at", { ascending: false }).limit(300);
+    const all = ords || [];
+    const paid = all.filter(o => PAID.includes(o.status));
+    const st = { count: all.length, spent: paid.reduce((s, o) => s + Number(o.total || 0), 0), last: all[0]?.created_at || null, top: [] };
+    const ids = all.slice(0, 200).map(o => o.id);
+    if (ids.length) {
+      const { data: items } = await supabase.from("order_items").select("product_name, quantity").in("order_id", ids);
+      const cnt = {};
+      (items || []).forEach(it => { const n = it.product_name || "?"; cnt[n] = (cnt[n] || 0) + Number(it.quantity || 1); });
+      st.top = Object.entries(cnt).sort((a, b) => b[1] - a[1]).slice(0, 3);
+    }
+    setStats(st);
+  };
+
   const openNew = () => {
     setModal({ mode: "new" });
     setForm({ name:"", email:"", phone:"", tier:"bronze", admin_discount:0, outstanding_balance:0, notes:"" });
+    setProdSearch(""); setProdDiscounts({}); setStats(null);
   };
 
   const openEdit = (m) => {
@@ -38,6 +66,14 @@ export default function MembersPage() {
       notes: m.notes || "",
     });
     setPayAmount("");
+    setProdSearch(""); setProdDiscounts({}); setStats(null);
+    supabase.from("member_discounts").select("product_id, amount").eq("customer_id", m.id).eq("is_active", true)
+      .then(({ data }) => {
+        const map = {};
+        (data || []).forEach(d => { map[d.product_id] = Number(d.amount) || 0; });
+        setProdDiscounts(map);
+      });
+    loadStats(m.id);
   };
 
   const saveMember = async () => {
@@ -53,12 +89,25 @@ export default function MembersPage() {
       outstanding_balance: Number(form.outstanding_balance) || 0,
       notes: form.notes?.trim() || null,
     };
+    let customerId = modal.mode === "edit" ? modal.data.id : null;
     if (modal.mode === "new") {
-      const { error } = await supabase.from("customers").insert({ ...payload, store_id: staffUser?.store_ids?.[0] });
+      const { data: created, error } = await supabase.from("customers").insert({ ...payload, store_id: staffUser?.store_ids?.[0] }).select().single();
       if (error) { alert("Hata: " + error.message); setBusy(false); return; }
+      customerId = created?.id || null;
     } else {
       const { error } = await supabase.from("customers").update(payload).eq("id", modal.data.id);
       if (error) { alert("Hata: " + error.message); setBusy(false); return; }
+    }
+    // Uye urun indirimlerini kaydet (tam liste yeniden yazilir)
+    if (customerId) {
+      await supabase.from("member_discounts").delete().eq("customer_id", customerId);
+      const rows = Object.entries(prodDiscounts)
+        .filter(([, amt]) => Number(amt) > 0)
+        .map(([pid, amt]) => ({ customer_id: customerId, product_id: pid, amount: Number(amt), is_active: true }));
+      if (rows.length) {
+        const { error: de } = await supabase.from("member_discounts").insert(rows);
+        if (de) alert("Uye indirimleri kaydedilemedi: " + de.message);
+      }
     }
     setModal(null); setBusy(false); load();
   };
@@ -160,6 +209,42 @@ export default function MembersPage() {
             <Field label="EMAIL"><input value={form.email||""} onChange={e=>setForm({...form,email:e.target.value})} style={inputS}/></Field>
           </div>
           <Field label="TELEFON"><input value={form.phone||""} onChange={e=>setForm({...form,phone:e.target.value})} style={inputS}/></Field>
+
+          {modal.mode === "edit" && stats && (
+            <div style={{background:"#152015",border:"1px solid #2A3D2A",borderRadius:10,padding:12,marginBottom:12}}>
+              <div style={{fontSize:10,color:"#B0FFB0",letterSpacing:"1.5px",fontWeight:700,marginBottom:8}}>MUSTERI KARNESI</div>
+              <div style={{display:"flex",gap:14,flexWrap:"wrap",fontSize:12,color:"#ddd"}}>
+                <div><span style={{color:"#888"}}>Siparis:</span> <b>{stats.count}</b></div>
+                <div><span style={{color:"#888"}}>Harcama:</span> <b>₺{Math.round(stats.spent).toLocaleString("tr-TR")}</b></div>
+                <div><span style={{color:"#888"}}>Son:</span> <b>{stats.last ? new Date(stats.last).toLocaleDateString("tr-TR") : "—"}</b></div>
+              </div>
+              {stats.top.length > 0 && <div style={{fontSize:11,color:"#99CC99",marginTop:6}}>Favoriler: {stats.top.map(([n, q]) => n + " ×" + q).join(", ")}</div>}
+            </div>
+          )}
+
+          <div style={{background:"#1E1A10",border:"1px solid #C8973E55",borderRadius:10,padding:12,marginBottom:12}}>
+            <div style={{fontSize:10,color:"#FFD27A",letterSpacing:"1.5px",fontWeight:700,marginBottom:4}}>UYE URUN INDIRIMLERI (₺)</div>
+            <div style={{fontSize:10,color:"#888",marginBottom:8}}>Sabit tutar, urunun normal fiyatindan dusulur. Uye menuden Google ile giris yapinca indirimli fiyatlari gorur ve siparisleri hesabina islenir.</div>
+            <input value={prodSearch} onChange={e=>setProdSearch(e.target.value)} placeholder="Urun ara..." style={{...inputS, marginBottom:8, padding:"8px 10px"}}/>
+            <div style={{maxHeight:220,overflowY:"auto",border:"1px solid #2A2A2A",borderRadius:8,padding:"4px 8px",background:"#111"}}>
+              {products.filter(p => !prodSearch || p.name?.toLowerCase().includes(prodSearch.toLowerCase())).map(p => {
+                const sel = prodDiscounts[p.id] !== undefined;
+                const amt = prodDiscounts[p.id];
+                return (
+                  <div key={p.id} style={{display:"flex",alignItems:"center",gap:8,padding:"5px 0",borderBottom:"1px solid #1E1E1E"}}>
+                    <input type="checkbox" checked={sel} onChange={e => { const pd = {...prodDiscounts}; if (e.target.checked) pd[p.id] = pd[p.id] ?? ""; else delete pd[p.id]; setProdDiscounts(pd); }} style={{accentColor:"#C8973E"}}/>
+                    <div style={{flex:1,fontSize:12,color:"#ddd",minWidth:0,overflow:"hidden",textOverflow:"ellipsis",whiteSpace:"nowrap"}}>{p.name} <span style={{color:"#666",fontSize:11}}>₺{Math.round(p.price)}</span></div>
+                    {sel && (<div style={{display:"flex",alignItems:"center",gap:3}}>
+                      <span style={{color:"#888",fontSize:11}}>-₺</span>
+                      <input type="number" min="0" value={amt} onChange={e=>setProdDiscounts({...prodDiscounts, [p.id]: e.target.value})} style={{width:64,padding:5,background:"#0C0C0C",color:"#FFD27A",border:"1px solid #C8973E",borderRadius:5,fontSize:12}}/>
+                      <span style={{color:"#3ECF8E",fontSize:11,fontWeight:700,whiteSpace:"nowrap"}}>= ₺{Math.max(0, Math.round(Number(p.price) - (Number(amt)||0)))}</span>
+                    </div>)}
+                  </div>
+                );
+              })}
+              {products.length === 0 && <div style={{color:"#666",textAlign:"center",padding:12,fontSize:11}}>Urun bulunamadi</div>}
+            </div>
+          </div>
 
           <div style={{background:"#222",border:"1px solid #333",borderRadius:10,padding:12,marginBottom:12}}>
             <div style={{fontSize:10,color:"#888",letterSpacing:"1.5px",fontWeight:700,marginBottom:8}}>OZEL INDIRIM</div>

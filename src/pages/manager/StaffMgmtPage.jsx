@@ -5,12 +5,14 @@ import { useAuth } from "../../contexts/AuthContext.jsx";
 const cv = "-apple-system,BlinkMacSystemFont,'Segoe UI',Roboto,sans-serif";
 
 const ROLES_BASE = [
-  { key: "manager", label: "Yonetici (Operasyon)" },
-  { key: "waiter",  label: "Garson/Kasiyer" },
-  { key: "kitchen", label: "Mutfak" },
+  { key: "manager",  label: "Yonetici (Operasyon)" },
+  { key: "waiter",   label: "Garson/Kasiyer" },
+  { key: "kitchen",  label: "Mutfak" },
+  { key: "parttime", label: "Part-time (Siparis+Kasa)" },
+  { key: "viewer",   label: "Gozlemci (sadece goruntuleme)" },
 ];
 
-const roleColor = { admin:"#FFD700", manager:"#C8973E", owner:"#C8973E", waiter:"#3ECF8E", kitchen:"#E07A3E", cashier:"#5A8FE0" };
+const roleColor = { admin:"#FFD700", manager:"#C8973E", owner:"#C8973E", waiter:"#3ECF8E", kitchen:"#E07A3E", cashier:"#5A8FE0", viewer:"#B08FD8", parttime:"#6FB3C0" };
 
 export default function StaffMgmtPage() {
   const { isAdmin } = useAuth();
