@@ -57,6 +57,22 @@ export default function SettingsPage() {
         <div style={{fontSize:11,color:"#888",marginTop:6}}>NOT: Parti saatleri arasinda "Parti Menusu" tab'i acilir. "show_in_party_menu" isaretli urunler gosterilir.</div>
       </Section>
 
+      {/* Duyuru seridi */}
+      <Section icon="📢" title="Duyuru Seridi (QR Menu)" desc="QR menunun en ustunde ince siyah bir serit olarak gorunur. Kampanya/duyuru icin — Instagram'a ya da tahtaya yazmaya gerek kalmaz.">
+        <Toggle checked={settings.announcement_enabled === true || settings.announcement_enabled === "true"} onChange={v=>setKey("announcement_enabled", v)} label="Duyuru seridi aktif"/>
+        <Field label="DUYURU (TURKCE)">
+          <input value={settings.announcement_tr || ""} onChange={e=>setKey("announcement_tr", e.target.value)} placeholder="Orn: Pazar gunleri fici bira 150 TL! 🍺" style={inputS}/>
+        </Field>
+        <div style={{display:"flex",gap:8}}>
+          <Field label="ENGLISH (BOSSA TR GOSTERILIR)" style={{flex:1}}>
+            <input value={settings.announcement_en || ""} onChange={e=>setKey("announcement_en", e.target.value)} placeholder="e.g. Sunday draft beer 150 TL!" style={inputS}/>
+          </Field>
+          <Field label="РУССКИЙ (BOSSA TR)" style={{flex:1}}>
+            <input value={settings.announcement_ru || ""} onChange={e=>setKey("announcement_ru", e.target.value)} placeholder="напр.: Разливное пиво 150 TL по воскресеньям!" style={inputS}/>
+          </Field>
+        </div>
+      </Section>
+
       {/* Online odeme (PayTR) */}
       <Section icon="💳" title="Online Odeme (PayTR)" desc="Musteri siparis verdikten sonra telefonundan kartla odeyebilir. Kapatirsan buton musteri ekranindan kaybolur; kasa akisi degismez.">
         <Toggle checked={settings.online_payment_enabled === true || settings.online_payment_enabled === "true"} onChange={v=>setKey("online_payment_enabled", v)} label="Online odeme aktif"/>
