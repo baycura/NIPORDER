@@ -10,7 +10,7 @@ export default function MyShiftPage(){
   const checkedIn=shift?.checked_in_at?new Date(shift.checked_in_at).toLocaleTimeString("tr",{hour:"2-digit",minute:"2-digit"}):"—";
   const workedMins=shift?.checked_in_at?Math.floor((Date.now()-new Date(shift.checked_in_at))/60000):0;
   const workedStr=workedMins>0?`${Math.floor(workedMins/60)}s ${workedMins%60}dk`:"—";
-  const handleCheckIn=async()=>{const today=new Date().toISOString().split("T")[0];const{data}=await supabase.from("shifts").upsert({staff_id:staffUser.id,date:today,checked_in_at:new Date().toISOString(),status:"active"},{onConflict:"staff_id,date"}).select().single();setShift(data);};
+  const handleCheckIn=async()=>{const today=new Date().toISOString().split("T")[0];const{data,error}=await supabase.from("shifts").upsert({staff_id:staffUser.id,date:today,checked_in_at:new Date().toISOString(),status:"active",store_id:staffUser?.store_ids?.[0]},{onConflict:"staff_id,date"}).select().single();if(error){alert("Vardiyaya girilemedi: "+error.message);return;}setShift(data);};
   const handleCheckOut=async()=>{if(!confirm("Vardiyadan çıkış yapılsın mı? (Bildirimler kesilir)"))return;const today=new Date().toISOString().split("T")[0];const{data}=await supabase.from("shifts").update({status:"done"}).eq("staff_id",staffUser.id).eq("date",today).select().single();setShift(data);};
   return(<div>
     <div style={{display:"flex",justifyContent:"space-between",alignItems:"center",marginBottom:24}}>
