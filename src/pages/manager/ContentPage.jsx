@@ -25,8 +25,8 @@ export default function ContentPage() {
   };
   useEffect(() => { load(); }, []);
 
-  const openNew = () => { setModal({ mode: "new" }); setForm({ kind, title: "", body: "", images: [], is_active: true, sort_order: 0 }); };
-  const openEdit = (p) => { setModal({ mode: "edit", data: p }); setForm({ kind: p.kind, title: p.title || "", body: p.body || "", images: p.images || [], is_active: p.is_active !== false, sort_order: p.sort_order || 0 }); };
+  const openNew = () => { setModal({ mode: "new" }); setForm({ kind, title: "", body: "", title_en: "", body_en: "", title_ru: "", body_ru: "", images: [], is_active: true, sort_order: 0 }); };
+  const openEdit = (p) => { setModal({ mode: "edit", data: p }); setForm({ kind: p.kind, title: p.title || "", body: p.body || "", title_en: p.title_en || "", body_en: p.body_en || "", title_ru: p.title_ru || "", body_ru: p.body_ru || "", images: p.images || [], is_active: p.is_active !== false, sort_order: p.sort_order || 0 }); };
 
   const uploadPhotos = async (e) => {
     const files = Array.from(e.target.files || []);
@@ -52,6 +52,8 @@ export default function ContentPage() {
     setBusy(true);
     const payload = {
       kind: form.kind, title: form.title.trim(), body: form.body?.trim() || null,
+      title_en: form.title_en?.trim() || null, body_en: form.body_en?.trim() || null,
+      title_ru: form.title_ru?.trim() || null, body_ru: form.body_ru?.trim() || null,
       images: form.images || [], is_active: form.is_active !== false,
       sort_order: Number(form.sort_order) || 0, updated_at: new Date().toISOString(),
     };
@@ -118,8 +120,20 @@ export default function ContentPage() {
               ))}
             </div>
 
-            <Field label="BAŞLIK"><input value={form.title||""} onChange={e=>setForm({...form,title:e.target.value})} placeholder={form.kind==="urun"?"örn: Croissant Club Tee":"örn: Fethiye'de bu hafta"} style={inputS}/></Field>
-            <Field label={form.kind==="urun"?"HİKAYE / TANITIM":"YAZI"}><textarea value={form.body||""} onChange={e=>setForm({...form,body:e.target.value})} rows={6} style={{...inputS,resize:"vertical"}}/></Field>
+            <Field label="BAŞLIK (Türkçe)"><input value={form.title||""} onChange={e=>setForm({...form,title:e.target.value})} placeholder={form.kind==="urun"?"örn: Croissant Club Tee":"örn: Fethiye'de bu hafta"} style={inputS}/></Field>
+            <Field label={form.kind==="urun"?"HİKAYE / TANITIM (Türkçe)":"YAZI (Türkçe)"}><textarea value={form.body||""} onChange={e=>setForm({...form,body:e.target.value})} rows={5} style={{...inputS,resize:"vertical"}}/></Field>
+
+            <div style={{background:"#141414",border:"1px solid #2A2A2A",borderRadius:10,padding:12,marginBottom:12}}>
+              <div style={{fontSize:10,color:"#888",letterSpacing:"1.5px",fontWeight:700,marginBottom:8}}>🇬🇧 ENGLISH (opsiyonel — boşsa Türkçe gösterilir)</div>
+              <Field label="TITLE"><input value={form.title_en||""} onChange={e=>setForm({...form,title_en:e.target.value})} style={inputS}/></Field>
+              <Field label="TEXT"><textarea value={form.body_en||""} onChange={e=>setForm({...form,body_en:e.target.value})} rows={4} style={{...inputS,resize:"vertical"}}/></Field>
+            </div>
+
+            <div style={{background:"#141414",border:"1px solid #2A2A2A",borderRadius:10,padding:12,marginBottom:12}}>
+              <div style={{fontSize:10,color:"#888",letterSpacing:"1.5px",fontWeight:700,marginBottom:8}}>🇷🇺 РУССКИЙ (opsiyonel — boşsa Türkçe gösterilir)</div>
+              <Field label="ЗАГОЛОВОК"><input value={form.title_ru||""} onChange={e=>setForm({...form,title_ru:e.target.value})} style={inputS}/></Field>
+              <Field label="ТЕКСТ"><textarea value={form.body_ru||""} onChange={e=>setForm({...form,body_ru:e.target.value})} rows={4} style={{...inputS,resize:"vertical"}}/></Field>
+            </div>
 
             <div style={{marginBottom:12}}>
               <div style={{fontSize:10,color:"#888",letterSpacing:"1.5px",fontWeight:700,marginBottom:5}}>FOTOĞRAFLAR</div>

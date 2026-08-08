@@ -33,15 +33,15 @@ export default function MenuMgmtPage() {
   useEffect(() => { load(); }, []);
 
   // -------- CATEGORIES --------
-  const openNewCat = () => { setCatModal({mode:"new"}); setCatForm({name:"", name_en:"", icon:"", sort_order:100, available_from:"", available_until:"", show_in_party_menu:true, is_active:true}); };
-  const openEditCat = (c) => { setCatModal({mode:"edit", data:c}); setCatForm({name:c.name||"", name_en:c.name_en||"", icon:c.icon||"", sort_order:c.sort_order||100, available_from:c.available_from||"", available_until:c.available_until||"", show_in_party_menu:c.show_in_party_menu!==false, is_active:c.is_active!==false}); };
+  const openNewCat = () => { setCatModal({mode:"new"}); setCatForm({name:"", name_en:"", name_ru:"", icon:"", sort_order:100, available_from:"", available_until:"", show_in_party_menu:true, is_active:true}); };
+  const openEditCat = (c) => { setCatModal({mode:"edit", data:c}); setCatForm({name:c.name||"", name_en:c.name_en||"", name_ru:c.name_ru||"", icon:c.icon||"", sort_order:c.sort_order||100, available_from:c.available_from||"", available_until:c.available_until||"", show_in_party_menu:c.show_in_party_menu!==false, is_active:c.is_active!==false}); };
 
   const saveCat = async () => {
     if (busy) return;
     if (!catForm.name?.trim()) { alert("Kategori adi gerekli"); return; }
     setBusy(true);
     const payload = {
-      name: catForm.name.trim(), name_en: catForm.name_en?.trim() || null, icon: catForm.icon || null,
+      name: catForm.name.trim(), name_en: catForm.name_en?.trim() || null, name_ru: catForm.name_ru?.trim() || null, icon: catForm.icon || null,
       sort_order: Number(catForm.sort_order)||100,
       available_from: catForm.available_from || null,
       available_until: catForm.available_until || null,
@@ -68,7 +68,7 @@ export default function MenuMgmtPage() {
     if (!selectedCat) { alert("Once kategori sec"); return; }
     setProdModal({mode:"new"});
     setProdForm({
-      name:"", name_en:"", description:"", description_en:"", price:'', instant_discount_pct:'', hh_enabled:false, hh_price:'', hh_start:'', hh_end:'', hh_days:[0,1,2,3,4,5,6],
+      name:"", name_en:"", name_ru:"", description:"", description_en:"", description_ru:"", price:'', instant_discount_pct:'', hh_enabled:false, hh_price:'', hh_start:'', hh_end:'', hh_days:[0,1,2,3,4,5,6],
       sold_out_today:false, unavailable_reason:"",
       show_in_party_menu:false, store_id:"", kitchen_destination_store_id:"", is_available:true, prep_time_minutes:null, show_prep_time:false,
       category_id: selectedCat,
@@ -80,7 +80,7 @@ export default function MenuMgmtPage() {
   const openEditProd = (p) => {
     setProdModal({mode:"edit", data:p});
     setProdForm({
-      name:p.name||"", name_en:p.name_en||"", description:p.description||"", description_en:p.description_en||"",
+      name:p.name||"", name_en:p.name_en||"", name_ru:p.name_ru||"", description:p.description||"", description_en:p.description_en||"", description_ru:p.description_ru||"",
       price:Number(p.price)||0,
       instant_discount_pct:Number(p.instant_discount_pct)||0,
       sold_out_today:!!p.sold_out_today,
@@ -110,8 +110,10 @@ export default function MenuMgmtPage() {
     const payload = {
       name: prodForm.name.trim(),
       name_en: prodForm.name_en?.trim() || null,
+      name_ru: prodForm.name_ru?.trim() || null,
       description: prodForm.description?.trim() || null,
       description_en: prodForm.description_en?.trim() || null,
+      description_ru: prodForm.description_ru?.trim() || null,
       price: Number(prodForm.price)||0,
       instant_discount_pct: Number(prodForm.instant_discount_pct)||0,
       sold_out_today: prodForm.sold_out_today,
@@ -304,6 +306,7 @@ export default function MenuMgmtPage() {
         <Modal onClose={()=>setCatModal(null)} title={catModal.mode==="new"?"Yeni Kategori":"Kategoriyi Düzenle"}>
           <Field label="AD (Türkçe)"><input value={catForm.name||""} onChange={e=>setCatForm({...catForm,name:e.target.value})} style={inputS}/></Field>
           <Field label="NAME (English)"><input value={catForm.name_en||""} onChange={e=>setCatForm({...catForm,name_en:e.target.value})} placeholder="Optional" style={inputS}/></Field>
+          <Field label="НАЗВАНИЕ (Rusca)"><input value={catForm.name_ru||""} onChange={e=>setCatForm({...catForm,name_ru:e.target.value})} placeholder="Opsiyonel - RU secilince gorunur" style={inputS}/></Field>
           <Field label="IKON (emoji)"><input value={catForm.icon||""} onChange={e=>setCatForm({...catForm,icon:e.target.value})} placeholder="👕" style={inputS}/></Field>
           <Field label="SIRA (kucuk=once)"><input type="number" value={catForm.sort_order||0} onChange={e=>setCatForm({...catForm,sort_order:e.target.value})} style={inputS}/></Field>
           <div style={{display:"flex",gap:8}}>
@@ -330,8 +333,10 @@ export default function MenuMgmtPage() {
         <Modal onClose={()=>setProdModal(null)} title={prodModal.mode==="new"?"Yeni Ürün":"Ürünü Düzenle"}>
           <Field label="AD (Türkçe)"><input value={prodForm.name||""} onChange={e=>setProdForm({...prodForm,name:e.target.value})} style={inputS}/></Field>
           <Field label="NAME (English)"><input value={prodForm.name_en||""} onChange={e=>setProdForm({...prodForm,name_en:e.target.value})} placeholder="Optional - shown when customer selects EN" style={inputS}/></Field>
+          <Field label="НАЗВАНИЕ (Rusca)"><input value={prodForm.name_ru||""} onChange={e=>setProdForm({...prodForm,name_ru:e.target.value})} placeholder="Opsiyonel - RU secilince gorunur" style={inputS}/></Field>
           <Field label="AÇIKLAMA (Türkçe)"><textarea value={prodForm.description||""} onChange={e=>setProdForm({...prodForm,description:e.target.value})} rows={2} style={{...inputS,resize:"vertical"}}/></Field>
           <Field label="DESCRIPTION (English)"><textarea value={prodForm.description_en||""} onChange={e=>setProdForm({...prodForm,description_en:e.target.value})} rows={2} placeholder="Optional - shown when customer selects EN" style={{...inputS,resize:"vertical"}}/></Field>
+          <Field label="ОПИСАНИЕ (Rusca)"><textarea value={prodForm.description_ru||""} onChange={e=>setProdForm({...prodForm,description_ru:e.target.value})} rows={2} placeholder="Opsiyonel - RU secilince gorunur" style={{...inputS,resize:"vertical"}}/></Field>
           <Field label="FIYAT (₺)"><input type="number" step="0.01" value={prodForm.price??''} onChange={e=>setProdForm({...prodForm,price:e.target.value})} style={inputS}/></Field>
           <Field label="ANLIK INDIRIM (%)"><input type="number" step="1" min="0" max="99" value={prodForm.instant_discount_pct??''} onChange={e=>setProdForm({...prodForm,instant_discount_pct:e.target.value})} style={inputS}/></Field>
 

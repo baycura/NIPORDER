@@ -7,11 +7,11 @@ const cv = "-apple-system,BlinkMacSystemFont,'Segoe UI',Roboto,sans-serif";
 
 // Alt sekmeler — QR menu ayni zamanda vitrin: etkinlik/rezervasyon, surusler, shop, blog
 const CUST_TABS = [
-  { key: "menu",   icon: "🍽", tr: "Menü",     en: "Menu" },
-  { key: "events", icon: "🎟", tr: "Etkinlik", en: "Events" },
-  { key: "rides",  icon: "🚴", tr: "Sürüş",    en: "Rides" },
-  { key: "shop",   icon: "👕", tr: "Shop",     en: "Shop" },
-  { key: "blog",   icon: "📰", tr: "Blog",     en: "Blog" },
+  { key: "menu",   icon: "🍽", tr: "Menü",     en: "Menu",   ru: "Меню" },
+  { key: "events", icon: "🎟", tr: "Etkinlik", en: "Events", ru: "События" },
+  { key: "rides",  icon: "🚴", tr: "Sürüş",    en: "Rides",  ru: "Заезды" },
+  { key: "shop",   icon: "👕", tr: "Shop",     en: "Shop",   ru: "Шоп" },
+  { key: "blog",   icon: "📰", tr: "Blog",     en: "Blog",   ru: "Блог" },
 ];
 const FEED_URL = "https://gbbxxcduuwdmvfayxzeg.supabase.co/functions/v1/shopify-feed";
 const RESERVATION_URL = "https://reservation.notinparis.me";
@@ -101,6 +101,49 @@ const T = {
     submit_failed: "Failed to send order: ",
     notif_title: "🔔 Your order is ready!",
     notif_body: "Pick it up from the cashier — Not In Paris",
+    happy_hour: "HAPPY HOUR",
+  },
+  ru: {
+    menu: "МЕНЮ",
+    partyMode: "PARTY MODE",
+    category_empty: "В этой категории пока нет позиций",
+    sold_out: "Закончилось",
+    optional: "ОПЦИИ",
+    cart: "🛒 Корзина",
+    continue: "Далее",
+    note_optional: "напр.: без льда, без сахара",
+    optional_label: "ПРИМЕЧАНИЕ (НЕОБЯЗАТЕЛЬНО)",
+    cancel: "Отмена",
+    add_to_cart: "В корзину",
+    my_cart: "Моя корзина",
+    your_name: "ВАШЕ ИМЯ (чтобы официант вас нашёл)",
+    name_placeholder: "напр.: Иван",
+    order_note_label: "ПРИМЕЧАНИЕ К ЗАКАЗУ (увидит кухня)",
+    order_note_placeholder: "напр.: средняя прожарка, без специй...",
+    total: "ИТОГО",
+    submit_order: "Отправить заказ",
+    submitting: "Отправляем...",
+    waiter_will_bring: "Официант принесёт заказ к вашему столу",
+    notif_promise: "Мы сообщим, когда заказ будет готов",
+    please_choose: "Пожалуйста, выберите",
+    please_enter_name: "Пожалуйста, введите имя",
+    sold_out_alert: "Эта позиция закончилась: ",
+    order_kitchen_msg: "тправлено на кухню. Готовится…",
+    order_received: "Заказ принят!",
+    preparing: "Готовится...",
+    notif_granted: "🔔 Сообщим, когда будет готово",
+    notif_denied: "⚠️ Уведомления заблокированы. Не закрывайте страницу — прозвучит сигнал.",
+    notif_ask: "🔔 Разрешить уведомления",
+    back_to_menu: "Вернуться в меню",
+    order_ready_big: "ВАШ ЗАКАЗ ГОТОВ!",
+    pick_from_cashier: "Заберите на кассе.",
+    play_again: "🔊 Повторить",
+    enjoy: "Приятного аппетита!",
+    thanks: "Ждём вас снова ♥",
+    new_order: "Новый заказ",
+    submit_failed: "Не удалось отправить заказ: ",
+    notif_title: "🔔 Ваш заказ готов!",
+    notif_body: "Заберите на кассе — Not In Paris",
     happy_hour: "HAPPY HOUR",
   }
 };
@@ -240,9 +283,14 @@ export default function CustomerMenu() {
     }
   }, [custTab]);
 
-  const pName = (p) => (lang === "en" && p?.name_en) ? p.name_en : p?.name;
-  const pDesc = (p) => (lang === "en" && p?.description_en) ? p.description_en : p?.description;
-  const cName = (c) => (lang === "en" && c?.name_en) ? c.name_en : c?.name;
+  const pName = (p) => (lang === "en" && p?.name_en) ? p.name_en : (lang === "ru" && p?.name_ru) ? p.name_ru : p?.name;
+  const pDesc = (p) => (lang === "en" && p?.description_en) ? p.description_en : (lang === "ru" && p?.description_ru) ? p.description_ru : p?.description;
+  const cName = (c) => (lang === "en" && c?.name_en) ? c.name_en : (lang === "ru" && c?.name_ru) ? c.name_ru : c?.name;
+  // Inline uc-dil yardimcisi: L(tr, en, ru)
+  const L = (trS, enS, ruS) => lang === "en" ? enS : lang === "ru" ? ruS : trS;
+  const postTitle = (p) => (lang === "en" && p?.title_en) ? p.title_en : (lang === "ru" && p?.title_ru) ? p.title_ru : p?.title;
+  const postBody = (p) => (lang === "en" && p?.body_en) ? p.body_en : (lang === "ru" && p?.body_ru) ? p.body_ru : p?.body;
+  const dateLocale = lang === "en" ? "en-GB" : lang === "ru" ? "ru-RU" : "tr-TR";
 
   const load = async () => {
     setLoading(true);
@@ -559,6 +607,7 @@ export default function CustomerMenu() {
     <div style={{display:"flex",gap:4,background:"#f2f2f2",borderRadius:18,padding:3}}>
       <button onClick={() => setLanguage("tr")} style={{padding:"10px 16px",minWidth:48,minHeight:36,background:lang==="tr"?"#000":"transparent",color:lang==="tr"?"#fff":"#666",border:"none",borderRadius:14,fontSize:11,fontWeight:700,cursor:"pointer"}}>🇹🇷 TR</button>
       <button onClick={() => setLanguage("en")} style={{padding:"10px 16px",minWidth:48,minHeight:36,background:lang==="en"?"#000":"transparent",color:lang==="en"?"#fff":"#666",border:"none",borderRadius:14,fontSize:11,fontWeight:700,cursor:"pointer"}}>🇬🇧 EN</button>
+      <button onClick={() => setLanguage("ru")} style={{padding:"10px 16px",minWidth:48,minHeight:36,background:lang==="ru"?"#000":"transparent",color:lang==="ru"?"#fff":"#666",border:"none",borderRadius:14,fontSize:11,fontWeight:700,cursor:"pointer"}}>🇷🇺 RU</button>
     </div>
   );
 
@@ -594,7 +643,7 @@ export default function CustomerMenu() {
               <div style={{fontSize:60,marginBottom:14}}>✅</div>
               <div style={{fontSize:24,fontWeight:800,marginBottom:8}}>{t.order_received}</div>
               <div style={{fontSize:14,color:"#555",marginBottom:18,lineHeight:1.5}}>
-                {table ? (table.name + (lang==="en"?": s":": m")) : (lang==="en"?"S":"M")}{t.order_kitchen_msg}
+                {table ? (table.name + L(": m", ": s", ": о")) : L("M", "S", "О")}{t.order_kitchen_msg}
               </div>
               <div style={{display:"inline-flex",alignItems:"center",gap:8,padding:"10px 16px",background:"#f6f6f6",borderRadius:24,marginBottom:24,fontSize:13,color:"#555"}}>
                 <span style={{width:10,height:10,borderRadius:"50%",background:"#C8973E",display:"inline-block"}}></span>
@@ -610,10 +659,10 @@ export default function CustomerMenu() {
                 )}
               </div>
               <button onClick={() => setBrowsing(true)} style={{padding:"12px 24px",background:"#000",color:"#fff",border:"none",borderRadius:12,fontSize:13,fontWeight:700,cursor:"pointer"}}>
-                {lang==="en" ? "Browse while you wait →" : "Beklerken göz at →"}
+                {L("Beklerken göz at →","Browse while you wait →","Полистайте, пока ждёте →")}
               </button>
               <div style={{fontSize:11,color:"#999",marginTop:10,lineHeight:1.5}}>
-                {lang==="en" ? "Events, rides, shop & blog — we'll ring when it's ready 🔔" : "Etkinlikler, sürüşler, shop & blog — hazır olunca zili çalarız 🔔"}
+                {L("Etkinlikler, sürüşler, shop & blog — hazır olunca zili çalarız 🔔","Events, rides, shop & blog — we'll ring when it's ready 🔔","События, заезды, шоп и блог — позвоним, когда будет готово 🔔")}
               </div>
             </>
           )}
@@ -631,7 +680,7 @@ export default function CustomerMenu() {
           <div>
             <div style={{fontSize:22,fontWeight:900,letterSpacing:"1.5px",fontFamily:"'Coolvetica Condensed','Barlow Condensed','Bebas Neue',sans-serif"}}>NOT IN PARIS</div>
             <div style={{fontSize:10,color:"#888",letterSpacing:"2px",marginTop:2}}>
-              {custTab !== "menu" ? (CUST_TABS.find(x=>x.key===custTab)?.[lang==="en"?"en":"tr"] || "").toUpperCase() : (table ? table.name?.toUpperCase() : t.menu)}
+              {custTab !== "menu" ? (CUST_TABS.find(x=>x.key===custTab)?.[["en","ru"].includes(lang)?lang:"tr"] || "").toUpperCase() : (table ? table.name?.toUpperCase() : t.menu)}
               {partyMode && custTab === "menu" && <span style={{marginLeft:6,color:"#C8973E",fontWeight:700}}>· {t.partyMode} 🎉</span>}
             </div>
           </div>
@@ -655,14 +704,14 @@ export default function CustomerMenu() {
       <div style={{padding:"8px 16px",background:"#faf6ee",borderBottom:"1px solid #f0e8d8",display:"flex",alignItems:"center",justifyContent:"space-between",gap:8}}>
         {customer ? (
           <span style={{fontSize:12,color:"#7a5c1e",fontWeight:600}}>
-            ⭐ {lang==="en"?"Hi":"Merhaba"} {customer.name?.split(" ")[0] || ""}
-            {Object.keys(memberDiscounts).length > 0 && <span> — {lang==="en"?"member prices active":"üye fiyatların aktif"}</span>}
+            ⭐ {L("Merhaba","Hi","Привет")} {customer.name?.split(" ")[0] || ""}
+            {Object.keys(memberDiscounts).length > 0 && <span> — {L("üye fiyatların aktif","member prices active","цены для участников активны")}</span>}
           </span>
         ) : (
           <>
-            <span style={{fontSize:12,color:"#7a5c1e"}}>⭐ {lang==="en"?"Member?":"Üye misin?"}</span>
+            <span style={{fontSize:12,color:"#7a5c1e"}}>⭐ {L("Üye misin?","Member?","Участник клуба?")}</span>
             <button onClick={signInWithGoogle} style={{padding:"6px 12px",background:"#000",color:"#fff",border:"none",borderRadius:10,fontSize:11,fontWeight:700,cursor:"pointer",whiteSpace:"nowrap"}}>
-              {lang==="en"?"Sign in with Google":"Google ile giriş yap"}
+              {L("Google ile giriş yap","Sign in with Google","Войти через Google")}
             </button>
           </>
         )}
@@ -673,7 +722,7 @@ export default function CustomerMenu() {
         <div style={{padding:"14px 16px"}}>
           {custTab === "events" && (
             <a href={RESERVATION_URL} target="_blank" rel="noreferrer" style={{display:"flex",justifyContent:"space-between",alignItems:"center",padding:"16px 18px",background:"#000",color:"#fff",borderRadius:14,textDecoration:"none",marginBottom:14}}>
-              <span style={{fontSize:14,fontWeight:800}}>🎟 {lang==="en"?"Make a reservation":"Rezervasyon yap"}</span>
+              <span style={{fontSize:14,fontWeight:800}}>🎟 {L("Rezervasyon yap","Make a reservation","Забронировать")}</span>
               <span style={{fontSize:16}}>→</span>
             </a>
           )}
@@ -683,8 +732,8 @@ export default function CustomerMenu() {
               {feeds[custTab]?.length === 0 && (
                 <div style={{textAlign:"center",color:"#888",padding:30,fontSize:13,lineHeight:1.6}}>
                   {custTab === "events"
-                    ? (lang==="en" ? "Upcoming events will appear here soon 🎉" : "Yaklaşan etkinlikler yakında burada 🎉")
-                    : (lang==="en" ? "Planned rides will appear here soon 🚴" : "Planlı sürüşler yakında burada 🚴")}
+                    ? L("Yaklaşan etkinlikler yakında burada 🎉","Upcoming events will appear here soon 🎉","Скоро здесь появятся события 🎉")
+                    : L("Planlı sürüşler yakında burada 🚴","Planned rides will appear here soon 🚴","Скоро здесь появятся заезды 🚴")}
                 </div>
               )}
               {(feeds[custTab] || []).map((it, i) => (
@@ -695,7 +744,7 @@ export default function CustomerMenu() {
                     {it.body && <div style={{fontSize:12,color:"#666",marginTop:4,lineHeight:1.5}}>{it.body}</div>}
                     <div style={{display:"flex",justifyContent:"space-between",alignItems:"center",marginTop:8}}>
                       {it.price != null && <span style={{fontSize:14,fontWeight:800,color:"#C8973E"}}>₺{Math.round(it.price).toLocaleString("tr-TR")}</span>}
-                      <span style={{fontSize:12,fontWeight:700,color:"#000"}}>{lang==="en"?"View":"İncele"} →</span>
+                      <span style={{fontSize:12,fontWeight:700,color:"#000"}}>{L("İncele","View","Подробнее")} →</span>
                     </div>
                   </div>
                 </a>
@@ -707,7 +756,7 @@ export default function CustomerMenu() {
               {postFeeds[custTab] === undefined && <div style={{textAlign:"center",color:"#888",padding:30,fontSize:13}}>...</div>}
               {postFeeds[custTab]?.length === 0 && (
                 <div style={{textAlign:"center",color:"#888",padding:30,fontSize:13}}>
-                  {lang==="en" ? "Coming soon ✨" : "Yakında ✨"}
+                  {L("Yakında ✨","Coming soon ✨","Скоро ✨")}
                 </div>
               )}
               {(postFeeds[custTab] || []).map(p => (
@@ -722,14 +771,14 @@ export default function CustomerMenu() {
                     </div>
                   )}
                   <div style={{padding:"12px 14px"}}>
-                    <div style={{fontSize:16,fontWeight:800}}>{p.title}</div>
-                    {p.body && <div style={{fontSize:13,color:"#444",marginTop:6,lineHeight:1.6,whiteSpace:"pre-wrap"}}>{p.body}</div>}
+                    <div style={{fontSize:16,fontWeight:800}}>{postTitle(p)}</div>
+                    {postBody(p) && <div style={{fontSize:13,color:"#444",marginTop:6,lineHeight:1.6,whiteSpace:"pre-wrap"}}>{postBody(p)}</div>}
                     {custTab === "shop" ? (
                       <div style={{display:"inline-block",marginTop:10,padding:"6px 12px",background:"#000",color:"#FFD700",borderRadius:10,fontSize:11,fontWeight:800}}>
-                        💳 {lang==="en"?"Available at the counter":"Kasadan alabilirsin"}
+                        💳 {L("Kasadan alabilirsin","Available at the counter","Можно купить на кассе")}
                       </div>
                     ) : (
-                      <div style={{fontSize:10,color:"#999",marginTop:8}}>{new Date(p.created_at).toLocaleDateString(lang==="en"?"en-GB":"tr-TR",{day:"numeric",month:"long"})}</div>
+                      <div style={{fontSize:10,color:"#999",marginTop:8}}>{new Date(p.created_at).toLocaleDateString(dateLocale,{day:"numeric",month:"long"})}</div>
                     )}
                   </div>
                 </div>
@@ -752,7 +801,6 @@ export default function CustomerMenu() {
           const inCart = cartIdx >= 0 ? cart[cartIdx].quantity : 0;
           return (
             <div key={p.id + "-" + p.category_id} style={{display:"flex",gap:12,padding:"14px 0",borderBottom:"1px solid #f0f0f0",opacity:soldOut||isFaded?0.45:1}}>
-              {p.image_url && <img src={p.image_url} alt="" style={{width:72,height:72,borderRadius:10,objectFit:"cover",flexShrink:0}}/>}
               <div style={{flex:1,minWidth:0}}>
                 <div style={{fontSize:15,fontWeight:700,color:"#000",lineHeight:1.3}}>{pName(p)}</div>
                 {pDesc(p) && <div style={{fontSize:12,color:"#666",marginTop:3,lineHeight:1.4}}>{pDesc(p)}</div>}
@@ -796,7 +844,7 @@ export default function CustomerMenu() {
 
       {susBarActive && (
         <button onClick={() => setBrowsing(false)} style={{position:"fixed",bottom:76,left:14,right:14,zIndex:45,display:"flex",justifyContent:"space-between",alignItems:"center",padding:"12px 16px",background:"#C8973E",color:"#000",border:"none",borderRadius:12,fontSize:13,fontWeight:800,cursor:"pointer",boxShadow:"0 4px 16px rgba(0,0,0,0.25)"}}>
-          <span>🍳 {lang==="en"?"Your order is being prepared":"Siparişin hazırlanıyor"}</span>
+          <span>🍳 {L("Siparişin hazırlanıyor","Your order is being prepared","Ваш заказ готовится")}</span>
           <span>→</span>
         </button>
       )}
@@ -805,7 +853,7 @@ export default function CustomerMenu() {
         {CUST_TABS.map(tab => (
           <button key={tab.key} onClick={() => setCustTab(tab.key)} style={{display:"flex",flexDirection:"column",alignItems:"center",gap:2,background:"none",border:"none",cursor:"pointer",color:custTab===tab.key?"#000":"#999",padding:"4px 8px",minWidth:52}}>
             <span style={{fontSize:20,filter:custTab===tab.key?"none":"grayscale(1)"}}>{tab.icon}</span>
-            <span style={{fontSize:9,fontWeight:custTab===tab.key?800:600,letterSpacing:"0.3px"}}>{lang==="en"?tab.en:tab.tr}</span>
+            <span style={{fontSize:9,fontWeight:custTab===tab.key?800:600,letterSpacing:"0.3px"}}>{tab[["en","ru"].includes(lang)?lang:"tr"]}</span>
           </button>
         ))}
       </nav>
