@@ -262,7 +262,7 @@ export default function InvoicesPage() {
                 {ocrBusy ? "AI okuyor... (10-30 sn)" : "🤖 Fotograftan doldur (AI)"}
               </button>
             )}
-            <div style={{fontSize:10,color:"#888",marginTop:6}}>Fotograf saklanmaz — yalnizca kalemleri okumak icin kullanilir. Okunan kalemleri kontrol edip kaydet.</div>
+            <div style={{fontSize:10,color:"#888",marginTop:6}}>Fotograf saklanmaz. Birim fiyatlar KDV DAHIL hesaplanir (satirdaki KDV orani uygulanir). Okunan kalemleri kontrol edip kaydet.</div>
           </div>
 
           <div style={{borderTop:"1px solid #2A2A2A",paddingTop:14,marginBottom:10}}>

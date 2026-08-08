@@ -25,9 +25,10 @@ const OUTPUT_SCHEMA = {
           name: { type: "string", description: "Urun/kalem adi, faturada yazildigi gibi" },
           qty: { type: "number", description: "Miktar" },
           unit: { type: "string", enum: ["ml", "l", "g", "kg", "adet", "sise", "kasa"], description: "Birim — en yakinini sec (sise = şişe)" },
-          unit_cost: { type: "number", description: "BIRIM fiyat, TL. Satir toplami verilmisse miktara bol." },
+          vat_pct: { type: "number", description: "Satirin KDV orani yuzde olarak (0, 1, 10, 20 gibi). Faturada gorunmuyorsa 0." },
+          unit_cost: { type: "number", description: "KDV DAHIL birim fiyat, TL. Faturadaki birim fiyat KDV haric ise satirin KDV oranini uygulayip DAHIL fiyati yaz. Satir toplami verilmisse once miktara bol." },
         },
-        required: ["name", "qty", "unit", "unit_cost"],
+        required: ["name", "qty", "unit", "vat_pct", "unit_cost"],
         additionalProperties: false,
       },
     },
@@ -86,7 +87,10 @@ Deno.serve(async (req: Request) => {
           {
             type: "text",
             text: "Bu bir tedarikci faturasi/irsaliye/fis fotografi. Tedarikci adini, fatura tarihini ve TUM urun kalemlerini cikar. " +
-              "Her kalem icin: urun adi (faturadaki haliyle), miktar, birim ve BIRIM fiyat (satir toplami degil — yalniz satir toplami goruluyorsa miktara bolerek birim fiyati hesapla). " +
+              "Her kalem icin: urun adi (faturadaki haliyle), miktar, birim, satirin KDV orani (vat_pct) ve KDV DAHIL birim fiyat. " +
+              "ONEMLI - KDV: Turk faturalarinda satir fiyatlari genelde KDV HARICTIR ve KDV orani ayri sutunda (%1, %10, %20) ya da altta KDV ozetinde yazar. " +
+              "unit_cost alanina daima KDV DAHIL birim fiyati yaz: KDV haric birim fiyat x (1 + vat_pct/100). Fiyat zaten KDV dahilse aynen kullan. " +
+              "Satir toplami verilmisse once miktara bolerek birim fiyati bul. Genel toplam ile satirlarin KDV dahil toplamini karsilastirip tutarliligi kontrol et. " +
               "Tarihi YYYY-MM-DD formatina cevir. Emin olamadigin alanlari bos string ya da 0 birak; asla uydurma.",
           },
         ],
@@ -96,10 +100,15 @@ Deno.serve(async (req: Request) => {
 
     const textBlock = msg.content.find((b) => b.type === "text");
     const parsed = JSON.parse((textBlock && "text" in textBlock ? textBlock.text : "") || "{}");
+    const lines = (Array.isArray(parsed.lines) ? parsed.lines : []).map((l: Record<string, unknown>) => ({
+      ...l,
+      unit_cost: Math.round(Number(l.unit_cost || 0) * 100) / 100,
+      vat_pct: Number(l.vat_pct || 0),
+    }));
     return json({
       supplier_name: typeof parsed.supplier_name === "string" ? parsed.supplier_name : "",
       invoice_date: typeof parsed.invoice_date === "string" ? parsed.invoice_date : "",
-      lines: Array.isArray(parsed.lines) ? parsed.lines : [],
+      lines,
     });
   } catch (e) {
     console.error("invoice-ocr error:", e);
