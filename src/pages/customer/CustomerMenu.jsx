@@ -775,7 +775,18 @@ export default function CustomerMenu() {
 
   return (
     <div className="nip-customer nip-customer-shell" style={{fontFamily:cv,background:"#fff",minHeight:"100vh",color:"#000",paddingBottom:cart.length>0?156:96}}>
-      <div style={{padding:"20px 16px 10px",borderBottom:"1px solid #eee",position:"sticky",top:0,background:"#fff",zIndex:20}}>
+      <div style={{borderBottom:"1px solid #eee",position:"sticky",top:0,background:"#fff",zIndex:20}}>
+        {(() => {
+          // Duyuru seridi — Ayarlar > Duyuru Seridi'nden yonetilir (uc dilli, TR'ye dusme)
+          const annOn = settings && (settings.announcement_enabled === true || settings.announcement_enabled === "true");
+          const annText = !annOn ? "" : String((lang === "ru" ? (settings.announcement_ru || settings.announcement_tr) : lang === "en" ? (settings.announcement_en || settings.announcement_tr) : settings.announcement_tr) || "").trim();
+          return annText ? (
+            <div style={{background:"#000",color:"#E0AB4A",padding:"7px 14px",fontSize:12,fontWeight:700,textAlign:"center",letterSpacing:"0.3px",lineHeight:1.4}}>
+              📢 {annText}
+            </div>
+          ) : null;
+        })()}
+        <div style={{padding:"20px 16px 10px"}}>
         <div style={{display:"flex",alignItems:"center",justifyContent:"space-between"}}>
           <div>
             <div style={{fontSize:24,fontWeight:400,letterSpacing:"0.005em",fontFamily:"'Coolvetica Heavy','Coolvetica Condensed','Barlow Condensed',sans-serif",textTransform:"uppercase"}}>Not in Paris</div>
@@ -798,6 +809,7 @@ export default function CustomerMenu() {
           ))}
         </div>
         )}
+        </div>
       </div>
 
       {custTab === "menu" && (
