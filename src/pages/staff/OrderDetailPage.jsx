@@ -126,7 +126,10 @@ export default function OrderDetailPage() {
         <div style={{display:"flex",alignItems:"center",gap:8,flexWrap:"wrap"}}>
           {order.stores?.slug && <span style={{display:"inline-block",background:order.stores.slug==="doner"?"#C8973E":"#3ECF8E",color:"#000",padding:"3px 10px",borderRadius:6,fontSize:10,fontWeight:800,letterSpacing:"0.5px"}}>{order.stores.slug==="doner"?"🥙 DÖNER":"🗼 PARIS"}</span>}
           {where ? (
-            <div style={{fontSize:24,fontWeight:800}}>{where}</div>
+            <div style={{display:"flex",alignItems:"center",gap:8,flexWrap:"wrap"}}>
+              <div style={{fontSize:24,fontWeight:800}}>{where}</div>
+              <input value={customerNameEdit} onChange={e=>setCustomerNameEdit(e.target.value)} onBlur={saveCustomerName} placeholder="👤 İsim" style={{background:"#1A1A1A",border:"1px solid #2A2A2A",color:"#F0EDE8",fontSize:14,fontWeight:700,padding:"6px 10px",borderRadius:8,outline:"none",fontFamily:"inherit",width:130}}/>
+            </div>
           ) : (
             <div style={{display:"flex",alignItems:"center",gap:6}}>
               <span style={{fontSize:20}}>👤</span>

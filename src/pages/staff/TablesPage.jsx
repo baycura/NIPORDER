@@ -30,18 +30,20 @@ export default function TablesPage() {
 
   useEffect(() => { load(); }, []);
 
+  const tableOrders = (tableId) => orders.filter(o => o.table_id === tableId);
   const tableHasOpenOrder = (tableId) => orders.find(o => o.table_id === tableId);
 
   const filtered = tables.filter(t => {
     if (filter === "all") return true;
-    if (filter === "bar") return t.name?.toLowerCase().includes("bar");
-    if (filter === "ic")  return t.name?.toLowerCase().match(/^masa/);
-    if (filter === "teras") return t.name?.toLowerCase().includes("teras");
+    if (filter === "dis") return t.section === "Dış" || t.name?.toLowerCase().startsWith("dış");
+    if (filter === "cam") return t.name?.toLowerCase().includes("cam");
+    if (filter === "cowork") return t.name?.toLowerCase().includes("co-work");
     return true;
   });
 
   const openOrderForTable = async (table) => {
-    const existing = tableHasOpenOrder(table.id);
+    // Ortak masada her kisi ayri hesap acar; normal masada acik hesap varsa ona gidilir
+    const existing = table.shared ? null : tableHasOpenOrder(table.id);
     if (existing) { navigate("/orders/" + existing.id); return; }
     const { data: newOrd, error } = await supabase.from("orders").insert({
       table_id: table.id, origin_store_id: table.store_id, staff_id: staffUser?.id, status: "open", subtotal: 0, total: 0, discount_amount: 0,
@@ -87,7 +89,7 @@ export default function TablesPage() {
       </button>
 
       <div style={{display:"flex",gap:8,marginBottom:16,overflowX:"auto"}}>
-        {[["all","TUMU"],["bar","BAR"],["ic","IC MEKAN"],["teras","TERAS"]].map(([k,l]) => (
+        {[["all","TUMU"],["dis","DIŞ"],["cam","ÖN CAM"],["cowork","CO-WORK"]].map(([k,l]) => (
           <button key={k} onClick={() => setFilter(k)} style={{padding:"8px 16px",border:"none",borderRadius:18,fontSize:11,fontWeight:700,letterSpacing:"1px",background:filter===k?"#C8973E":"#222",color:filter===k?"#000":"#888",cursor:"pointer",whiteSpace:"nowrap",flexShrink:0}}>{l}</button>
         ))}
       </div>
@@ -110,17 +112,26 @@ export default function TablesPage() {
 
       <div style={{display:"grid",gridTemplateColumns:"repeat(auto-fill,minmax(150px,1fr))",gap:10}}>
         {filtered.map(t => {
-          const ord = tableHasOpenOrder(t.id);
-          const isOpen = !!ord;
+          const ords = tableOrders(t.id);
+          const isOpen = ords.length > 0;
+          const totalSum = ords.reduce((s,o) => s + Number(o.total||0), 0);
           return (
-            <div key={t.id} style={{background:"#1A1A1A",border:"1px solid "+(isOpen?"#C8973E":"#2A2A2A"),borderRadius:12,padding:12,position:"relative"}}>
+            <div key={t.id} style={{background:"#1A1A1A",border:"1px solid "+(isOpen?"#C8973E":"#2A2A2A"),borderRadius:12,padding:12,position:"relative",gridColumn:t.shared?"1 / -1":"auto"}}>
               <div style={{display:"flex",justifyContent:"space-between",alignItems:"flex-start",marginBottom:6}}>
-                <div style={{fontSize:15,fontWeight:700,color:"#F0EDE8"}}>{t.name}</div>
+                <div style={{fontSize:15,fontWeight:700,color:"#F0EDE8"}}>{t.name}{t.shared && <span style={{marginLeft:6,fontSize:9,background:"#2A2A3A",color:"#8FA8E0",padding:"2px 6px",borderRadius:6,fontWeight:800,letterSpacing:"0.5px",verticalAlign:"middle"}}>ORTAK</span>}</div>
                 <button onClick={(e) => {e.stopPropagation(); setEditTable(t); setEditName(t.name);}} style={{background:"none",border:"none",color:"#666",cursor:"pointer",padding:2,fontSize:13}} title="Duzenle">✏️</button>
               </div>
-              <div style={{fontSize:10,color:isOpen?"#C8973E":"#666",marginBottom:10}}>{isOpen ? "DOLU · ₺" + (ord.total||0) : t.capacity ? t.capacity + " kisilik" : "Bos"}</div>
-              <button onClick={() => openOrderForTable(t)} style={{width:"100%",padding:"8px",background:isOpen?"#C8973E":"transparent",color:isOpen?"#000":"#C8973E",border:"1px solid #C8973E",borderRadius:8,fontSize:12,fontWeight:700,cursor:"pointer"}}>
-                {isOpen ? "Hesabi Ac →" : "Siparis Ac +"}
+              <div style={{fontSize:10,color:isOpen?"#C8973E":"#666",marginBottom:10}}>
+                {isOpen ? (t.shared ? ords.length + " acik hesap · ₺" + totalSum : "DOLU · ₺" + totalSum) : t.capacity ? t.capacity + " kisilik" : "Bos"}
+              </div>
+              {t.shared && ords.map(o => (
+                <div key={o.id} onClick={() => navigate("/orders/" + o.id)} style={{display:"flex",justifyContent:"space-between",alignItems:"center",background:"#0C0C0C",border:"1px solid #2A2A2A",borderRadius:8,padding:"8px 10px",marginBottom:6,cursor:"pointer"}}>
+                  <div style={{fontSize:12,fontWeight:700,color:"#F0EDE8"}}>👤 {o.customer_name || "İsimsiz"}</div>
+                  <div style={{fontSize:12,color:"#C8973E",fontWeight:800}}>₺{o.total || 0} →</div>
+                </div>
+              ))}
+              <button onClick={() => openOrderForTable(t)} style={{width:"100%",padding:"8px",background:!t.shared&&isOpen?"#C8973E":"transparent",color:!t.shared&&isOpen?"#000":"#C8973E",border:"1px solid #C8973E",borderRadius:8,fontSize:12,fontWeight:700,cursor:"pointer"}}>
+                {t.shared ? "+ Yeni Hesap (kisi)" : isOpen ? "Hesabi Ac →" : "Siparis Ac +"}
               </button>
             </div>
           );

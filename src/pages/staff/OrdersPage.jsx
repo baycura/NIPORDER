@@ -97,7 +97,7 @@ export default function OrdersPage() {
 
       {orders.map(o => {
         const st = STATUS_LABEL[o.status] || {label:o.status, color:"#888"};
-        const where = o.table_id ? (tableMap[o.table_id] || "Masa") : "👤 " + (o.customer_name || "Misafir");
+        const where = o.table_id ? (tableMap[o.table_id] || "Masa") + (o.customer_name ? " · 👤 " + o.customer_name : "") : "👤 " + (o.customer_name || "Misafir");
         const waitMin = Math.round((Date.now() - new Date(o.created_at).getTime()) / 60000);
         return (
           <div key={o.id} onClick={() => navigate("/orders/" + o.id)} style={{background:"#1A1A1A",border:"1px solid #2A2A2A",borderRadius:10,padding:12,marginBottom:8,cursor:"pointer",display:"flex",alignItems:"center",gap:10}}>

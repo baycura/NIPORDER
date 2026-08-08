@@ -84,7 +84,7 @@ export default function PaymentPage() {
       {orders.length === 0 && <div style={{textAlign:"center",padding:40,color:"#666",fontSize:13}}>Bekleyen hesap yok</div>}
 
       {orders.map(o => {
-        const where = o.table_id ? tables[o.table_id] : "👤 " + (o.customer_name || "Misafir");
+        const where = o.table_id ? (tables[o.table_id] || "Masa") + (o.customer_name ? " · 👤 " + o.customer_name : "") : "👤 " + (o.customer_name || "Misafir");
         const storeSlug = o.stores?.slug;
         const storeBadge = storeSlug === "doner" ? "🥙 DÖNER" : storeSlug === "paris" ? "🗼 PARIS" : null;
         const storeBadgeColor = storeSlug === "doner" ? "#C8973E" : "#3ECF8E";
@@ -108,7 +108,7 @@ export default function PaymentPage() {
 
             <div style={{background:"#0C0C0C",border:"1px solid #2A2A2A",borderRadius:10,padding:14,marginBottom:14}}>
               {modal.stores?.slug && <div style={{display:"inline-block",background:modal.stores.slug==="doner"?"#C8973E":"#3ECF8E",color:"#000",padding:"2px 8px",borderRadius:6,fontSize:10,fontWeight:800,letterSpacing:"0.5px",marginBottom:6}}>{modal.stores.slug==="doner"?"🥙 DÖNER":"🗼 PARIS"}</div>}
-              <div style={{fontSize:11,color:"#888",marginBottom:4}}>{modal.table_id ? tables[modal.table_id] : "👤 " + (modal.customer_name || "Misafir")}</div>
+              <div style={{fontSize:11,color:"#888",marginBottom:4}}>{modal.table_id ? (tables[modal.table_id] || "Masa") + (modal.customer_name ? " · 👤 " + modal.customer_name : "") : "👤 " + (modal.customer_name || "Misafir")}</div>
               <div style={{fontSize:24,color:"#F0EDE8",fontWeight:800}}>₺{modal.total || 0}</div>
             </div>
 
