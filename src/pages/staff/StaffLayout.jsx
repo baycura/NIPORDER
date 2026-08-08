@@ -114,7 +114,7 @@ export default function StaffLayout() {
           <div style={{color:"#F0EDE8",fontSize:13,fontWeight:700,fontFamily:cv,whiteSpace:"nowrap",overflow:"hidden",textOverflow:"ellipsis"}}>{staffUser?.name}</div>
           <div style={{color,fontSize:10,letterSpacing:"1px",fontFamily:cv,fontWeight:600}}>{displayRole?.toUpperCase()}</div>
         </div>
-        <button onClick={async()=>{await signOut();navigate("/login");}} style={{background:"none",border:"none",color:"#666",fontSize:18,cursor:"pointer",padding:6}}>⭳</button>
+        <button onClick={async()=>{await signOut();navigate("/login");}} title="Çıkış" aria-label="Çıkış" style={{background:"none",border:"none",color:"#666",fontSize:18,cursor:"pointer",padding:6}}>🚪</button>
       </div>
     </div>
   );
