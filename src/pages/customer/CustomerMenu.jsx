@@ -271,7 +271,33 @@ export default function CustomerMenu() {
     isInRange(now, settings.party_mode_from, settings.party_mode_until);
 
   // Uye sistemi: Google ile giren musteri + urun bazli sabit (₺) indirimleri
-  const { customer, signInWithGoogle } = useAuth();
+  const { customer, signInWithGoogle, signOut } = useAuth();
+
+  // Uye profili karti (uye seridine tiklayinca acilir)
+  const [profileOpen, setProfileOpen] = useState(false);
+  const [profileStats, setProfileStats] = useState(null);
+  const openProfile = async () => {
+    if (!customer) return;
+    setProfileOpen(true); setProfileStats(null);
+    try {
+      const [{ data: cust }, { data: ords }] = await Promise.all([
+        supabase.from("customers").select("name, email, avatar_url, points, outstanding_balance, created_at").eq("id", customer.id).maybeSingle(),
+        supabase.from("orders").select("id, total, created_at").eq("customer_id", customer.id).in("status", ["paid", "completed", "served", "closed", "debt"]).order("created_at", { ascending: false }).limit(200),
+      ]);
+      const paid = ords || [];
+      const totalSpent = paid.reduce((s, o) => s + Number(o.total || 0), 0);
+      let top = [];
+      if (paid.length) {
+        const { data: its } = await supabase.from("order_items").select("product_name, quantity").in("order_id", paid.slice(0, 100).map(o => o.id));
+        const cnt = {};
+        (its || []).forEach(i => { cnt[i.product_name] = (cnt[i.product_name] || 0) + Number(i.quantity || 1); });
+        top = Object.entries(cnt).sort((a, b) => b[1] - a[1]).slice(0, 3);
+      }
+      setProfileStats({ cust: cust || customer, orders: paid.length, totalSpent, top, last: paid[0]?.created_at || null });
+    } catch {
+      setProfileStats({ cust: customer, orders: 0, totalSpent: 0, top: [], last: null });
+    }
+  };
   const [memberDiscounts, setMemberDiscounts] = useState({});
   useEffect(() => {
     if (!customer?.id) { setMemberDiscounts({}); return; }
@@ -818,10 +844,13 @@ export default function CustomerMenu() {
       {custTab === "menu" && (
       <div style={{padding:"8px 16px",background:"#faf6ee",borderBottom:"1px solid #f0e8d8",display:"flex",alignItems:"center",justifyContent:"space-between",gap:8}}>
         {customer ? (
-          <span style={{fontSize:12,color:"#7a5c1e",fontWeight:600}}>
-            ⭐ {L("Merhaba","Hi","Привет")} {customer.name?.split(" ")[0] || ""}
-            {Object.keys(memberDiscounts).length > 0 && <span> — {L("üye fiyatların aktif","member prices active","цены для участников активны")}</span>}
-          </span>
+          <button onClick={openProfile} style={{fontSize:12,color:"#7a5c1e",fontWeight:600,background:"none",border:"none",cursor:"pointer",padding:0,textAlign:"left",fontFamily:"inherit",display:"flex",alignItems:"center",gap:6,width:"100%",justifyContent:"space-between"}}>
+            <span>
+              ⭐ {L("Merhaba","Hi","Привет")} {customer.name?.split(" ")[0] || ""}
+              {Object.keys(memberDiscounts).length > 0 && <span> — {L("üye fiyatların aktif","member prices active","цены для участников активны")}</span>}
+            </span>
+            <span style={{fontSize:11,fontWeight:800,whiteSpace:"nowrap"}}>{L("Profilim →","My profile →","Профиль →")}</span>
+          </button>
         ) : (
           <>
             <span style={{fontSize:12,color:"#7a5c1e"}}>⭐ {L("Üye misin?","Member?","Участник клуба?")}</span>
@@ -1018,6 +1047,85 @@ export default function CustomerMenu() {
           </button>
         ))}
       </nav>
+
+      {profileOpen && customer && (
+        <div onClick={() => setProfileOpen(false)} style={{position:"fixed",inset:0,background:"rgba(0,0,0,0.55)",display:"flex",alignItems:"flex-end",justifyContent:"center",zIndex:120}}>
+          <div onClick={e => e.stopPropagation()} style={{background:"#fff",borderRadius:"20px 20px 0 0",padding:"20px 18px 28px",width:"100%",maxWidth:520,maxHeight:"85vh",overflowY:"auto"}}>
+            <div style={{display:"flex",alignItems:"center",gap:12,marginBottom:16}}>
+              {(profileStats?.cust?.avatar_url || customer.avatar_url) ? (
+                <img src={profileStats?.cust?.avatar_url || customer.avatar_url} alt="" referrerPolicy="no-referrer" style={{width:48,height:48,borderRadius:"50%",objectFit:"cover"}}/>
+              ) : (
+                <div style={{width:48,height:48,borderRadius:"50%",background:"#000",color:"#FFD700",display:"flex",alignItems:"center",justifyContent:"center",fontSize:20,fontWeight:800}}>{(customer.name || "?")[0]}</div>
+              )}
+              <div style={{flex:1,minWidth:0}}>
+                <div style={{fontSize:17,fontWeight:800}}>{profileStats?.cust?.name || customer.name}</div>
+                <div style={{fontSize:11,color:"#888",overflow:"hidden",textOverflow:"ellipsis"}}>{profileStats?.cust?.email || customer.email}</div>
+              </div>
+              <span style={{fontSize:10,padding:"4px 10px",background:"#000",color:"#FFD700",borderRadius:10,fontWeight:800,letterSpacing:"0.5px"}}>⭐ {L("ÜYE","MEMBER","УЧАСТНИК")}</span>
+            </div>
+
+            {!profileStats ? (
+              <div style={{textAlign:"center",color:"#888",padding:20,fontSize:13}}>...</div>
+            ) : (
+              <>
+                <div style={{display:"grid",gridTemplateColumns:"1fr 1fr 1fr",gap:8,marginBottom:14}}>
+                  <div style={{background:"#f7f7f7",borderRadius:12,padding:"12px 8px",textAlign:"center"}}>
+                    <div style={{fontSize:20,fontWeight:800}}>{profileStats.orders}</div>
+                    <div style={{fontSize:10,color:"#888",fontWeight:700}}>{L("SİPARİŞ","ORDERS","ЗАКАЗЫ")}</div>
+                  </div>
+                  <div style={{background:"#f7f7f7",borderRadius:12,padding:"12px 8px",textAlign:"center"}}>
+                    <div style={{fontSize:20,fontWeight:800}}>₺{Math.round(profileStats.totalSpent)}</div>
+                    <div style={{fontSize:10,color:"#888",fontWeight:700}}>{L("HARCAMA","SPENT","ПОТРАЧЕНО")}</div>
+                  </div>
+                  <div style={{background:"#f7f7f7",borderRadius:12,padding:"12px 8px",textAlign:"center"}}>
+                    <div style={{fontSize:20,fontWeight:800}}>{Number(profileStats.cust?.points || 0)}</div>
+                    <div style={{fontSize:10,color:"#888",fontWeight:700}}>{L("PUAN","POINTS","БАЛЛЫ")}</div>
+                  </div>
+                </div>
+
+                {profileStats.top.length > 0 && (
+                  <div style={{marginBottom:14}}>
+                    <div style={{fontSize:10,color:"#888",letterSpacing:"1.5px",fontWeight:700,marginBottom:6}}>{L("EN ÇOK ALDIKLARIN","YOUR FAVOURITES","ВАШИ ЛЮБИМЫЕ")}</div>
+                    {profileStats.top.map(([n, q]) => (
+                      <div key={n} style={{display:"flex",justifyContent:"space-between",padding:"7px 0",borderBottom:"1px solid #f0f0f0",fontSize:13}}>
+                        <span style={{fontWeight:600}}>{n}</span><span style={{color:"#888"}}>×{q}</span>
+                      </div>
+                    ))}
+                  </div>
+                )}
+
+                <div style={{marginBottom:14}}>
+                  <div style={{fontSize:10,color:"#888",letterSpacing:"1.5px",fontWeight:700,marginBottom:6}}>{L("SANA ÖZEL İNDİRİMLER","YOUR MEMBER DISCOUNTS","ВАШИ СКИДКИ")}</div>
+                  {Object.keys(memberDiscounts).length === 0 ? (
+                    <div style={{fontSize:12,color:"#999"}}>{L("Henüz tanımlı indirim yok","No discounts defined yet","Скидок пока нет")}</div>
+                  ) : (
+                    Object.entries(memberDiscounts).map(([pid, amt]) => {
+                      const p = products.find(x => x.id === pid);
+                      return (
+                        <div key={pid} style={{display:"flex",justifyContent:"space-between",padding:"7px 0",borderBottom:"1px solid #f0f0f0",fontSize:13}}>
+                          <span style={{fontWeight:600}}>{p ? pName(p) : "…"}</span>
+                          <span style={{color:"#1a7f37",fontWeight:800}}>−₺{amt}</span>
+                        </div>
+                      );
+                    })
+                  )}
+                </div>
+
+                {Number(profileStats.cust?.outstanding_balance || 0) > 0 && (
+                  <div style={{marginBottom:14,padding:"10px 14px",background:"#FFF3E0",border:"1px solid #FFCC80",borderRadius:10,fontSize:13,color:"#E65100",fontWeight:700}}>
+                    {L("Açık bakiye","Outstanding balance","Задолженность")}: ₺{Number(profileStats.cust.outstanding_balance)}
+                  </div>
+                )}
+              </>
+            )}
+
+            <div style={{display:"flex",gap:8,marginTop:6}}>
+              <button onClick={() => setProfileOpen(false)} style={{flex:2,padding:"13px",background:"#000",color:"#fff",border:"none",borderRadius:12,fontSize:14,fontWeight:700,cursor:"pointer"}}>{L("Kapat","Close","Закрыть")}</button>
+              <button onClick={async () => { await signOut(); setProfileOpen(false); }} style={{flex:1,padding:"13px",background:"#fff",color:"#c44",border:"1px solid #eee",borderRadius:12,fontSize:13,fontWeight:700,cursor:"pointer"}}>{L("Çıkış","Sign out","Выйти")}</button>
+            </div>
+          </div>
+        </div>
+      )}
 
       {optModal && (
         <div onClick={() => setOptModal(null)} style={{position:"fixed",inset:0,background:"rgba(0,0,0,0.55)",display:"flex",alignItems:"flex-end",justifyContent:"center",zIndex:100}}>
