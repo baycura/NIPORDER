@@ -57,6 +57,12 @@ export default function SettingsPage() {
         <div style={{fontSize:11,color:"#888",marginTop:6}}>NOT: Parti saatleri arasinda "Parti Menusu" tab'i acilir. "show_in_party_menu" isaretli urunler gosterilir.</div>
       </Section>
 
+      {/* Online odeme (PayTR) */}
+      <Section icon="💳" title="Online Odeme (PayTR)" desc="Musteri siparis verdikten sonra telefonundan kartla odeyebilir. Kapatirsan buton musteri ekranindan kaybolur; kasa akisi degismez.">
+        <Toggle checked={settings.online_payment_enabled === true || settings.online_payment_enabled === "true"} onChange={v=>setKey("online_payment_enabled", v)} label="Online odeme aktif"/>
+        <div style={{fontSize:11,color:"#888",marginTop:6}}>NOT: Odeme PayTR guvenli sayfasinda gerceklesir; onay PayTR'den gelince siparis otomatik "odendi" olur ve kasadan duser.</div>
+      </Section>
+
       {/* Member indirimi */}
       <Section icon="🌟" title="Uye Indirimi" desc="Sisteme kayitli musterilerin Google ile giris yapip otomatik indirim almalari icin.">
         <Toggle checked={memberEnabled} onChange={v=>setKey("member_discount_enabled", v)} label="Uye indirimi aktif"/>
