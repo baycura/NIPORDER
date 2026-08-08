@@ -13,8 +13,15 @@ const CUST_TABS = [
   { key: "shop",   icon: "👕", tr: "Shop",     en: "Shop",   ru: "Шоп" },
   { key: "blog",   icon: "📰", tr: "Blog",     en: "Blog",   ru: "Блог" },
 ];
-const FEED_URL = "https://gbbxxcduuwdmvfayxzeg.supabase.co/functions/v1/shopify-feed";
+// Etkinlik + surusler dogrudan rezervasyon sisteminin (NIP RESERVE) public verisinden okunur
+const RESERVE_URL = "https://diqparjrtvvfxvwxebov.supabase.co";
+const RESERVE_KEY = "eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJpc3MiOiJzdXBhYmFzZSIsInJlZiI6ImRpcXBhcmpydHZ2Znh2d3hlYm92Iiwicm9sZSI6ImFub24iLCJpYXQiOjE3NzM5Mzc3OTMsImV4cCI6MjA4OTUxMzc5M30.pNI2yU6LDG8583HBPq-5puxkpEVEAYwhGp9ibJ1WBsI";
 const RESERVATION_URL = "https://reservation.notinparis.me";
+const RIDES_URL = "https://notinparis.me/pages/rides";
+const YOUTUBE_URL = "https://www.youtube.com/@notinparis";
+const STRAVA_URL = "https://www.strava.com/clubs/notinparis";
+const INSTAGRAM_URL = "https://instagram.com/notinparis.me";
+const GOOGLE_RATE_URL = "https://www.google.com/maps/search/?api=1&query=Not+in+Paris+Fethiye";
 
 const T = {
   tr: {
@@ -269,11 +276,20 @@ export default function CustomerMenu() {
   const [feeds, setFeeds] = useState({});         // shopify-feed: events/rides
   const [postFeeds, setPostFeeds] = useState({}); // posts: shop(urun)/blog
   useEffect(() => {
-    if ((custTab === "events" || custTab === "rides") && !feeds[custTab]) {
-      fetch(FEED_URL + "?section=" + custTab)
+    const today = new Date(Date.now() + 3 * 3600 * 1000).toISOString().slice(0, 10); // TR gunu
+    if (custTab === "events" && !feeds.events) {
+      fetch(RESERVE_URL + "/rest/v1/events?select=name,subtitle,date,time,genre,access_type&status=eq.active&date=gte." + today + "&order=date.asc&limit=12",
+        { headers: { apikey: RESERVE_KEY } })
         .then(r => r.json())
-        .then(d => setFeeds(f => ({ ...f, [custTab]: d.items || [] })))
-        .catch(() => setFeeds(f => ({ ...f, [custTab]: [] })));
+        .then(d => setFeeds(f => ({ ...f, events: Array.isArray(d) ? d : [] })))
+        .catch(() => setFeeds(f => ({ ...f, events: [] })));
+    }
+    if (custTab === "rides" && !feeds.rides) {
+      fetch(RESERVE_URL + "/rest/v1/ride_posts?select=title,ride_date,ride_time,pace,distance_km,elevation_m,meet_point&ride_date=gte." + today + "&order=ride_date.asc&limit=12",
+        { headers: { apikey: RESERVE_KEY } })
+        .then(r => r.json())
+        .then(d => setFeeds(f => ({ ...f, rides: Array.isArray(d) ? d : [] })))
+        .catch(() => setFeeds(f => ({ ...f, rides: [] })));
     }
     if ((custTab === "shop" || custTab === "blog") && !postFeeds[custTab]) {
       supabase.from("posts").select("*")
@@ -291,6 +307,7 @@ export default function CustomerMenu() {
   const postTitle = (p) => (lang === "en" && p?.title_en) ? p.title_en : (lang === "ru" && p?.title_ru) ? p.title_ru : p?.title;
   const postBody = (p) => (lang === "en" && p?.body_en) ? p.body_en : (lang === "ru" && p?.body_ru) ? p.body_ru : p?.body;
   const dateLocale = lang === "en" ? "en-GB" : lang === "ru" ? "ru-RU" : "tr-TR";
+  const fmtDay = (d) => { try { return new Date(d + "T12:00:00").toLocaleDateString(dateLocale, { weekday: "short", day: "numeric", month: "short" }); } catch (e) { return d; } };
 
   const load = async () => {
     setLoading(true);
@@ -726,29 +743,63 @@ export default function CustomerMenu() {
               <span style={{fontSize:16}}>→</span>
             </a>
           )}
-          {(custTab === "events" || custTab === "rides") && (
+          {custTab === "events" && (
             <>
-              {feeds[custTab] === undefined && <div style={{textAlign:"center",color:"#888",padding:30,fontSize:13}}>...</div>}
-              {feeds[custTab]?.length === 0 && (
+              {feeds.events === undefined && <div style={{textAlign:"center",color:"#888",padding:30,fontSize:13}}>...</div>}
+              {feeds.events?.length === 0 && (
                 <div style={{textAlign:"center",color:"#888",padding:30,fontSize:13,lineHeight:1.6}}>
-                  {custTab === "events"
-                    ? L("Yaklaşan etkinlikler yakında burada 🎉","Upcoming events will appear here soon 🎉","Скоро здесь появятся события 🎉")
-                    : L("Planlı sürüşler yakında burada 🚴","Planned rides will appear here soon 🚴","Скоро здесь появятся заезды 🚴")}
+                  {L("Yaklaşan etkinlikler yakında burada 🎉","Upcoming events will appear here soon 🎉","Скоро здесь появятся события 🎉")}
                 </div>
               )}
-              {(feeds[custTab] || []).map((it, i) => (
-                <a key={i} href={it.url} target="_blank" rel="noreferrer" style={{display:"block",background:"#fafafa",border:"1px solid #eee",borderRadius:14,overflow:"hidden",marginBottom:12,textDecoration:"none",color:"#000"}}>
-                  {it.image && <img src={it.image} alt="" style={{width:"100%",height:170,objectFit:"cover",display:"block"}}/>}
-                  <div style={{padding:"12px 14px"}}>
-                    <div style={{fontSize:15,fontWeight:800}}>{it.title}</div>
-                    {it.body && <div style={{fontSize:12,color:"#666",marginTop:4,lineHeight:1.5}}>{it.body}</div>}
-                    <div style={{display:"flex",justifyContent:"space-between",alignItems:"center",marginTop:8}}>
-                      {it.price != null && <span style={{fontSize:14,fontWeight:800,color:"#C8973E"}}>₺{Math.round(it.price).toLocaleString("tr-TR")}</span>}
-                      <span style={{fontSize:12,fontWeight:700,color:"#000"}}>{L("İncele","View","Подробнее")} →</span>
+              {(feeds.events || []).map((ev, i) => (
+                <a key={i} href={RESERVATION_URL} target="_blank" rel="noreferrer" style={{display:"flex",alignItems:"center",gap:10,padding:"14px 2px",borderBottom:"1px solid #f0f0f0",textDecoration:"none",color:"#000"}}>
+                  <div style={{flex:1,minWidth:0}}>
+                    <div style={{fontSize:15,fontWeight:800,lineHeight:1.3}}>
+                      {ev.name}
+                      {ev.subtitle && <span style={{fontSize:11,fontWeight:600,color:"#888",marginLeft:6}}>{ev.subtitle}</span>}
+                    </div>
+                    <div style={{fontSize:12,color:"#666",marginTop:3}}>
+                      {fmtDay(ev.date)}{ev.time ? " · " + ev.time : ""}{ev.genre ? " · " + ev.genre : ""}
                     </div>
                   </div>
+                  {ev.access_type && ev.access_type !== "open" && (
+                    <span style={{fontSize:9,padding:"3px 7px",background:"#000",color:"#fff",borderRadius:6,fontWeight:800,letterSpacing:"0.5px",flexShrink:0}}>{L("ÜYE","MEMBERS","КЛУБ")}</span>
+                  )}
+                  <span style={{fontSize:12,fontWeight:700,flexShrink:0}}>{L("Rezerve","Reserve","Бронь")} →</span>
                 </a>
               ))}
+              <a href={YOUTUBE_URL} target="_blank" rel="noreferrer" style={{display:"flex",justifyContent:"space-between",alignItems:"center",padding:"14px 16px",background:"#fafafa",border:"1px solid #eee",borderRadius:14,textDecoration:"none",color:"#000",marginTop:14}}>
+                <span style={{fontSize:13,fontWeight:800}}>▶️ Dance Till They Come — YouTube</span>
+                <span>↗</span>
+              </a>
+            </>
+          )}
+          {custTab === "rides" && (
+            <>
+              {feeds.rides === undefined && <div style={{textAlign:"center",color:"#888",padding:30,fontSize:13}}>...</div>}
+              {feeds.rides?.length === 0 && (
+                <div style={{textAlign:"center",color:"#888",padding:30,fontSize:13,lineHeight:1.6}}>
+                  {L("Planlı sürüşler yakında burada 🚴","Planned rides will appear here soon 🚴","Скоро здесь появятся заезды 🚴")}
+                </div>
+              )}
+              {(feeds.rides || []).map((r, i) => (
+                <a key={i} href={RIDES_URL} target="_blank" rel="noreferrer" style={{display:"flex",alignItems:"center",gap:10,padding:"14px 2px",borderBottom:"1px solid #f0f0f0",textDecoration:"none",color:"#000"}}>
+                  <div style={{flex:1,minWidth:0}}>
+                    <div style={{fontSize:15,fontWeight:800,lineHeight:1.3}}>{r.title}</div>
+                    <div style={{fontSize:12,color:"#666",marginTop:3}}>
+                      {fmtDay(r.ride_date)}{r.ride_time ? " · " + r.ride_time : ""}
+                    </div>
+                    <div style={{fontSize:11,color:"#888",marginTop:2}}>
+                      {[r.pace, r.distance_km ? Math.round(r.distance_km) + " km" : null, r.elevation_m ? Math.round(r.elevation_m) + " m↑" : null, r.meet_point].filter(Boolean).join(" · ")}
+                    </div>
+                  </div>
+                  <span style={{fontSize:12,fontWeight:700,flexShrink:0}}>{L("Katıl","Join","Поехали")} →</span>
+                </a>
+              ))}
+              <a href={STRAVA_URL} target="_blank" rel="noreferrer" style={{display:"flex",justifyContent:"space-between",alignItems:"center",padding:"14px 16px",background:"#fafafa",border:"1px solid #eee",borderRadius:14,textDecoration:"none",color:"#000",marginTop:14}}>
+                <span style={{fontSize:13,fontWeight:800}}>🟠 NIP Cycling Club — Strava</span>
+                <span>↗</span>
+              </a>
             </>
           )}
           {(custTab === "shop" || custTab === "blog") && (
@@ -783,6 +834,18 @@ export default function CustomerMenu() {
                   </div>
                 </div>
               ))}
+              {custTab === "shop" && (
+                <a href={INSTAGRAM_URL} target="_blank" rel="noreferrer" style={{display:"flex",justifyContent:"space-between",alignItems:"center",padding:"14px 16px",background:"#fafafa",border:"1px solid #eee",borderRadius:14,textDecoration:"none",color:"#000",marginTop:4}}>
+                  <span style={{fontSize:13,fontWeight:800}}>📷 Instagram — @notinparis.me</span>
+                  <span>↗</span>
+                </a>
+              )}
+              {custTab === "blog" && (
+                <a href={GOOGLE_RATE_URL} target="_blank" rel="noreferrer" style={{display:"flex",justifyContent:"space-between",alignItems:"center",padding:"14px 16px",background:"#000",color:"#fff",borderRadius:14,textDecoration:"none",marginTop:4}}>
+                  <span style={{fontSize:13,fontWeight:800}}>⭐ {L("Bizi Google'da değerlendir","Rate us on Google","Оцените нас в Google")}</span>
+                  <span>↗</span>
+                </a>
+              )}
             </>
           )}
         </div>
