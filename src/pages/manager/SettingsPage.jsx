@@ -23,6 +23,21 @@ export default function SettingsPage() {
     setSettings({...settings, [key]: value});
   };
 
+  const [trBusy, setTrBusy] = useState(false);
+  const translateAnnouncement = async () => {
+    const src = (settings.announcement_tr || "").trim();
+    if (!src) { alert("Once Turkce duyuruyu yaz"); return; }
+    if (trBusy) return;
+    setTrBusy(true);
+    try {
+      const { data, error } = await supabase.functions.invoke("ai-translate", { body: { text: src } });
+      if (error) throw new Error(error.message || "Sunucu hatasi");
+      if (data?.error) throw new Error(data.error);
+      setSettings(s => ({ ...s, announcement_en: data.en || s.announcement_en, announcement_ru: data.ru || s.announcement_ru }));
+    } catch (e) { alert("Ceviri hatasi: " + (e?.message || e)); }
+    setTrBusy(false);
+  };
+
   const save = async () => {
     if (busy) return;
     setBusy(true);
@@ -63,6 +78,9 @@ export default function SettingsPage() {
         <Field label="DUYURU (TURKCE)">
           <input value={settings.announcement_tr || ""} onChange={e=>setKey("announcement_tr", e.target.value)} placeholder="Orn: Pazar gunleri fici bira 150 TL! 🍺" style={inputS}/>
         </Field>
+        <button onClick={translateAnnouncement} disabled={trBusy} style={{width:"100%",padding:"10px",background:trBusy?"#555":"#2A2A3A",color:"#B8C6F0",border:"1px solid #3A3A5A",borderRadius:8,fontSize:12,fontWeight:800,cursor:trBusy?"wait":"pointer",margin:"4px 0 8px"}}>
+          {trBusy ? "AI çeviriyor..." : "🤖 EN + RU otomatik çevir (AI)"}
+        </button>
         <div style={{display:"flex",gap:8}}>
           <Field label="ENGLISH (BOSSA TR GOSTERILIR)" style={{flex:1}}>
             <input value={settings.announcement_en || ""} onChange={e=>setKey("announcement_en", e.target.value)} placeholder="e.g. Sunday draft beer 150 TL!" style={inputS}/>
