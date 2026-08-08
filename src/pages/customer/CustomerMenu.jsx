@@ -358,8 +358,11 @@ export default function CustomerMenu() {
       // Cross-store: paris view also shows doner Kitchen category + its products
       const PARIS_STORE_UUID = "c3c6e0c7-1821-4edd-993d-ad960cfbc452";
       const DONER_STORE_UUID = "c39da530-7f73-4f69-a752-029bf03790b1";
-      const finalCats = [...(cats || [])];
-      const finalProds = [...(prods || [])];
+      // staff_only kategoriler (Magaza: tisort, seramik...) musteri menusunde gizli — yalniz kasadan eklenir
+      const custCats = (cats || []).filter(c => !c.staff_only);
+      const staffOnlyCatIds = new Set((cats || []).filter(c => c.staff_only).map(c => c.id));
+      const finalCats = [...custCats];
+      const finalProds = [...(prods || []).filter(p => !staffOnlyCatIds.has(p.category_id))];
       if (storeId === PARIS_STORE_UUID) {
         const { data: kCats } = await supabase.from("categories").select("*").eq("is_active", true).eq("store_id", DONER_STORE_UUID).eq("name_en", "Brunch");
         if (kCats && kCats.length > 0) {

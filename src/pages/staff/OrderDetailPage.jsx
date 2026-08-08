@@ -50,16 +50,27 @@ export default function OrderDetailPage() {
   }, [orderId]);
 
   const addProduct = async (p) => {
-    const fp = Number(p.price) * (100 - Number(p.instant_discount_pct || 0)) / 100;
+    // Fiyati 0 olan urunler (magaza: tisort, seramik...) icin tutar kasada sorulur
+    let price = Number(p.price) || 0;
+    if (price <= 0) {
+      const inp = prompt("Tutar (TL) — " + p.name + (p.brand ? " / " + p.brand : ""));
+      if (inp == null) return;
+      price = Number(String(inp).replace(",", "."));
+      if (!price || price <= 0) { alert("Geçerli bir tutar gir"); return; }
+    }
+    const fp = price * (100 - Number(p.instant_discount_pct || 0)) / 100;
+    // Magaza (staff_only kategori) urunleri mutfaga gitmez, bildirim tetiklemez
+    const cat = categories.find(c => c.id === p.category_id);
+    const isRetail = !!cat?.staff_only;
     const { error } = await supabase.from("order_items").insert({
       order_id: orderId,
       product_id: p.id,
-      product_name: p.name,
-      product_price: Number(p.price),
+      product_name: p.name + (p.brand ? " (" + p.brand + ")" : ""),
+      product_price: price,
       final_price: Math.round(fp),
       quantity: 1,
-      kitchen_status: "pending",
-      sent_to_kitchen: true,
+      kitchen_status: isRetail ? "served" : "pending",
+      sent_to_kitchen: !isRetail,
       store_id: p.store_id || order?.origin_store_id,
       kitchen_destination_store_id: p.kitchen_destination_store_id || p.store_id || order?.origin_store_id,
     });
@@ -202,8 +213,8 @@ export default function OrderDetailPage() {
               {filteredProducts.map(p => (
                 <div key={p.id} style={{display:"flex",alignItems:"center",justifyContent:"space-between",padding:"8px 6px",borderBottom:"1px solid #222"}}>
                   <div>
-                    <div style={{fontSize:13,fontWeight:700}}>{p.name}</div>
-                    <div style={{fontSize:11,color:"#C8973E",fontWeight:700}}>₺{p.price}</div>
+                    <div style={{fontSize:13,fontWeight:700}}>{p.name}{p.brand && <span style={{color:"#888",fontWeight:600}}> · {p.brand}</span>}</div>
+                    <div style={{fontSize:11,color:"#C8973E",fontWeight:700}}>{Number(p.price) > 0 ? "₺" + p.price : "Serbest tutar"}</div>
                   </div>
                   <button onClick={() => addProduct(p)} style={{width:28,height:28,background:"#C8973E",color:"#000",border:"none",borderRadius:"50%",fontSize:16,fontWeight:800,cursor:"pointer"}}>+</button>
                 </div>
