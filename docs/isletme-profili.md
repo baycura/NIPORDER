@@ -26,6 +26,21 @@
 - Pasif (`is_active=false`) personel GİRİŞ YAPAMAZ (AuthContext engeli) ve
   hiçbir Telegram bildirimi almaz.
 
+## Vizyon: self-servis + üyelik (2026-08-08)
+- **Self-servis hedefi:** Garson çağırma butonu İSTENMİYOR. Müşteri siparişini
+  menüden kendi verir, hazır olunca kendisi alır, (ileride) ödemeyi de kendisi
+  yapar. Online ödeme için PSP (iyzico/PayTR vb.) anlaşması gerekecek — henüz yok.
+- **Üyelik sistemi (KURULDU):** Müşteri menüde Google ile giriş yapar →
+  `customers` kaydına bağlanır. Üyeler sayfasından kişiye özel **ürün bazlı
+  SABİT ₺ indirim** tanımlanır (`member_discounts`); üye menüde indirimli fiyatı
+  "ÜYE" rozetiyle görür. Siparişe `customer_id` yazılır → müşteri karnesi
+  (sipariş sıklığı, harcama, favoriler) Üyeler sayfasında.
+- **Amaç:** Eş-dost indirimlerini kayıt altına almak + müşteri alışkanlık verisi.
+- **reservation.notinparis.me:** ayrı bir hazır rezervasyon programı (üyelik
+  satın alınmış, etkinlik rezervasyonları orada). Doğrudan entegrasyon YOK;
+  üyeler bizim tarafta e-postayla (Google hesabı) eşleşir. API/CSV çıkışı
+  varsa ileride içeri aktarım düşünülebilir.
+
 ## İşletme yapısı
 - **İki store, TEK veritabanı** (Supabase proje: "Order" / gbbxxcduuwdmvfayxzeg):
   - `Not In Paris` (slug: paris) — ana işletme/bar.
