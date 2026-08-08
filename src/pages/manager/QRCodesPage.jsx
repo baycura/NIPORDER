@@ -1,7 +1,7 @@
 import { useState } from "react";
 
-const cv = "\u0027Coolvetica\u0027,\u0027Bebas Neue\u0027,sans-serif";
-const cvc = "\u0027Coolvetica Condensed\u0027,\u0027Barlow Condensed\u0027,sans-serif";
+const cv = "'Coolvetica','Bebas Neue',sans-serif";
+const cvc = "'Coolvetica Condensed','Barlow Condensed',sans-serif";
 
 const PARIS_URL = "https://order.notinparis.me/menu?store=paris";
 const DONER_URL = "https://order.notinparis.me/menu?store=doner";
@@ -44,7 +44,7 @@ export default function QRCodesPage() {
       <div style={{ color: "#aaa", fontSize: 11, fontFamily: "monospace", textAlign: "center", wordBreak: "break-all", maxWidth: 280 }}>{url}</div>
       <div className="qr-actions" style={{ display: "flex", gap: 8, width: "100%" }}>
         <button onClick={() => printOne(title.toLowerCase().includes("paris") ? "paris" : "doner")} style={{ flex: 1, padding: "10px 16px", background: color, color: "#000", border: "none", borderRadius: 6, fontFamily: cvc, fontSize: 13, letterSpacing: "1px", cursor: "pointer" }}>YAZDIR</button>
-        <button onClick={() => downloadQR(url, title.replace(/\s+/g, "_") + "_QR.png")} style={{ flex: 1, padding: "10px 16px", background: "#222", color: "#fff", border: "1px solid #444", borderRadius: 6, fontFamily: cvc, fontSize: 13, letterSpacing: "1px", cursor: "pointer" }}>\u0130ND\u0130R</button>
+        <button onClick={() => downloadQR(url, title.replace(/\s+/g, "_") + "_QR.png")} style={{ flex: 1, padding: "10px 16px", background: "#222", color: "#fff", border: "1px solid #444", borderRadius: 6, fontFamily: cvc, fontSize: 13, letterSpacing: "1px", cursor: "pointer" }}>İNDİR</button>
       </div>
     </div>
   );
@@ -66,22 +66,22 @@ export default function QRCodesPage() {
       <div className="qr-print-hint" style={{ display: "flex", justifyContent: "space-between", alignItems: "center", marginBottom: 24, flexWrap: "wrap", gap: 12 }}>
         <div>
           <h1 style={{ fontSize: 32, fontFamily: cvc, letterSpacing: "2px", margin: 0 }}>QR KODLAR</h1>
-          <div style={{ color: "#888", fontSize: 13, marginTop: 4 }}>Masalara koymak i\u00e7in yazd\u0131r veya indir</div>
+          <div style={{ color: "#888", fontSize: 13, marginTop: 4 }}>Masalara koymak için yazdır veya indir</div>
         </div>
-        <button onClick={() => printOne("both")} style={{ padding: "12px 20px", background: "#C8973E", color: "#000", border: "none", fontFamily: cvc, fontSize: 14, letterSpacing: "1px", cursor: "pointer", borderRadius: 8 }}>HER \u0130K\u0130S\u0130N\u0130 YAZDIR</button>
+        <button onClick={() => printOne("both")} style={{ padding: "12px 20px", background: "#C8973E", color: "#000", border: "none", fontFamily: cvc, fontSize: 14, letterSpacing: "1px", cursor: "pointer", borderRadius: 8 }}>HER İKİSİNİ YAZDIR</button>
       </div>
 
       <div className={"qr-print"} style={{ display: "flex", gap: 24, flexWrap: "wrap", alignItems: "stretch" }}>
         {(printMode === null || printMode === "paris" || printMode === "both") && (
-          <Card title="PARIS" subtitle="\u00d6n / Front" url={PARIS_URL} color="#C8973E" />
+          <Card title="PARIS" subtitle="Ön / Front" url={PARIS_URL} color="#C8973E" />
         )}
         {(printMode === null || printMode === "doner" || printMode === "both") && (
-          <Card title="BERL\u0130N" subtitle="Arka / Back" url={DONER_URL} color="#E0644A" />
+          <Card title="BERLİN" subtitle="Arka / Back" url={DONER_URL} color="#E0644A" />
         )}
       </div>
 
       <div className="qr-print-hint" style={{ marginTop: 32, padding: 16, background: "#111", borderRadius: 8, border: "1px solid #222", color: "#888", fontSize: 13 }}>
-        <strong style={{ color: "#aaa" }}>\u0130pucu:</strong> Paris QR\u0027\u0131n\u0131 \u00f6n masalara, Berlin QR\u0027\u0131n\u0131 arka masalara koy. M\u00fc\u015fteri tarad\u0131\u011f\u0131nda store\u0027a g\u00f6re men\u00fc otomatik filtrelenir, sipari\u015f de o store\u0027un mutfa\u011f\u0131na gider.
+        <strong style={{ color: "#aaa" }}>İpucu:</strong> Paris QR'ını ön masalara, Berlin QR'ını arka masalara koy. Müşteri taradığında store'a göre menü otomatik filtrelenir, sipariş de o store'un mutfağına gider.
       </div>
     </div>
   );
