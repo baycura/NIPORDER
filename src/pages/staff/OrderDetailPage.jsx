@@ -19,6 +19,8 @@ export default function OrderDetailPage() {
   const [customerNameEdit, setCustomerNameEdit] = useState("");
   const [orderNote, setOrderNote] = useState("");
 
+  // Sabit veriler (menü, kategoriler, masalar) yalniz ilk aciliste yuklenir;
+  // siparis verisi hafif sorguyla tazelenir — her dokunusta tam yukleme YOK.
   const load = async () => {
     setLoading(true);
     const [{data: o}, {data: its}, {data: cats}, {data: prods}, {data: tabs}] = await Promise.all([
@@ -39,15 +41,34 @@ export default function OrderDetailPage() {
     setLoading(false);
   };
 
+  const loadOrderOnly = async () => {
+    const [{data: o}, {data: its}] = await Promise.all([
+      supabase.from("orders").select("*, stores:origin_store_id(slug, name)").eq("id", orderId).maybeSingle(),
+      supabase.from("order_items").select("*").eq("order_id", orderId).order("created_at"),
+    ]);
+    if (o) setOrder(o);
+    setItems(its || []);
+  };
+
   useEffect(() => { load(); }, [orderId]);
 
   useEffect(() => {
+    let t = null;
+    const refresh = () => { clearTimeout(t); t = setTimeout(loadOrderOnly, 300); }; // art arda olaylari tek tazelemeye indir
     const ch = supabase.channel("order-detail-" + orderId)
-      .on("postgres_changes", {event:"*", schema:"public", table:"order_items", filter:"order_id=eq."+orderId}, load)
-      .on("postgres_changes", {event:"*", schema:"public", table:"orders", filter:"id=eq."+orderId}, load)
+      .on("postgres_changes", {event:"*", schema:"public", table:"order_items", filter:"order_id=eq."+orderId}, refresh)
+      .on("postgres_changes", {event:"*", schema:"public", table:"orders", filter:"id=eq."+orderId}, refresh)
       .subscribe();
-    return () => supabase.removeChannel(ch);
+    return () => { clearTimeout(t); supabase.removeChannel(ch); };
   }, [orderId]);
+
+  // Toplami yerel listeden hesapla, siparise arka planda yaz (UI beklemez)
+  const syncTotal = (list) => {
+    const sum = list.reduce((s,i) => s + (Number(i.final_price)||0) * (Number(i.quantity)||0), 0);
+    setOrder(prev => prev ? { ...prev, subtotal: sum, total: sum } : prev);
+    supabase.from("orders").update({ subtotal: sum, total: sum }).eq("id", orderId).then(() => {});
+    return sum;
+  };
 
   const addProduct = async (p) => {
     // Fiyati 0 olan urunler (magaza: tisort, seramik...) icin tutar kasada sorulur
@@ -62,7 +83,7 @@ export default function OrderDetailPage() {
     // Magaza (staff_only kategori) urunleri mutfaga gitmez, bildirim tetiklemez
     const cat = categories.find(c => c.id === p.category_id);
     const isRetail = !!cat?.staff_only;
-    const { error } = await supabase.from("order_items").insert({
+    const row = {
       order_id: orderId,
       product_id: p.id,
       product_name: p.name + (p.brand ? " (" + p.brand + ")" : ""),
@@ -73,9 +94,19 @@ export default function OrderDetailPage() {
       sent_to_kitchen: !isRetail,
       store_id: p.store_id || order?.origin_store_id,
       kitchen_destination_store_id: p.kitchen_destination_store_id || p.store_id || order?.origin_store_id,
-    });
-    if (error) { alert("Ürün eklenemedi: " + error.message); return; }
-    recalcOrderTotal();
+    };
+    // Once ekranda goster (aninda tepki), sonra kaydet
+    const tempId = "temp-" + Date.now();
+    const optimistic = [...items, { ...row, id: tempId, created_at: new Date().toISOString() }];
+    setItems(optimistic);
+    syncTotal(optimistic);
+    const { data: saved, error } = await supabase.from("order_items").insert(row).select().single();
+    if (error) {
+      setItems(prev => { const back = prev.filter(i => i.id !== tempId); syncTotal(back); return back; });
+      alert("Ürün eklenemedi: " + error.message);
+      return;
+    }
+    setItems(prev => prev.map(i => i.id === tempId ? saved : i));
   };
 
   const changeQty = async (itemId, delta) => {
@@ -87,27 +118,25 @@ export default function OrderDetailPage() {
         alert("Mutfağa giden urun silinemez. Iptal butonunu kullanin.");
         return;
       }
-      await supabase.from("order_items").delete().eq("id", itemId);
+      const next = items.filter(i => i.id !== itemId);
+      setItems(next); syncTotal(next);
+      const { error } = await supabase.from("order_items").delete().eq("id", itemId);
+      if (error) { alert("Silinemedi: " + error.message); loadOrderOnly(); }
     } else {
-      await supabase.from("order_items").update({ quantity: newQty }).eq("id", itemId);
+      const next = items.map(i => i.id === itemId ? { ...i, quantity: newQty } : i);
+      setItems(next); syncTotal(next);
+      const { error } = await supabase.from("order_items").update({ quantity: newQty }).eq("id", itemId);
+      if (error) { alert("Güncellenemedi: " + error.message); loadOrderOnly(); }
     }
-    recalcOrderTotal();
-  };
-
-  const recalcOrderTotal = async () => {
-    const { data: its } = await supabase.from("order_items").select("final_price,quantity").eq("order_id", orderId);
-    const sum = (its || []).reduce((s,i) => s + (Number(i.final_price)||0) * (Number(i.quantity)||0), 0);
-    await supabase.from("orders").update({ subtotal: sum, total: sum }).eq("id", orderId);
-    load();
   };
 
   const saveCustomerName = async () => {
     await supabase.from("orders").update({ customer_name: customerNameEdit.trim() || null }).eq("id", orderId);
-    load();
+    loadOrderOnly();
   };
   const saveOrderNote = async () => {
     await supabase.from("orders").update({ note: orderNote.trim() || null }).eq("id", orderId);
-    load();
+    loadOrderOnly();
   };
 
   const cancelOrder = async () => {
@@ -179,9 +208,9 @@ export default function OrderDetailPage() {
                 </div>
               </div>
               <div style={{display:"flex",alignItems:"center",gap:6,background:"#0C0C0C",borderRadius:20,padding:"3px 5px"}}>
-                <button onClick={() => changeQty(it.id, -1)} style={{width:26,height:26,background:"transparent",color:"#fff",border:"none",borderRadius:"50%",fontSize:16,cursor:"pointer",fontWeight:700}}>−</button>
+                <button onClick={() => changeQty(it.id, -1)} style={{width:40,height:40,background:"#2A2A2A",color:"#fff",border:"none",borderRadius:"50%",fontSize:20,cursor:"pointer",fontWeight:700}}>−</button>
                 <div style={{minWidth:18,textAlign:"center",fontSize:13,fontWeight:800}}>{it.quantity}</div>
-                <button onClick={() => changeQty(it.id, +1)} style={{width:26,height:26,background:"transparent",color:"#fff",border:"none",borderRadius:"50%",fontSize:16,cursor:"pointer",fontWeight:700}}>+</button>
+                <button onClick={() => changeQty(it.id, +1)} style={{width:40,height:40,background:"#2A2A2A",color:"#fff",border:"none",borderRadius:"50%",fontSize:20,cursor:"pointer",fontWeight:700}}>+</button>
               </div>
             </div>
           );
@@ -209,14 +238,14 @@ export default function OrderDetailPage() {
                 </button>
               ))}
             </div>
-            <div style={{marginTop:10,maxHeight:260,overflowY:"auto"}}>
+            <div style={{marginTop:10,maxHeight:380,overflowY:"auto"}}>
               {filteredProducts.map(p => (
-                <div key={p.id} style={{display:"flex",alignItems:"center",justifyContent:"space-between",padding:"8px 6px",borderBottom:"1px solid #222"}}>
+                <div key={p.id} style={{display:"flex",alignItems:"center",justifyContent:"space-between",padding:"12px 8px",borderBottom:"1px solid #222",gap:10}}>
                   <div>
-                    <div style={{fontSize:13,fontWeight:700}}>{p.name}{p.brand && <span style={{color:"#888",fontWeight:600}}> · {p.brand}</span>}</div>
-                    <div style={{fontSize:11,color:"#C8973E",fontWeight:700}}>{Number(p.price) > 0 ? "₺" + p.price : "Serbest tutar"}</div>
+                    <div style={{fontSize:15,fontWeight:700}}>{p.name}{p.brand && <span style={{color:"#888",fontWeight:600}}> · {p.brand}</span>}</div>
+                    <div style={{fontSize:13,color:"#C8973E",fontWeight:700,marginTop:2}}>{Number(p.price) > 0 ? "₺" + p.price : "Serbest tutar"}</div>
                   </div>
-                  <button onClick={() => addProduct(p)} style={{width:28,height:28,background:"#C8973E",color:"#000",border:"none",borderRadius:"50%",fontSize:16,fontWeight:800,cursor:"pointer"}}>+</button>
+                  <button onClick={() => addProduct(p)} style={{width:46,height:46,background:"#C8973E",color:"#000",border:"none",borderRadius:"50%",fontSize:24,fontWeight:800,cursor:"pointer",flexShrink:0,display:"flex",alignItems:"center",justifyContent:"center",lineHeight:1}}>+</button>
                 </div>
               ))}
             </div>
