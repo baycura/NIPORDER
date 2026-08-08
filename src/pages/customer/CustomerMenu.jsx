@@ -992,9 +992,15 @@ export default function CustomerMenu() {
               <div style={{fontSize:13,color:"#333",letterSpacing:"1px",fontWeight:700}}>{t.total}</div>
               <div style={{fontSize:22,fontWeight:800}}>₺{cartTotal}</div>
             </div>
-            <button onClick={submitOrder} disabled={submitting} style={{width:"100%",marginTop:14,padding:"16px",background:"#C8973E",color:"#000",border:"none",borderRadius:14,fontSize:15,fontWeight:800,cursor:"pointer",opacity:submitting?0.6:1}}>
-              {submitting ? t.submitting : t.submit_order}
-            </button>
+            {(() => {
+              // Isim yazilmadan siparis butonu calismaz (masasiz / ortak masa)
+              const nameOk = (table && !table.shared) || !!(customerName.trim() || customer?.name);
+              return (
+                <button onClick={submitOrder} disabled={submitting || !nameOk} style={{width:"100%",marginTop:14,padding:"16px",background:nameOk?"#C8973E":"#ddd",color:nameOk?"#000":"#999",border:"none",borderRadius:14,fontSize:15,fontWeight:800,cursor:nameOk?"pointer":"not-allowed",opacity:submitting?0.6:1}}>
+                  {submitting ? t.submitting : nameOk ? t.submit_order : t.please_enter_name}
+                </button>
+              );
+            })()}
             <div style={{textAlign:"center",fontSize:11,color:"#888",marginTop:10}}>
               {table && !table.shared ? t.waiter_will_bring : t.notif_promise}
             </div>
