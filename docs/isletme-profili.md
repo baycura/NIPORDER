@@ -142,3 +142,28 @@
 - ⚠️ Supabase ücretsiz katman ~1 hafta işlem olmazsa projeyi duraklatıyor
   (uygulama o zaman açılmıyor). En az bir kez bu yüzden takıldık.
 - orders.staff_id artık sipariş açılışında dolduruluyor (personel raporu hazır olacak).
+
+## GÜNCELLEME (2026-08-08) — Güvenlik denetimi + Fatura OCR
+- ✅ Güvenlik sıkılaştırma (migration `20260808_security_hardening_audit.sql`):
+  - KRİTİK açık kapatıldı: `admin_create_staff_with_auth` artık yalnız aktif admin/manager/owner
+    çağırabilir (eskiden HİÇ kontrol yoktu — Google ile giren herhangi bir müşteri admin açabilirdi).
+    admin/owner/super_admin rolünü yalnız admin oluşturabilir.
+  - `admin_set_user_password`: admin de dahil, aktiflik kontrolü eklendi.
+  - `is_staff()` artık `is_active=true` şartı arıyor; pasif personel yazamaz.
+  - Storage policy'leri eklendi (product-images herkese okuma, yazma personel;
+    invoices yalnız personel) — daha önce policy yoktu, yükleme sessizce bozuktu.
+  - 4 view `security_invoker=true`; yardımcı fonksiyonlara `search_path` sabitlendi;
+    tetikleyici fonksiyonlardan anon/authenticated EXECUTE yetkisi alındı.
+  - Çift Telegram bildirimi düzeltildi: v1 trigger'lar düşürüldü
+    (migration `20260808_drop_v1_telegram_triggers.sql`).
+  - ⏳ Kullanıcı aksiyonu: Supabase Dashboard > Auth > Leaked password protection AÇ.
+- ✅ Fatura OCR (edge fn `invoice-ocr` v1, verify_jwt=true):
+  - Faturalar > Yeni Fatura > fotoğraf seç > "🤖 Fotoğraftan doldur (AI)".
+  - Fotoğraf SAKLANMAZ (istemci ~1600px JPEG'e küçültüp gönderir); Claude vision
+    (claude-opus-5, structured output) tedarikçi/tarih/kalemleri çıkarır,
+    mevcut hammaddelerle bulanık eşleştirme yapılır, satırlar önceden doldurulur.
+  - Yalnız aktif admin/manager/owner çağırabilir; anahtar: env `ANTHROPIC_API_KEY`
+    ya da bot_config `anthropic_api_key`. ⏳ Kullanıcı aksiyonu: console.anthropic.com'dan
+    API anahtarı alıp bot_config'e eklemek (yoksa buton "AI anahtarı tanımlı değil" der).
+- ✅ Tolgacan hesabı kapatıldı (is_active=false, şifre rastgele, oturumlar silindi).
+- ✅ Canlı uçtan uca test: sipariş → mutfak bildirimi → hazır bildirimi (Telegram'a ulaştı).

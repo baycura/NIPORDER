@@ -19,6 +19,7 @@ export default function InvoicesPage() {
   const [photoFile, setPhotoFile] = useState(null);
   const [photoPreview, setPhotoPreview] = useState(null);
   const [busy, setBusy] = useState(false);
+  const [ocrBusy, setOcrBusy] = useState(false);
   const [priceAlerts, setPriceAlerts] = useState([]);
 
   const load = async () => {
@@ -49,6 +50,80 @@ export default function InvoicesPage() {
     reader.readAsDataURL(f);
   };
 
+  // Fotograf kucultme: AI'ye tam cozunurluk gondermeye gerek yok (foto saklanmiyor)
+  const resizeToBase64 = (file, maxDim = 1600) => new Promise((resolve, reject) => {
+    const img = new Image();
+    const url = URL.createObjectURL(file);
+    img.onload = () => {
+      const scale = Math.min(1, maxDim / Math.max(img.width, img.height));
+      const w = Math.round(img.width * scale), h = Math.round(img.height * scale);
+      const canvas = document.createElement("canvas");
+      canvas.width = w; canvas.height = h;
+      canvas.getContext("2d").drawImage(img, 0, 0, w, h);
+      URL.revokeObjectURL(url);
+      resolve(canvas.toDataURL("image/jpeg", 0.85).split(",")[1]);
+    };
+    img.onerror = () => { URL.revokeObjectURL(url); reject(new Error("Fotograf okunamadi")); };
+    img.src = url;
+  });
+
+  // Turkce karakterleri sadelestirip mevcut hammaddeyle eslestir
+  const normName = (s) => (s || "").toLocaleLowerCase("tr-TR")
+    .replace(/ç/g,"c").replace(/ğ/g,"g").replace(/ı/g,"i").replace(/ö/g,"o").replace(/ş/g,"s").replace(/ü/g,"u")
+    .replace(/[^a-z0-9 ]/g," ").replace(/\s+/g," ").trim();
+  const matchIngredient = (name) => {
+    const n = normName(name);
+    if (!n) return null;
+    let best = null, bestScore = 0;
+    for (const ing of ingredients) {
+      const m = normName(ing.name);
+      let score = 0;
+      if (m === n) score = 100;
+      else if (m.includes(n) || n.includes(m)) score = 80;
+      else {
+        const toks = n.split(" ").filter(t => t.length > 2);
+        const hit = toks.filter(t => m.includes(t)).length;
+        if (toks.length) score = 60 * hit / toks.length;
+      }
+      if (score > bestScore) { bestScore = score; best = ing; }
+    }
+    return bestScore >= 50 ? best : null;
+  };
+
+  const UNITS = ["ml","l","g","kg","adet","sise","kasa"];
+  const runOcr = async () => {
+    if (!photoFile) { alert("Once fatura fotografi sec"); return; }
+    if (ocrBusy) return;
+    setOcrBusy(true);
+    try {
+      const image = await resizeToBase64(photoFile);
+      const { data, error } = await supabase.functions.invoke("invoice-ocr", { body: { image, media_type: "image/jpeg" } });
+      if (error) throw new Error(error.message || "Sunucu hatasi");
+      if (data?.error) throw new Error(data.error);
+      setForm(f => ({
+        ...f,
+        supplier_name: data.supplier_name || f.supplier_name,
+        invoice_date: /^\d{4}-\d{2}-\d{2}$/.test(data.invoice_date || "") ? data.invoice_date : f.invoice_date,
+      }));
+      const newLines = (data.lines || []).filter(l => l?.name).map(l => {
+        const match = matchIngredient(l.name);
+        return match
+          ? { ingredient_id: match.id, qty: Number(l.qty) || 0, unit_cost: Number(l.unit_cost) || 0, isNew: false, newName: "", newUnit: match.unit || "adet" }
+          : { ingredient_id: "", qty: Number(l.qty) || 0, unit_cost: Number(l.unit_cost) || 0, isNew: true, newName: l.name, newUnit: UNITS.includes(l.unit) ? l.unit : "adet" };
+      });
+      if (newLines.length) {
+        setLines(newLines);
+        const matched = newLines.filter(l => !l.isNew).length;
+        alert("✅ " + newLines.length + " kalem okundu (" + matched + " mevcut hammaddeyle eslesti). Kontrol edip kaydet.");
+      } else {
+        alert("Faturada kalem okunamadi — fotografi daha net cekip tekrar dene.");
+      }
+    } catch (e) {
+      alert("AI okuma hatasi: " + (e?.message || e));
+    }
+    setOcrBusy(false);
+  };
+
   const addLine = () => setLines([...lines, {ingredient_id:"", qty:0, unit_cost:0, isNew:false, newName:"", newUnit:"ml"}]);
   const removeLine = (idx) => setLines(lines.filter((_,i) => i !== idx));
   const updateLine = (idx, field, val) => setLines(lines.map((l,i) => i===idx ? {...l, [field]: val} : l));
@@ -61,19 +136,11 @@ export default function InvoicesPage() {
     if (lines.length === 0) { alert("En az bir kalem ekle"); return; }
     setBusy(true);
 
-    let photoUrl = null;
-    if (photoFile) {
-      const path = "fatura_" + Date.now() + "_" + photoFile.name.replace(/[^a-zA-Z0-9.]/g, "_");
-      const { error: upErr } = await supabase.storage.from("invoices").upload(path, photoFile);
-      if (upErr) { alert("Foto yukleme hatasi: " + upErr.message); setBusy(false); return; }
-      photoUrl = path;
-    }
-
+    // Fatura fotografi SAKLANMAZ — yalnizca AI okuma icin kullanilir (depolama sismesin)
     const { data: inv, error: invErr } = await supabase.from("supplier_invoices").insert({
       supplier_name: form.supplier_name.trim(),
       invoice_date: form.invoice_date,
       total_amount: linesTotal,
-      photo_url: photoUrl,
       notes: form.notes?.trim() || null,
       store_id: staffUser?.store_ids?.[0],
     }).select().single();
@@ -180,10 +247,16 @@ export default function InvoicesPage() {
             <Field label="TARIH"><input type="date" value={form.invoice_date||""} onChange={e=>setForm({...form,invoice_date:e.target.value})} style={inputS}/></Field>
           </div>
 
-          <div style={{marginBottom:14}}>
-            <div style={{fontSize:10,color:"#888",letterSpacing:"1.5px",fontWeight:700,marginBottom:5}}>FATURA FOTOSU (OPSIYONEL)</div>
-            <input type="file" accept="image/*" onChange={onPhoto} style={{...inputS, padding:"8px"}}/>
+          <div style={{marginBottom:14,background:"rgba(200,151,62,0.06)",border:"1px dashed #C8973E",borderRadius:10,padding:12}}>
+            <div style={{fontSize:10,color:"#C8973E",letterSpacing:"1.5px",fontWeight:700,marginBottom:5}}>🤖 FATURA FOTOSUNDAN OTOMATIK DOLDUR</div>
+            <input type="file" accept="image/*" capture="environment" onChange={onPhoto} style={{...inputS, padding:"8px"}}/>
             {photoPreview && <img src={photoPreview} alt="" style={{marginTop:8,maxHeight:120,borderRadius:8,objectFit:"cover"}}/>}
+            {photoFile && (
+              <button onClick={runOcr} disabled={ocrBusy} style={{width:"100%",marginTop:8,padding:"10px",background:ocrBusy?"#555":"#C8973E",color:"#000",border:"none",borderRadius:8,fontSize:13,fontWeight:800,cursor:ocrBusy?"wait":"pointer"}}>
+                {ocrBusy ? "AI okuyor... (10-30 sn)" : "🤖 Fotograftan doldur (AI)"}
+              </button>
+            )}
+            <div style={{fontSize:10,color:"#888",marginTop:6}}>Fotograf saklanmaz — yalnizca kalemleri okumak icin kullanilir. Okunan kalemleri kontrol edip kaydet.</div>
           </div>
 
           <div style={{borderTop:"1px solid #2A2A2A",paddingTop:14,marginBottom:10}}>
