@@ -10,9 +10,10 @@ const STAFF_NAV = [
 ];
 
 const STAFF_NAV_EXTRA = [
-  {to:"/stock",   icon:"📦", label:"Stok"},
-  {to:"/myshift", icon:"📊", label:"Vardiyam"},
-  {to:"/tasks",   icon:"📋", label:"Görevler"},
+  {to:"/stock",    icon:"📦", label:"Stok"},
+  {to:"/invoices", icon:"🧾", label:"Faturalar"},
+  {to:"/myshift",  icon:"📊", label:"Vardiyam"},
+  {to:"/tasks",    icon:"📋", label:"Görevler"},
 ];
 
 const MANAGER_NAV = [
@@ -20,7 +21,6 @@ const MANAGER_NAV = [
   {to:"/tables-mgmt", icon:"🪑", label:"Masa Yönetimi"},
   {to:"/stock-mgmt",  icon:"📦", label:"Stok Yönetimi"},
   {to:"/recipes",     icon:"📝", label:"Reçeteler"},
-  {to:"/invoices",    icon:"🧾", label:"Faturalar"},
   {to:"/staff-mgmt",  icon:"👥", label:"Personel"},
   {to:"/members",     icon:"🌟", label:"Üyeler & Borç"},
   {to:"/happy-hour",  icon:"🎉", label:"Happy Hour"},

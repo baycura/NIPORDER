@@ -194,7 +194,7 @@ Deno.serve(async (req) => {
       if (!uid) return new Response("forbidden", { status: 403 });
       const { data: caller } = await supabase
         .from("staff").select("id, role, is_active").eq("auth_id", uid).maybeSingle();
-      if (!caller || (caller as any).is_active === false || !["admin", "manager", "owner"].includes((caller as any).role)) {
+      if (!caller || (caller as any).is_active === false || !["admin", "manager", "owner", "waiter", "cashier", "kitchen"].includes((caller as any).role)) {
         return new Response("forbidden", { status: 403 });
       }
       const payload = await req.json().catch(() => ({}));

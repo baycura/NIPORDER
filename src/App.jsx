@@ -72,7 +72,7 @@ function AppRoutes() {
         <Route path="menu-mgmt"        element={<PrivateRoute managerOnly><MenuMgmtPage /></PrivateRoute>} />
         <Route path="tables-mgmt"      element={<PrivateRoute managerOnly><TablesMgmtPage /></PrivateRoute>} />
         <Route path="recipes"          element={<PrivateRoute managerOnly><RecipesMgmtPage /></PrivateRoute>} />
-        <Route path="invoices"         element={<PrivateRoute managerOnly><InvoicesPage /></PrivateRoute>} />
+        <Route path="invoices"         element={<PrivateRoute deny={["viewer","parttime"]}><InvoicesPage /></PrivateRoute>} />
       </Route>
       <Route path="*" element={<Navigate to="/" replace />} />
     </Routes>
