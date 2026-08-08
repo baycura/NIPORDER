@@ -51,7 +51,7 @@ export default function OrderDetailPage() {
 
   const addProduct = async (p) => {
     const fp = Number(p.price) * (100 - Number(p.instant_discount_pct || 0)) / 100;
-    await supabase.from("order_items").insert({
+    const { error } = await supabase.from("order_items").insert({
       order_id: orderId,
       product_id: p.id,
       product_name: p.name,
@@ -60,7 +60,10 @@ export default function OrderDetailPage() {
       quantity: 1,
       kitchen_status: "pending",
       sent_to_kitchen: true,
+      store_id: p.store_id || order?.origin_store_id,
+      kitchen_destination_store_id: p.kitchen_destination_store_id || p.store_id || order?.origin_store_id,
     });
+    if (error) { alert("Ürün eklenemedi: " + error.message); return; }
     recalcOrderTotal();
   };
 

@@ -46,15 +46,15 @@ Deno.serve(async (req: Request) => {
       Deno.env.get("SUPABASE_SERVICE_ROLE_KEY")!,
     );
 
-    // Yalnizca aktif yonetici personel (faturalar sayfasiyla ayni yetki)
+    // Aktif calisan personel (fatura girisi sabahci garson dahil; gozlemci/part-time haric)
     const token = (req.headers.get("Authorization") || "").replace(/^Bearer\s+/i, "");
     const { data: userData } = await supa.auth.getUser(token);
     const uid = userData?.user?.id;
     if (!uid) return json({ error: "Oturum bulunamadi — cikip tekrar giris yap" });
     const { data: staff } = await supa
       .from("staff").select("id, role, is_active").eq("auth_id", uid).maybeSingle();
-    if (!staff || staff.is_active === false || !["admin", "manager", "owner"].includes(staff.role)) {
-      return json({ error: "Yetkisiz: bu ozellik yonetici hesaplari icindir" });
+    if (!staff || staff.is_active === false || !["admin", "manager", "owner", "waiter", "cashier", "kitchen"].includes(staff.role)) {
+      return json({ error: "Yetkisiz: bu ozellik personel hesaplari icindir" });
     }
 
     // API anahtari: once ortam degiskeni, yoksa bot_config
@@ -104,6 +104,7 @@ Deno.serve(async (req: Request) => {
   } catch (e) {
     console.error("invoice-ocr error:", e);
     const m = e instanceof Error ? e.message : String(e);
+    if (/credit balance/i.test(m)) return json({ error: "Anthropic hesabinda kredi yok — console.anthropic.com > Billing'den kredi yukle" });
     if (/401|authentication/i.test(m)) return json({ error: "AI anahtari gecersiz — bot_config'teki anahtari kontrol et" });
     return json({ error: "AI okuma hatasi: " + m });
   }
