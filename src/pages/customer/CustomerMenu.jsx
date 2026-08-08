@@ -38,6 +38,7 @@ const T = {
     add_to_cart: "Sepete Ekle",
     my_cart: "Sepetim",
     your_name: "ADIN (garsonlar seni tanısın)",
+    shared_name: "ADIN (ortak masa — sipariş adınla hazırlanır)",
     name_placeholder: "Örn: Efekan",
     order_note_label: "SİPARİŞ NOTU (mutfak görecek)",
     order_note_placeholder: "Örn: az pişmiş, baharatsız...",
@@ -81,6 +82,7 @@ const T = {
     add_to_cart: "Add to Cart",
     my_cart: "My Cart",
     your_name: "YOUR NAME (so the staff can find you)",
+    shared_name: "YOUR NAME (shared table — order is prepared under your name)",
     name_placeholder: "e.g. John",
     order_note_label: "ORDER NOTE (kitchen will see)",
     order_note_placeholder: "e.g. medium-rare, no spice...",
@@ -124,6 +126,7 @@ const T = {
     add_to_cart: "В корзину",
     my_cart: "Моя корзина",
     your_name: "ВАШЕ ИМЯ (чтобы официант вас нашёл)",
+    shared_name: "ВАШЕ ИМЯ (общий стол — заказ готовится на ваше имя)",
     name_placeholder: "напр.: Иван",
     order_note_label: "ПРИМЕЧАНИЕ К ЗАКАЗУ (увидит кухня)",
     order_note_placeholder: "напр.: средняя прожарка, без специй...",
@@ -242,7 +245,9 @@ export default function CustomerMenu() {
   const [optSelected, setOptSelected] = useState({});
   const [optNote, setOptNote] = useState("");
   const [checkoutOpen, setCheckoutOpen] = useState(false);
-  const [customerName, setCustomerName] = useState("");
+  const [customerName, setCustomerName] = useState(() => {
+    try { return localStorage.getItem("nip_customer_name") || ""; } catch { return ""; }
+  });
   const [orderNote, setOrderNote] = useState("");
   const [submitting, setSubmitting] = useState(false);
   const [successOrderId, setSuccessOrderId] = useState(null);
@@ -589,14 +594,15 @@ export default function CustomerMenu() {
 
   const submitOrder = async () => {
     if (submitting || cart.length === 0) return;
-    if (!table && !customerName.trim() && !customer) { alert(t.please_enter_name); return; }
+    if ((!table || table.shared) && !customerName.trim() && !customer) { alert(t.please_enter_name); return; }
     unlockAudio(); askNotifPermissionSync();
     setSubmitting(true);
     try {
+      if (customerName.trim()) { try { localStorage.setItem("nip_customer_name", customerName.trim()); } catch { /* gizli mod */ } }
       const totalVal = cartTotal;
       const { data: ord, error: ordErr } = await supabase.from("orders").insert({
         table_id: table ? table.id : null,
-        customer_name: table ? null : (customerName.trim() || customer?.name || null),
+        customer_name: customerName.trim() || customer?.name || null,
         customer_id: customer?.id || null,
         subtotal: totalVal, total: totalVal, status: "open",
         note: orderNote.trim() || null,
@@ -972,9 +978,9 @@ export default function CustomerMenu() {
                 </div>
               </div>
             ))}
-            {!table && (
+            {(!table || table.shared) && (
               <div style={{marginTop:14}}>
-                <div style={{fontSize:11,color:"#333",letterSpacing:"1px",fontWeight:700,marginBottom:6}}>{t.your_name}</div>
+                <div style={{fontSize:11,color:"#333",letterSpacing:"1px",fontWeight:700,marginBottom:6}}>{table?.shared ? t.shared_name : t.your_name}</div>
                 <input value={customerName} onChange={e=>setCustomerName(e.target.value)} placeholder={t.name_placeholder} style={{width:"100%",padding:"12px 14px",background:"#f7f7f7",border:"1px solid #eee",borderRadius:10,fontSize:14,outline:"none",fontFamily:"inherit"}}/>
               </div>
             )}
@@ -990,7 +996,7 @@ export default function CustomerMenu() {
               {submitting ? t.submitting : t.submit_order}
             </button>
             <div style={{textAlign:"center",fontSize:11,color:"#888",marginTop:10}}>
-              {table ? t.waiter_will_bring : t.notif_promise}
+              {table && !table.shared ? t.waiter_will_bring : t.notif_promise}
             </div>
           </div>
         </div>

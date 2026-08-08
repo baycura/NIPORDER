@@ -70,7 +70,7 @@ export default function KitchenPage() {
       .filter(o => itemsByOrder[o.id] && itemsByOrder[o.id].length > 0)
       .map(o => ({
         order: o, items: itemsByOrder[o.id],
-        where: o.table_id ? (tabMap[o.table_id] || "Masa") : "👤 " + (o.customer_name || "Misafir"),
+        where: o.table_id ? (tabMap[o.table_id] || "Masa") + (o.customer_name ? " · 👤 " + o.customer_name : "") : "👤 " + (o.customer_name || "Misafir"),
         storeSlug: o.stores?.slug,
       }));
 
