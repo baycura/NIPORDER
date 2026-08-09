@@ -50,7 +50,7 @@ export default function RecipesMgmtPage() {
   const load = async () => {
     setLoading(true);
     const [{ data: prods }, { data: ings }, { data: recs }, { data: setting }] = await Promise.all([
-      supabase.from("products").select("id, name, price, category_id, track_stock, categories(name)").order("name"),
+      supabase.from("products").select("id, name, price, category_id, track_stock, takeaway_cup, takeaway_straw, categories(name)").order("name"),
       supabase.from("ingredients").select("*").order("name"),
       supabase.from("recipes").select("*").in("store_id", staffUser?.store_ids?.length ? staffUser.store_ids : ["00000000-0000-0000-0000-000000000000"]),
       supabase.from("app_settings").select("value").eq("key", "house_pour_cl").maybeSingle(),
@@ -245,6 +245,16 @@ export default function RecipesMgmtPage() {
               Yukarıdaki rakamlar <b style={{ color: "#C8973E" }}>parti gecesine</b> göre (en yüksek maliyet).
               Normal günlerde maliyet <b style={{ color: "#F0EDE8" }}>₺{normalCost.toFixed(2)}</b>,
               kâr <b style={{ color: "#3ECF8E" }}>₺{(price - normalCost).toFixed(2)}</b>.
+            </div>
+          )}
+          {selectedProduct.takeaway_cup && (
+            <div style={{ fontSize: 11, color: "#888", marginTop: 8, lineHeight: 1.6, paddingTop: 8, borderTop: "1px solid #2A2A2A" }}>
+              🥤 Take away seçilirse otomatik eklenir:{" "}
+              <b style={{ color: "#C8973E" }}>
+                {selectedProduct.takeaway_cup === "hot" ? "karton bardak" : "pet bardak"}
+                {selectedProduct.takeaway_straw ? " + pipet" : ""}
+              </b>
+              . Bunlar reçeteye yazılmaz, satış anında stoktan düşer.
             </div>
           )}
         </div>
