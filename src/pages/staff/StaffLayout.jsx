@@ -33,6 +33,7 @@ const MANAGER_NAV = [
 
 const ADMIN_NAV = [
   {to:"/reports",          icon:"📈", label:"Raporlar"},
+  {to:"/fixed-expenses",   icon:"🔒", label:"Sabit Giderler"},
   {to:"/settlement",        icon:"🥙", label:"Mutfağa Ödenecek"},
   {to:"/kitchen-display",  icon:"📺", label:"Mutfak Ekranı (Tablet)", external:true},
 ];
