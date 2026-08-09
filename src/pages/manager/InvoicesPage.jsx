@@ -21,6 +21,14 @@ const contentDefault = (ing, unit) => {
 const blankLine = (unit) => ({ ingredient_id:"", qty:0, unit_cost:0, isNew:false, newName:"", newUnit:unit||"ml",
   buy_mode:"adet", pack_qty:1, content:1, vat_pct:0 });
 
+// Sik kullanilan ambalaj hacimleri — elle yazarken 30L/50L karismasin diye.
+// Deger, hammaddenin KENDI biriminde: ml icin 30L = 30000.
+const VOLUME_PRESETS = {
+  ml: [["33cl",330],["50cl",500],["70cl",700],["1L",1000],["30L fıçı",30000],["50L fıçı",50000]],
+  cl: [["33cl",33],["50cl",50],["70cl",70],["1L",100],["30L fıçı",3000],["50L fıçı",5000]],
+  l:  [["33cl",0.33],["50cl",0.5],["70cl",0.7],["1L",1],["30L fıçı",30],["50L fıçı",50]],
+};
+
 export default function InvoicesPage() {
   const { staffUser } = useAuth();
   const [invoices, setInvoices] = useState([]);
@@ -392,7 +400,7 @@ export default function InvoicesPage() {
                         </label>
                       )}
                       <label style={{flex:"1 1 100px"}}>
-                        <div style={{fontSize:9,color:"#777",fontWeight:700,marginBottom:3}}>ŞİŞE İÇERİĞİ ({c.unit})</div>
+                        <div style={{fontSize:9,color:"#777",fontWeight:700,marginBottom:3}}>ŞİŞE / FIÇI İÇERİĞİ ({c.unit})</div>
                         <input type="number" step="0.01" value={l.content||1} onChange={e=>updateLine(idx,"content",e.target.value)} placeholder={c.unit==="ml"?"70cl = 700":"1"} style={{...inputS, padding:"8px"}}/>
                       </label>
                       <label style={{flex:"1 1 110px"}}>
@@ -401,6 +409,18 @@ export default function InvoicesPage() {
                       </label>
                       <button onClick={()=>removeLine(idx)} style={{background:"transparent",color:"#FF6666",border:"1px solid #553333",borderRadius:6,padding:"8px 10px",cursor:"pointer",fontSize:11,alignSelf:"flex-end"}}>Sil</button>
                     </div>
+                    {VOLUME_PRESETS[c.unit] && (
+                      <div style={{display:"flex",gap:5,marginTop:6,flexWrap:"wrap",alignItems:"center"}}>
+                        <span style={{fontSize:9,color:"#666",fontWeight:700,letterSpacing:"0.5px"}}>HIZLI:</span>
+                        {VOLUME_PRESETS[c.unit].map(([label, val]) => (
+                          <button key={label} onClick={()=>updateLine(idx,"content",val)}
+                            style={{padding:"5px 9px",background:Number(l.content)===val?"#C8973E":"#161616",color:Number(l.content)===val?"#000":"#999",
+                                    border:"1px solid "+(Number(l.content)===val?"#C8973E":"#2A2A2A"),borderRadius:6,fontSize:10,fontWeight:700,cursor:"pointer",fontFamily:"inherit"}}>
+                            {label}
+                          </button>
+                        ))}
+                      </div>
+                    )}
                     {c.units > 0 && (
                       <div style={{marginTop:8,padding:"8px 10px",background:"#12181A",border:"1px solid #1E3A42",borderRadius:8,fontSize:11,color:"#9CC",lineHeight:1.6}}>
                         <b style={{color:"#8FD8E8"}}>{c.units}</b> {c.unit === "adet" ? "adet" : "şişe/fıçı"}

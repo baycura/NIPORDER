@@ -101,6 +101,15 @@ export default function RecipesMgmtPage() {
     if (error) { alert("Hata: " + error.message); load(); }
   };
 
+  // Sadece parti gecesi tuketilen sarf (PET bardak): satis aninda
+  // fn_is_party_now() bakip uygular ya da atlar.
+  const setPartyOnly = async (r, val) => {
+    setRecipes(prev => prev.map(x => x.id === r.id ? { ...x, party_only: val } : x));
+    if (String(r.id).startsWith("temp-")) return;
+    const { error } = await supabase.from("recipes").update({ party_only: val }).eq("id", r.id);
+    if (error) { alert("Hata: " + error.message); load(); }
+  };
+
   const toggleConsumable = async (ing) => {
     const existing = recipes.find(r => r.product_id === selectedProduct.id && r.ingredient_id === ing.id);
     if (existing) return removeRecipe(existing);
@@ -212,7 +221,9 @@ export default function RecipesMgmtPage() {
   // ---------- ÜRÜN DETAY: kolay reçete arayüzü ----------
   if (selectedProduct) {
     const rows = productRecipes(selectedProduct.id);
-    const cost = calcCost(selectedProduct.id);
+    const cost = calcCost(selectedProduct.id);            // parti gecesi (en yuksek) maliyet
+    const partyExtra = rows.filter(r => r.party_only).reduce((s, r) => s + lineCost(r), 0);
+    const normalCost = cost - partyExtra;                 // normal gunlerde gecerli maliyet
     const price = Number(selectedProduct.price) || 0;
     const profit = price - cost;
     const margin = price > 0 ? Math.round((profit / price) * 100) : 0;
@@ -229,6 +240,13 @@ export default function RecipesMgmtPage() {
             <Stat label="KÂR" value={"₺" + profit.toFixed(2)} color="#3ECF8E" />
             <Stat label="MARJ" value={"%" + margin} color={margin >= 70 ? "#3ECF8E" : margin >= 50 ? "#E0AB4A" : "#FF8888"} />
           </div>
+          {partyExtra > 0 && (
+            <div style={{ fontSize: 11, color: "#888", marginTop: 10, lineHeight: 1.6 }}>
+              Yukarıdaki rakamlar <b style={{ color: "#C8973E" }}>parti gecesine</b> göre (en yüksek maliyet).
+              Normal günlerde maliyet <b style={{ color: "#F0EDE8" }}>₺{normalCost.toFixed(2)}</b>,
+              kâr <b style={{ color: "#3ECF8E" }}>₺{(price - normalCost).toFixed(2)}</b>.
+            </div>
+          )}
         </div>
 
         {/* AI ile reçete kur */}
@@ -358,6 +376,20 @@ export default function RecipesMgmtPage() {
                   {presets.map(([lbl, val]) => (
                     <button key={lbl} onClick={() => setQty(r, val)} style={{ padding: "6px 10px", background: Number(r.qty_per_unit) === val ? "#C8973E" : "#222", color: Number(r.qty_per_unit) === val ? "#000" : "#999", border: "1px solid " + (Number(r.qty_per_unit) === val ? "#C8973E" : "#333"), borderRadius: 8, fontSize: 11, fontWeight: 700, cursor: "pointer" }}>{lbl}</button>
                   ))}
+                </div>
+              )}
+              {ing.is_consumable && (
+                <label style={{ display: "flex", alignItems: "center", gap: 8, marginTop: 10, paddingTop: 10, borderTop: "1px solid #262626", cursor: "pointer", userSelect: "none" }}>
+                  <input type="checkbox" checked={!!r.party_only} onChange={e => setPartyOnly(r, e.target.checked)}
+                    style={{ width: 18, height: 18, accentColor: "#C8973E", cursor: "pointer" }} />
+                  <span style={{ fontSize: 12, color: r.party_only ? "#C8973E" : "#888", fontWeight: r.party_only ? 700 : 500 }}>
+                    🎉 Sadece parti gecesi kullanılır
+                  </span>
+                </label>
+              )}
+              {r.party_only && (
+                <div style={{ fontSize: 10, color: "#666", marginTop: 5, lineHeight: 1.5 }}>
+                  Yalnız Ayarlar&apos;daki parti gün ve saatlerinde stoktan düşer; diğer zamanlarda hiç sayılmaz.
                 </div>
               )}
             </div>
