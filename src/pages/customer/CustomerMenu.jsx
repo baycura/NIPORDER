@@ -519,11 +519,11 @@ export default function CustomerMenu() {
     let stopped = false;
     const checkStatus = async () => {
       if (stopped) return;
-      const { data: items } = await supabase
-        .from("order_items").select("kitchen_status").eq("order_id", successOrderId);
-      if (!items || items.length === 0) return;
-      const allServed = items.every(it => it.kitchen_status === "served");
-      const anyReady = items.some(it => it.kitchen_status === "ready" || it.kitchen_status === "served");
+      // Misafir siparis listesini okuyamaz (gizlilik) — durum RPC ile sorulur
+      const { data: st } = await supabase.rpc("order_public_status", { p_order_id: successOrderId });
+      if (!st || !st.item_count) return;
+      const allServed = !!st.all_served;
+      const anyReady = !!st.any_ready;
       if (allServed) {
         setOrderStage(prev => prev === "served" ? prev : "served");
       } else if (anyReady) {
@@ -706,7 +706,7 @@ export default function CustomerMenu() {
   useEffect(() => {
     if (!payToken || !successOrderId) return;
     const iv = setInterval(async () => {
-      const { data } = await supabase.from("orders").select("status").eq("id", successOrderId).maybeSingle();
+      const { data } = await supabase.rpc("order_public_status", { p_order_id: successOrderId });
       if (data?.status === "paid") { setOrderPaid(true); setPayToken(null); }
     }, 4000);
     return () => clearInterval(iv);
@@ -738,17 +738,26 @@ export default function CustomerMenu() {
     try {
       if (customerName.trim()) { try { localStorage.setItem("nip_customer_name", customerName.trim()); } catch { /* gizli mod */ } }
       const totalVal = cartTotal;
-      const { data: ord, error: ordErr } = await supabase.from("orders").insert({
+      // Siparis numarasini ISTEMCI uretir: boylece INSERT ... RETURNING gerekmez.
+      // Misafirin siparis tablosunu okuma yetkisi yok (gizlilik) — RETURNING kullanilsaydi
+      // SELECT policy'si gerekirdi ve bu da tum siparislerin dokulmesine kapi acardi.
+      const newOrderId = (crypto.randomUUID && crypto.randomUUID()) ||
+        "xxxxxxxx-xxxx-4xxx-yxxx-xxxxxxxxxxxx".replace(/[xy]/g, ch => {
+          const r = Math.random() * 16 | 0;
+          return (ch === "x" ? r : (r & 0x3 | 0x8)).toString(16);
+        });
+      const { error: ordErr } = await supabase.from("orders").insert({
+        id: newOrderId,
         table_id: table ? table.id : null,
         customer_name: customerName.trim() || customer?.name || null,
         customer_id: customer?.id || null,
         subtotal: totalVal, total: totalVal, status: "open",
         note: orderNote.trim() || null,
         origin_store_id: currentStoreId,
-      }).select().single();
+      });
       if (ordErr) throw ordErr;
       const itemsPayload = cart.map(c => ({
-        order_id: ord.id, product_id: c.product.id, product_name: c.product.name,
+        order_id: newOrderId, product_id: c.product.id, product_name: c.product.name,
         product_price: Number(c.product.price), final_price: calcPrice(c.product, c.options),
         quantity: c.quantity, kitchen_status: "pending", sent_to_kitchen: true, kitchen_destination_store_id: c.product.kitchen_destination_store_id || c.product.store_id,
         notes: c.note || null, selected_options: c.options || null,
@@ -757,9 +766,9 @@ export default function CustomerMenu() {
       }));
       const { error: itErr } = await supabase.from("order_items").insert(itemsPayload);
       if (itErr) throw itErr;
-      subscribePush(ord.id); // arka planda; basarisiz olsa da siparis akisini etkilemez
+      subscribePush(newOrderId); // arka planda; basarisiz olsa da siparis akisini etkilemez
       setOrderPaid(false); setPayToken(null);
-      setSuccessOrderId(ord.id);
+      setSuccessOrderId(newOrderId);
       setOrderStage("pending");
       setBrowsing(false); setCustTab("menu");
       setCart([]); setOrderNote(""); setCheckoutOpen(false);
