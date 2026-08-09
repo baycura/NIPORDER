@@ -26,7 +26,7 @@ const MANAGER_NAV = [
   {to:"/happy-hour",  icon:"🎉", label:"Happy Hour"},
   {to:"/category-schedule", icon:"⏰", label:"Kategori Saatleri"},
   {to:"/qr-codes", icon:"📱", label:"QR Kodlar"},
-  {to:"/merch-mgmt",  icon:"👕", label:"Merch"},
+  {to:"/retail",      icon:"🛍", label:"Ürünler (Raf)"},
   {to:"/content",     icon:"📰", label:"Vitrin & Blog"},
   {to:"/settings",    icon:"⚙",   label:"Ayarlar"},
 ];

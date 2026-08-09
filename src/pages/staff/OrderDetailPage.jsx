@@ -71,6 +71,20 @@ export default function OrderDetailPage() {
   };
 
   const addProduct = async (p) => {
+    // Bedenli raf urunu: hangi beden satildi?
+    let variantName = null;
+    const vs = Array.isArray(p.variants) ? p.variants.filter(v => v?.name) : [];
+    if (vs.length) {
+      const avail = vs.filter(v => Number(v.stock) > 0);
+      if (!avail.length) { alert(p.name + " — tüm bedenler tükendi"); return; }
+      const pick = prompt("Beden seç — " + p.name + "\n" + avail.map(v => v.name + " (" + v.stock + " adet)").join(" · "), avail[0].name);
+      if (pick == null) return;
+      const hit = avail.find(v => v.name.toLowerCase() === String(pick).trim().toLowerCase());
+      if (!hit) { alert("Geçersiz beden: " + pick); return; }
+      variantName = hit.name;
+    } else if (p.track_stock && Number(p.retail_stock) <= 0) {
+      if (!confirm(p.name + " stokta görünmüyor. Yine de eklensin mi?")) return;
+    }
     // Fiyati 0 olan urunler (magaza: tisort, seramik...) icin tutar kasada sorulur
     let price = Number(p.price) || 0;
     if (price <= 0) {
@@ -82,11 +96,12 @@ export default function OrderDetailPage() {
     const fp = price * (100 - Number(p.instant_discount_pct || 0)) / 100;
     // Magaza (staff_only kategori) urunleri mutfaga gitmez, bildirim tetiklemez
     const cat = categories.find(c => c.id === p.category_id);
-    const isRetail = !!cat?.staff_only;
+    const isRetail = !!cat?.staff_only || !!p.track_stock;
     const row = {
       order_id: orderId,
       product_id: p.id,
-      product_name: p.name + (p.brand ? " (" + p.brand + ")" : ""),
+      product_name: p.name + (p.brand ? " (" + p.brand + ")" : "") + (variantName ? " · " + variantName : ""),
+      variant_name: variantName,
       product_price: price,
       final_price: Math.round(fp),
       quantity: 1,
@@ -243,6 +258,7 @@ export default function OrderDetailPage() {
                 <div key={p.id} style={{display:"flex",alignItems:"center",justifyContent:"space-between",padding:"12px 8px",borderBottom:"1px solid #222",gap:10}}>
                   <div>
                     <div style={{fontSize:15,fontWeight:700}}>{p.name}{p.brand && <span style={{color:"#888",fontWeight:600}}> · {p.brand}</span>}</div>
+                    {p.track_stock && <div style={{fontSize:11,color:Number(p.retail_stock)>0?"#6FB3C0":"#c66",marginTop:2,fontWeight:600}}>Stok: {p.retail_stock||0} adet{Array.isArray(p.variants)&&p.variants.length?" · "+p.variants.filter(v=>Number(v.stock)>0).map(v=>v.name).join("/"):""}</div>}
                     <div style={{fontSize:13,color:"#C8973E",fontWeight:700,marginTop:2}}>{Number(p.price) > 0 ? "₺" + p.price : "Serbest tutar"}</div>
                   </div>
                   <button onClick={() => addProduct(p)} style={{width:46,height:46,background:"#C8973E",color:"#000",border:"none",borderRadius:"50%",fontSize:24,fontWeight:800,cursor:"pointer",flexShrink:0,display:"flex",alignItems:"center",justifyContent:"center",lineHeight:1}}>+</button>
