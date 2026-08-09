@@ -3,7 +3,8 @@ import { supabase } from "../../lib/supabase.js";
 import { useAuth } from "../../contexts/AuthContext.jsx";
 
 const cv = "-apple-system,BlinkMacSystemFont,'Segoe UI',Roboto,sans-serif";
-const UNITS = ["ml","l","g","kg","adet","sise","kasa"];
+const UNITS = ["ml","cl","l","g","kg","adet","şişe","porsiyon"];
+const VOL_UNITS = ["ml","cl","l"];
 
 export default function StockMgmtPage() {
   const { staffUser } = useAuth();
@@ -21,8 +22,8 @@ export default function StockMgmtPage() {
   };
   useEffect(() => { load(); }, []);
 
-  const openNew = () => { setModal({mode:"new"}); setForm({name:"", unit:"ml", stock_qty:0, cost_per_unit:0, waste_pct:0}); };
-  const openEdit = (i) => { setModal({mode:"edit", data:i}); setForm({name:i.name, unit:i.unit, stock_qty:Number(i.stock_qty)||0, cost_per_unit:Number(i.cost_per_unit)||0, waste_pct:Number(i.waste_pct)||0}); };
+  const openNew = () => { setModal({mode:"new"}); setForm({name:"", unit:"ml", stock_qty:0, cost_per_unit:0, waste_pct:0, pack_qty:1, unit_volume_ml:"", waste_per_pack:0, is_consumable:false}); };
+  const openEdit = (i) => { setModal({mode:"edit", data:i}); setForm({name:i.name, unit:i.unit, stock_qty:Number(i.stock_qty)||0, cost_per_unit:Number(i.cost_per_unit)||0, waste_pct:Number(i.waste_pct)||0, pack_qty:Number(i.pack_qty)||1, unit_volume_ml:i.unit_volume_ml??"", waste_per_pack:Number(i.waste_per_pack)||0, is_consumable:!!i.is_consumable}); };
 
   const save = async () => {
     if (busy) return;
@@ -33,6 +34,10 @@ export default function StockMgmtPage() {
       stock_qty: Number(form.stock_qty)||0,
       cost_per_unit: Number(form.cost_per_unit)||0,
       waste_pct: Number(form.waste_pct)||0,
+      pack_qty: Number(form.pack_qty)||1,
+      unit_volume_ml: form.unit_volume_ml === "" || form.unit_volume_ml == null ? null : Number(form.unit_volume_ml),
+      waste_per_pack: Number(form.waste_per_pack)||0,
+      is_consumable: !!form.is_consumable,
     };
     if (modal.mode === "new") {
       const { error } = await supabase.from("ingredients").insert({ ...payload, store_id: staffUser?.store_ids?.[0] });
@@ -84,6 +89,8 @@ export default function StockMgmtPage() {
                   <div style={{fontSize:14,fontWeight:700,color:"#F0EDE8"}}>{i.name}</div>
                   {isLow && <span style={{fontSize:9,padding:"2px 6px",background:"#552222",color:"#FFB0B0",borderRadius:6,fontWeight:700}}>AZALAN</span>}
                   {i.waste_pct > 0 && <span style={{fontSize:9,padding:"2px 6px",background:"#3D2D18",color:"#FFD088",borderRadius:6,fontWeight:700}}>FIRE %{i.waste_pct}</span>}
+                  {i.is_consumable && <span style={{fontSize:9,padding:"2px 6px",background:"#16323A",color:"#8FD8E8",borderRadius:6,fontWeight:700}}>SARF</span>}
+                  {Number(i.unit_volume_ml) > 0 && <span style={{fontSize:9,padding:"2px 6px",background:"#22262E",color:"#AAB6CC",borderRadius:6,fontWeight:700}}>{Number(i.pack_qty)>1 ? i.pack_qty+"x" : ""}{Number(i.unit_volume_ml)>=1000 ? (Number(i.unit_volume_ml)/1000)+"L" : i.unit_volume_ml+"ml"}</span>}
                 </div>
                 <div style={{fontSize:12,color:"#888",marginTop:3}}>
                   <span style={{color:isLow?"#FFB0B0":"#F0EDE8",fontWeight:700}}>{i.stock_qty}</span> {i.unit}
@@ -112,7 +119,38 @@ export default function StockMgmtPage() {
           </Field>
           <Field label={"STOK MIKTARI (" + form.unit + ")"}><input type="number" step="0.01" value={form.stock_qty||0} onChange={e=>setForm({...form,stock_qty:e.target.value})} style={inputS}/></Field>
           <Field label={"BIRIM MALIYET (₺ / " + form.unit + ")"}><input type="number" step="0.01" value={form.cost_per_unit||0} onChange={e=>setForm({...form,cost_per_unit:e.target.value})} style={inputS}/></Field>
-          <Field label="FIRE ORANI (%)"><input type="number" step="0.1" min="0" max="100" value={form.waste_pct||0} onChange={e=>setForm({...form,waste_pct:e.target.value})} placeholder="orn: 3 = %3 fire" style={inputS}/></Field>
+          <Field label="FIRE ORANI (%)"><input type="number" step="0.1" min="0" max="100" value={form.waste_pct||0} onChange={e=>setForm({...form,waste_pct:e.target.value})} placeholder="orn: 3 = %3 dokulme/fire" style={inputS}/></Field>
+
+          <div style={{background:"#0C0C0C",border:"1px solid #2A2A2A",borderRadius:10,padding:12,marginBottom:12}}>
+            <div style={{fontSize:10,color:"#C8973E",letterSpacing:"1.5px",fontWeight:700,marginBottom:8}}>📦 AMBALAJ (fatura girisi bunu kullanir)</div>
+            <Field label="KOLI ICI ADET (koli gelmiyorsa 1)">
+              <input type="number" min="1" step="1" value={form.pack_qty||1} onChange={e=>setForm({...form,pack_qty:e.target.value})} placeholder="orn: 24 sise/koli" style={inputS}/>
+            </Field>
+            <Field label="BIR SISE / FICI HACMI (ml)">
+              <input type="number" step="1" value={form.unit_volume_ml||""} onChange={e=>setForm({...form,unit_volume_ml:e.target.value})} placeholder="70cl sise = 700 · 30L fici = 30000" style={inputS}/>
+            </Field>
+            <Field label={"AMBALAJ BASINA FIRE (" + form.unit + ")"}>
+              <input type="number" step="1" value={form.waste_per_pack||0} onChange={e=>setForm({...form,waste_per_pack:e.target.value})} placeholder="Fici: 5 bardak fire = 5 x bardak ml" style={inputS}/>
+            </Field>
+            {VOL_UNITS.includes(form.unit) && (
+              <div style={{display:"flex",gap:6,flexWrap:"wrap"}}>
+                {[["5 x 500ml bardak",2500],["5 x 330ml bardak",1650],["Fire yok",0]].map(([lbl,val]) => (
+                  <button key={lbl} onClick={()=>setForm({...form,waste_per_pack:val})} style={{padding:"7px 10px",background:"#222",color:"#aaa",border:"1px solid #333",borderRadius:8,fontSize:11,fontWeight:700,cursor:"pointer"}}>{lbl}</button>
+                ))}
+              </div>
+            )}
+            {Number(form.unit_volume_ml) > 0 && Number(form.pack_qty) > 0 && (
+              <div style={{fontSize:11,color:"#888",marginTop:8,lineHeight:1.5}}>
+                1 koli = {form.pack_qty} x {form.unit_volume_ml} ml = <b style={{color:"#C8973E"}}>{(Number(form.pack_qty)*Number(form.unit_volume_ml)).toLocaleString("tr-TR")} ml</b>
+                {Number(form.waste_per_pack) > 0 && <> · ambalaj basi fire {form.waste_per_pack} {form.unit}</>}
+              </div>
+            )}
+          </div>
+
+          <label style={{display:"flex",alignItems:"center",gap:8,marginBottom:12,cursor:"pointer"}}>
+            <input type="checkbox" checked={!!form.is_consumable} onChange={e=>setForm({...form,is_consumable:e.target.checked})} style={{width:18,height:18,accentColor:"#C8973E"}}/>
+            <span style={{fontSize:13,color:"#F0EDE8"}}>🧊 Sarf malzeme (buz, pet bardak, pipet...) — recetelere tek dokunusla eklenir</span>
+          </label>
           <div style={{display:"flex",gap:8,marginTop:10}}>
             <button onClick={() => setModal(null)} style={cancelBtn}>Iptal</button>
             <button onClick={save} disabled={busy} style={{...saveBtn,opacity:busy?0.6:1}}>{busy?"...":"Kaydet"}</button>
