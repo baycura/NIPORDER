@@ -14,13 +14,19 @@ const defaultQty = (ing) => {
   return 1;
 };
 
-// Birime gore hizli miktar secimleri (kokteyl girisini hizlandirir)
-const presetsFor = (unit) =>
-  unit === "ml" ? [["Shot 4cl", 40], ["Duble 8cl", 80], ["Splash 1cl", 10], ["Top 10cl", 100], ["Bardak 200", 200], ["Bardak 330", 330], ["Bardak 500", 500]]
-  : unit === "cl" ? [["Shot", 4], ["Duble", 8], ["Splash", 1], ["Bardak", 20]]
-  : unit === "g" ? [["Buz 150g", 150], ["Buz 250g", 250], ["5 g", 5], ["10 g", 10]]
-  : unit === "adet" ? [["1", 1], ["2", 2], ["½", 0.5]]
-  : [];
+// Hizli miktar secimleri — isletmenin STANDART OLCUSUNE gore uretilir (Ayarlar'dan degisir).
+// Bunlar sadece kisayol; miktari her zaman elle de yazabilirsin.
+const presetsFor = (unit, pourCl) => {
+  const p = Number(pourCl) || 4;
+  const half = p / 2;
+  return unit === "ml"
+      ? [["Tek " + p + "cl", p * 10], ["Duble " + (p * 2) + "cl", p * 20], ["Yarım " + half + "cl", half * 10], ["Splash 1cl", 10], ["Top 10cl", 100], ["200", 200], ["330", 330], ["500", 500]]
+    : unit === "cl"
+      ? [["Tek " + p, p], ["Duble " + p * 2, p * 2], ["Yarım " + half, half], ["Splash 1", 1], ["Bardak 20", 20]]
+    : unit === "g" ? [["Buz 150g", 150], ["Buz 250g", 250], ["5 g", 5], ["10 g", 10]]
+    : unit === "adet" ? [["1", 1], ["2", 2], ["½", 0.5]]
+    : [];
+};
 
 export default function RecipesMgmtPage() {
   const { staffUser } = useAuth();
@@ -32,16 +38,24 @@ export default function RecipesMgmtPage() {
   const [search, setSearch] = useState("");
   const [ingSearch, setIngSearch] = useState("");
   const [busy, setBusy] = useState(false);
+  const [pourCl, setPourCl] = useState(4);          // isletmenin standart olcusu (Ayarlar)
+  const [aiText, setAiText] = useState("");
+  const [aiBusy, setAiBusy] = useState(false);
+  const [aiPreview, setAiPreview] = useState(null);
+  const [copyFrom, setCopyFrom] = useState("");
+  const [listFilter, setListFilter] = useState("all");
 
   const storeId = staffUser?.store_ids?.[0];
 
   const load = async () => {
     setLoading(true);
-    const [{ data: prods }, { data: ings }, { data: recs }] = await Promise.all([
+    const [{ data: prods }, { data: ings }, { data: recs }, { data: setting }] = await Promise.all([
       supabase.from("products").select("id, name, price, category_id, track_stock, categories(name)").order("name"),
       supabase.from("ingredients").select("*").order("name"),
       supabase.from("recipes").select("*").in("store_id", staffUser?.store_ids?.length ? staffUser.store_ids : ["00000000-0000-0000-0000-000000000000"]),
+      supabase.from("app_settings").select("value").eq("key", "house_pour_cl").maybeSingle(),
     ]);
+    setPourCl(Number(setting?.value) || 4);
     setProducts((prods || []).filter(p => !p.track_stock)); // raf urunlerinin recetesi olmaz
     setIngredients(ings || []);
     setRecipes(recs || []);
@@ -109,6 +123,78 @@ export default function RecipesMgmtPage() {
     addIngredient(data);
   };
 
+  // AI: serbest metinden recete kur
+  const runAi = async () => {
+    if (aiBusy || !aiText.trim()) return;
+    setAiBusy(true); setAiPreview(null);
+    try {
+      const { data, error } = await supabase.functions.invoke("recipe-parse", {
+        body: { text: aiText, product_name: selectedProduct?.name || "" },
+      });
+      if (error) throw new Error(error.message || "Sunucu hatasi");
+      if (data?.error) throw new Error(data.error);
+      if (!data.lines?.length) { alert("Malzeme çıkarılamadı — biraz daha açık yaz."); setAiBusy(false); return; }
+      setAiPreview(data.lines);
+    } catch (e) { alert("AI hatası: " + (e?.message || e)); }
+    setAiBusy(false);
+  };
+
+  const applyAi = async () => {
+    if (!aiPreview) return;
+    setAiBusy(true);
+    for (const l of aiPreview) {
+      let ing = ingredients.find(i => i.id === l.ingredient_id);
+      if (!ing && l.new_name) {
+        const { data } = await supabase.from("ingredients")
+          .insert({ name: l.new_name, unit: l.new_unit || "ml", stock_qty: 0, cost_per_unit: 0, store_id: storeId })
+          .select().single();
+        if (data) { ing = data; setIngredients(prev => [...prev, data]); }
+      }
+      if (!ing) continue;
+      if (recipes.find(r => r.product_id === selectedProduct.id && r.ingredient_id === ing.id)) continue;
+      const { data: rec } = await supabase.from("recipes")
+        .insert({ product_id: selectedProduct.id, ingredient_id: ing.id, qty_per_unit: l.qty || defaultQty(ing), store_id: storeId })
+        .select().single();
+      if (rec) setRecipes(prev => [...prev, rec]);
+    }
+    setAiBusy(false); setAiPreview(null); setAiText("");
+  };
+
+  // Toplu: bir sarf malzemeyi bir kategorideki TUM urunlere ekle (orn. buz -> tum kokteyller)
+  const bulkAddConsumable = async (ingId, categoryId) => {
+    const ing = ingredients.find(i => i.id === ingId);
+    if (!ing || !categoryId) return;
+    const targets = products.filter(p => p.category_id === categoryId);
+    const rows = targets
+      .filter(p => !recipes.find(r => r.product_id === p.id && r.ingredient_id === ing.id))
+      .map(p => ({ product_id: p.id, ingredient_id: ing.id, qty_per_unit: defaultQty(ing), store_id: storeId }));
+    if (!rows.length) { alert("Bu kategorideki tüm ürünlerde zaten ekli"); return; }
+    if (!confirm(ing.name + " → " + rows.length + " ürüne eklenecek. Devam?")) return;
+    setBusy(true);
+    const { data, error } = await supabase.from("recipes").insert(rows).select();
+    setBusy(false);
+    if (error) { alert("Hata: " + error.message); return; }
+    setRecipes(prev => [...prev, ...(data || [])]);
+    alert("✅ " + (data?.length || 0) + " ürüne eklendi");
+  };
+
+  // Baska bir urunun recetesini kopyala (highball'lar birbirinin ayni)
+  const copyRecipe = async (fromId) => {
+    if (!fromId || !selectedProduct) return;
+    const src = recipes.filter(r => r.product_id === fromId);
+    if (!src.length) { alert("O üründe reçete yok"); return; }
+    setBusy(true);
+    const mine = recipes.filter(r => r.product_id === selectedProduct.id);
+    const rows = src
+      .filter(r => !mine.find(m => m.ingredient_id === r.ingredient_id))
+      .map(r => ({ product_id: selectedProduct.id, ingredient_id: r.ingredient_id, qty_per_unit: r.qty_per_unit, store_id: storeId }));
+    if (!rows.length) { setBusy(false); alert("Tüm malzemeler zaten ekli"); return; }
+    const { data, error } = await supabase.from("recipes").insert(rows).select();
+    setBusy(false); setCopyFrom("");
+    if (error) { alert("Hata: " + error.message); return; }
+    setRecipes(prev => [...prev, ...(data || [])]);
+  };
+
   const consumables = useMemo(() => ingredients.filter(i => i.is_consumable), [ingredients]);
   const searchResults = useMemo(() => {
     const q = ingSearch.trim().toLocaleLowerCase("tr");
@@ -118,8 +204,10 @@ export default function RecipesMgmtPage() {
 
   if (loading) return (<div style={{ color: "#888", fontFamily: cv, padding: 20 }}>Yukleniyor...</div>);
 
-  const filtered = products.filter(p => !search || p.name?.toLowerCase().includes(search.toLowerCase()));
   const noRecipe = products.filter(p => productRecipes(p.id).length === 0).length;
+  const filtered = products
+    .filter(p => !search || p.name?.toLowerCase().includes(search.toLowerCase()))
+    .filter(p => listFilter === "all" ? true : listFilter === "missing" ? productRecipes(p.id).length === 0 : productRecipes(p.id).length > 0);
 
   // ---------- ÜRÜN DETAY: kolay reçete arayüzü ----------
   if (selectedProduct) {
@@ -142,6 +230,55 @@ export default function RecipesMgmtPage() {
             <Stat label="MARJ" value={"%" + margin} color={margin >= 70 ? "#3ECF8E" : margin >= 50 ? "#E0AB4A" : "#FF8888"} />
           </div>
         </div>
+
+        {/* AI ile reçete kur */}
+        <div style={{ background: "#161616", border: "1px solid #2A2A3A", borderRadius: 12, padding: 12, marginBottom: 12 }}>
+          <div style={{ fontSize: 10, color: "#B8C6F0", letterSpacing: "1.5px", fontWeight: 700, marginBottom: 8 }}>🤖 REÇETEYİ YAZ, AI KURSUN</div>
+          <textarea
+            value={aiText} onChange={e => setAiText(e.target.value)} rows={2}
+            placeholder={"örn: 3cl gin, 3cl campari, 3cl kırmızı vermut, buz, portakal kabuğu"}
+            style={{ width: "100%", padding: "12px 14px", background: "#0C0C0C", border: "1px solid #2A2A2A", borderRadius: 10, color: "#F0EDE8", fontSize: 15, outline: "none", fontFamily: "inherit", resize: "vertical" }}
+          />
+          <button onClick={runAi} disabled={aiBusy || !aiText.trim()} style={{ width: "100%", marginTop: 8, padding: "11px", background: aiBusy ? "#555" : "#2A2A3A", color: "#B8C6F0", border: "1px solid #3A3A5A", borderRadius: 10, fontSize: 13, fontWeight: 800, cursor: aiBusy ? "wait" : "pointer" }}>
+            {aiBusy ? "AI okuyor..." : "🤖 Malzemeleri çıkar"}
+          </button>
+          {aiPreview && (
+            <div style={{ marginTop: 10, background: "#0C0C0C", border: "1px solid #2A2A3A", borderRadius: 10, padding: 10 }}>
+              {aiPreview.map((l, i) => {
+                const ing = ingredients.find(x => x.id === l.ingredient_id);
+                return (
+                  <div key={i} style={{ display: "flex", justifyContent: "space-between", padding: "6px 0", borderBottom: "1px solid #1A1A1A", fontSize: 13 }}>
+                    <span style={{ fontWeight: 600 }}>
+                      {ing ? ing.name : <span style={{ color: "#8FD8E8" }}>＋ {l.new_name} <span style={{ color: "#666" }}>(yeni)</span></span>}
+                    </span>
+                    <span style={{ color: "#C8973E", fontWeight: 700 }}>{l.qty} {ing?.unit || l.new_unit}</span>
+                  </div>
+                );
+              })}
+              <div style={{ display: "flex", gap: 8, marginTop: 10 }}>
+                <button onClick={() => setAiPreview(null)} style={{ flex: 1, padding: "10px", background: "transparent", color: "#888", border: "1px solid #333", borderRadius: 8, fontSize: 12, fontWeight: 700, cursor: "pointer" }}>Vazgeç</button>
+                <button onClick={applyAi} disabled={aiBusy} style={{ flex: 2, padding: "10px", background: "#C8973E", color: "#000", border: "none", borderRadius: 8, fontSize: 12, fontWeight: 800, cursor: "pointer" }}>{aiBusy ? "..." : "Reçeteye ekle"}</button>
+              </div>
+            </div>
+          )}
+        </div>
+
+        {/* Başka üründen kopyala */}
+        {products.filter(p => p.id !== selectedProduct.id && productRecipes(p.id).length > 0).length > 0 && (
+          <div style={{ background: "#161616", border: "1px solid #2A2A2A", borderRadius: 12, padding: 12, marginBottom: 12 }}>
+            <div style={{ fontSize: 10, color: "#C8973E", letterSpacing: "1.5px", fontWeight: 700, marginBottom: 8 }}>📋 BAŞKA ÜRÜNDEN KOPYALA</div>
+            <div style={{ display: "flex", gap: 8 }}>
+              <select value={copyFrom} onChange={e => setCopyFrom(e.target.value)} style={{ flex: 1, padding: "10px 12px", background: "#0C0C0C", border: "1px solid #2A2A2A", borderRadius: 8, color: "#F0EDE8", fontSize: 14, outline: "none", fontFamily: "inherit" }}>
+                <option value="">- Ürün seç -</option>
+                {products.filter(p => p.id !== selectedProduct.id && productRecipes(p.id).length > 0).map(p => (
+                  <option key={p.id} value={p.id}>{p.name} ({productRecipes(p.id).length} malzeme)</option>
+                ))}
+              </select>
+              <button onClick={() => copyRecipe(copyFrom)} disabled={!copyFrom || busy} style={{ padding: "10px 16px", background: copyFrom ? "#C8973E" : "#222", color: copyFrom ? "#000" : "#666", border: "none", borderRadius: 8, fontSize: 13, fontWeight: 800, cursor: copyFrom ? "pointer" : "default" }}>Kopyala</button>
+            </div>
+            <div style={{ fontSize: 10, color: "#666", marginTop: 6 }}>Benzer ürünlerde (highball'lar, kahveler) tek tıkla aynı reçeteyi al, sonra farklı malzemeyi değiştir.</div>
+          </div>
+        )}
 
         {/* Malzeme ara & ekle */}
         <div style={{ background: "#161616", border: "1px solid #2A2A2A", borderRadius: 12, padding: 12, marginBottom: 12 }}>
@@ -193,9 +330,9 @@ export default function RecipesMgmtPage() {
         {rows.map(r => {
           const ing = ingredients.find(i => i.id === r.ingredient_id);
           if (!ing) return null;
-          const presets = presetsFor(ing.unit);
+          const presets = presetsFor(ing.unit, pourCl);
           const c = lineCost(r);
-          const step = ing.unit === "adet" ? 1 : ing.unit === "cl" ? 1 : ing.unit === "l" ? 0.05 : 10;
+          const step = ing.unit === "adet" ? 1 : ing.unit === "cl" ? 0.5 : ing.unit === "l" ? 0.05 : 5;
           return (
             <div key={r.id} style={{ background: "#1A1A1A", border: "1px solid #2A2A2A", borderRadius: 10, padding: 12, marginBottom: 8 }}>
               <div style={{ display: "flex", alignItems: "center", justifyContent: "space-between", gap: 10, marginBottom: 8 }}>
@@ -214,6 +351,7 @@ export default function RecipesMgmtPage() {
                   style={{ width: 90, padding: "10px", background: "#0C0C0C", border: "1px solid #3A3A3A", borderRadius: 8, color: "#F0EDE8", fontSize: 16, textAlign: "center", outline: "none", fontFamily: "inherit", fontWeight: 700 }} />
                 <span style={{ color: "#888", fontSize: 13, fontWeight: 700 }}>{ing.unit}</span>
                 <button onClick={() => setQty(r, Number(r.qty_per_unit) + step)} style={qtyBtn}>+</button>
+                <span style={{ color: "#555", fontSize: 10, marginLeft: 4 }}>istediğin değeri yazabilirsin</span>
               </div>
               {presets.length > 0 && (
                 <div style={{ display: "flex", gap: 6, flexWrap: "wrap", marginTop: 8 }}>
@@ -237,7 +375,30 @@ export default function RecipesMgmtPage() {
         {recipes.length} SATIR · {products.length} ÜRÜN{noRecipe > 0 ? " · " + noRecipe + " ÜRÜNÜN REÇETESİ YOK" : ""}
       </div>
 
-      <input value={search} onChange={e => setSearch(e.target.value)} placeholder="Ürün ara..." style={{ width: "100%", padding: "12px 14px", background: "#1A1A1A", border: "1px solid #2A2A2A", borderRadius: 10, color: "#F0EDE8", fontSize: 14, outline: "none", marginBottom: 12, fontFamily: "inherit" }} />
+      <input value={search} onChange={e => setSearch(e.target.value)} placeholder="Ürün ara..." style={{ width: "100%", padding: "12px 14px", background: "#1A1A1A", border: "1px solid #2A2A2A", borderRadius: 10, color: "#F0EDE8", fontSize: 14, outline: "none", marginBottom: 10, fontFamily: "inherit" }} />
+
+      <div style={{ display: "flex", gap: 6, marginBottom: 12, flexWrap: "wrap" }}>
+        {[["all", "TÜMÜ"], ["missing", "REÇETESİ YOK (" + noRecipe + ")"], ["done", "REÇETELİ"]].map(([k, l]) => (
+          <button key={k} onClick={() => setListFilter(k)} style={{ padding: "8px 14px", border: "none", borderRadius: 16, fontSize: 11, fontWeight: 700, letterSpacing: "0.5px", background: listFilter === k ? "#C8973E" : "#222", color: listFilter === k ? "#000" : "#888", cursor: "pointer" }}>{l}</button>
+        ))}
+      </div>
+
+      {consumables.length > 0 && (
+        <details style={{ background: "#12181A", border: "1px solid #1E3A42", borderRadius: 12, padding: 12, marginBottom: 12 }}>
+          <summary style={{ fontSize: 11, color: "#8FD8E8", letterSpacing: "1.5px", fontWeight: 700, cursor: "pointer" }}>🧊 TOPLU SARF EKLE (buz → tüm kokteyller gibi)</summary>
+          <div style={{ display: "flex", gap: 8, marginTop: 10, flexWrap: "wrap" }}>
+            <select id="bulk-ing" style={{ flex: "1 1 130px", padding: "10px", background: "#0C0C0C", border: "1px solid #2A2A2A", borderRadius: 8, color: "#F0EDE8", fontSize: 13, fontFamily: "inherit" }}>
+              {consumables.map(i => (<option key={i.id} value={i.id}>{i.name}</option>))}
+            </select>
+            <select id="bulk-cat" style={{ flex: "1 1 130px", padding: "10px", background: "#0C0C0C", border: "1px solid #2A2A2A", borderRadius: 8, color: "#F0EDE8", fontSize: 13, fontFamily: "inherit" }}>
+              {[...new Map(products.filter(p => p.category_id).map(p => [p.category_id, p.categories?.name || "Kategori"])).entries()]
+                .map(([id, name]) => (<option key={id} value={id}>{name}</option>))}
+            </select>
+            <button onClick={() => bulkAddConsumable(document.getElementById("bulk-ing").value, document.getElementById("bulk-cat").value)}
+              disabled={busy} style={{ padding: "10px 16px", background: "#C8973E", color: "#000", border: "none", borderRadius: 8, fontSize: 13, fontWeight: 800, cursor: "pointer" }}>Uygula</button>
+          </div>
+        </details>
+      )}
 
       {filtered.map(p => {
         const n = productRecipes(p.id).length;

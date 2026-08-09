@@ -38,3 +38,8 @@ from (values
   ('Şeftali Püresi','ml',1000),('Vişne Şurubu','ml',700)
 ) as v(name, unit, vol)
 where not exists (select 1 from public.ingredients i where lower(i.name) = lower(v.name) and i.store_id = 'c3c6e0c7-1821-4edd-993d-ad960cfbc452');
+
+-- Isletmenin standart olcusu (cl) — recete kisayol dugmeleri bunu kullanir
+insert into public.app_settings (key, value, store_id)
+select 'house_pour_cl', to_jsonb(4), 'c3c6e0c7-1821-4edd-993d-ad960cfbc452'
+where not exists (select 1 from public.app_settings where key = 'house_pour_cl');
