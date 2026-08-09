@@ -67,10 +67,19 @@ export default function MembersPage() {
     });
     setPayAmount("");
     setProdSearch(""); setProdDiscounts({}); setStats(null);
-    supabase.from("member_discounts").select("product_id, amount").eq("customer_id", m.id).eq("is_active", true)
+    supabase.from("member_discounts").select("product_id, amount, price").eq("customer_id", m.id).eq("is_active", true)
       .then(({ data }) => {
         const map = {};
-        (data || []).forEach(d => { map[d.product_id] = Number(d.amount) || 0; });
+        const byId = {};
+        products.forEach(p => { byId[p.id] = p; });
+        (data || []).forEach(d => {
+          // Yeni kayitlar price ile gelir; eski `amount` kayitlarini net fiyata cevir
+          if (d.price != null) map[d.product_id] = String(Math.round(Number(d.price)));
+          else {
+            const liste = Number(byId[d.product_id]?.price) || 0;
+            map[d.product_id] = String(Math.max(0, Math.round(liste - (Number(d.amount) || 0))));
+          }
+        });
         setProdDiscounts(map);
       });
     loadStats(m.id);
@@ -101,9 +110,10 @@ export default function MembersPage() {
     // Uye urun indirimlerini kaydet (tam liste yeniden yazilir)
     if (customerId) {
       await supabase.from("member_discounts").delete().eq("customer_id", customerId);
+      // Artik net fiyat kaydediliyor (price); amount eski kayitlar icin duruyor
       const rows = Object.entries(prodDiscounts)
-        .filter(([, amt]) => Number(amt) > 0)
-        .map(([pid, amt]) => ({ customer_id: customerId, product_id: pid, amount: Number(amt), is_active: true }));
+        .filter(([, v]) => v !== "" && v != null && Number(v) >= 0)
+        .map(([pid, v]) => ({ customer_id: customerId, product_id: pid, price: Number(v), amount: 0, is_active: true }));
       if (rows.length) {
         const { error: de } = await supabase.from("member_discounts").insert(rows);
         if (de) alert("Uye indirimleri kaydedilemedi: " + de.message);
@@ -223,21 +233,29 @@ export default function MembersPage() {
           )}
 
           <div style={{background:"#1E1A10",border:"1px solid #C8973E55",borderRadius:10,padding:12,marginBottom:12}}>
-            <div style={{fontSize:10,color:"#FFD27A",letterSpacing:"1.5px",fontWeight:700,marginBottom:4}}>UYE URUN INDIRIMLERI (₺)</div>
-            <div style={{fontSize:10,color:"#888",marginBottom:8}}>Sabit tutar, urunun normal fiyatindan dusulur. Uye menuden Google ile giris yapinca indirimli fiyatlari gorur ve siparisleri hesabina islenir.</div>
+            <div style={{fontSize:10,color:"#FFD27A",letterSpacing:"1.5px",fontWeight:700,marginBottom:4}}>ÜYEYE ÖZEL FİYATLAR (₺)</div>
+            <div style={{fontSize:10,color:"#888",marginBottom:8,lineHeight:1.6}}>
+              Ürünü işaretle, bu üyenin ödeyeceği <b style={{color:"#FFD27A"}}>net fiyatı</b> yaz — yüzde yok, küsürat yok.
+              Üye menüde liste fiyatını üstü çizili, kendi fiyatını yanında görür.
+              <br/>Happy hour / kampanya bu fiyattan <b style={{color:"#FFD27A"}}>daha ucuzsa</b> kampanya geçerli olur; değilse üye kendi fiyatını öder — yani her zaman düşük olanı öder.
+            </div>
             <input value={prodSearch} onChange={e=>setProdSearch(e.target.value)} placeholder="Urun ara..." style={{...inputS, marginBottom:8, padding:"8px 10px"}}/>
             <div style={{maxHeight:220,overflowY:"auto",border:"1px solid #2A2A2A",borderRadius:8,padding:"4px 8px",background:"#111"}}>
               {products.filter(p => !prodSearch || p.name?.toLowerCase().includes(prodSearch.toLowerCase())).map(p => {
                 const sel = prodDiscounts[p.id] !== undefined;
-                const amt = prodDiscounts[p.id];
+                const val = prodDiscounts[p.id];
+                const liste = Math.round(Number(p.price));
+                const uye = Number(val);
                 return (
                   <div key={p.id} style={{display:"flex",alignItems:"center",gap:8,padding:"5px 0",borderBottom:"1px solid #1E1E1E"}}>
-                    <input type="checkbox" checked={sel} onChange={e => { const pd = {...prodDiscounts}; if (e.target.checked) pd[p.id] = pd[p.id] ?? ""; else delete pd[p.id]; setProdDiscounts(pd); }} style={{accentColor:"#C8973E"}}/>
-                    <div style={{flex:1,fontSize:12,color:"#ddd",minWidth:0,overflow:"hidden",textOverflow:"ellipsis",whiteSpace:"nowrap"}}>{p.name} <span style={{color:"#666",fontSize:11}}>₺{Math.round(p.price)}</span></div>
+                    <input type="checkbox" checked={sel} onChange={e => { const pd = {...prodDiscounts}; if (e.target.checked) pd[p.id] = pd[p.id] ?? String(liste); else delete pd[p.id]; setProdDiscounts(pd); }} style={{accentColor:"#C8973E"}}/>
+                    <div style={{flex:1,fontSize:12,color:"#ddd",minWidth:0,overflow:"hidden",textOverflow:"ellipsis",whiteSpace:"nowrap"}}>{p.name} <span style={{color:"#666",fontSize:11}}>₺{liste}</span></div>
                     {sel && (<div style={{display:"flex",alignItems:"center",gap:3}}>
-                      <span style={{color:"#888",fontSize:11}}>-₺</span>
-                      <input type="number" min="0" value={amt} onChange={e=>setProdDiscounts({...prodDiscounts, [p.id]: e.target.value})} style={{width:64,padding:5,background:"#0C0C0C",color:"#FFD27A",border:"1px solid #C8973E",borderRadius:5,fontSize:12}}/>
-                      <span style={{color:"#3ECF8E",fontSize:11,fontWeight:700,whiteSpace:"nowrap"}}>= ₺{Math.max(0, Math.round(Number(p.price) - (Number(amt)||0)))}</span>
+                      <span style={{color:"#888",fontSize:11}}>₺</span>
+                      <input type="number" min="0" value={val} onChange={e=>setProdDiscounts({...prodDiscounts, [p.id]: e.target.value})} style={{width:70,padding:5,background:"#0C0C0C",color:"#FFD27A",border:"1px solid #C8973E",borderRadius:5,fontSize:12}}/>
+                      <span style={{color:val === "" ? "#666" : uye < liste ? "#3ECF8E" : "#c66",fontSize:11,fontWeight:700,whiteSpace:"nowrap"}}>
+                        {val === "" ? "fiyat gir" : uye < liste ? "−₺" + (liste - uye) : uye === liste ? "indirim yok" : "liste üstü!"}
+                      </span>
                     </div>)}
                   </div>
                 );

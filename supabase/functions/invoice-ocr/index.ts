@@ -99,7 +99,10 @@ Deno.serve(async (req: Request) => {
               "Ayrica sise/fici hacmini urun adindan cikar (33cl, 50cl, 70cl, 1L) ve content_cl alanina CL cinsinden yaz (1L=100). " +
               "ONEMLI - FICI BIRA: Fici (keg/draft/'FIC'/'KEG') kalemlerinde hacim LITRE yazar ve genelde 30L ya da 50L olur; " +
               "content_cl'ye litreyi 100 ile carparak yaz (30L=3000, 50L=5000). 30 ile 50'yi karistirma — fatura satirinda hangisi yaziyorsa onu al; " +
-              "hacim gorunmuyorsa 0 birak, uydurma. Fici daima pack_type='adet' olarak gelir (koli degil). " +
+              "Fici daima pack_type='adet' olarak gelir (koli degil). " +
+              "Hacim faturada YAZMIYORSA isletmenin kurallarini kullan: EFES fici = 50L (content_cl 5000), BUD fici = 30L (content_cl 3000). " +
+              "Bu yalniz hacim gorunmedigi durumda gecerlidir — faturada acik bir litre yaziyorsa DAIMA faturadaki deger onceliklidir. " +
+              "Baska bir marka ficisi hacimsiz geliyorsa 0 birak, tahmin etme. " +
               "qty alanina faturadaki miktari (kac koli ya da kac sise) yaz, pack_type ile hangisi oldugunu belirt. " +
               "Tarihi YYYY-MM-DD formatina cevir. Emin olamadigin alanlari bos string ya da 0 birak; asla uydurma.",
           },

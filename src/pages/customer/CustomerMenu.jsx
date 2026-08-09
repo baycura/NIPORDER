@@ -315,17 +315,30 @@ export default function CustomerMenu() {
       setProfileStats({ cust: customer, orders: 0, totalSpent: 0, top: [], last: null });
     }
   };
+  // Uyeye ozel fiyatlar: { product_id: sabit fiyat (TL) }
+  // Yeni kayitlar `price` ile gelir; eski `amount` kayitlari liste fiyatindan dusulur.
   const [memberDiscounts, setMemberDiscounts] = useState({});
   useEffect(() => {
     if (!customer?.id) { setMemberDiscounts({}); return; }
-    supabase.from("member_discounts").select("product_id, amount")
+    supabase.from("member_discounts").select("product_id, amount, price")
       .eq("customer_id", customer.id).eq("is_active", true)
       .then(({ data }) => {
         const map = {};
-        (data || []).forEach(d => { map[d.product_id] = Number(d.amount) || 0; });
+        (data || []).forEach(d => {
+          if (d.price != null) map[d.product_id] = Number(d.price);
+          else if (Number(d.amount) > 0) map[d.product_id] = { legacyAmount: Number(d.amount) };
+        });
         setMemberDiscounts(map);
       });
   }, [customer?.id]);
+
+  // Bir urun icin uyeye ozel fiyat (yoksa null)
+  const memberPriceFor = (p, mod = 0) => {
+    const v = memberDiscounts[p.id];
+    if (v == null) return null;
+    if (typeof v === "object") return Math.max(0, Math.round(Number(p.price) + mod - v.legacyAmount));
+    return Math.max(0, Math.round(Number(v) + mod));
+  };
 
   // Alt sekmeler + siparis beklerken gezinme
   const [custTab, setCustTab] = useState("menu");
@@ -590,10 +603,24 @@ export default function CustomerMenu() {
     if (hh && (hh.category_ids?.length === 0 || hh.category_ids?.includes(p.category_id))) pct = Number(hh.discount_pct) || 0;
     if (Number(p.instant_discount_pct||0) > pct) pct = Number(p.instant_discount_pct);
     let final = Math.round(basePrice * (100 - pct) / 100);
-    // Uye indirimi: normal fiyattan sabit ₺ dusulur; musteriye dusuk olan fiyat gosterilir
-    const memberAmt = Number(memberDiscounts[p.id] || 0);
-    if (memberAmt > 0) final = Math.min(final, Math.max(0, Math.round(Number(p.price) + mod - memberAmt)));
+    // Uye fiyati: kampanya ile karsilastirilir, musteri DUSUK olani oder
+    const mp = memberPriceFor(p, mod);
+    if (mp != null) final = Math.min(final, mp);
     return final;
+  };
+
+  // Ustu cizilecek liste fiyati: yalniz gercekten indirim varsa
+  const listPrice = (p, options) => {
+    let mod = 0;
+    if (options && p.options_config?.groups) {
+      for (const group of p.options_config.groups) {
+        const selectedOpt = options[group.name];
+        if (selectedOpt && group.price_modifiers && group.price_modifiers[selectedOpt] != null) {
+          mod += Number(group.price_modifiers[selectedOpt]) || 0;
+        }
+      }
+    }
+    return Math.round(Number(p.price) + mod);
   };
 
   const cartTotal = useMemo(() => cart.reduce((s, it) => s + calcPrice(it.product, it.options) * it.quantity, 0), [cart, hh, memberDiscounts]);
@@ -1029,7 +1056,7 @@ export default function CustomerMenu() {
                 <div style={{display:"flex",alignItems:"center",gap:10,marginTop:8}}>
                   {dis && <span style={{fontSize:12,color:"#999",textDecoration:"line-through"}}>₺{p.price}</span>}
                   <span style={{fontSize:15,fontWeight:800,color:dis?"#C8973E":"#000"}}>₺{fp}</span>
-                  {Number(memberDiscounts[p.id]||0) > 0 && <span style={{fontSize:9,padding:"2px 6px",background:"#000",color:"#FFD700",borderRadius:6,fontWeight:800,letterSpacing:"0.5px"}}>{L("ÜYE","MEMBER","ЧЛЕН")}</span>}
+                  {memberPriceFor(p) != null && memberPriceFor(p) <= fp && <span style={{fontSize:9,padding:"2px 6px",background:"#000",color:"#FFD700",borderRadius:6,fontWeight:800,letterSpacing:"0.5px"}}>{L("SANA ÖZEL","YOUR PRICE","ВАША ЦЕНА")}</span>}
                 </div>
               </div>
               {!soldOut && (
@@ -1148,16 +1175,21 @@ export default function CustomerMenu() {
                 )}
 
                 <div style={{marginBottom:14}}>
-                  <div style={{fontSize:10,color:"#888",letterSpacing:"1.5px",fontWeight:700,marginBottom:6}}>{L("SANA ÖZEL İNDİRİMLER","YOUR MEMBER DISCOUNTS","ВАШИ СКИДКИ")}</div>
+                  <div style={{fontSize:10,color:"#888",letterSpacing:"1.5px",fontWeight:700,marginBottom:6}}>{L("SANA ÖZEL FİYATLAR","YOUR MEMBER PRICES","ВАШИ ЦЕНЫ")}</div>
                   {Object.keys(memberDiscounts).length === 0 ? (
-                    <div style={{fontSize:12,color:"#999"}}>{L("Henüz tanımlı indirim yok","No discounts defined yet","Скидок пока нет")}</div>
+                    <div style={{fontSize:12,color:"#999"}}>{L("Henüz tanımlı fiyatın yok","No special prices yet","Особых цен пока нет")}</div>
                   ) : (
-                    Object.entries(memberDiscounts).map(([pid, amt]) => {
+                    Object.keys(memberDiscounts).map(pid => {
                       const p = products.find(x => x.id === pid);
+                      if (!p) return null;
+                      const mp = memberPriceFor(p);
                       return (
-                        <div key={pid} style={{display:"flex",justifyContent:"space-between",padding:"7px 0",borderBottom:"1px solid #f0f0f0",fontSize:13}}>
-                          <span style={{fontWeight:600}}>{p ? pName(p) : "…"}</span>
-                          <span style={{color:"#1a7f37",fontWeight:800}}>−₺{amt}</span>
+                        <div key={pid} style={{display:"flex",justifyContent:"space-between",alignItems:"center",padding:"7px 0",borderBottom:"1px solid #f0f0f0",fontSize:13}}>
+                          <span style={{fontWeight:600}}>{pName(p)}</span>
+                          <span>
+                            <span style={{color:"#999",textDecoration:"line-through",marginRight:8}}>₺{Math.round(Number(p.price))}</span>
+                            <span style={{color:"#1a7f37",fontWeight:800}}>₺{mp}</span>
+                          </span>
                         </div>
                       );
                     })
@@ -1229,7 +1261,12 @@ export default function CustomerMenu() {
                   <div style={{fontSize:14,fontWeight:700}}>{pName(c.product)}</div>
                   {c.options && <div style={{fontSize:11,color:"#C8973E",marginTop:2,fontWeight:600}}>{Object.values(c.options).flat().join(" · ")}</div>}
                   {c.note && <div style={{fontSize:11,color:"#666",fontStyle:"italic",marginTop:2}}>{c.note}</div>}
-                  <div style={{fontSize:12,color:"#555",marginTop:3}}>₺{calcPrice(c.product, c.options)} × {c.quantity} = ₺{calcPrice(c.product, c.options) * c.quantity}</div>
+                  <div style={{fontSize:12,color:"#555",marginTop:3}}>
+                    {calcPrice(c.product, c.options) < listPrice(c.product, c.options) && (
+                      <span style={{color:"#aaa",textDecoration:"line-through",marginRight:5}}>₺{listPrice(c.product, c.options)}</span>
+                    )}
+                    ₺{calcPrice(c.product, c.options)} × {c.quantity} = ₺{calcPrice(c.product, c.options) * c.quantity}
+                  </div>
                   {canTakeaway(c.product) && (
                     <button onClick={() => toggleTakeaway(idx)}
                       style={{marginTop:6,padding:"6px 12px",background:c.takeaway?"#000":"#f2f2f2",color:c.takeaway?"#fff":"#666",

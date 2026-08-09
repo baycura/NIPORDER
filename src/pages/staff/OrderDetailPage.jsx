@@ -13,6 +13,8 @@ export default function OrderDetailPage() {
   const [categories, setCategories] = useState([]);
   const [products, setProducts] = useState([]);
   const [takeawayMode, setTakeawayMode] = useState(false);
+  const [customers, setCustomers] = useState([]);
+  const [memberPrices, setMemberPrices] = useState({});
   const [tables, setTables] = useState({});
   const [loading, setLoading] = useState(true);
   const [selectedCat, setSelectedCat] = useState(null);
@@ -24,22 +26,55 @@ export default function OrderDetailPage() {
   // siparis verisi hafif sorguyla tazelenir — her dokunusta tam yukleme YOK.
   const load = async () => {
     setLoading(true);
-    const [{data: o}, {data: its}, {data: cats}, {data: prods}, {data: tabs}] = await Promise.all([
+    const [{data: o}, {data: its}, {data: cats}, {data: prods}, {data: tabs}, {data: custs}] = await Promise.all([
       supabase.from("orders").select("*, stores:origin_store_id(slug, name)").eq("id", orderId).maybeSingle(),
       supabase.from("order_items").select("*").eq("order_id", orderId).order("created_at"),
       supabase.from("categories").select("*").eq("is_active", true).order("sort_order"),
       supabase.from("products").select("*").eq("is_available", true).order("sort_order"),
       supabase.from("cafe_tables").select("id, name"),
+      supabase.from("customers").select("id, name, phone").order("name"),
     ]);
     setOrder(o);
     setItems(its || []);
     setCategories(cats || []);
     setProducts(prods || []);
+    setCustomers(custs || []);
     const tMap = {}; (tabs||[]).forEach(t => { tMap[t.id] = t.name; });
     setTables(tMap);
     if (cats && cats.length && !selectedCat) setSelectedCat(cats[0].id);
     if (o) { setCustomerNameEdit(o.customer_name || ""); setOrderNote(o.note || ""); }
+    if (o?.customer_id) loadMemberPrices(o.customer_id); else setMemberPrices({});
     setLoading(false);
+  };
+
+  // Uyeye ozel fiyatlar: kasadan eklenen urunlerde de gecerli olmali
+  const loadMemberPrices = async (customerId) => {
+    const { data } = await supabase.from("member_discounts")
+      .select("product_id, amount, price").eq("customer_id", customerId).eq("is_active", true);
+    const map = {};
+    (data || []).forEach(d => {
+      if (d.price != null) map[d.product_id] = Number(d.price);
+      else if (Number(d.amount) > 0) map[d.product_id] = { legacyAmount: Number(d.amount) };
+    });
+    setMemberPrices(map);
+  };
+
+  const memberPriceFor = (p) => {
+    const v = memberPrices[p.id];
+    if (v == null) return null;
+    if (typeof v === "object") return Math.max(0, Math.round(Number(p.price) - v.legacyAmount));
+    return Math.max(0, Math.round(Number(v)));
+  };
+
+  const linkCustomer = async (custId) => {
+    const c = customers.find(x => x.id === custId) || null;
+    const patch = { customer_id: custId || null };
+    if (c?.name) patch.customer_name = c.name;
+    const { error } = await supabase.from("orders").update(patch).eq("id", orderId);
+    if (error) { alert("Üye bağlanamadı: " + error.message); return; }
+    setOrder(prev => prev ? { ...prev, ...patch } : prev);
+    if (c?.name) setCustomerNameEdit(c.name);
+    if (custId) await loadMemberPrices(custId); else setMemberPrices({});
   };
 
   const loadOrderOnly = async () => {
@@ -108,7 +143,10 @@ export default function OrderDetailPage() {
       price = Number(String(inp).replace(",", "."));
       if (!price || price <= 0) { alert("Geçerli bir tutar gir"); return; }
     }
-    const fp = price * (100 - Number(p.instant_discount_pct || 0)) / 100;
+    // Kampanya fiyati ile uye fiyati karsilastirilir; musteri DUSUK olani oder
+    let fp = price * (100 - Number(p.instant_discount_pct || 0)) / 100;
+    const mp = memberPriceFor(p);
+    if (mp != null) fp = Math.min(fp, mp);
     // Magaza (staff_only kategori) urunleri mutfaga gitmez, bildirim tetiklemez
     const cat = categories.find(c => c.id === p.category_id);
     const isRetail = !!cat?.staff_only || !!p.track_stock;
@@ -217,6 +255,25 @@ export default function OrderDetailPage() {
         <div style={{fontSize:11,color:"#888",marginTop:4}}>{totalItems} urun · ₺{order.total || 0}</div>
       </div>
 
+      {/* Uye bagla: bagli uyenin ozel fiyatlari eklenen urunlere otomatik uygulanir */}
+      <div style={{marginBottom:14,background:order?.customer_id?"#1E1A10":"#161616",border:"1px solid "+(order?.customer_id?"#C8973E55":"#2A2A2A"),borderRadius:10,padding:10}}>
+        <div style={{fontSize:10,color:order?.customer_id?"#FFD27A":"#888",letterSpacing:"1.5px",fontWeight:700,marginBottom:6}}>
+          {order?.customer_id ? "👤 ÜYE HESABI BAĞLI" : "👤 ÜYE HESABI"}
+        </div>
+        <select value={order?.customer_id || ""} onChange={e => linkCustomer(e.target.value || null)}
+          style={{width:"100%",padding:"10px 12px",background:"#0C0C0C",border:"1px solid "+(order?.customer_id?"#C8973E":"#2A2A2A"),borderRadius:8,color:"#F0EDE8",fontSize:14,outline:"none",fontFamily:"inherit"}}>
+          <option value="">— Üye değil (misafir) —</option>
+          {customers.map(c => (<option key={c.id} value={c.id}>{c.name}{c.phone ? " · " + c.phone : ""}</option>))}
+        </select>
+        <div style={{fontSize:10,color:"#777",marginTop:6,lineHeight:1.5}}>
+          {order?.customer_id
+            ? (Object.keys(memberPrices).length > 0
+                ? "Bu üyenin " + Object.keys(memberPrices).length + " özel fiyatı var — eklediğin ürünlere otomatik uygulanır (kampanya daha ucuzsa kampanya)."
+                : "Bu üyeye tanımlı özel fiyat yok; liste fiyatı geçerli.")
+            : "Üye seçersen özel fiyatları eklenen ürünlere otomatik iner."}
+        </div>
+      </div>
+
       <div style={{marginBottom:14}}>
         <input value={orderNote} onChange={e=>setOrderNote(e.target.value)} onBlur={saveOrderNote} placeholder="+ Sipariş notu ekle (mutfak görecek)" style={{width:"100%",padding:"10px 14px",background:"transparent",border:"1px dashed #444",color:"#ddd",borderRadius:10,fontSize:13,outline:"none",fontFamily:"inherit"}}/>
       </div>
@@ -236,6 +293,9 @@ export default function OrderDetailPage() {
                 {opts && <div style={{fontSize:11,color:"#C8973E",marginTop:2,fontWeight:600}}>{opts}</div>}
                 {it.notes && <div style={{fontSize:11,color:"#aaa",fontStyle:"italic",marginTop:2}}>Not: {it.notes}</div>}
                 <div style={{fontSize:11,marginTop:4}}>
+                  {Number(it.final_price) < Number(it.product_price) && (
+                    <span style={{color:"#666",textDecoration:"line-through",marginRight:5}}>₺{Math.round(Number(it.product_price))}</span>
+                  )}
                   <span style={{color:"#888"}}>₺{it.final_price} · </span>
                   <span style={{color:statusColor,fontWeight:700,letterSpacing:"1px"}}>{it.kitchen_status?.toUpperCase()}</span>
                 </div>
