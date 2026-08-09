@@ -46,6 +46,50 @@ export default function ContentPage() {
 
   const removePhoto = (idx) => setForm({ ...form, images: (form.images || []).filter((_, i) => i !== idx) });
 
+  // --- AI ile icerik yazdirma (istege bagli: yuklu ilk fotografa bakarak) ---
+  const [aiBrief, setAiBrief] = useState("");
+  const [aiBusy, setAiBusy] = useState(false);
+  const [aiTip, setAiTip] = useState("");
+  const [useImage, setUseImage] = useState(true);
+
+  // Yuklu fotografi AI'ye gondermek icin kucultup base64'e cevir (foto saklanmaz, sadece bakilir)
+  const imageToBase64 = async (url) => {
+    try {
+      const res = await fetch(url);
+      const blob = await res.blob();
+      const bmp = await createImageBitmap(blob);
+      const scale = Math.min(1, 1200 / Math.max(bmp.width, bmp.height));
+      const canvas = document.createElement("canvas");
+      canvas.width = Math.round(bmp.width * scale);
+      canvas.height = Math.round(bmp.height * scale);
+      canvas.getContext("2d").drawImage(bmp, 0, 0, canvas.width, canvas.height);
+      return canvas.toDataURL("image/jpeg", 0.85).split(",")[1];
+    } catch { return ""; }
+  };
+
+  const runAiWrite = async () => {
+    if (aiBusy) return;
+    const firstImg = (form.images || [])[0];
+    if (!aiBrief.trim() && !(useImage && firstImg)) { alert("Kısa bir not yaz ya da önce fotoğraf yükle"); return; }
+    setAiBusy(true); setAiTip("");
+    try {
+      const image = (useImage && firstImg) ? await imageToBase64(firstImg) : "";
+      const { data, error } = await supabase.functions.invoke("content-write", {
+        body: { brief: aiBrief, kind: form.kind, image, media_type: "image/jpeg" },
+      });
+      if (error) throw new Error(error.message || "Sunucu hatasi");
+      if (data?.error) throw new Error(data.error);
+      setForm(f => ({
+        ...f,
+        title: data.title_tr || f.title, body: data.body_tr || f.body,
+        title_en: data.title_en || f.title_en, body_en: data.body_en || f.body_en,
+        title_ru: data.title_ru || f.title_ru, body_ru: data.body_ru || f.body_ru,
+      }));
+      setAiTip(data.photo_tip || "");
+    } catch (e) { alert("AI hatası: " + (e?.message || e)); }
+    setAiBusy(false);
+  };
+
   const save = async () => {
     if (busy) return;
     if (!form.title?.trim()) { alert("Başlık gerekli"); return; }
@@ -118,6 +162,32 @@ export default function ContentPage() {
               {KINDS.map(k => (
                 <button key={k.key} onClick={() => setForm({...form, kind:k.key})} style={{flex:1,padding:"9px",border:"none",borderRadius:8,fontSize:11,fontWeight:700,background:form.kind===k.key?"#C8973E":"#222",color:form.kind===k.key?"#000":"#888",cursor:"pointer"}}>{k.label}</button>
               ))}
+            </div>
+
+            <div style={{background:"#161616",border:"1px solid #2A2A3A",borderRadius:12,padding:12,marginBottom:14}}>
+              <div style={{fontSize:10,color:"#B8C6F0",letterSpacing:"1.5px",fontWeight:700,marginBottom:8}}>🤖 AI İLE YAZ (üç dilde birden)</div>
+              <textarea value={aiBrief} onChange={e=>setAiBrief(e.target.value)} rows={2}
+                placeholder={form.kind==="urun"
+                  ? "örn: bisikletçi arkadaşlarla tasarladığımız tişört, sırtında Fethiye rotası var"
+                  : "örn: bu hafta Kayaköy'de üzüm hasadı var, sabah 8'de kalkarsan sisli manzarayı yakalarsın"}
+                style={{...inputS, resize:"vertical"}}/>
+              {(form.images||[]).length > 0 && (
+                <label style={{display:"flex",alignItems:"center",gap:8,margin:"8px 0",cursor:"pointer",fontSize:12,color:"#aaa"}}>
+                  <input type="checkbox" checked={useImage} onChange={e=>setUseImage(e.target.checked)} style={{width:16,height:16,accentColor:"#C8973E"}}/>
+                  📷 Yüklediğim fotoğrafa bakarak yazsın
+                </label>
+              )}
+              <button onClick={runAiWrite} disabled={aiBusy} style={{width:"100%",marginTop:6,padding:"11px",background:aiBusy?"#555":"#2A2A3A",color:"#B8C6F0",border:"1px solid #3A3A5A",borderRadius:10,fontSize:13,fontWeight:800,cursor:aiBusy?"wait":"pointer"}}>
+                {aiBusy ? "AI yazıyor..." : "🤖 Metni oluştur (TR + EN + RU)"}
+              </button>
+              {aiTip && (
+                <div style={{marginTop:10,padding:"10px 12px",background:"#12181A",border:"1px solid #1E3A42",borderRadius:8,fontSize:12,color:"#9CC",lineHeight:1.5}}>
+                  📸 <b>Fotoğraf önerisi:</b> {aiTip}
+                </div>
+              )}
+              <div style={{fontSize:10,color:"#666",marginTop:8,lineHeight:1.5}}>
+                Metinler aşağıdaki alanlara yazılır — beğenmezsen düzenle, sonra kaydet. Fotoğraf saklanmaz, AI yalnızca yazarken bakar.
+              </div>
             </div>
 
             <Field label="BAŞLIK (Türkçe)"><input value={form.title||""} onChange={e=>setForm({...form,title:e.target.value})} placeholder={form.kind==="urun"?"örn: Croissant Club Tee":"örn: Fethiye'de bu hafta"} style={inputS}/></Field>
