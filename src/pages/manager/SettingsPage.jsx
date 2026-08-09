@@ -72,6 +72,14 @@ export default function SettingsPage() {
         <div style={{fontSize:11,color:"#888",marginTop:6}}>NOT: Parti saatleri arasinda "Parti Menusu" tab'i acilir. "show_in_party_menu" isaretli urunler gosterilir.</div>
       </Section>
 
+      {/* Bar standart olcusu */}
+      <Section icon="🥃" title="Standart Ölçü" desc="Barda tek ölçünün kaç cl olduğu. Reçete sayfasındaki hazır düğmeler (Tek / Duble / Yarım) buna göre üretilir.">
+        <Field label={"TEK ÖLÇÜ (cl) — şu an: " + (Number(settings.house_pour_cl) || 4) + " cl"}>
+          <input type="number" step="0.5" min="1" max="10" value={settings.house_pour_cl ?? 4} onChange={e=>setKey("house_pour_cl", Number(e.target.value))} style={inputS}/>
+        </Field>
+        <div style={{fontSize:11,color:"#888",marginTop:6}}>NOT: Bu yalniz kisayol dugmelerini etkiler; recetede istedigin miktari her zaman elle yazabilirsin.</div>
+      </Section>
+
       {/* Duyuru seridi */}
       <Section icon="📢" title="Duyuru Seridi (QR Menu)" desc="QR menunun en ustunde ince siyah bir serit olarak gorunur. Kampanya/duyuru icin — Instagram'a ya da tahtaya yazmaya gerek kalmaz.">
         <Toggle checked={settings.announcement_enabled === true || settings.announcement_enabled === "true"} onChange={v=>setKey("announcement_enabled", v)} label="Duyuru seridi aktif"/>
