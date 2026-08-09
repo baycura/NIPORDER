@@ -220,16 +220,32 @@ export default function InvoicesPage() {
 
     // Create new ingredients if needed and insert items + bump stock
     const anomalies = [];
+    // Ayni faturada ayni yeni hammadde iki satirda gecerse tek kayit acilsin
+    const createdThisRun = {};
+    const runningStock = {};   // ingredient_id -> bu fatura sonundaki stok
     for (const l of lines) {
       let ingId = l.ingredient_id;
       if (l.isNew) {
-        if (!l.newName?.trim()) continue;
-        const { data: newIng, error: e } = await supabase.from("ingredients").insert({
-          store_id: staffUser?.store_ids?.[0],
-          name: l.newName.trim(), unit: l.newUnit, stock_qty: 0, cost_per_unit: 0,
-        }).select().single();
-        if (e) { alert("Ingredient hatasi: " + e.message); continue; }
-        ingId = newIng.id;
+        const nm = l.newName?.trim();
+        if (!nm) continue;
+        const key = nm.toLocaleLowerCase("tr");
+        if (createdThisRun[key]) {
+          ingId = createdThisRun[key];
+        } else {
+          // Ayni isimde hammadde zaten varsa YENIDEN OLUSTURMA — mukerrer kayit olurdu
+          const existing = ingredients.find(i => i.name?.trim().toLocaleLowerCase("tr") === key);
+          if (existing) {
+            ingId = existing.id;
+          } else {
+            const { data: newIng, error: e } = await supabase.from("ingredients").insert({
+              store_id: staffUser?.store_ids?.[0],
+              name: nm, unit: l.newUnit, stock_qty: 0, cost_per_unit: 0,
+            }).select().single();
+            if (e) { alert("Ingredient hatasi: " + e.message); continue; }
+            ingId = newIng.id;
+          }
+          createdThisRun[key] = ingId;
+        }
       }
       if (!ingId) continue;
       const calc = lineCalc(l.isNew ? { ...l, ingredient_id: ingId } : l);
@@ -249,15 +265,18 @@ export default function InvoicesPage() {
       }
       // Increment stock + update cost (+ anormal fiyat artisi tespiti)
       const ing = ingredients.find(i => i.id === ingId);
-      const currentStock = Number(ing?.stock_qty)||0;
+      // Ayni hammadde bu faturada birden fazla satirda geciyorsa stok BIRIKMELI;
+      // yoksa ikinci satir birincinin eklemesini ezerdi.
+      const currentStock = runningStock[ingId] != null ? runningStock[ingId] : (Number(ing?.stock_qty)||0);
       const prevCost = Number(ing?.cost_per_unit)||0;
       const isManual = modal?.mode === "manual";
       if (!isManual && !l.isNew && prevCost > 0 && unitCost > prevCost) {
         const pct = ((unitCost - prevCost) / prevCost) * 100;
         if (pct >= PRICE_ALERT_PCT) anomalies.push({ name: ing?.name || "?", unit: ing?.unit || "", prev: prevCost, now: unitCost, pct });
       }
+      runningStock[ingId] = currentStock + qty;
       await supabase.from("ingredients").update({
-        stock_qty: currentStock + qty,
+        stock_qty: runningStock[ingId],
         // Maliyet 0 girildiyse mevcut maliyet korunur (manuel sayimda fiyat zorunlu degil)
         cost_per_unit: unitCost > 0 ? unitCost : prevCost,
       }).eq("id", ingId);
