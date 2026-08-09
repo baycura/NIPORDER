@@ -29,7 +29,7 @@ const OUTPUT_SCHEMA = {
           unit_cost: { type: "number", description: "KDV DAHIL fiyat, TL — pack_type ne ise ONUN fiyati (koli ise KOLI fiyati, adet ise SISE fiyati)." },
           pack_type: { type: "string", enum: ["koli", "adet"], description: "Satir koli/kasa olarak mi yoksa tek sise/adet olarak mi faturalanmis" },
           pack_qty: { type: "number", description: "Koli icindeki sise/adet sayisi (KOLI-24, 24'LU, 1x24 gibi ifadelerden). Tek adetse 1." },
-          content_cl: { type: "number", description: "Bir sisenin/ficinin hacmi CL cinsinden (70cl=70, 33cl=33, 1L=100, 30L fici=3000). Hacim yoksa 0." },
+          content_cl: { type: "number", description: "Bir sisenin/ficinin hacmi CL cinsinden (70cl=70, 33cl=33, 1L=100, 30L fici=3000, 50L fici=5000). Hacim yoksa 0." },
         },
         required: ["name", "qty", "unit", "vat_pct", "unit_cost", "pack_type", "pack_qty", "content_cl"],
         additionalProperties: false,
@@ -96,7 +96,10 @@ Deno.serve(async (req: Request) => {
               "Satir toplami verilmisse once miktara bolerek birim fiyati bul. Genel toplam ile satirlarin KDV dahil toplamini karsilastirip tutarliligi kontrol et. " +
               "ONEMLI - KOLI/SISE: Turk toptanci faturalarinda miktar sutunu genelde KOLI/KASA adedini gosterir; asil stok ise ICINDEKI SISE adedidir. " +
               "Urun adinda ya da aciklamada gecen 'KOLI-24', '24'LU', '1x12', '12li' gibi ifadelerden koli ici adedi (pack_qty) cikar. " +
-              "Ayrica sise/fici hacmini urun adindan cikar (33cl, 50cl, 70cl, 1L, 30L fici) ve content_cl alanina CL cinsinden yaz (1L=100, 30L=3000). " +
+              "Ayrica sise/fici hacmini urun adindan cikar (33cl, 50cl, 70cl, 1L) ve content_cl alanina CL cinsinden yaz (1L=100). " +
+              "ONEMLI - FICI BIRA: Fici (keg/draft/'FIC'/'KEG') kalemlerinde hacim LITRE yazar ve genelde 30L ya da 50L olur; " +
+              "content_cl'ye litreyi 100 ile carparak yaz (30L=3000, 50L=5000). 30 ile 50'yi karistirma — fatura satirinda hangisi yaziyorsa onu al; " +
+              "hacim gorunmuyorsa 0 birak, uydurma. Fici daima pack_type='adet' olarak gelir (koli degil). " +
               "qty alanina faturadaki miktari (kac koli ya da kac sise) yaz, pack_type ile hangisi oldugunu belirt. " +
               "Tarihi YYYY-MM-DD formatina cevir. Emin olamadigin alanlari bos string ya da 0 birak; asla uydurma.",
           },

@@ -1,7 +1,11 @@
 import { useEffect, useState } from "react";
 import { supabase } from "../../lib/supabase.js";
+import { PARIS_STORE_ID } from "../../lib/stores.js";
 
 const cv = "-apple-system,BlinkMacSystemFont,'Segoe UI',Roboto,sans-serif";
+
+// ISO gun numaralari: Pzt=1 ... Paz=7 (fn_is_party_now ile ayni)
+const DAYS = [[1,"Pzt"],[2,"Sal"],[3,"Çar"],[4,"Per"],[5,"Cum"],[6,"Cmt"],[7,"Paz"]];
 
 export default function SettingsPage() {
   const [settings, setSettings] = useState({});
@@ -11,7 +15,8 @@ export default function SettingsPage() {
 
   const load = async () => {
     setLoading(true);
-    const { data } = await supabase.from("app_settings").select("*");
+    // NOT: app_settings PK'si (key, store_id) — iki magaza var, sadece NIP'i oku
+    const { data } = await supabase.from("app_settings").select("*").eq("store_id", PARIS_STORE_ID);
     const obj = {};
     (data || []).forEach(s => { obj[s.key] = s.value; });
     setSettings(obj);
@@ -41,10 +46,13 @@ export default function SettingsPage() {
   const save = async () => {
     if (busy) return;
     setBusy(true);
-    for (const [key, value] of Object.entries(settings)) {
-      await supabase.from("app_settings").upsert({ key, value }, { onConflict: "key" });
-    }
+    // PK (key, store_id) — store_id gonderilmezse ve onConflict "key" olursa
+    // Postgres 42P10 verir ve kayit SESSIZCE duserdi. Hatalari da gosteriyoruz.
+    const rows = Object.entries(settings).map(([key, value]) => ({ key, value, store_id: PARIS_STORE_ID }));
+    const { error } = await supabase.from("app_settings").upsert(rows, { onConflict: "key,store_id" });
     setBusy(false);
+    if (error) { alert("Ayarlar kaydedilemedi: " + (error.message || "bilinmeyen hata")); return; }
+    await load();
     setSaved(true);
     setTimeout(() => setSaved(false), 2000);
   };
@@ -54,6 +62,9 @@ export default function SettingsPage() {
   const partyEnabled = settings.party_mode_enabled === true || settings.party_mode_enabled === "true";
   const partyFrom = settings.party_mode_from || "22:00";
   const partyUntil = settings.party_mode_until || "04:00";
+  const partyDays = Array.isArray(settings.party_days) ? settings.party_days : [];
+  const toggleDay = (n) => setKey("party_days",
+    partyDays.includes(n) ? partyDays.filter(d => d !== n) : [...partyDays, n].sort((a,b)=>a-b));
   const memberDiscount = Number(settings.member_discount_pct) || 0;
   const memberEnabled = settings.member_discount_enabled === true || settings.member_discount_enabled === "true";
 
@@ -63,13 +74,28 @@ export default function SettingsPage() {
       <div style={{fontSize:11,color:"#888",letterSpacing:"1px",marginBottom:18}}>SISTEM AYARLARI</div>
 
       {/* Parti modu */}
-      <Section icon="🎉" title="Parti Modu" desc="Belirli saatlerde ozel parti menusu aktif olur. Bu sirada parti urunleri musteri menusunde gozukur.">
-        <Toggle checked={partyEnabled} onChange={v=>setKey("party_mode_enabled", v)} label="Parti modu aktif"/>
+      <Section icon="🎉" title="Parti Gecesi" desc="Seçtiğin gün ve saatlerde parti menüsü açılır. Ayrıca reçetede &quot;sadece parti gecesi&quot; işaretli malzemeler (PET bardak gibi) yalnız bu pencerede stoktan düşer.">
+        <Toggle checked={partyEnabled} onChange={v=>setKey("party_mode_enabled", v)} label="Parti menüsü aktif"/>
+        <Field label="PARTİ GÜNLERİ">
+          <div style={{display:"flex",gap:6}}>
+            {DAYS.map(([n, label]) => {
+              const on = partyDays.includes(n);
+              return (
+                <button key={n} onClick={()=>toggleDay(n)} style={{flex:1,padding:"10px 0",background:on?"#C8973E":"#0C0C0C",color:on?"#000":"#777",border:"1px solid "+(on?"#C8973E":"#2A2A2A"),borderRadius:8,fontSize:12,fontWeight:800,cursor:"pointer",fontFamily:"inherit"}}>
+                  {label}
+                </button>
+              );
+            })}
+          </div>
+        </Field>
         <div style={{display:"flex",gap:8}}>
           <Field label="BASLANGIC" style={{flex:1}}><input type="time" value={partyFrom} onChange={e=>setKey("party_mode_from", e.target.value)} style={inputS}/></Field>
           <Field label="BITIS" style={{flex:1}}><input type="time" value={partyUntil} onChange={e=>setKey("party_mode_until", e.target.value)} style={inputS}/></Field>
         </div>
-        <div style={{fontSize:11,color:"#888",marginTop:6}}>NOT: Parti saatleri arasinda "Parti Menusu" tab'i acilir. "show_in_party_menu" isaretli urunler gosterilir.</div>
+        <div style={{fontSize:11,color:"#888",marginTop:6,lineHeight:1.6}}>
+          Şu anki ayar: <b style={{color:"#C8973E"}}>{partyDays.length ? partyDays.map(n=>DAYS.find(d=>d[0]===n)?.[1]).join(", ") : "gün seçilmedi"}</b> günleri {partyFrom}–{partyUntil}.
+          <br/>Gece yarısını aşan saatlerde parti, <b>başladığı güne</b> sayılır: Cuma 23:00 ve Cumartesi 02:00 aynı partidir.
+        </div>
       </Section>
 
       {/* Bar standart olcusu */}

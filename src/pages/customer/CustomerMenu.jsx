@@ -64,6 +64,9 @@ const T = {
     waiter_will_bring: "Garson siparişini masana getirecek",
     notif_promise: "Sipariş hazır olunca bildirim göndereceğiz",
     please_choose: "Lütfen",
+    takeaway: "Götür",
+    takeaway_all: "Hepsini götür",
+    takeaway_hint: "Paket bardakta hazırlanır",
     please_enter_name: "Lütfen adını gir",
     sold_out_alert: "Bu ürün şu an tükendi: ",
     order_received: "Siparişin alındı!",
@@ -108,6 +111,9 @@ const T = {
     waiter_will_bring: "Server will bring it to your table",
     notif_promise: "We'll notify you when your order is ready",
     please_choose: "Please choose",
+    takeaway: "To go",
+    takeaway_all: "All to go",
+    takeaway_hint: "Served in a takeaway cup",
     please_enter_name: "Please enter your name",
     sold_out_alert: "This item is sold out: ",
     order_received: "Order received!",
@@ -152,6 +158,9 @@ const T = {
     waiter_will_bring: "Официант принесёт заказ к вашему столу",
     notif_promise: "Мы сообщим, когда заказ будет готов",
     please_choose: "Пожалуйста, выберите",
+    takeaway: "С собой",
+    takeaway_all: "Всё с собой",
+    takeaway_hint: "Подаётся в стакане с собой",
     please_enter_name: "Пожалуйста, введите имя",
     sold_out_alert: "Эта позиция закончилась: ",
     order_kitchen_msg: "тправлено на кухню. Готовится…",
@@ -598,6 +607,16 @@ export default function CustomerMenu() {
     );
   };
 
+  // Take away: yalniz takeaway_cup tanimli urunlerde (sicak -> karton, soguk -> pet).
+  // Sert alkollerde ve tabakta servis edilenlerde hic gosterilmez.
+  const canTakeaway = (p) => p?.takeaway_cup === "hot" || p?.takeaway_cup === "cold";
+  const takeawayLines = useMemo(() => cart.filter(c => canTakeaway(c.product)), [cart]);
+  const allTakeaway = takeawayLines.length > 0 && takeawayLines.every(c => c.takeaway);
+  const toggleTakeaway = (idx) =>
+    setCart(prev => prev.map((c, i) => i === idx ? { ...c, takeaway: !c.takeaway } : c));
+  const setAllTakeaway = (val) =>
+    setCart(prev => prev.map(c => canTakeaway(c.product) ? { ...c, takeaway: val } : c));
+
   const onProductTap = (p) => {
     unlockAudio();
     if (p.sold_out_today) { alert(t.sold_out_alert + (p.unavailable_reason || "")); return; }
@@ -707,6 +726,7 @@ export default function CustomerMenu() {
         quantity: c.quantity, kitchen_status: "pending", sent_to_kitchen: true, kitchen_destination_store_id: c.product.kitchen_destination_store_id || c.product.store_id,
         notes: c.note || null, selected_options: c.options || null,
         store_id: c.product.store_id || currentStoreId,
+        is_takeaway: !!c.takeaway && canTakeaway(c.product),
       }));
       const { error: itErr } = await supabase.from("order_items").insert(itemsPayload);
       if (itErr) throw itErr;
@@ -1196,6 +1216,13 @@ export default function CustomerMenu() {
               <div style={{fontSize:20,fontWeight:800}}>{t.my_cart}</div>
               <button onClick={() => setCheckoutOpen(false)} style={{background:"none",border:"none",fontSize:24,cursor:"pointer",padding:0,color:"#666"}}>×</button>
             </div>
+            {takeawayLines.length > 1 && (
+              <button onClick={() => setAllTakeaway(!allTakeaway)}
+                style={{width:"100%",marginBottom:10,padding:"11px",background:allTakeaway?"#000":"#f7f7f7",color:allTakeaway?"#fff":"#444",
+                        border:"1px solid "+(allTakeaway?"#000":"#e6e6e6"),borderRadius:12,fontSize:13,fontWeight:800,cursor:"pointer",fontFamily:"inherit"}}>
+                {allTakeaway ? "✓ " : ""}🥤 {t.takeaway_all}
+              </button>
+            )}
             {cart.map((c, idx) => (
               <div key={idx} style={{display:"flex",alignItems:"center",gap:10,padding:"12px 0",borderBottom:"1px solid #f0f0f0"}}>
                 <div style={{flex:1,minWidth:0}}>
@@ -1203,6 +1230,13 @@ export default function CustomerMenu() {
                   {c.options && <div style={{fontSize:11,color:"#C8973E",marginTop:2,fontWeight:600}}>{Object.values(c.options).flat().join(" · ")}</div>}
                   {c.note && <div style={{fontSize:11,color:"#666",fontStyle:"italic",marginTop:2}}>{c.note}</div>}
                   <div style={{fontSize:12,color:"#555",marginTop:3}}>₺{calcPrice(c.product, c.options)} × {c.quantity} = ₺{calcPrice(c.product, c.options) * c.quantity}</div>
+                  {canTakeaway(c.product) && (
+                    <button onClick={() => toggleTakeaway(idx)}
+                      style={{marginTop:6,padding:"6px 12px",background:c.takeaway?"#000":"#f2f2f2",color:c.takeaway?"#fff":"#666",
+                              border:"1px solid "+(c.takeaway?"#000":"#e0e0e0"),borderRadius:20,fontSize:12,fontWeight:700,cursor:"pointer",fontFamily:"inherit"}}>
+                      {c.takeaway ? "✓ " : ""}🥤 {t.takeaway}
+                    </button>
+                  )}
                 </div>
                 <div style={{display:"flex",alignItems:"center",gap:6,background:"#f2f2f2",borderRadius:20,padding:"3px 5px"}}>
                   <button onClick={() => updateQty(idx, -1)} style={{width:26,height:26,background:"transparent",color:"#000",border:"none",borderRadius:"50%",fontSize:16,cursor:"pointer",fontWeight:700}}>−</button>
