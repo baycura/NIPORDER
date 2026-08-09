@@ -258,6 +258,7 @@ export default function KitchenPage() {
                 <div key={it.id} style={{padding:"8px 0",borderTop:"1px solid #2A2A2A"}}>
                   <div style={{fontSize:15,fontWeight:700,color:itemColor}}>
                     {it.quantity}× {it.product_name}
+                    {it.is_takeaway && <span style={{marginLeft:8,padding:"2px 8px",background:"#C8973E",color:"#000",borderRadius:10,fontSize:11,fontWeight:800,letterSpacing:"0.5px"}}>🥤 PAKET</span>}
                     {it.kitchen_status === "ready" && <span style={{marginLeft:8,fontSize:11,color:"#3ECF8E"}}>✓</span>}
                   </div>
                   {opts && <div style={{fontSize:12,color:"#C8973E",marginTop:2,fontWeight:600}}>{opts}</div>}

@@ -12,6 +12,7 @@ export default function OrderDetailPage() {
   const [items, setItems] = useState([]);
   const [categories, setCategories] = useState([]);
   const [products, setProducts] = useState([]);
+  const [takeawayMode, setTakeawayMode] = useState(false);
   const [tables, setTables] = useState({});
   const [loading, setLoading] = useState(true);
   const [selectedCat, setSelectedCat] = useState(null);
@@ -70,6 +71,20 @@ export default function OrderDetailPage() {
     return sum;
   };
 
+  // Take away: sicak icecek -> karton bardak, soguk -> pet. Sert alkolde yok.
+  const canTakeaway = (p) => p?.takeaway_cup === "hot" || p?.takeaway_cup === "cold";
+
+  const toggleItemTakeaway = async (it) => {
+    const val = !it.is_takeaway;
+    setItems(prev => prev.map(i => i.id === it.id ? { ...i, is_takeaway: val } : i));
+    if (String(it.id).startsWith("temp-")) return;
+    const { error } = await supabase.from("order_items").update({ is_takeaway: val }).eq("id", it.id);
+    if (error) {
+      setItems(prev => prev.map(i => i.id === it.id ? { ...i, is_takeaway: !val } : i));
+      alert("Değiştirilemedi: " + error.message);
+    }
+  };
+
   const addProduct = async (p) => {
     // Bedenli raf urunu: hangi beden satildi?
     let variantName = null;
@@ -109,6 +124,8 @@ export default function OrderDetailPage() {
       sent_to_kitchen: !isRetail,
       store_id: p.store_id || order?.origin_store_id,
       kitchen_destination_store_id: p.kitchen_destination_store_id || p.store_id || order?.origin_store_id,
+      // "Paket" modu acikken eklenen icecekler gotur olarak isaretlenir
+      is_takeaway: takeawayMode && canTakeaway(p),
     };
     // Once ekranda goster (aninda tepki), sonra kaydet
     const tempId = "temp-" + Date.now();
@@ -208,6 +225,7 @@ export default function OrderDetailPage() {
         {items.length === 0 && <div style={{color:"#666",fontSize:12,textAlign:"center",padding:20}}>Henüz ürün yok. Aşağıdan ekle.</div>}
         {items.map(it => {
           const opts = it.selected_options ? Object.values(it.selected_options).join(" · ") : null;
+          const prod = products.find(p => p.id === it.product_id);
           const statusColor = it.kitchen_status === "ready" ? "#3ECF8E"
                             : it.kitchen_status === "preparing" ? "#E07A3E"
                             : it.kitchen_status === "served" ? "#5A8FE0" : "#888";
@@ -221,6 +239,13 @@ export default function OrderDetailPage() {
                   <span style={{color:"#888"}}>₺{it.final_price} · </span>
                   <span style={{color:statusColor,fontWeight:700,letterSpacing:"1px"}}>{it.kitchen_status?.toUpperCase()}</span>
                 </div>
+                {canTakeaway(prod) && (
+                  <button onClick={() => toggleItemTakeaway(it)}
+                    style={{marginTop:6,padding:"6px 12px",background:it.is_takeaway?"#C8973E":"transparent",color:it.is_takeaway?"#000":"#888",
+                            border:"1px solid "+(it.is_takeaway?"#C8973E":"#3A3A3A"),borderRadius:20,fontSize:11,fontWeight:700,cursor:"pointer",fontFamily:"inherit"}}>
+                    {it.is_takeaway ? "✓ 🥤 Paket" : "🥤 Paket"}
+                  </button>
+                )}
               </div>
               <div style={{display:"flex",alignItems:"center",gap:6,background:"#0C0C0C",borderRadius:20,padding:"3px 5px"}}>
                 <button onClick={() => changeQty(it.id, -1)} style={{width:40,height:40,background:"#2A2A2A",color:"#fff",border:"none",borderRadius:"50%",fontSize:20,cursor:"pointer",fontWeight:700}}>−</button>
@@ -246,6 +271,11 @@ export default function OrderDetailPage() {
         </button>
         {menuOpen && (
           <>
+            <button onClick={() => setTakeawayMode(!takeawayMode)}
+              style={{width:"100%",marginTop:10,padding:"12px",background:takeawayMode?"#C8973E":"#1A1A1A",color:takeawayMode?"#000":"#999",
+                      border:"1px solid "+(takeawayMode?"#C8973E":"#333"),borderRadius:10,fontSize:13,fontWeight:800,cursor:"pointer",fontFamily:"inherit"}}>
+              {takeawayMode ? "✓ 🥤 PAKET MODU AÇIK — eklenen içecekler götür" : "🥤 Paket (take away)"}
+            </button>
             <div style={{display:"flex",gap:5,overflowX:"auto",marginTop:10,paddingBottom:4}}>
               {categories.map(c => (
                 <button key={c.id} onClick={() => setSelectedCat(c.id)} style={{flexShrink:0,padding:"6px 10px",border:"1px solid "+(selectedCat===c.id?"#C8973E":"#333"),borderRadius:12,fontSize:10,fontWeight:700,background:selectedCat===c.id?"rgba(200,151,62,0.2)":"#1A1A1A",color:selectedCat===c.id?"#C8973E":"#aaa",cursor:"pointer",whiteSpace:"nowrap",letterSpacing:"0.5px"}}>
