@@ -4,6 +4,14 @@ import { useAuth } from "../../contexts/AuthContext.jsx";
 
 const cv = "-apple-system,BlinkMacSystemFont,'Segoe UI',Roboto,sans-serif";
 
+// Sarf malzeme isaretlenince kullanilacak varsayilan miktar
+const defaultQty = (ing) => {
+  if (ing.unit === "g") return 150;      // buz ~150 g
+  if (ing.unit === "ml") return 20;
+  if (ing.unit === "cl") return 2;
+  return 1;                               // adet: pet bardak, pipet, limon...
+};
+
 export default function RecipesMgmtPage() {
   const { staffUser } = useAuth();
   const [products, setProducts] = useState([]);
@@ -78,6 +86,22 @@ export default function RecipesMgmtPage() {
     load();
   };
 
+  // Sarf malzeme: kutucukla ekle/cikar (buz, pet bardak, pipet...)
+  const toggleConsumable = async (ing) => {
+    if (!selectedProduct) return;
+    const existing = recipes.find(r => r.product_id === selectedProduct.id && r.ingredient_id === ing.id);
+    if (existing) {
+      setRecipes(prev => prev.filter(r => r.id !== existing.id)); // aninda tepki
+      const { error } = await supabase.from("recipes").delete().eq("id", existing.id);
+      if (error) { alert("Hata: " + error.message); load(); }
+      return;
+    }
+    const payload = { product_id: selectedProduct.id, ingredient_id: ing.id, qty_per_unit: defaultQty(ing), store_id: staffUser?.store_ids?.[0] };
+    const { data, error } = await supabase.from("recipes").insert(payload).select().single();
+    if (error) { alert("Hata: " + error.message); return; }
+    setRecipes(prev => [...prev, data]);
+  };
+
   if (loading) return (<div style={{color:"#888",fontFamily:cv,padding:20}}>Yukleniyor...</div>);
 
   const filtered = products.filter(p => !search || p.name?.toLowerCase().includes(search.toLowerCase()));
@@ -102,6 +126,25 @@ export default function RecipesMgmtPage() {
           </div>
 
           <button onClick={openAdd} disabled={ingredients.length===0} style={{padding:"10px 16px",background:"#C8973E",color:"#000",border:"none",borderRadius:10,fontSize:13,fontWeight:800,cursor:"pointer",marginBottom:12,opacity:ingredients.length===0?0.5:1}}>+ Hammadde Ekle</button>
+
+          {ingredients.filter(i => i.is_consumable).length > 0 && (
+            <div style={{background:"#12181A",border:"1px solid #1E3A42",borderRadius:12,padding:12,marginBottom:12}}>
+              <div style={{fontSize:10,color:"#8FD8E8",letterSpacing:"1.5px",fontWeight:700,marginBottom:8}}>🧊 SARF MALZEMELER (tek dokunus)</div>
+              <div style={{display:"flex",flexWrap:"wrap",gap:8}}>
+                {ingredients.filter(i => i.is_consumable).map(ing => {
+                  const on = !!recipes.find(r => r.product_id === selectedProduct.id && r.ingredient_id === ing.id);
+                  return (
+                    <button key={ing.id} onClick={()=>toggleConsumable(ing)} style={{display:"flex",alignItems:"center",gap:7,padding:"10px 12px",background:on?"#1E3A42":"#161616",color:on?"#8FD8E8":"#888",border:"1px solid "+(on?"#3E7A8A":"#2A2A2A"),borderRadius:10,fontSize:12,fontWeight:700,cursor:"pointer"}}>
+                      <span style={{width:16,height:16,borderRadius:4,border:"2px solid "+(on?"#8FD8E8":"#555"),background:on?"#8FD8E8":"transparent",color:"#12181A",fontSize:12,lineHeight:"12px",display:"flex",alignItems:"center",justifyContent:"center",fontWeight:900}}>{on?"✓":""}</span>
+                      {ing.name}
+                      {ing.cost_per_unit > 0 && <span style={{color:"#666",fontWeight:600}}>₺{ing.cost_per_unit}/{ing.unit}</span>}
+                    </button>
+                  );
+                })}
+              </div>
+              <div style={{fontSize:10,color:"#666",marginTop:8}}>Isaretleyince varsayilan miktarla eklenir; miktari asagidaki listeden duzenleyebilirsin.</div>
+            </div>
+          )}
 
           {ingredients.length === 0 && <div style={{textAlign:"center",padding:30,color:"#666",fontSize:12}}>Once "Stok Yonetimi" sayfasindan hammadde ekle.</div>}
 
@@ -159,7 +202,21 @@ export default function RecipesMgmtPage() {
             </select>
           </Field>
           <Field label={"BIRIM BASINA MIKTAR (" + (ingredients.find(i => i.id === form.ingredient_id)?.unit || "") + ")"}>
-            <input type="number" step="0.01" value={form.qty_per_unit||""} onChange={e=>setForm({...form,qty_per_unit:e.target.value})} placeholder="orn: 500 (1 bardak Bud Draft = 500 ml)" style={inputS}/>
+            <input type="number" step="0.01" value={form.qty_per_unit||""} onChange={e=>setForm({...form,qty_per_unit:e.target.value})} placeholder="orn: 500 (1 bardak fici bira = 500 ml)" style={inputS}/>
+            {(() => {
+              const u = ingredients.find(i => i.id === form.ingredient_id)?.unit;
+              const presets = u === "ml" ? [["Shot 4cl",40],["Duble 8cl",80],["Bardak 330",330],["Bardak 500",500]]
+                            : u === "cl" ? [["Shot",4],["Duble",8],["Bardak",33]]
+                            : u === "g"  ? [["Buz 150g",150],["Buz 250g",250]]
+                            : u === "adet" ? [["1 adet",1],["2 adet",2]] : [];
+              return presets.length ? (
+                <div style={{display:"flex",gap:6,flexWrap:"wrap",marginTop:8}}>
+                  {presets.map(([lbl,val]) => (
+                    <button key={lbl} onClick={()=>setForm({...form,qty_per_unit:val})} style={{padding:"7px 10px",background:"#222",color:"#aaa",border:"1px solid #333",borderRadius:8,fontSize:11,fontWeight:700,cursor:"pointer"}}>{lbl}</button>
+                  ))}
+                </div>
+              ) : null;
+            })()}
           </Field>
           <div style={{display:"flex",gap:8,marginTop:10}}>
             <button onClick={()=>setModal(null)} style={cancelBtn}>Iptal</button>

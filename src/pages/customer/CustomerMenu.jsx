@@ -21,6 +21,13 @@ const RIDES_URL = "https://notinparis.me/pages/rides";
 const YOUTUBE_URL = "https://www.youtube.com/@notinparis";
 const STRAVA_URL = "https://www.strava.com/clubs/notinparis";
 const INSTAGRAM_URL = "https://instagram.com/notinparis.me";
+const TIERS = [
+  { key: "yeniyuz",   min: 0,    icon: "☕", tr: "Yeni Yüz",  en: "New Face", ru: "Новичок" },
+  { key: "mahalleli", min: 500,  icon: "🚲", tr: "Mahalleli", en: "Local",    ru: "Свой в районе" },
+  { key: "mudavim",   min: 1500, icon: "⭐", tr: "Müdavim",   en: "Regular",  ru: "Завсегдатай" },
+  { key: "aileden",   min: 4000, icon: "🗼", tr: "Aileden",   en: "Family",   ru: "Родной" },
+];
+
 const GOOGLE_RATE_URL = "https://share.google/AA07eYRVqpAoNFL8P";
 
 // Web push (kilitli telefonda "siparisin hazir" bildirimi) — public VAPID anahtari
@@ -235,7 +242,8 @@ export default function CustomerMenu() {
   const [currentStoreId, setCurrentStoreId] = useState(null);
 
   const [lang, setLang] = useState(() => {
-    try { return localStorage.getItem("nip_lang") || "tr"; } catch (e) { return "tr"; }
+    // Ilk giris Ingilizce (turist agirlikli); musteri TR/RU secerse hatirlanir
+    try { return localStorage.getItem("nip_lang") || "en"; } catch (e) { return "en"; }
   });
   const t = T[lang] || T.tr;
   const setLanguage = (l) => { setLang(l); try { localStorage.setItem("nip_lang", l); } catch (e) {} };
@@ -994,14 +1002,14 @@ export default function CustomerMenu() {
               <div style={{flex:1,minWidth:0}}>
                 <div style={{fontSize:15,fontWeight:700,color:"#000",lineHeight:1.3}}>{pName(p)}</div>
                 {pDesc(p) && <div style={{fontSize:12,color:"#666",marginTop:3,lineHeight:1.4}}>{pDesc(p)}</div>}
-                {isFaded && fadedInfo && <div style={{fontSize:11,color:"#C8973E",marginTop:3,fontWeight:600}}>{fadedInfo.end.slice(0,5)} - {fadedInfo.start.slice(0,5)} arası mevcut</div>}
+                {isFaded && fadedInfo && <div style={{fontSize:11,color:"#C8973E",marginTop:3,fontWeight:600}}>{L("","Available ","Доступно ")}{fadedInfo.end.slice(0,5)} - {fadedInfo.start.slice(0,5)}{L(" arası mevcut","","")}</div>}
                 {p.show_prep_time && p.prep_time_minutes && <div style={{fontSize:12,color:"#888",marginTop:4,display:"flex",alignItems:"center",gap:4}}>⏱ <span>~{p.prep_time_minutes} dk</span></div>}
                 {soldOut && <div style={{fontSize:11,color:"#c44",marginTop:4,fontWeight:600}}>{p.unavailable_reason || t.sold_out}</div>}
                 {p.has_options && !soldOut && <div style={{fontSize:10,color:"#C8973E",marginTop:3,fontWeight:700,letterSpacing:"0.5px"}}>{t.optional}</div>}
                 <div style={{display:"flex",alignItems:"center",gap:10,marginTop:8}}>
                   {dis && <span style={{fontSize:12,color:"#999",textDecoration:"line-through"}}>₺{p.price}</span>}
                   <span style={{fontSize:15,fontWeight:800,color:dis?"#C8973E":"#000"}}>₺{fp}</span>
-                  {Number(memberDiscounts[p.id]||0) > 0 && <span style={{fontSize:9,padding:"2px 6px",background:"#000",color:"#FFD700",borderRadius:6,fontWeight:800,letterSpacing:"0.5px"}}>ÜYE</span>}
+                  {Number(memberDiscounts[p.id]||0) > 0 && <span style={{fontSize:9,padding:"2px 6px",background:"#000",color:"#FFD700",borderRadius:6,fontWeight:800,letterSpacing:"0.5px"}}>{L("ÜYE","MEMBER","ЧЛЕН")}</span>}
                 </div>
               </div>
               {!soldOut && (
@@ -1082,6 +1090,31 @@ export default function CustomerMenu() {
                     <div style={{fontSize:10,color:"#888",fontWeight:700}}>{L("PUAN","POINTS","БАЛЛЫ")}</div>
                   </div>
                 </div>
+
+                {(() => {
+                  const pts = Number(profileStats.cust?.points || 0);
+                  const cur = [...TIERS].reverse().find(t => pts >= t.min) || TIERS[0];
+                  const next = TIERS.find(t => t.min > pts);
+                  const pct = next ? Math.min(100, Math.round(((pts - cur.min) / (next.min - cur.min)) * 100)) : 100;
+                  return (
+                    <div style={{background:"#111",color:"#fff",borderRadius:14,padding:"14px 16px",marginBottom:14}}>
+                      <div style={{display:"flex",alignItems:"center",justifyContent:"space-between",marginBottom:next?8:0}}>
+                        <span style={{fontSize:15,fontWeight:800}}>{cur.icon} {L(cur.tr, cur.en, cur.ru)}</span>
+                        <span style={{fontSize:11,color:"#bbb"}}>{pts} {L("puan","points","баллов")}</span>
+                      </div>
+                      {next && (<>
+                        <div style={{height:6,background:"#333",borderRadius:4,overflow:"hidden"}}>
+                          <div style={{width:pct+"%",height:"100%",background:"#E0AB4A"}}/>
+                        </div>
+                        <div style={{fontSize:11,color:"#bbb",marginTop:6}}>
+                          {L(next.min - pts + " puan sonra " + next.icon + " " + next.tr,
+                             (next.min - pts) + " points to " + next.icon + " " + next.en,
+                             "ещё " + (next.min - pts) + " до " + next.icon + " " + next.ru)}
+                        </div>
+                      </>)}
+                    </div>
+                  );
+                })()}
 
                 {profileStats.top.length > 0 && (
                   <div style={{marginBottom:14}}>

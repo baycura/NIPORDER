@@ -8,6 +8,19 @@ const cv = "-apple-system,BlinkMacSystemFont,'Segoe UI',Roboto,sans-serif";
 // "anormal fiyat" uyarisi verilir (sahip icin kacak/israf kontrolu).
 const PRICE_ALERT_PCT = 10;
 
+// Sise/paket icerigi: hammadde birimi cinsinden (70cl sise + ml birim = 700)
+const contentDefault = (ing, unit) => {
+  const ml = Number(ing?.unit_volume_ml) || 0;
+  if (!ml) return 1;
+  if (unit === "ml") return ml;
+  if (unit === "cl") return ml / 10;
+  if (unit === "l") return ml / 1000;
+  return 1;
+};
+
+const blankLine = (unit) => ({ ingredient_id:"", qty:0, unit_cost:0, isNew:false, newName:"", newUnit:unit||"ml",
+  buy_mode:"adet", pack_qty:1, content:1, vat_pct:0 });
+
 export default function InvoicesPage() {
   const { staffUser } = useAuth();
   const [invoices, setInvoices] = useState([]);
@@ -37,7 +50,7 @@ export default function InvoicesPage() {
   const openNew = () => {
     setModal({mode:"new"});
     setForm({supplier_name:"", invoice_date: new Date().toISOString().slice(0,10), total_amount:0, notes:""});
-    setLines([{ingredient_id:"", qty:0, unit_cost:0, isNew:false, newName:"", newUnit:"ml"}]);
+    setLines([blankLine("ml")]);
     setPhotoFile(null); setPhotoPreview(null);
   };
 
@@ -46,7 +59,7 @@ export default function InvoicesPage() {
   const openManualStock = () => {
     setModal({mode:"manual"});
     setForm({supplier_name:"Manuel stok girişi", invoice_date: new Date().toISOString().slice(0,10), total_amount:0, notes:"Eldeki stok sayımı"});
-    setLines([{ingredient_id:"", qty:0, unit_cost:0, isNew:false, newName:"", newUnit:"adet"}]);
+    setLines([blankLine("adet")]);
     setPhotoFile(null); setPhotoPreview(null);
   };
 
@@ -99,7 +112,7 @@ export default function InvoicesPage() {
     return bestScore >= 50 ? best : null;
   };
 
-  const UNITS = ["ml","l","g","kg","adet","sise","kasa"];
+  const UNITS = ["ml","cl","l","g","kg","adet","şişe","porsiyon"];
   const runOcr = async () => {
     if (!photoFile) { alert("Once fatura fotografi sec"); return; }
     if (ocrBusy) return;
@@ -116,9 +129,23 @@ export default function InvoicesPage() {
       }));
       const newLines = (data.lines || []).filter(l => l?.name).map(l => {
         const match = matchIngredient(l.name);
+        const unit = match?.unit || (UNITS.includes(l.unit) ? l.unit : "adet");
+        // Sise hacmi: OCR cl verir; hammadde birimine cevrilir (ml/cl/l)
+        const cl = Number(l.content_cl) || 0;
+        const content = cl > 0
+          ? (unit === "ml" ? cl * 10 : unit === "cl" ? cl : unit === "l" ? cl / 100 : 1)
+          : (match ? contentDefault(match, unit) : 1);
+        const base = {
+          qty: Number(l.qty) || 0,
+          unit_cost: Number(l.unit_cost) || 0,
+          buy_mode: l.pack_type === "koli" ? "koli" : "adet",
+          pack_qty: Math.max(1, Number(l.pack_qty) || Number(match?.pack_qty) || 1),
+          content,
+          vat_pct: Number(l.vat_pct) || 0,
+        };
         return match
-          ? { ingredient_id: match.id, qty: Number(l.qty) || 0, unit_cost: Number(l.unit_cost) || 0, isNew: false, newName: "", newUnit: match.unit || "adet" }
-          : { ingredient_id: "", qty: Number(l.qty) || 0, unit_cost: Number(l.unit_cost) || 0, isNew: true, newName: l.name, newUnit: UNITS.includes(l.unit) ? l.unit : "adet" };
+          ? { ...base, ingredient_id: match.id, isNew: false, newName: "", newUnit: unit }
+          : { ...base, ingredient_id: "", isNew: true, newName: l.name, newUnit: unit };
       });
       if (newLines.length) {
         setLines(newLines);
@@ -133,9 +160,37 @@ export default function InvoicesPage() {
     setOcrBusy(false);
   };
 
-  const addLine = () => setLines([...lines, {ingredient_id:"", qty:0, unit_cost:0, isNew:false, newName:"", newUnit:"ml"}]);
+  const addLine = () => setLines([...lines, blankLine("ml")]);
   const removeLine = (idx) => setLines(lines.filter((_,i) => i !== idx));
-  const updateLine = (idx, field, val) => setLines(lines.map((l,i) => i===idx ? {...l, [field]: val} : l));
+  const updateLine = (idx, field, val) => setLines(lines.map((l,i) => {
+    if (i !== idx) return l;
+    const next = {...l, [field]: val};
+    // Hammadde secilince ambalaj bilgisi (koli ici adet, sise icerigi) otomatik gelsin
+    if (field === "ingredient_id") {
+      const ing = ingredients.find(x => x.id === val);
+      if (ing) {
+        next.pack_qty = Number(ing.pack_qty) || 1;
+        next.content = contentDefault(ing, ing.unit);
+        if (Number(ing.pack_qty) > 1) next.buy_mode = "koli";
+      }
+    }
+    return next;
+  }));
+
+  // Bir kalemin stok/maliyet hesabi: koli -> sise -> icerik -> fire
+  const lineCalc = (l) => {
+    const ing = ingredients.find(i => i.id === l.ingredient_id);
+    const unit = l.isNew ? (l.newUnit || "adet") : (ing?.unit || "adet");
+    const packQty = l.buy_mode === "koli" ? Math.max(1, Number(l.pack_qty) || 1) : 1;
+    const units = (Number(l.qty) || 0) * packQty;              // toplam sise / fici / adet
+    const content = Math.max(0, Number(l.content) || 1);       // bir sisenin icerigi (hammadde birimi)
+    const gross = units * content;                             // ham miktar
+    const waste = (Number(ing?.waste_per_pack) || 0) * units;  // ambalaj basi fire (fici: 5 bardak)
+    const usable = Math.max(gross - waste, 0);                 // stoga eklenecek net miktar
+    const total = (Number(l.qty) || 0) * (Number(l.unit_cost) || 0);
+    const costPerUnit = usable > 0 ? total / usable : 0;
+    return { ing, unit, packQty, units, content, gross, waste, usable, total, costPerUnit };
+  };
 
   const linesTotal = lines.reduce((s,l) => s + Number(l.qty||0) * Number(l.unit_cost||0), 0);
 
@@ -163,17 +218,27 @@ export default function InvoicesPage() {
         if (!l.newName?.trim()) continue;
         const { data: newIng, error: e } = await supabase.from("ingredients").insert({
           store_id: staffUser?.store_ids?.[0],
-          name: l.newName.trim(), unit: l.newUnit, stock_qty: 0, cost_per_unit: Number(l.unit_cost)||0,
+          name: l.newName.trim(), unit: l.newUnit, stock_qty: 0, cost_per_unit: 0,
         }).select().single();
         if (e) { alert("Ingredient hatasi: " + e.message); continue; }
         ingId = newIng.id;
       }
       if (!ingId) continue;
-      const qty = Number(l.qty)||0;
-      const unitCost = Number(l.unit_cost)||0;
+      const calc = lineCalc(l.isNew ? { ...l, ingredient_id: ingId } : l);
+      const qty = calc.usable || Number(l.qty)||0;          // stoga eklenecek NET miktar (fire dusulmus)
+      const unitCost = calc.costPerUnit || Number(l.unit_cost)||0;  // gercek birim maliyet
       await supabase.from("supplier_invoice_items").insert({
-        invoice_id: inv.id, store_id: inv.store_id, ingredient_id: ingId, qty, unit_cost: unitCost, total_cost: qty * unitCost,
+        invoice_id: inv.id, store_id: inv.store_id, ingredient_id: ingId, qty, unit_cost: unitCost, total_cost: calc.total,
       });
+      // Ambalaj bilgisini hammaddeye ogret (bir sonraki faturada hazir gelsin)
+      if (!l.isNew && (Number(l.pack_qty) > 1 || Number(l.content) > 1)) {
+        const patch = {};
+        if (Number(l.pack_qty) > 1) patch.pack_qty = Number(l.pack_qty);
+        if (Number(l.content) > 1 && ["ml","cl","l"].includes(calc.unit)) {
+          patch.unit_volume_ml = calc.unit === "ml" ? Number(l.content) : calc.unit === "cl" ? Number(l.content)*10 : Number(l.content)*1000;
+        }
+        if (Object.keys(patch).length) await supabase.from("ingredients").update(patch).eq("id", ingId);
+      }
       // Increment stock + update cost (+ anormal fiyat artisi tespiti)
       const ing = ingredients.find(i => i.id === ingId);
       const currentStock = Number(ing?.stock_qty)||0;
@@ -298,7 +363,7 @@ export default function InvoicesPage() {
                   <div style={{display:"flex",gap:6,marginBottom:6}}>
                     <input value={l.newName||""} onChange={e=>updateLine(idx,"newName",e.target.value)} placeholder="Yeni hammadde adi" style={{...inputS, flex:2, padding:"8px"}}/>
                     <select value={l.newUnit||"ml"} onChange={e=>updateLine(idx,"newUnit",e.target.value)} style={{...inputS, flex:1, padding:"8px"}}>
-                      {["ml","l","g","kg","adet","sise","kasa"].map(u=>(<option key={u}>{u}</option>))}
+                      {UNITS.map(u=>(<option key={u}>{u}</option>))}
                     </select>
                   </div>
                 ) : (
@@ -307,13 +372,48 @@ export default function InvoicesPage() {
                     {ingredients.map(i => (<option key={i.id} value={i.id}>{i.name} ({i.unit})</option>))}
                   </select>
                 )}
-                <div style={{display:"flex",gap:6,alignItems:"center"}}>
-                  <input type="number" step="0.01" value={l.qty||0} onChange={e=>updateLine(idx,"qty",e.target.value)} placeholder="Miktar" style={{...inputS, padding:"8px", flex:1}}/>
-                  <span style={{color:"#888"}}>×</span>
-                  <input type="number" step="0.01" value={l.unit_cost||0} onChange={e=>updateLine(idx,"unit_cost",e.target.value)} placeholder="Birim fiyat" style={{...inputS, padding:"8px", flex:1}}/>
-                  <span style={{color:"#C8973E",fontWeight:700,fontSize:12,whiteSpace:"nowrap"}}>= ₺{(Number(l.qty)*Number(l.unit_cost)||0).toFixed(2)}</span>
-                  <button onClick={()=>removeLine(idx)} style={{background:"transparent",color:"#FF6666",border:"1px solid #553333",borderRadius:6,padding:"6px 10px",cursor:"pointer",fontSize:11}}>Sil</button>
-                </div>
+                {(() => {
+                  const c = lineCalc(l);
+                  const koli = l.buy_mode === "koli";
+                  return (<>
+                    <div style={{display:"flex",gap:6,marginBottom:6}}>
+                      <button onClick={()=>updateLine(idx,"buy_mode","adet")} style={{flex:1,padding:"8px",background:!koli?"#2A2A2A":"#161616",color:!koli?"#F0EDE8":"#777",border:"1px solid "+(!koli?"#555":"#2A2A2A"),borderRadius:8,fontSize:11,fontWeight:700,cursor:"pointer"}}>🍾 Şişe / Adet geldi</button>
+                      <button onClick={()=>updateLine(idx,"buy_mode","koli")} style={{flex:1,padding:"8px",background:koli?"#2A2A2A":"#161616",color:koli?"#F0EDE8":"#777",border:"1px solid "+(koli?"#555":"#2A2A2A"),borderRadius:8,fontSize:11,fontWeight:700,cursor:"pointer"}}>📦 Koli geldi</button>
+                    </div>
+                    <div style={{display:"flex",gap:6,alignItems:"center",flexWrap:"wrap"}}>
+                      <label style={{flex:"1 1 90px"}}>
+                        <div style={{fontSize:9,color:"#777",fontWeight:700,marginBottom:3}}>{koli ? "KAÇ KOLİ" : "KAÇ ADET"}</div>
+                        <input type="number" step="0.01" value={l.qty||0} onChange={e=>updateLine(idx,"qty",e.target.value)} style={{...inputS, padding:"8px"}}/>
+                      </label>
+                      {koli && (
+                        <label style={{flex:"1 1 90px"}}>
+                          <div style={{fontSize:9,color:"#777",fontWeight:700,marginBottom:3}}>KOLİ İÇİ ŞİŞE</div>
+                          <input type="number" step="1" value={l.pack_qty||1} onChange={e=>updateLine(idx,"pack_qty",e.target.value)} style={{...inputS, padding:"8px"}}/>
+                        </label>
+                      )}
+                      <label style={{flex:"1 1 100px"}}>
+                        <div style={{fontSize:9,color:"#777",fontWeight:700,marginBottom:3}}>ŞİŞE İÇERİĞİ ({c.unit})</div>
+                        <input type="number" step="0.01" value={l.content||1} onChange={e=>updateLine(idx,"content",e.target.value)} placeholder={c.unit==="ml"?"70cl = 700":"1"} style={{...inputS, padding:"8px"}}/>
+                      </label>
+                      <label style={{flex:"1 1 110px"}}>
+                        <div style={{fontSize:9,color:"#777",fontWeight:700,marginBottom:3}}>{koli ? "KOLİ FİYATI ₺" : "ADET FİYATI ₺"} (KDV dahil)</div>
+                        <input type="number" step="0.01" value={l.unit_cost||0} onChange={e=>updateLine(idx,"unit_cost",e.target.value)} style={{...inputS, padding:"8px"}}/>
+                      </label>
+                      <button onClick={()=>removeLine(idx)} style={{background:"transparent",color:"#FF6666",border:"1px solid #553333",borderRadius:6,padding:"8px 10px",cursor:"pointer",fontSize:11,alignSelf:"flex-end"}}>Sil</button>
+                    </div>
+                    {c.units > 0 && (
+                      <div style={{marginTop:8,padding:"8px 10px",background:"#12181A",border:"1px solid #1E3A42",borderRadius:8,fontSize:11,color:"#9CC",lineHeight:1.6}}>
+                        <b style={{color:"#8FD8E8"}}>{c.units}</b> {c.unit === "adet" ? "adet" : "şişe/fıçı"}
+                        {c.content > 1 && <> × {c.content} {c.unit} = <b style={{color:"#8FD8E8"}}>{c.gross.toLocaleString("tr-TR")} {c.unit}</b></>}
+                        {c.waste > 0 && <> · fire −{c.waste.toLocaleString("tr-TR")} {c.unit}</>}
+                        <br/>
+                        Stoğa eklenecek: <b style={{color:"#8FD8E8"}}>{c.usable.toLocaleString("tr-TR")} {c.unit}</b>
+                        {" · "}Birim maliyet: <b style={{color:"#C8973E"}}>₺{c.costPerUnit.toFixed(4)}/{c.unit}</b>
+                        {" · "}Toplam: <b style={{color:"#C8973E"}}>₺{c.total.toFixed(2)}</b>
+                      </div>
+                    )}
+                  </>);
+                })()}
               </div>
             ))}
             <button onClick={addLine} style={{width:"100%",padding:"10px",background:"transparent",color:"#C8973E",border:"1px dashed #C8973E",borderRadius:8,fontSize:12,fontWeight:700,cursor:"pointer"}}>+ Kalem Ekle</button>
