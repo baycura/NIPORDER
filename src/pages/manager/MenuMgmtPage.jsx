@@ -49,6 +49,13 @@ export default function MenuMgmtPage() {
       staff_only: !!catForm.staff_only,
       is_active: catForm.is_active,
     };
+    // store_id ZORUNLU: RLS "store_id = ANY(user_store_ids())" istiyor.
+    // Gonderilmezse NULL kalir ve "new row violates row-level security policy" hatasi doner.
+    if (catModal.mode === "new") {
+      const storeId = staffUser?.store_ids?.[0];
+      if (!storeId) { alert("Hesabina magaza atanmamis — yonetici ile gorus."); setBusy(false); return; }
+      payload.store_id = storeId;
+    }
     const res = catModal.mode === "new"
       ? await supabase.from("categories").insert(payload)
       : await supabase.from("categories").update(payload).eq("id", catModal.data.id);

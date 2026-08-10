@@ -64,16 +64,25 @@ export default function PaymentPage() {
         supabase.from("customers").update({ outstanding_balance: newBalance }).eq("id", customerId),
         supabase.from("orders").update({ status: "paid", paid_at: new Date().toISOString(), customer_id: customerId }).eq("id", modal.id),
       ]);
-      await supabase.from("payments").insert({ order_id: modal.id, amount: amt, method: "debt", customer_id: customerId });
+      // store_id ZORUNLU (NOT NULL) — gonderilmezse kayit sessizce dusuyordu
+      const { error: payErr } = await supabase.from("payments").insert({
+        order_id: modal.id, amount: amt, method: "debt", customer_id: customerId,
+        store_id: modal.origin_store_id || staffUser?.store_ids?.[0],
+      });
       setBusy(false);
       if (custRes.error || ordRes.error) { alert("Hata: " + (custRes.error?.message || ordRes.error?.message)); return; }
+      if (payErr) alert("Uyari: odeme kaydi yazilamadi — " + payErr.message);
       alert("Borc kaydedildi: ₺" + amt + " (Kalan: ₺" + newBalance + ")");
     } else {
       setBusy(true);
-      await supabase.from("payments").insert({ order_id: modal.id, amount: amt, method });
+      const { error: payErr } = await supabase.from("payments").insert({
+        order_id: modal.id, amount: amt, method,
+        store_id: modal.origin_store_id || staffUser?.store_ids?.[0],
+      });
       const { error } = await supabase.from("orders").update({ status: "paid", paid_at: new Date().toISOString() }).eq("id", modal.id);
       setBusy(false);
       if (error) { alert("Hata: " + error.message); return; }
+      if (payErr) alert("Uyari: odeme kaydi yazilamadi — " + payErr.message);
       alert(method === "cash" ? "Nakit tahsil edildi" : "Kart ile tahsil edildi");
     }
     setModal(null); load();

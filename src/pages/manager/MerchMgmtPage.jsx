@@ -1,11 +1,16 @@
-import{useState,useEffect,useRef}from"react";import{supabase}from"../../lib/supabase.js";
+import{useState,useEffect,useRef}from"react";import{supabase}from"../../lib/supabase.js";import{useAuth}from"../../contexts/AuthContext.jsx";
 const cv="'Coolvetica','Bebas Neue',sans-serif";const cvc="'Coolvetica Condensed','Barlow Condensed',sans-serif";
 export default function MerchMgmtPage(){
+  const{staffUser}=useAuth();
   const[products,setProducts]=useState([]);const[loading,setLoading]=useState(true);const[editing,setEditing]=useState(null);const[form,setForm]=useState({name_en:"",name_tr:"",price:"",type:"apparel",is_active:true});const[variants,setVariants]=useState([]);const[saving,setSaving]=useState(false);const fileRef=useRef();
   const load=async()=>{const{data}=await supabase.from("merch_products").select("*,merch_variants(*)").order("sort_order");setProducts(data||[]);setLoading(false);};
   useEffect(()=>{load();},[]);
   const openEdit=p=>{setEditing(p||{});setForm(p?{name_en:p.name_en||"",name_tr:p.name_tr||"",price:p.price||"",type:p.type||"apparel",is_active:p.is_active!==false}:{name_en:"",name_tr:"",price:"",type:"apparel",is_active:true});setVariants(p?.merch_variants||[]);};
-  const handleSave=async()=>{if(!form.name_en||!form.price)return;setSaving(true);const payload={name_en:form.name_en,name_tr:form.name_tr,price:+form.price,type:form.type,is_active:form.is_active};let pid=editing?.id;if(pid){await supabase.from("merch_products").update(payload).eq("id",pid);}else{const{data}=await supabase.from("merch_products").insert(payload).select().single();pid=data?.id;}
+  const handleSave=async()=>{if(!form.name_en||!form.price)return;setSaving(true);const payload={name_en:form.name_en,name_tr:form.name_tr,price:+form.price,type:form.type,is_active:form.is_active};let pid=editing?.id;if(pid){const{error}=await supabase.from("merch_products").update(payload).eq("id",pid);if(error){setSaving(false);alert("Hata: "+error.message);return;}}else{
+    // store_id ZORUNLU (NOT NULL) — gonderilmezse kayit sessizce dusuyordu
+    const{data,error}=await supabase.from("merch_products").insert({...payload,store_id:staffUser?.store_ids?.[0]}).select().single();
+    if(error||!data){setSaving(false);alert("Kaydedilemedi: "+(error?.message||"bilinmeyen hata"));return;}
+    pid=data.id;}
     for(const v of variants){if(!v.size)continue;await supabase.from("merch_variants").upsert({...(v.id?{id:v.id}:{}),product_id:pid,size:v.size,stock:parseInt(v.stock)||0});}
     setSaving(false);setEditing(null);load();};
   const toggleActive=async p=>{await supabase.from("merch_products").update({is_active:!p.is_active}).eq("id",p.id);load();};
