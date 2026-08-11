@@ -81,8 +81,11 @@ export default function StaffMgmtPage() {
         is_active: form.is_active,
         store_ids: form.store_ids || [],
       };
-      const { error } = await supabase.from("staff").update(payload).eq("id", modal.data.id);
+      // .select() ile kac satir etkilendigini gor: RLS engellerse hata DEGIL,
+      // sessizce 0 satir doner ve kullanici kaydettim saniyordu
+      const { data: upd, error } = await supabase.from("staff").update(payload).eq("id", modal.data.id).select("id");
       if (error) { alert("Hata: " + error.message); setBusy(false); return; }
+      if (!upd?.length) { alert("Kaydedilemedi: bu islem icin yetkin yok (personel duzenlemeyi yalniz admin yapabilir)."); setBusy(false); return; }
     }
     setModal(null); setBusy(false); load();
   };
@@ -102,7 +105,9 @@ export default function StaffMgmtPage() {
   };
 
   const toggleActive = async (s) => {
-    await supabase.from("staff").update({ is_active: !s.is_active }).eq("id", s.id);
+    const { data, error } = await supabase.from("staff").update({ is_active: !s.is_active }).eq("id", s.id).select("id");
+    if (error) { alert("Hata: " + error.message); return; }
+    if (!data?.length) { alert("Değiştirilemedi: bu işlem için yetkin yok."); return; }
     load();
   };
 

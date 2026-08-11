@@ -64,10 +64,12 @@ export default function PaymentPage() {
         supabase.from("customers").update({ outstanding_balance: newBalance }).eq("id", customerId),
         supabase.from("orders").update({ status: "paid", paid_at: new Date().toISOString(), customer_id: customerId }).eq("id", modal.id),
       ]);
-      // store_id ZORUNLU (NOT NULL) — gonderilmezse kayit sessizce dusuyordu
+      // store_id ZORUNLU (NOT NULL). customer_id bu tabloda YOK — musteri zaten
+      // siparise bagli; gonderilirse PostgREST 400 doner ve kayit hic yazilmaz.
       const { error: payErr } = await supabase.from("payments").insert({
-        order_id: modal.id, amount: amt, method: "debt", customer_id: customerId,
+        order_id: modal.id, amount: amt, method: "debt",
         store_id: modal.origin_store_id || staffUser?.store_ids?.[0],
+        staff_id: staffUser?.id || null,
       });
       setBusy(false);
       if (custRes.error || ordRes.error) { alert("Hata: " + (custRes.error?.message || ordRes.error?.message)); return; }
