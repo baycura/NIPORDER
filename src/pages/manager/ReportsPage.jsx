@@ -32,7 +32,9 @@ export default function ReportsPage() {
     const weekStart = new Date(now.getFullYear(), now.getMonth(), now.getDate() - 7).toISOString();
 
     const [todayRes, yesterdayRes, weekRes] = await Promise.all([
-      supabase.from("orders").select("id,total,status,created_at,order_items(quantity,unit_price,product_id,products(name))").eq("origin_store_id", selectedStore).gte("created_at", todayStart),
+      // NOT: order_items'ta unit_price yok — dogru sutun final_price.
+      // Eskiden unit_price isteniyordu, PostgREST 400 doner ve gunun raporu bos gelirdi.
+      supabase.from("orders").select("id,total,status,created_at,order_items(quantity,final_price,product_id,products(name))").eq("origin_store_id", selectedStore).gte("created_at", todayStart),
       supabase.from("orders").select("total,status").eq("origin_store_id", selectedStore).gte("created_at", yesterdayStart).lt("created_at", todayStart),
       supabase.from("orders").select("total,status").eq("origin_store_id", selectedStore).gte("created_at", weekStart),
     ]);

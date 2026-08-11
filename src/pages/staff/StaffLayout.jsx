@@ -21,7 +21,6 @@ const MANAGER_NAV = [
   {to:"/tables-mgmt", icon:"🪑", label:"Masa Yönetimi"},
   {to:"/stock-mgmt",  icon:"📦", label:"Stok Yönetimi"},
   {to:"/recipes",     icon:"📝", label:"Reçeteler"},
-  {to:"/staff-mgmt",  icon:"👥", label:"Personel"},
   {to:"/members",     icon:"🌟", label:"Üyeler & Borç"},
   {to:"/happy-hour",  icon:"🎉", label:"Happy Hour"},
   {to:"/category-schedule", icon:"⏰", label:"Kategori Saatleri"},
@@ -33,6 +32,9 @@ const MANAGER_NAV = [
 
 const ADMIN_NAV = [
   {to:"/reports",          icon:"📈", label:"Raporlar"},
+  // Personel yazma yetkisi veritabaninda yalniz admin (is_admin) — mudurde
+  // kaydet sessizce 0 satir etkiliyordu, o yuzden menu de admin'e tasindi
+  {to:"/staff-mgmt",       icon:"👥", label:"Personel"},
   {to:"/fixed-expenses",   icon:"🔒", label:"Sabit Giderler"},
   {to:"/settlement",        icon:"🥙", label:"Mutfağa Ödenecek"},
   {to:"/kitchen-display",  icon:"📺", label:"Mutfak Ekranı (Tablet)", external:true},
