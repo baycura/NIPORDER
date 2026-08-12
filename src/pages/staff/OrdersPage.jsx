@@ -40,7 +40,7 @@ export default function OrdersPage() {
     const [{data: ords}, {data: tabs}] = await Promise.all([
       supabase.from("orders").select("*, stores:origin_store_id(slug, name)").in("origin_store_id", staffUser?.store_ids?.length ? staffUser.store_ids : ["00000000-0000-0000-0000-000000000000"])
         .in("status", statuses).order("created_at", {ascending:false}).limit(80),
-      supabase.from("cafe_tables").select("id, name").order("sort_order"),
+      supabase.from("cafe_tables").select("id, name, store_id").order("sort_order"),
     ]);
     const tMap = {};
     (tabs || []).forEach(t => { tMap[t.id] = t.name; });
@@ -108,11 +108,18 @@ export default function OrdersPage() {
     if (newMode === "table" && !newTableId) { alert("Masa seç"); return; }
     if (newMode === "walkin" && !newCustomerName.trim()) { alert("Misafir adı gerekli"); return; }
     setBusy(true);
+    const table = newMode === "table" ? tables.find(t => t.id === newTableId) : null;
+    const originStoreId = newMode === "table" ? table?.store_id : staffUser?.store_ids?.[0];
+    if (!originStoreId) {
+      setBusy(false);
+      alert(newMode === "table" ? "Masa mağaza bilgisi bulunamadı — sayfayı yenileyip tekrar deneyin." : "Hesabınıza mağaza atanmamış.");
+      return;
+    }
     const payload = {
       status: "open", subtotal: 0, total: 0,
       table_id: newMode === "table" ? newTableId : null,
       customer_name: newMode === "walkin" ? newCustomerName.trim() : null,
-      origin_store_id: newMode === "table" ? (tables.find(t => t.id === newTableId)?.store_id) : staffUser?.store_ids?.[0],
+      origin_store_id: originStoreId,
       staff_id: staffUser?.id,
     };
     const { data, error } = await supabase.from("orders").insert(payload).select().single();
