@@ -150,6 +150,9 @@ export default function InvoicesPage() {
           pack_qty: Math.max(1, Number(l.pack_qty) || Number(match?.pack_qty) || 1),
           content,
           vat_pct: Number(l.vat_pct) || 0,
+          // Sadece gosterim: iskonto atlandiginda fark etmek icin
+          discount_pct: Number(l.discount_pct) || 0,
+          list_unit_cost: Number(l.list_unit_cost) || 0,
         };
         return match
           ? { ...base, ingredient_id: match.id, isNew: false, newName: "", newUnit: unit }
@@ -223,6 +226,7 @@ export default function InvoicesPage() {
     // Ayni faturada ayni yeni hammadde iki satirda gecerse tek kayit acilsin
     const createdThisRun = {};
     const runningStock = {};   // ingredient_id -> bu fatura sonundaki stok
+    const costAcc = {};        // ingredient_id -> {cost, qty} agirlikli ortalama icin
     for (const l of lines) {
       let ingId = l.ingredient_id;
       if (l.isNew) {
@@ -275,10 +279,19 @@ export default function InvoicesPage() {
         if (pct >= PRICE_ALERT_PCT) anomalies.push({ name: ing?.name || "?", unit: ing?.unit || "", prev: prevCost, now: unitCost, pct });
       }
       runningStock[ingId] = currentStock + qty;
+      // Ayni hammadde birden fazla satirda geciyorsa maliyet AGIRLIKLI ORTALAMA
+      // olmali. Aksi halde son satir kazanir; bedelsiz (%100 iskontolu) bir satir
+      // varsa maliyet sifira duser ve urun bedavaya mal olmus gibi gorunurdu.
+      const acc = costAcc[ingId] || { cost: 0, qty: 0 };
+      acc.cost += unitCost * qty;
+      acc.qty += qty;
+      costAcc[ingId] = acc;
+      const avgCost = acc.qty > 0 ? acc.cost / acc.qty : 0;
+
       await supabase.from("ingredients").update({
         stock_qty: runningStock[ingId],
         // Maliyet 0 girildiyse mevcut maliyet korunur (manuel sayimda fiyat zorunlu degil)
-        cost_per_unit: unitCost > 0 ? unitCost : prevCost,
+        cost_per_unit: avgCost > 0 ? avgCost : prevCost,
       }).eq("id", ingId);
     }
 
@@ -449,6 +462,13 @@ export default function InvoicesPage() {
                         Stoğa eklenecek: <b style={{color:"#8FD8E8"}}>{c.usable.toLocaleString("tr-TR")} {c.unit}</b>
                         {" · "}Birim maliyet: <b style={{color:"#C8973E"}}>₺{c.costPerUnit.toFixed(4)}/{c.unit}</b>
                         {" · "}Toplam: <b style={{color:"#C8973E"}}>₺{c.total.toFixed(2)}</b>
+                        {Number(l.discount_pct) > 0 && (
+                          <><br/><span style={{color:"#8FD8E8"}}>
+                            İskonto %{Number(l.discount_pct)} düşülmüş
+                            {Number(l.list_unit_cost) > 0 && <> — liste ₺{Number(l.list_unit_cost)}, ödenen ₺{Number(l.unit_cost)}</>}
+                            {Number(l.discount_pct) >= 100 && <b style={{color:"#3ECF8E"}}> · BEDELSİZ</b>}
+                          </span></>
+                        )}
                       </div>
                     )}
                   </>);
