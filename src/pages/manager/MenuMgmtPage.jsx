@@ -67,7 +67,8 @@ export default function MenuMgmtPage() {
     const prodCount = products.filter(p => p.category_id === c.id).length;
     if (prodCount > 0) { alert("Bu kategoride " + prodCount + " urun var. Once urunleri sil/tasi."); return; }
     if (!confirm('"' + c.name + '" silinsin mi?')) return;
-    await supabase.from("categories").delete().eq("id", c.id);
+    const { error } = await supabase.from("categories").delete().eq("id", c.id);
+    if (error) { alert("Silinemedi: " + error.message); return; }
     load();
   };
 

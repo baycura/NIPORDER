@@ -51,7 +51,8 @@ export default function StockMgmtPage() {
 
   const del = async (i) => {
     if (!confirm('"' + i.name + '" silinsin mi?')) return;
-    await supabase.from("ingredients").delete().eq("id", i.id);
+    const { error } = await supabase.from("ingredients").delete().eq("id", i.id);
+    if (error) { alert("Silinemedi: " + error.message); return; }
     load();
   };
 

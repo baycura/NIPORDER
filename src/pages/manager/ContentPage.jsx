@@ -109,10 +109,16 @@ export default function ContentPage() {
     setModal(null); load();
   };
 
-  const toggleActive = async (p) => { await supabase.from("posts").update({ is_active: !p.is_active }).eq("id", p.id); load(); };
+  const toggleActive = async (p) => {
+    const { data, error } = await supabase.from("posts").update({ is_active: !p.is_active }).eq("id", p.id).select("id");
+    if (error) { alert("Değiştirilemedi: " + error.message); return; }
+    if (!data?.length) { alert("Değiştirilemedi: bu işlem için yetkin yok."); return; }
+    load();
+  };
   const del = async (p) => {
     if (!confirm('"' + p.title + '" silinsin mi?')) return;
-    await supabase.from("posts").delete().eq("id", p.id);
+    const { error } = await supabase.from("posts").delete().eq("id", p.id);
+    if (error) { alert("Silinemedi: " + error.message); return; }
     load();
   };
 
