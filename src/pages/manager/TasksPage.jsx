@@ -43,30 +43,37 @@ export default function TasksPage() {
 
   const addTask = async () => {
     if (!form.title.trim()) return;
-    await supabase.from("tasks").insert({
+    const { error } = await supabase.from("tasks").insert({
       store_id: storeId,
       title: form.title.trim(),
       description: form.description.trim() || null,
       assigned_to: form.assigned_to,
       created_by: staffUser.id
     });
+    if (error) { alert("Görev eklenemedi: " + error.message); return; }
     setForm({ title: "", description: "", assigned_to: [] });
     setModal(false);
+    load();
   };
 
   const toggle = async (task) => {
     const newDone = !task.done;
-    await supabase.from("tasks").update({
+    const { data, error } = await supabase.from("tasks").update({
       done: newDone,
       done_by: newDone ? staffUser.id : null,
       done_at: newDone ? new Date().toISOString() : null,
       updated_at: new Date().toISOString()
-    }).eq("id", task.id);
+    }).eq("id", task.id).select("id");
+    if (error) { alert("Değiştirilemedi: " + error.message); return; }
+    if (!data?.length) { alert("Değiştirilemedi: bu işlem için yetkin yok."); return; }
+    load();
   };
 
   const deleteTask = async (id) => {
     if (!confirm("Görevi silmek istediğine emin misin?")) return;
-    await supabase.from("tasks").delete().eq("id", id);
+    const { error } = await supabase.from("tasks").delete().eq("id", id);
+    if (error) { alert("Silinemedi: " + error.message); return; }
+    load();
   };
 
   const formatDate = (iso) => new Date(iso).toLocaleString("tr-TR", {

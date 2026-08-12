@@ -42,13 +42,15 @@ export default function CategorySchedulePage() {
   useEffect(() => { load(); }, []);
 
   const toggle = async (id, val) => {
-    await supabase.from("category_schedule_rules").update({ is_active: val }).eq("id", id);
+    const { error } = await supabase.from("category_schedule_rules").update({ is_active: val }).eq("id", id);
+    if (error) { alert("Değiştirilemedi: " + error.message); return; }
     load();
   };
 
   const remove = async (id) => {
     if (!confirm("Bu kuralı silmek istediğinizden emin misiniz?")) return;
-    await supabase.from("category_schedule_rules").delete().eq("id", id);
+    const { error } = await supabase.from("category_schedule_rules").delete().eq("id", id);
+    if (error) { alert("Silinemedi: " + error.message); return; }
     load();
   };
 
