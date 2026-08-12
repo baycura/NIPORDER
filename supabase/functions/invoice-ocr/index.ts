@@ -26,12 +26,14 @@ const OUTPUT_SCHEMA = {
           qty: { type: "number", description: "Miktar" },
           unit: { type: "string", enum: ["ml", "l", "g", "kg", "adet", "sise", "kasa"], description: "Birim — en yakinini sec (sise = şişe)" },
           vat_pct: { type: "number", description: "Satirin KDV orani yuzde olarak (0, 1, 10, 20 gibi). Faturada gorunmuyorsa 0." },
-          unit_cost: { type: "number", description: "KDV DAHIL fiyat, TL — pack_type ne ise ONUN fiyati (koli ise KOLI fiyati, adet ise SISE fiyati)." },
+          discount_pct: { type: "number", description: "Satirin ISKONTO orani yuzde olarak (Isknt %, Iskonto, Indirim sutunu). Yoksa 0. %100 ise mal bedelsiz gelmistir." },
+          list_unit_cost: { type: "number", description: "Faturada YAZAN liste birim fiyati (iskonto ve KDV oncesi), TL. Kontrol icin." },
+          unit_cost: { type: "number", description: "ODENEN NET birim fiyat: iskonto DUSULMUS ve KDV EKLENMIS hali, TL. pack_type ne ise ONUN fiyati (koli ise koli, adet ise sise). Bedelsiz satirda 0." },
           pack_type: { type: "string", enum: ["koli", "adet"], description: "Satir koli/kasa olarak mi yoksa tek sise/adet olarak mi faturalanmis" },
           pack_qty: { type: "number", description: "Koli icindeki sise/adet sayisi (KOLI-24, 24'LU, 1x24 gibi ifadelerden). Tek adetse 1." },
           content_cl: { type: "number", description: "Bir sisenin/ficinin hacmi CL cinsinden (70cl=70, 33cl=33, 1L=100, 30L fici=3000, 50L fici=5000). Hacim yoksa 0." },
         },
-        required: ["name", "qty", "unit", "vat_pct", "unit_cost", "pack_type", "pack_qty", "content_cl"],
+        required: ["name", "qty", "unit", "vat_pct", "discount_pct", "list_unit_cost", "unit_cost", "pack_type", "pack_qty", "content_cl"],
         additionalProperties: false,
       },
     },
@@ -91,9 +93,15 @@ Deno.serve(async (req: Request) => {
             type: "text",
             text: "Bu bir tedarikci faturasi/irsaliye/fis fotografi. Tedarikci adini, fatura tarihini ve TUM urun kalemlerini cikar. " +
               "Her kalem icin: urun adi (faturadaki haliyle), miktar, birim, satirin KDV orani (vat_pct) ve KDV DAHIL birim fiyat. " +
-              "ONEMLI - KDV: Turk faturalarinda satir fiyatlari genelde KDV HARICTIR ve KDV orani ayri sutunda (%1, %10, %20) ya da altta KDV ozetinde yazar. " +
-              "unit_cost alanina daima KDV DAHIL birim fiyati yaz: KDV haric birim fiyat x (1 + vat_pct/100). Fiyat zaten KDV dahilse aynen kullan. " +
-              "Satir toplami verilmisse once miktara bolerek birim fiyati bul. Genel toplam ile satirlarin KDV dahil toplamini karsilastirip tutarliligi kontrol et. " +
+              "EN ONEMLI - ISKONTO: Turk toptanci faturalarinda 'Isknt %' / 'Iskonto Tutari' / 'Indirim' sutunu bulunur ve " +
+              "'Birim Fiyat' ile 'Mal Hizmet Tutari' sutunlari ISKONTODAN ONCEKI liste degerleridir. ISKONTOYU ASLA ATLAMA. " +
+              "Once satirin liste tutarini bul (miktar x liste birim fiyat), sonra iskonto tutarini DUS, sonra KDV EKLE, sonra miktara BOL. " +
+              "Yani: unit_cost = ((miktar x liste_birim_fiyat) - iskonto_tutari) / miktar x (1 + vat_pct/100). " +
+              "Iskonto yuzde olarak verilmisse tutari kendin hesapla. Iskonto %100 ise mal BEDELSIZ gelmistir: unit_cost = 0 (stoga yine girer, maliyeti sifirdir). " +
+              "list_unit_cost alanina faturada YAZAN liste birim fiyatini, discount_pct alanina iskonto oranini yaz. " +
+              "ONEMLI - KDV: Satir fiyatlari genelde KDV HARICTIR; oran ayri sutunda (%1, %10, %20) ya da altta KDV ozetinde yazar. " +
+              "DOGRULAMA: butun satirlarin unit_cost x miktar toplami, faturanin GENEL TOPLAM (odenecek) tutarina yakin olmali — " +
+              "'Toplam Tutar'a degil, iskonto dusulmus 'Genel Toplam'a. Tutmuyorsa iskontoyu atlamis olabilirsin, tekrar bak. " +
               "ONEMLI - KOLI/SISE: Turk toptanci faturalarinda miktar sutunu genelde KOLI/KASA adedini gosterir; asil stok ise ICINDEKI SISE adedidir. " +
               "Urun adinda ya da aciklamada gecen 'KOLI-24', '24'LU', '1x12', '12li' gibi ifadelerden koli ici adedi (pack_qty) cikar. " +
               "Ayrica sise/fici hacmini urun adindan cikar (33cl, 50cl, 70cl, 1L) ve content_cl alanina CL cinsinden yaz (1L=100). " +
@@ -117,6 +125,8 @@ Deno.serve(async (req: Request) => {
       ...l,
       unit_cost: Math.round(Number(l.unit_cost || 0) * 100) / 100,
       vat_pct: Number(l.vat_pct || 0),
+      discount_pct: Number(l.discount_pct || 0),
+      list_unit_cost: Math.round(Number(l.list_unit_cost || 0) * 100) / 100,
       pack_type: l.pack_type === "koli" ? "koli" : "adet",
       pack_qty: Math.max(1, Math.round(Number(l.pack_qty || 1))),
       content_cl: Number(l.content_cl || 0),
