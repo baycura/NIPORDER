@@ -572,10 +572,22 @@ export default function CustomerMenu() {
 
   const visibleCategories = useMemo(() => {
     return categories.filter(c => {
+      if (c.show_in_shop) return false; // raf urunleri Menu'de degil Shop sekmesinde
       if (c.available_from && c.available_until && !isInRange(now, c.available_from, c.available_until)) return false;
       return true;
     });
   }, [categories, now]);
+
+  // Shop sekmesi: raf/marka kategorileri ve urunleri (siparis edilebilir vitrin)
+  const shopCats = useMemo(() => categories.filter(c => c.show_in_shop), [categories]);
+  const shopCatIds = useMemo(() => new Set(shopCats.map(c => c.id)), [shopCats]);
+  const shopProductsByCat = useMemo(() => {
+    const m = {};
+    for (const p of products) {
+      if (shopCatIds.has(p.category_id)) (m[p.category_id] = m[p.category_id] || []).push(p);
+    }
+    return m;
+  }, [products, shopCatIds]);
 
   const visibleProducts = useMemo(() => {
     let list = products.filter(p => p.category_id === selectedCat);
@@ -759,7 +771,8 @@ export default function CustomerMenu() {
       const itemsPayload = cart.map(c => ({
         order_id: newOrderId, product_id: c.product.id, product_name: c.product.name,
         product_price: Number(c.product.price), final_price: calcPrice(c.product, c.options),
-        quantity: c.quantity, kitchen_status: "pending", sent_to_kitchen: true, kitchen_destination_store_id: c.product.kitchen_destination_store_id || c.product.store_id,
+        // Shop urunleri (sapka, kolye...) mutfak tabletine dusmez; siparis ekraninda gorunur
+        quantity: c.quantity, kitchen_status: "pending", sent_to_kitchen: !shopCatIds.has(c.product.category_id), kitchen_destination_store_id: c.product.kitchen_destination_store_id || c.product.store_id,
         notes: c.note || null, selected_options: c.options || null,
         store_id: c.product.store_id || currentStoreId,
         is_takeaway: !!c.takeaway && canTakeaway(c.product),
@@ -993,10 +1006,57 @@ export default function CustomerMenu() {
               </a>
             </>
           )}
+          {custTab === "shop" && shopCats.length > 0 && (
+            <div style={{marginBottom:18}}>
+              {shopCats.map(sc => {
+                const prods = shopProductsByCat[sc.id] || [];
+                if (!prods.length) return null;
+                return (
+                  <div key={sc.id} style={{marginBottom:20}}>
+                    <div style={{display:"flex",alignItems:"baseline",gap:8,marginBottom:10}}>
+                      <div style={{fontSize:16,fontWeight:800,letterSpacing:"0.2px"}}>{sc.icon ? sc.icon + " " : ""}{cName(sc)}</div>
+                      <div style={{flex:1,height:1,background:"#eee"}}/>
+                    </div>
+                    <div style={{display:"grid",gridTemplateColumns:"1fr 1fr",gap:10}}>
+                      {prods.map(p => {
+                        const fp = calcPrice(p);
+                        const soldOut = p.sold_out_today;
+                        const cartIdx = cart.findIndex(ci => ci.product.id === p.id && !ci.options);
+                        const inCart = cartIdx >= 0 ? cart[cartIdx].quantity : 0;
+                        return (
+                          <div key={p.id} style={{background:"#fafafa",border:"1px solid #eee",borderRadius:14,padding:"12px 12px 10px",display:"flex",flexDirection:"column",gap:6,opacity:soldOut?0.45:1}}>
+                            {p.image_url && <img src={p.image_url} alt="" style={{width:"100%",height:110,objectFit:"cover",borderRadius:10}}/>}
+                            <div style={{fontSize:13,fontWeight:700,lineHeight:1.3,minHeight:34}}>{pName(p)}</div>
+                            {pDesc(p) && <div style={{fontSize:11,color:"#777",lineHeight:1.4}}>{pDesc(p)}</div>}
+                            <div style={{display:"flex",alignItems:"center",justifyContent:"space-between",marginTop:"auto"}}>
+                              <span style={{fontSize:14,fontWeight:800}}>₺{fp}</span>
+                              {!soldOut && (inCart > 0 && !p.has_options ? (
+                                <div style={{display:"flex",alignItems:"center",gap:6,background:"#000",borderRadius:20,padding:"3px 5px"}}>
+                                  <button onClick={() => updateQty(cartIdx, -1)} style={{width:24,height:24,background:"transparent",color:"#fff",border:"none",fontSize:16,cursor:"pointer",fontWeight:700,padding:0}}>−</button>
+                                  <span style={{color:"#fff",fontSize:12,fontWeight:800,minWidth:14,textAlign:"center"}}>{inCart}</span>
+                                  <button onClick={() => updateQty(cartIdx, +1)} style={{width:24,height:24,background:"transparent",color:"#fff",border:"none",fontSize:16,cursor:"pointer",fontWeight:700,padding:0}}>+</button>
+                                </div>
+                              ) : (
+                                <button onClick={() => onProductTap(p)} style={{width:30,height:30,background:"#000",color:"#fff",border:"none",borderRadius:"50%",fontSize:20,fontWeight:300,cursor:"pointer",display:"flex",alignItems:"center",justifyContent:"center",padding:0,lineHeight:1}}>+</button>
+                              ))}
+                            </div>
+                            {p.has_options && !soldOut && <div style={{fontSize:9,color:"#C8973E",fontWeight:700,letterSpacing:"0.4px"}}>{t.optional}</div>}
+                          </div>
+                        );
+                      })}
+                    </div>
+                  </div>
+                );
+              })}
+              <div style={{fontSize:11,color:"#999",textAlign:"center",marginBottom:6}}>
+                {L("Siparişini masana getiriyoruz 🛍","We bring it to your table 🛍","Принесём к вашему столику 🛍")}
+              </div>
+            </div>
+          )}
           {(custTab === "shop" || custTab === "blog") && (
             <>
               {postFeeds[custTab] === undefined && <div style={{textAlign:"center",color:"#888",padding:30,fontSize:13}}>...</div>}
-              {postFeeds[custTab]?.length === 0 && (
+              {postFeeds[custTab]?.length === 0 && !(custTab === "shop" && shopCats.length > 0) && (
                 <div style={{textAlign:"center",color:"#888",padding:30,fontSize:13}}>
                   {L("Yakında ✨","Coming soon ✨","Скоро ✨")}
                 </div>

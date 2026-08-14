@@ -33,8 +33,8 @@ export default function MenuMgmtPage() {
   useEffect(() => { load(); }, []);
 
   // -------- CATEGORIES --------
-  const openNewCat = () => { setCatModal({mode:"new"}); setCatForm({name:"", name_en:"", name_ru:"", icon:"", sort_order:100, available_from:"", available_until:"", show_in_party_menu:true, staff_only:false, is_active:true}); };
-  const openEditCat = (c) => { setCatModal({mode:"edit", data:c}); setCatForm({name:c.name||"", name_en:c.name_en||"", name_ru:c.name_ru||"", icon:c.icon||"", sort_order:c.sort_order||100, available_from:c.available_from||"", available_until:c.available_until||"", show_in_party_menu:c.show_in_party_menu!==false, staff_only:!!c.staff_only, is_active:c.is_active!==false}); };
+  const openNewCat = () => { setCatModal({mode:"new"}); setCatForm({name:"", name_en:"", name_ru:"", icon:"", sort_order:100, available_from:"", available_until:"", show_in_party_menu:true, staff_only:false, show_in_shop:false, is_active:true}); };
+  const openEditCat = (c) => { setCatModal({mode:"edit", data:c}); setCatForm({name:c.name||"", name_en:c.name_en||"", name_ru:c.name_ru||"", icon:c.icon||"", sort_order:c.sort_order||100, available_from:c.available_from||"", available_until:c.available_until||"", show_in_party_menu:c.show_in_party_menu!==false, staff_only:!!c.staff_only, show_in_shop:!!c.show_in_shop, is_active:c.is_active!==false}); };
 
   const saveCat = async () => {
     if (busy) return;
@@ -47,6 +47,7 @@ export default function MenuMgmtPage() {
       available_until: catForm.available_until || null,
       show_in_party_menu: catForm.show_in_party_menu!==false,
       staff_only: !!catForm.staff_only,
+      show_in_shop: !!catForm.show_in_shop,
       is_active: catForm.is_active,
     };
     // store_id ZORUNLU: RLS "store_id = ANY(user_store_ids())" istiyor.
@@ -330,6 +331,10 @@ export default function MenuMgmtPage() {
           <label style={{display:"flex",alignItems:"center",gap:8,marginBottom:12,cursor:"pointer"}}>
             <input type="checkbox" checked={!!catForm.staff_only} onChange={e=>setCatForm({...catForm,staff_only:e.target.checked})}/>
             <span style={{fontSize:13,color:"#F0EDE8"}}>🛍 Yalnız kasada (müşteri menüsünde gizli — tişört, seramik gibi satış ürünleri için)</span>
+          </label>
+          <label style={{display:"flex",alignItems:"center",gap:8,marginBottom:12,cursor:"pointer"}}>
+            <input type="checkbox" checked={!!catForm.show_in_shop} onChange={e=>setCatForm({...catForm,show_in_shop:e.target.checked})}/>
+            <span style={{fontSize:13,color:"#F0EDE8"}}>🛒 Müşteride SHOP sekmesinde göster (menüde değil — kişisel bakım, şapka, kolye, marka ürünleri)</span>
           </label>
           <label style={{display:"flex",alignItems:"center",gap:8,marginBottom:12,cursor:"pointer"}}>
             <input type="checkbox" checked={catForm.is_active!==false} onChange={e=>setCatForm({...catForm,is_active:e.target.checked})}/>
