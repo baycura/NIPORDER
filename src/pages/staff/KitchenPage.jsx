@@ -55,6 +55,7 @@ export default function KitchenPage() {
       .from("order_items").select("*").in("kitchen_destination_store_id", staffUser?.store_ids?.length ? staffUser.store_ids : ["00000000-0000-0000-0000-000000000000"])
       .in("order_id", orders.map(o => o.id))
       .in("kitchen_status", ["pending","preparing","ready"])
+      .eq("sent_to_kitchen", true)   // shop urunleri (sapka, kolye...) mutfaga dusmez
       .order("created_at", {ascending:true});
 
     const { data: tabs } = await supabase.from("cafe_tables").select("id,name");
