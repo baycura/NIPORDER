@@ -12,6 +12,43 @@ export function AuthProvider({ children }) {
   useEffect(() => {
     let mounted = true;
 
+    // Musteri kaydini bul (auth_user_id -> email), yoksa olustur. Personel de
+    // musteri olabilir: ayni Google hesabi hem staff hem customer tasiyabilir.
+    const resolveCustomer = async (sess) => {
+      const userId = sess.user.id;
+      const userEmail = sess.user.email;
+      const md = sess.user.user_metadata || {};
+
+      let cRes = await supabase.from("customers").select("*").eq("auth_user_id", userId).maybeSingle();
+      let c = cRes && cRes.data;
+
+      if (!c && userEmail) {
+        const cRes2 = await supabase.from("customers").select("*").eq("email", userEmail).maybeSingle();
+        c = cRes2 && cRes2.data;
+      }
+
+      if (c) {
+        if (!c.auth_user_id) {
+          await supabase.from("customers").update({
+            auth_user_id: userId,
+            avatar_url: md.avatar_url || md.picture,
+            name: c.name || md.full_name || md.name,
+          }).eq("id", c.id);
+        }
+        return c;
+      }
+
+      const newRes = await supabase.from("customers").insert({
+        name: md.full_name || md.name || userEmail,
+        email: userEmail,
+        auth_user_id: userId,
+        avatar_url: md.avatar_url || md.picture,
+        tier: "bronze",
+      }).select().single();
+      if (newRes && newRes.error) console.error("Musteri kaydi acilamadi", newRes.error);
+      return (newRes && newRes.data) || null;
+    };
+
     const loadSession = async (sess) => {
       if (!mounted) return;
       setSession(sess); // ALWAYS update session for token refresh
@@ -21,7 +58,6 @@ export function AuthProvider({ children }) {
       try {
         if (sess && sess.user) {
           const userId = sess.user.id;
-          const userEmail = sess.user.email;
 
           // Try staff first
           const staffRes = await supabase.from("staff").select("*").eq("auth_id", userId).maybeSingle();
@@ -34,45 +70,14 @@ export function AuthProvider({ children }) {
               setCustomer(null);
             } else {
               setStaffUser(s);
-              setCustomer(null);
               // Update last_login (fire and forget)
               supabase.from("staff").update({ last_login: new Date().toISOString() }).eq("id", s.id);
+              // Personel musteri menusunu actiginda uye profili de calissin
+              setCustomer(await resolveCustomer(sess));
             }
           } else {
-            // Try customer by auth_user_id first
-            let cRes = await supabase.from("customers").select("*").eq("auth_user_id", userId).maybeSingle();
-            let c = cRes && cRes.data;
-
-            // If not found, try by email
-            if (!c && userEmail) {
-              const cRes2 = await supabase.from("customers").select("*").eq("email", userEmail).maybeSingle();
-              c = cRes2 && cRes2.data;
-            }
-
-            if (c) {
-              if (!c.auth_user_id) {
-                const md = sess.user.user_metadata || {};
-                await supabase.from("customers").update({
-                  auth_user_id: userId,
-                  avatar_url: md.avatar_url || md.picture,
-                  name: c.name || md.full_name || md.name,
-                }).eq("id", c.id);
-              }
-              setCustomer(c);
-              setStaffUser(null);
-            } else {
-              // Auto-create customer
-              const md = sess.user.user_metadata || {};
-              const newRes = await supabase.from("customers").insert({
-                name: md.full_name || md.name || userEmail,
-                email: userEmail,
-                auth_user_id: userId,
-                avatar_url: md.avatar_url || md.picture,
-                tier: "bronze",
-              }).select().single();
-              setCustomer((newRes && newRes.data) || null);
-              setStaffUser(null);
-            }
+            setCustomer(await resolveCustomer(sess));
+            setStaffUser(null);
           }
         } else {
           setStaffUser(null);
@@ -103,6 +108,7 @@ export function AuthProvider({ children }) {
 
   const signOut = async () => {
     await supabase.auth.signOut();
+    window.__nipLastUid = undefined; // ayni hesapla yeniden giriste profil tekrar yuklensin
     setStaffUser(null);
     setCustomer(null);
   };
