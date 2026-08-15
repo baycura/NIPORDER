@@ -33,8 +33,8 @@ export default function MenuMgmtPage() {
   useEffect(() => { load(); }, []);
 
   // -------- CATEGORIES --------
-  const openNewCat = () => { setCatModal({mode:"new"}); setCatForm({name:"", name_en:"", name_ru:"", icon:"", sort_order:100, available_from:"", available_until:"", show_in_party_menu:true, staff_only:false, show_in_shop:false, is_active:true}); };
-  const openEditCat = (c) => { setCatModal({mode:"edit", data:c}); setCatForm({name:c.name||"", name_en:c.name_en||"", name_ru:c.name_ru||"", icon:c.icon||"", sort_order:c.sort_order||100, available_from:c.available_from||"", available_until:c.available_until||"", show_in_party_menu:c.show_in_party_menu!==false, staff_only:!!c.staff_only, show_in_shop:!!c.show_in_shop, is_active:c.is_active!==false}); };
+  const openNewCat = () => { setCatModal({mode:"new"}); setCatForm({name:"", name_en:"", name_ru:"", icon:"", sort_order:100, available_from:"", available_until:"", show_in_party_menu:true, staff_only:false, show_in_shop:false, is_active:true, description:"", description_en:"", description_ru:"", shop_tag:"", shop_tag_en:"", shop_tag_ru:""}); };
+  const openEditCat = (c) => { setCatModal({mode:"edit", data:c}); setCatForm({name:c.name||"", name_en:c.name_en||"", name_ru:c.name_ru||"", icon:c.icon||"", sort_order:c.sort_order||100, available_from:c.available_from||"", available_until:c.available_until||"", show_in_party_menu:c.show_in_party_menu!==false, staff_only:!!c.staff_only, show_in_shop:!!c.show_in_shop, is_active:c.is_active!==false, description:c.description||"", description_en:c.description_en||"", description_ru:c.description_ru||"", shop_tag:c.shop_tag||"", shop_tag_en:c.shop_tag_en||"", shop_tag_ru:c.shop_tag_ru||""}); };
 
   const saveCat = async () => {
     if (busy) return;
@@ -48,6 +48,12 @@ export default function MenuMgmtPage() {
       show_in_party_menu: catForm.show_in_party_menu!==false,
       staff_only: !!catForm.staff_only,
       show_in_shop: !!catForm.show_in_shop,
+      description: catForm.description?.trim() || null,
+      description_en: catForm.description_en?.trim() || null,
+      description_ru: catForm.description_ru?.trim() || null,
+      shop_tag: catForm.shop_tag?.trim() || null,
+      shop_tag_en: catForm.shop_tag_en?.trim() || null,
+      shop_tag_ru: catForm.shop_tag_ru?.trim() || null,
       is_active: catForm.is_active,
     };
     // store_id ZORUNLU: RLS "store_id = ANY(user_store_ids())" istiyor.
@@ -336,6 +342,21 @@ export default function MenuMgmtPage() {
             <input type="checkbox" checked={!!catForm.show_in_shop} onChange={e=>setCatForm({...catForm,show_in_shop:e.target.checked})}/>
             <span style={{fontSize:13,color:"#F0EDE8"}}>🛒 Müşteride SHOP sekmesinde göster (menüde değil — kişisel bakım, şapka, kolye, marka ürünleri)</span>
           </label>
+          {catForm.show_in_shop && (
+            <div style={{background:"#161616",border:"1px solid #2A2A2A",borderRadius:10,padding:12,marginBottom:12}}>
+              <div style={{fontSize:10,color:"#C8973E",letterSpacing:"1.5px",fontWeight:700,marginBottom:8}}>🛍 MARKA KUTUSU (Shop sekmesinde görünür)</div>
+              <div style={{fontSize:10,color:"#888",letterSpacing:"1px",fontWeight:700,marginBottom:4}}>KATEGORİ ETİKETİ (Seramik, Takı, Doğal Bakım...)</div>
+              <div style={{display:"flex",gap:6,marginBottom:10}}>
+                <input value={catForm.shop_tag||""} onChange={e=>setCatForm({...catForm,shop_tag:e.target.value})} placeholder="TR" style={{flex:1,padding:"8px 10px",background:"#0C0C0C",border:"1px solid #2A2A2A",borderRadius:8,color:"#F0EDE8",fontSize:13,outline:"none"}}/>
+                <input value={catForm.shop_tag_en||""} onChange={e=>setCatForm({...catForm,shop_tag_en:e.target.value})} placeholder="EN" style={{flex:1,padding:"8px 10px",background:"#0C0C0C",border:"1px solid #2A2A2A",borderRadius:8,color:"#F0EDE8",fontSize:13,outline:"none"}}/>
+                <input value={catForm.shop_tag_ru||""} onChange={e=>setCatForm({...catForm,shop_tag_ru:e.target.value})} placeholder="RU" style={{flex:1,padding:"8px 10px",background:"#0C0C0C",border:"1px solid #2A2A2A",borderRadius:8,color:"#F0EDE8",fontSize:13,outline:"none"}}/>
+              </div>
+              <div style={{fontSize:10,color:"#888",letterSpacing:"1px",fontWeight:700,marginBottom:4}}>MİNİ TANITIM (1-2 cümle)</div>
+              <textarea value={catForm.description||""} onChange={e=>setCatForm({...catForm,description:e.target.value})} placeholder="TR — örn: El yapımı seramikler..." rows={2} style={{width:"100%",padding:"8px 10px",background:"#0C0C0C",border:"1px solid #2A2A2A",borderRadius:8,color:"#F0EDE8",fontSize:13,outline:"none",resize:"vertical",marginBottom:6,fontFamily:"inherit"}}/>
+              <textarea value={catForm.description_en||""} onChange={e=>setCatForm({...catForm,description_en:e.target.value})} placeholder="EN" rows={2} style={{width:"100%",padding:"8px 10px",background:"#0C0C0C",border:"1px solid #2A2A2A",borderRadius:8,color:"#F0EDE8",fontSize:13,outline:"none",resize:"vertical",marginBottom:6,fontFamily:"inherit"}}/>
+              <textarea value={catForm.description_ru||""} onChange={e=>setCatForm({...catForm,description_ru:e.target.value})} placeholder="RU" rows={2} style={{width:"100%",padding:"8px 10px",background:"#0C0C0C",border:"1px solid #2A2A2A",borderRadius:8,color:"#F0EDE8",fontSize:13,outline:"none",resize:"vertical",fontFamily:"inherit"}}/>
+            </div>
+          )}
           <label style={{display:"flex",alignItems:"center",gap:8,marginBottom:12,cursor:"pointer"}}>
             <input type="checkbox" checked={catForm.is_active!==false} onChange={e=>setCatForm({...catForm,is_active:e.target.checked})}/>
             <span style={{fontSize:13,color:"#F0EDE8"}}>Aktif</span>
