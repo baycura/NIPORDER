@@ -1099,9 +1099,6 @@ export default function CustomerMenu() {
                   </div>
                 );
               })}
-              <div style={{fontSize:11,color:"#999",textAlign:"center",marginBottom:6}}>
-                {L("Siparişini masana getiriyoruz 🛍","We bring it to your table 🛍","Принесём к вашему столику 🛍")}
-              </div>
             </div>
           )}
           {(custTab === "shop" || custTab === "blog") && (
