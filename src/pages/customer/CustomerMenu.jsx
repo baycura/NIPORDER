@@ -579,7 +579,11 @@ export default function CustomerMenu() {
   }, [categories, now]);
 
   // Shop sekmesi: raf/marka kategorileri ve urunleri (siparis edilebilir vitrin)
-  const shopCats = useMemo(() => categories.filter(c => c.show_in_shop), [categories]);
+  // Siralama sort_order ile: Not in Paris (100) en ustte, Ceren Studio (101), digerleri
+  const shopCats = useMemo(() =>
+    categories.filter(c => c.show_in_shop)
+      .sort((a, b) => (a.sort_order || 0) - (b.sort_order || 0) || String(a.name).localeCompare(String(b.name), "tr")),
+    [categories]);
   const shopCatIds = useMemo(() => new Set(shopCats.map(c => c.id)), [shopCats]);
   const shopProductsByCat = useMemo(() => {
     const m = {};
@@ -1011,20 +1015,23 @@ export default function CustomerMenu() {
               {shopCats.map(sc => {
                 const prods = shopProductsByCat[sc.id] || [];
                 if (!prods.length) return null;
+                const scTag = (["en","ru"].includes(lang) ? sc["shop_tag_" + lang] : sc.shop_tag) || sc.shop_tag;
+                const scDesc = (["en","ru"].includes(lang) ? sc["description_" + lang] : sc.description) || sc.description;
                 return (
-                  <div key={sc.id} style={{marginBottom:20}}>
-                    <div style={{display:"flex",alignItems:"baseline",gap:8,marginBottom:10}}>
-                      <div style={{fontSize:16,fontWeight:800,letterSpacing:"0.2px"}}>{sc.icon ? sc.icon + " " : ""}{cName(sc)}</div>
-                      <div style={{flex:1,height:1,background:"#eee"}}/>
+                  <div key={sc.id} style={{marginBottom:16,background:"#fafafa",border:"1px solid #eee",borderRadius:16,padding:"14px 12px 12px"}}>
+                    <div style={{display:"flex",alignItems:"center",gap:8,flexWrap:"wrap",padding:"0 2px"}}>
+                      <div style={{fontSize:17,fontWeight:800,letterSpacing:"0.2px"}}>{sc.icon ? sc.icon + " " : ""}{cName(sc)}</div>
+                      {scTag && <span style={{fontSize:10,fontWeight:800,letterSpacing:"0.5px",padding:"3px 9px",background:"#000",color:"#fff",borderRadius:20,textTransform:"uppercase"}}>{scTag}</span>}
                     </div>
-                    <div style={{display:"grid",gridTemplateColumns:"1fr 1fr",gap:10}}>
+                    {scDesc && <div style={{fontSize:12,color:"#666",lineHeight:1.5,margin:"5px 2px 0"}}>{scDesc}</div>}
+                    <div style={{display:"grid",gridTemplateColumns:"1fr 1fr",gap:10,marginTop:12}}>
                       {prods.map(p => {
                         const fp = calcPrice(p);
                         const soldOut = p.sold_out_today;
                         const cartIdx = cart.findIndex(ci => ci.product.id === p.id && !ci.options);
                         const inCart = cartIdx >= 0 ? cart[cartIdx].quantity : 0;
                         return (
-                          <div key={p.id} style={{background:"#fafafa",border:"1px solid #eee",borderRadius:14,padding:"12px 12px 10px",display:"flex",flexDirection:"column",gap:6,opacity:soldOut?0.45:1}}>
+                          <div key={p.id} style={{background:"#fff",border:"1px solid #eee",borderRadius:14,padding:"12px 12px 10px",display:"flex",flexDirection:"column",gap:6,opacity:soldOut?0.45:1}}>
                             {p.image_url && <img src={p.image_url} alt="" style={{width:"100%",height:110,objectFit:"cover",borderRadius:10}}/>}
                             <div style={{fontSize:13,fontWeight:700,lineHeight:1.3,minHeight:34}}>{pName(p)}</div>
                             {pDesc(p) && <div style={{fontSize:11,color:"#777",lineHeight:1.4}}>{pDesc(p)}</div>}
