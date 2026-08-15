@@ -183,6 +183,48 @@ const T = {
   }
 };
 
+// Secenek gruplari/degerleri DB'de tek (kanonik) dilde saklanir; mutfak ve kasa
+// hep ayni degeri gorur. Burasi YALNIZ musteri ekraninda gosterim cevirisidir.
+// Sozlukte olmayan degerler (Jägermeister, Macallan...) oldugu gibi gecer.
+const OPT_I18N = {
+  "Milk":            { tr: "Süt",             ru: "Молоко" },
+  "Flavor":          { tr: "Aroma",           ru: "Сироп" },
+  "Pour size":       { tr: "Ölçü",            ru: "Объём" },
+  "Mixer":           { tr: "Mixer",           ru: "Миксер" },
+  "Lemon":           { tr: "Limon",           ru: "Лимон" },
+  "Type":            { tr: "Tür",             ru: "Вид" },
+  "Side":            { tr: "Yanında",         ru: "К кофе" },
+  "Style":           { tr: "Servis",          ru: "Подача" },
+  "Fruit":           { tr: "Meyve",           ru: "Фрукт" },
+  "Beden":           { en: "Size",            ru: "Размер" },
+  "Whole milk":      { tr: "Normal süt",      ru: "Обычное молоко" },
+  "Lactose-free":    { tr: "Laktozsuz",       ru: "Безлактозное" },
+  "Oat":             { tr: "Yulaf",           ru: "Овсяное" },
+  "Almond":          { tr: "Badem",           ru: "Миндальное" },
+  "Coconut":         { tr: "Hindistan cevizi",ru: "Кокосовое" },
+  "Caramel":         { tr: "Karamel",         ru: "Карамель" },
+  "Hazelnut":        { tr: "Fındık",          ru: "Фундук" },
+  "White Chocolate": { tr: "Beyaz çikolata",  ru: "Белый шоколад" },
+  "Strawberry":      { tr: "Çilek",           ru: "Клубника" },
+  "Single (4cl)":    { tr: "Tek (4cl)",       ru: "Одинарный (4 сл)" },
+  "Double (8cl)":    { tr: "Duble (8cl)",     ru: "Двойной (8 сл)" },
+  "Soda":            { ru: "Содовая" },
+  "Tonic":           { tr: "Tonik",           ru: "Тоник" },
+  "Lemon juice":     { tr: "Limon suyu",      ru: "Лимонный сок" },
+  "Lemon slice":     { tr: "Limon dilimi",    ru: "Долька лимона" },
+  "No lemon":        { tr: "Limonsuz",        ru: "Без лимона" },
+  "Basmati bowl":    { tr: "Basmati kase",    ru: "Боул с басмати" },
+  "Pita":            { tr: "Pide",            ru: "Пита" },
+  "Wrap":            { tr: "Dürüm",           ru: "Ролл" },
+  "Water":           { tr: "Su",              ru: "Вода" },
+  "Orange":          { tr: "Portakal",        ru: "Апельсин" },
+  "Pomegranate":     { tr: "Nar",             ru: "Гранат" },
+  "Grapefruit":      { tr: "Greyfurt",        ru: "Грейпфрут" },
+  "Tequila":         { tr: "Tekila",          ru: "Текила" },
+  "Small":           { tr: "Küçük",           ru: "Маленький" },
+  "Big":             { tr: "Büyük",           ru: "Большой" },
+};
+
 function isInRange(now, from, until) {
   if (!from || !until) return false;
   const [fh, fm] = from.split(":").map(Number);
@@ -374,6 +416,8 @@ export default function CustomerMenu() {
   const cName = (c) => (lang === "en" && c?.name_en) ? c.name_en : (lang === "ru" && c?.name_ru) ? c.name_ru : c?.name;
   // Inline uc-dil yardimcisi: L(tr, en, ru)
   const L = (trS, enS, ruS) => lang === "en" ? enS : lang === "ru" ? ruS : trS;
+  // Secenek adi/degeri gosterim cevirisi (kanonik deger degismez, mutfak aynisini gorur)
+  const optT = (s) => (OPT_I18N[s] && OPT_I18N[s][lang]) || s;
   const postTitle = (p) => (lang === "en" && p?.title_en) ? p.title_en : (lang === "ru" && p?.title_ru) ? p.title_ru : p?.title;
   const postBody = (p) => (lang === "en" && p?.body_en) ? p.body_en : (lang === "ru" && p?.body_ru) ? p.body_ru : p?.body;
   const dateLocale = lang === "en" ? "en-GB" : lang === "ru" ? "ru-RU" : "tr-TR";
@@ -694,7 +738,7 @@ export default function CustomerMenu() {
     if (!optModal) return;
     const cfg = optModal.options_config || {};
     for (const group of cfg.groups || []) {
-      if (group.required && (group.multi?!((optSelected[group.name]||[]).length):!optSelected[group.name])) { alert(t.please_choose + " " + group.name); return; }
+      if (group.required && (group.multi?!((optSelected[group.name]||[]).length):!optSelected[group.name])) { alert(t.please_choose + " " + optT(group.name)); return; }
     }
     addToCart(optModal, optSelected, optNote.trim() || null);
     setOptModal(null);
@@ -1126,7 +1170,7 @@ export default function CustomerMenu() {
                 <div style={{fontSize:15,fontWeight:700,color:"#000",lineHeight:1.3}}>{pName(p)}</div>
                 {pDesc(p) && <div style={{fontSize:12,color:"#666",marginTop:3,lineHeight:1.4}}>{pDesc(p)}</div>}
                 {isFaded && fadedInfo && <div style={{fontSize:11,color:"#C8973E",marginTop:3,fontWeight:600}}>{L("","Available ","Доступно ")}{fadedInfo.end.slice(0,5)} - {fadedInfo.start.slice(0,5)}{L(" arası mevcut","","")}</div>}
-                {p.show_prep_time && p.prep_time_minutes && <div style={{fontSize:12,color:"#888",marginTop:4,display:"flex",alignItems:"center",gap:4}}>⏱ <span>~{p.prep_time_minutes} dk</span></div>}
+                {p.show_prep_time && p.prep_time_minutes && <div style={{fontSize:12,color:"#888",marginTop:4,display:"flex",alignItems:"center",gap:4}}>⏱ <span>~{p.prep_time_minutes} {L("dk","min","мин")}</span></div>}
                 {soldOut && <div style={{fontSize:11,color:"#c44",marginTop:4,fontWeight:600}}>{p.unavailable_reason || t.sold_out}</div>}
                 {p.has_options && !soldOut && <div style={{fontSize:10,color:"#C8973E",marginTop:3,fontWeight:700,letterSpacing:"0.5px"}}>{t.optional}</div>}
                 <div style={{display:"flex",alignItems:"center",gap:10,marginTop:8}}>
@@ -1296,11 +1340,11 @@ export default function CustomerMenu() {
             {(optModal.options_config?.groups || []).map(group => (
               <div key={group.name} style={{marginBottom:14}}>
                 <div style={{fontSize:11,color:"#333",letterSpacing:"1px",fontWeight:700,marginBottom:6}}>
-                  {group.name?.toUpperCase()}{group.required && <span style={{color:"#c44",marginLeft:4}}>*</span>}
+                  {optT(group.name)?.toUpperCase()}{group.required && <span style={{color:"#c44",marginLeft:4}}>*</span>}
                 </div>
                 <div style={{display:"flex",flexWrap:"wrap",gap:6}}>
                   {(group.options || []).map(opt => (
-                    <button key={opt} onClick={()=>setOptSelected(group.multi?{...optSelected,[group.name]:((optSelected[group.name]||[]).includes(opt)?(optSelected[group.name]||[]).filter(x=>x!==opt):[...(optSelected[group.name]||[]),opt])}:{...optSelected,[group.name]:opt})} style={{padding:"10px 14px",background:(group.multi?(optSelected[group.name]||[]).includes(opt):optSelected[group.name]===opt)?"#000":"#f2f2f2",color:(group.multi?(optSelected[group.name]||[]).includes(opt):optSelected[group.name]===opt)?"#fff":"#333",border:"none",borderRadius:10,fontSize:13,fontWeight:700,cursor:"pointer"}}>{opt}</button>
+                    <button key={opt} onClick={()=>setOptSelected(group.multi?{...optSelected,[group.name]:((optSelected[group.name]||[]).includes(opt)?(optSelected[group.name]||[]).filter(x=>x!==opt):[...(optSelected[group.name]||[]),opt])}:{...optSelected,[group.name]:opt})} style={{padding:"10px 14px",background:(group.multi?(optSelected[group.name]||[]).includes(opt):optSelected[group.name]===opt)?"#000":"#f2f2f2",color:(group.multi?(optSelected[group.name]||[]).includes(opt):optSelected[group.name]===opt)?"#fff":"#333",border:"none",borderRadius:10,fontSize:13,fontWeight:700,cursor:"pointer"}}>{optT(opt)}</button>
                   ))}
                 </div>
               </div>
@@ -1335,7 +1379,7 @@ export default function CustomerMenu() {
               <div key={idx} style={{display:"flex",alignItems:"center",gap:10,padding:"12px 0",borderBottom:"1px solid #f0f0f0"}}>
                 <div style={{flex:1,minWidth:0}}>
                   <div style={{fontSize:14,fontWeight:700}}>{pName(c.product)}</div>
-                  {c.options && <div style={{fontSize:11,color:"#C8973E",marginTop:2,fontWeight:600}}>{Object.values(c.options).flat().join(" · ")}</div>}
+                  {c.options && <div style={{fontSize:11,color:"#C8973E",marginTop:2,fontWeight:600}}>{Object.values(c.options).flat().map(optT).join(" · ")}</div>}
                   {c.note && <div style={{fontSize:11,color:"#666",fontStyle:"italic",marginTop:2}}>{c.note}</div>}
                   <div style={{fontSize:12,color:"#555",marginTop:3}}>
                     {calcPrice(c.product, c.options) < listPrice(c.product, c.options) && (
