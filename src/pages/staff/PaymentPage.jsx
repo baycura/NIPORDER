@@ -61,9 +61,15 @@ export default function PaymentPage() {
       const cust = customers.find(c => c.id === customerId);
       const newBalance = Number(cust?.outstanding_balance || 0) + amt;
       const [custRes, ordRes] = await Promise.all([
-        supabase.from("customers").update({ outstanding_balance: newBalance }).eq("id", customerId),
+        supabase.from("customers").update({ outstanding_balance: newBalance }).eq("id", customerId).select("id"),
         supabase.from("orders").update({ status: "paid", paid_at: new Date().toISOString(), customer_id: customerId }).eq("id", modal.id),
       ]);
+      // Bakiye yazilamazsa borc kaybolur — sessiz gecilmemeli
+      if (custRes.error || !custRes.data?.length) {
+        alert("Veresiye bakiyesi güncellenemedi" + (custRes.error ? ": " + custRes.error.message : " (yetki yok)"));
+        setBusy(false); return;
+      }
+      if (ordRes.error) { alert("Sipariş kapatılamadı: " + ordRes.error.message); setBusy(false); return; }
       // store_id ZORUNLU (NOT NULL). customer_id bu tabloda YOK — musteri zaten
       // siparise bagli; gonderilirse PostgREST 400 doner ve kayit hic yazilmaz.
       const { error: payErr } = await supabase.from("payments").insert({

@@ -165,23 +165,26 @@ export default function KitchenPage() {
 
   // Ticket-level actions: act on ALL items in an order in one click
   const startPreparingAll = async (orderId) => {
-    await supabase.from("order_items")
+    const { error } = await supabase.from("order_items")
       .update({ kitchen_status: "preparing" })
       .eq("order_id", orderId)
       .eq("kitchen_status", "pending");
+    if (error) { alert("Güncellenemedi: " + error.message); return; }
     load();
   };
   const markAllReady = async (orderId) => {
-    await supabase.from("order_items")
+    const { error } = await supabase.from("order_items")
       .update({ kitchen_status: "ready" })
       .eq("order_id", orderId)
       .in("kitchen_status", ["pending","preparing"]);
+    if (error) { alert("Güncellenemedi: " + error.message); return; }
     load();
   };
   const markServedAndClose = async (orderId) => {
-    await supabase.from("order_items")
+    const { error } = await supabase.from("order_items")
       .update({ kitchen_status: "served" })
       .eq("order_id", orderId);
+    if (error) { alert("Güncellenemedi: " + error.message); return; }
     load();
   };
 
