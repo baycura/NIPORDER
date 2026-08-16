@@ -89,40 +89,62 @@ export function parseUblInvoice(xmlText) {
     const priceEl = child(ln, "Price");
     const listUnit = num(text(priceEl, "PriceAmount"));
 
-    // Iskonto: ChargeIndicator=false olan AllowanceCharge satirlari
-    let discount = 0;
+    // Iskonto: ChargeIndicator=false olan AllowanceCharge satirlari.
+    //
+    // DIKKAT — iki farkli yazim var, ikisi de gecerli:
+    //   a) Iskonto ZATEN DUSULMUS: LineExtensionAmount nettir (BaseAmount
+    //      satir tutarindan buyuktur). Orn. Kavmar faturalari.
+    //   b) Iskonto AYRICA DUSULECEK: LineExtensionAmount bruttur ve
+    //      AllowanceCharge'in BaseAmount'u ona esittir. Orn. Erbak/Uludag.
+    // Ayirt etmezsek (b) tipi faturalarda maliyet iki katina cikar.
+    let discount = 0, discountOnTop = 0;
     for (const ac of childAll(ln, "AllowanceCharge")) {
-      if ((text(ac, "ChargeIndicator") || "").toLowerCase() === "false") {
-        discount += num(text(ac, "Amount"));
-      }
+      if ((text(ac, "ChargeIndicator") || "").toLowerCase() !== "false") continue;
+      const amount = num(text(ac, "Amount"));
+      const base = num(text(ac, "BaseAmount"));
+      discount += amount;
+      if (base > 0 && Math.abs(base - lineAmount) < 0.01) discountOnTop += amount;
     }
+    const netAmount = lineAmount - discountOnTop;
 
-    // KDV orani
+    // KDV orani: gercek e-Faturalarda Percent, TaxSubtotal'in DOGRUDAN altinda
+    // durur (TaxCategory'nin icinde degil). Iki yeri de deneriz.
     const taxSub = pick(child(ln, "TaxTotal") || ln, "TaxSubtotal");
-    const vatPct = num(text(pick(taxSub, "TaxCategory") || taxSub, "Percent"));
+    const vatPct = num(
+      (child(taxSub, "Percent")?.textContent) ??
+      text(pick(taxSub, "TaxCategory") || taxSub, "Percent")
+    );
 
     // Birim maliyet KDV DAHIL — uygulamanin her yerinde boyle tutuluyor
-    const netUnit = qty > 0 ? lineAmount / qty : 0;
+    const netUnit = qty > 0 ? netAmount / qty : 0;
     const unitCost = Math.round(netUnit * (1 + vatPct / 100) * 10000) / 10000;
 
     const discountPct = (listUnit > 0 && qty > 0)
-      ? Math.round((1 - (lineAmount / qty) / listUnit) * 1000) / 10
+      ? Math.round((1 - (netAmount / qty) / listUnit) * 1000) / 10
       : 0;
+
+    // Depozito satirlari (fici/sise/kasa) MALIYET DEGILDIR — iade edilir.
+    // Acarlar bunlari "(*)" onekiyle yazar ve fatura toplamina katmaz.
+    const isDeposit = /^\s*\(\*\)/.test(name) || /depozito/i.test(name);
 
     return {
       name,
+      isDeposit,
       qty,
       unit: UNIT_CODE[unitCode] || "adet",
       unit_cost: unitCost,
       list_unit_cost: listUnit,
       discount_pct: discountPct > 0.1 ? discountPct : 0,
       vat_pct: vatPct,
-      line_total: lineAmount,
+      line_total: netAmount,
       pack_type: "adet",
       pack_qty: 1,
       content_cl: 0,
     };
   }).filter(l => l.name && l.qty > 0);
+
+  const goods = lines.filter(l => !l.isDeposit);
+  const deposits = lines.filter(l => l.isDeposit);
 
   return {
     supplier_name: supplier,
@@ -130,6 +152,9 @@ export function parseUblInvoice(xmlText) {
     invoice_no: invoiceNo,
     currency,
     grand_total: grandTotal,
-    lines,
+    lines: goods,
+    // Iade edilebilir ambalaj bedeli — maliyete girmez, bilgi olarak doner
+    deposits,
+    deposit_total: Math.round(deposits.reduce((t, d) => t + d.qty * d.unit_cost, 0) * 100) / 100,
   };
 }
