@@ -1109,8 +1109,11 @@ export default function CustomerMenu() {
                   {L("Yakında ✨","Coming soon ✨","Скоро ✨")}
                 </div>
               )}
-              {(postFeeds[custTab] || []).map(p => (
-                <div key={p.id} style={{background:"#fafafa",border:"1px solid #eee",borderRadius:14,overflow:"hidden",marginBottom:14}}>
+              {(postFeeds[custTab] || []).map(p => {
+                const Card = p.link_url ? "a" : "div";
+                return (
+                <Card key={p.id} {...(p.link_url ? { href: p.link_url, target: "_blank", rel: "noreferrer" } : {})}
+                  style={{display:"block",textDecoration:"none",color:"#000",background:"#fafafa",border:"1px solid #eee",borderRadius:14,overflow:"hidden",marginBottom:14}}>
                   {(p.images || []).length > 0 && (
                     <div style={{display:"flex",gap:6,overflowX:"auto",padding:(p.images.length>1?"10px 10px 0":"0")}}>
                       {p.images.map((u, i) => (
@@ -1121,7 +1124,10 @@ export default function CustomerMenu() {
                     </div>
                   )}
                   <div style={{padding:"12px 14px"}}>
-                    <div style={{fontSize:16,fontWeight:800}}>{postTitle(p)}</div>
+                    <div style={{fontSize:16,fontWeight:800,display:"flex",justifyContent:"space-between",alignItems:"center",gap:8}}>
+                      <span>{postTitle(p)}</span>
+                      {p.link_url && <span style={{fontSize:14,color:"#888",flexShrink:0}}>↗</span>}
+                    </div>
                     {postBody(p) && <div style={{fontSize:13,color:"#444",marginTop:6,lineHeight:1.6,whiteSpace:"pre-wrap"}}>{postBody(p)}</div>}
                     {custTab === "shop" ? (
                       <div style={{display:"inline-block",marginTop:10,padding:"6px 12px",background:"#000",color:"#FFD700",borderRadius:10,fontSize:11,fontWeight:800}}>
@@ -1131,8 +1137,9 @@ export default function CustomerMenu() {
                       <div style={{fontSize:10,color:"#999",marginTop:8}}>{new Date(p.created_at).toLocaleDateString(dateLocale,{day:"numeric",month:"long"})}</div>
                     )}
                   </div>
-                </div>
-              ))}
+                </Card>
+                );
+              })}
               {custTab === "shop" && (
                 <a href={INSTAGRAM_URL} target="_blank" rel="noreferrer" style={{display:"flex",justifyContent:"space-between",alignItems:"center",padding:"14px 16px",background:"#fafafa",border:"1px solid #eee",borderRadius:14,textDecoration:"none",color:"#000",marginTop:4}}>
                   <span style={{fontSize:13,fontWeight:800}}>📷 Instagram — @notinparis.me</span>
