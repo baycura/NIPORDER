@@ -1,4 +1,5 @@
 import { useState } from "react";
+import { APP_HOST } from "../lib/appUrl.js";
 import { useAuth } from "../contexts/AuthContext.jsx";
 const cv="'Coolvetica','Bebas Neue',sans-serif";
 const cvc="'Coolvetica Condensed','Barlow Condensed',sans-serif";
@@ -21,7 +22,7 @@ export default function LoginPage() {
         <div style={{textAlign:"center",marginBottom:40}}>
           <div style={{width:60,height:60,borderRadius:16,background:"#C8973E",display:"flex",alignItems:"center",justifyContent:"center",margin:"0 auto 16px",fontFamily:cv,fontSize:34,color:"#000"}}>N</div>
           <div style={{color:"#F0EDE8",fontFamily:"'Coolvetica Condensed','Barlow Condensed','Bebas Neue',sans-serif",fontSize:42,fontWeight:900,letterSpacing:"2px"}}>NOT IN PARIS</div>
-          <div style={{color:"#888",fontFamily:cvc,fontSize:11,letterSpacing:"2px",marginTop:6}}>order.notinparis.me · PERSONEL GİRİŞİ</div>
+          <div style={{color:"#888",fontFamily:cvc,fontSize:11,letterSpacing:"2px",marginTop:6}}>{APP_HOST} · PERSONEL GİRİŞİ</div>
         </div>
         <form onSubmit={handleSubmit} style={{background:"#1E1E1E",border:"1px solid #2A2A2A",borderRadius:16,padding:28}}>
           <div style={{color:"#888",fontFamily:cvc,fontSize:10,letterSpacing:"2px",marginBottom:6}}>E-POSTA</div>

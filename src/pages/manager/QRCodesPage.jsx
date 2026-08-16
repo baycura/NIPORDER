@@ -1,10 +1,11 @@
 import { useState } from "react";
+import { menuUrl } from "../../lib/appUrl.js";
 
 const cv = "'Coolvetica','Bebas Neue',sans-serif";
 const cvc = "'Coolvetica Condensed','Barlow Condensed',sans-serif";
 
-const PARIS_URL = "https://order.notinparis.me/menu?store=paris";
-const DONER_URL = "https://order.notinparis.me/menu?store=doner";
+const PARIS_URL = menuUrl("paris");
+const DONER_URL = menuUrl("doner");
 
 // QR generator service (no npm dep, just an image URL)
 const qrSrc = (url, size = 600) =>

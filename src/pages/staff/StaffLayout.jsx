@@ -1,4 +1,5 @@
 import { Outlet, NavLink, useNavigate } from "react-router-dom";
+import { APP_HOST } from "../../lib/appUrl.js";
 import { useState, useEffect, useRef } from "react";
 import { useAuth } from "../../contexts/AuthContext.jsx";
 
@@ -112,7 +113,7 @@ export default function StaffLayout() {
           <div style={{width:38,height:38,borderRadius:10,background:"#C8973E",display:"flex",alignItems:"center",justifyContent:"center",fontSize:20,color:"#000",fontWeight:900,fontFamily:cv}}>N</div>
           <div>
             <div style={{color:"#F0EDE8",fontSize:16,fontWeight:400,fontFamily:"'Coolvetica Heavy',"+cv,textTransform:"uppercase",letterSpacing:"0.005em"}}>Not in Paris</div>
-            <div style={{color:"#888",fontSize:10,fontFamily:cv}}>order.notinparis.me</div>
+            <div style={{color:"#888",fontSize:10,fontFamily:cv}}>{APP_HOST}</div>
           </div>
         </div>
         {mobile && <button onClick={()=>setDrawerOpen(false)} style={{background:"none",border:"none",color:"#888",fontSize:24,cursor:"pointer",padding:4}}>×</button>}
