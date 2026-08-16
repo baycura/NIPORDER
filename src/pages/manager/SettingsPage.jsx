@@ -28,7 +28,21 @@ export default function SettingsPage() {
     setSettings({...settings, [key]: value});
   };
 
-  const [trBusy, setTrBusy] = useState(false);
+  const [trBusy, setTrBusy] = useState(false);  const [eurBusy, setEurBusy] = useState(false);
+  // Kuru elle tetikle: fonksiyon TCMB'den ceker, guvenlik bandini uygular
+  const syncEurRate = async () => {
+    if (eurBusy) return;
+    setEurBusy(true);
+    try {
+      const { data, error } = await supabase.functions.invoke("eur-rate-sync", { body: {} });
+      if (error) throw new Error(error.message || "Sunucu hatasi");
+      if (data?.error) throw new Error(data.error);
+      alert("Kur cekildi: 1 € = ₺" + data.fetched + " (" + (data.source || "") + ")");
+      load();
+    } catch (e) { alert("Kur guncellenemedi: " + (e?.message || e)); }
+    setEurBusy(false);
+  };
+
   const translateAnnouncement = async () => {
     const src = (settings.announcement_tr || "").trim();
     if (!src) { alert("Once Turkce duyuruyu yaz"); return; }
@@ -107,11 +121,36 @@ export default function SettingsPage() {
       </Section>
 
       {/* Euro kuru */}
-      <Section icon="💶" title="Euro Kuru" desc="Fiyatini EURO olarak girdigin urunlerin TL karsiligi bu kurla hesaplanir. Kuru degistirdigin anda o urunlerin TL fiyati kendiliginden guncellenir. Siparis, odeme ve raporlar her zaman TL kalir.">
-        <Field label="1 EURO KAC TL?">
-          <input type="number" step="0.01" value={settings.eur_rate || ""} onChange={e=>setKey("eur_rate", e.target.value)} placeholder="Orn: 48" style={inputS}/>
-        </Field>
-        <div style={{fontSize:11,color:"#888",marginTop:6}}>Kuru guncel tutmak sende: degistirip kaydettiginde euro fiyatli tum urunler yeni kura gecer.</div>
+      <Section icon="💶" title="Euro Kuru" desc="Fiyatini EURO olarak girdigin urunlerin TL karsiligi bu kurla hesaplanir. Kur degisince o urunlerin TL fiyati kendiliginden guncellenir. Siparis, odeme ve raporlar her zaman TL kalir.">
+        <Toggle checked={settings.eur_rate_auto !== false && settings.eur_rate_auto !== "false"}
+          onChange={v=>setKey("eur_rate_auto", v)} label="Kuru otomatik guncelle (her is gunu 17:00 — TCMB doviz satis)"/>
+        <div style={{display:"flex",gap:8}}>
+          <Field label="1 EURO KAC TL?" style={{flex:1}}>
+            <input type="number" step="0.01" value={settings.eur_rate || ""} onChange={e=>setKey("eur_rate", e.target.value)} placeholder="Orn: 55.24" style={inputS}/>
+          </Field>
+          <Field label="EK PAY (%)" style={{width:110}}>
+            <input type="number" step="0.5" value={settings.eur_rate_markup_pct ?? "0"} onChange={e=>setKey("eur_rate_markup_pct", e.target.value)} placeholder="0" style={inputS}/>
+          </Field>
+          <Field label="GUVENLIK BANDI (%)" style={{width:130}}>
+            <input type="number" step="1" value={settings.eur_rate_max_jump_pct ?? "10"} onChange={e=>setKey("eur_rate_max_jump_pct", e.target.value)} placeholder="10" style={inputS}/>
+          </Field>
+        </div>
+        <button onClick={syncEurRate} disabled={eurBusy}
+          style={{width:"100%",padding:"11px",background:eurBusy?"#555":"#2A2A3A",color:"#B8C6F0",border:"1px solid #3A3A5A",borderRadius:8,fontSize:12,fontWeight:800,cursor:eurBusy?"wait":"pointer",margin:"4px 0 8px"}}>
+          {eurBusy ? "Kur cekiliyor..." : "🔄 Kuru simdi guncelle"}
+        </button>
+        {settings.eur_rate_note ? (
+          <div style={{padding:"10px 12px",background:"#2A1F12",border:"1px solid #5A4020",borderRadius:8,fontSize:12,color:"#FFC98A",lineHeight:1.5,marginBottom:6}}>
+            ⚠ {settings.eur_rate_note}
+          </div>
+        ) : null}
+        <div style={{fontSize:11,color:"#888",lineHeight:1.6}}>
+          {settings.eur_rate_updated_at
+            ? "Son guncelleme: " + new Date(settings.eur_rate_updated_at).toLocaleString("tr-TR") + (settings.eur_rate_source ? " · " + settings.eur_rate_source : "")
+            : "Henuz otomatik guncelleme yapilmadi."}
+          <br/>EK PAY: kura eklenecek yuzde (orn. 2 yazarsan kur %2 yuksek uygulanir).
+          <br/>GUVENLIK BANDI: kur bu yuzdeden fazla sicrarsa otomatik YAZILMAZ, burada uyari cikar — elle onaylarsin.
+        </div>
       </Section>
 
       {/* Duyuru seridi */}
