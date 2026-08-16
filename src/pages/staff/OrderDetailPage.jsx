@@ -18,6 +18,7 @@ export default function OrderDetailPage() {
   const [tables, setTables] = useState({});
   const [loading, setLoading] = useState(true);
   const [selectedCat, setSelectedCat] = useState(null);
+  const [prodSearch, setProdSearch] = useState("");
   const [menuOpen, setMenuOpen] = useState(true);
   const [customerNameEdit, setCustomerNameEdit] = useState("");
   const [orderNote, setOrderNote] = useState("");
@@ -224,7 +225,16 @@ export default function OrderDetailPage() {
   const totalItems = items.reduce((s,i) => s + (i.quantity||0), 0);
   const anyPending = items.some(i => i.kitchen_status === "pending" || i.kitchen_status === "preparing");
   const allReady = items.length > 0 && items.every(i => i.kitchen_status === "ready" || i.kitchen_status === "served");
-  const filteredProducts = products.filter(p => p.category_id === selectedCat);
+  // Arama doluysa kategori fark etmeksizin TUM urunlerde arar (TR harf uyumlu);
+  // basiyla eslesenler one gelir. Bossa secili kategorinin listesi.
+  const trLow = (s) => String(s || "").toLocaleLowerCase("tr");
+  const q = trLow(prodSearch.trim());
+  const filteredProducts = q
+    ? products
+        .filter(p => trLow(p.name).includes(q) || trLow(p.name_en).includes(q) || trLow(p.brand).includes(q))
+        .sort((a, b) => (trLow(a.name).startsWith(q) ? 0 : 1) - (trLow(b.name).startsWith(q) ? 0 : 1))
+    : products.filter(p => p.category_id === selectedCat);
+  const catNameOf = (p) => categories.find(c => c.id === p.category_id)?.name || "";
   const where = order.table_id ? (tables[order.table_id] || "Masa") : null;
 
   return (
@@ -336,6 +346,14 @@ export default function OrderDetailPage() {
                       border:"1px solid "+(takeawayMode?"#C8973E":"#333"),borderRadius:10,fontSize:13,fontWeight:800,cursor:"pointer",fontFamily:"inherit"}}>
               {takeawayMode ? "✓ 🥤 PAKET MODU AÇIK — eklenen içecekler götür" : "🥤 Paket (take away)"}
             </button>
+            <div style={{position:"relative",marginTop:10}}>
+              <input value={prodSearch} onChange={e=>setProdSearch(e.target.value)} placeholder="🔍 Ürün ara (tüm kategorilerde) — örn: latte, efes, şapka"
+                style={{width:"100%",padding:"12px 40px 12px 14px",background:"#0C0C0C",border:"1px solid "+(q?"#C8973E":"#2A2A2A"),borderRadius:10,color:"#F0EDE8",fontSize:14,outline:"none",fontFamily:"inherit"}}/>
+              {q && (
+                <button onClick={() => setProdSearch("")} style={{position:"absolute",right:8,top:"50%",transform:"translateY(-50%)",width:28,height:28,background:"#2A2A2A",color:"#aaa",border:"none",borderRadius:8,fontSize:14,cursor:"pointer",lineHeight:1}}>×</button>
+              )}
+            </div>
+            {!q && (
             <div style={{display:"flex",gap:5,overflowX:"auto",marginTop:10,paddingBottom:4}}>
               {categories.map(c => (
                 <button key={c.id} onClick={() => setSelectedCat(c.id)} style={{flexShrink:0,padding:"6px 10px",border:"1px solid "+(selectedCat===c.id?"#C8973E":"#333"),borderRadius:12,fontSize:10,fontWeight:700,background:selectedCat===c.id?"rgba(200,151,62,0.2)":"#1A1A1A",color:selectedCat===c.id?"#C8973E":"#aaa",cursor:"pointer",whiteSpace:"nowrap",letterSpacing:"0.5px"}}>
@@ -343,11 +361,14 @@ export default function OrderDetailPage() {
                 </button>
               ))}
             </div>
+            )}
+            {q && <div style={{fontSize:11,color:"#888",marginTop:8}}>{filteredProducts.length} sonuç{filteredProducts.length===0?" — yazımı kontrol et":""}</div>}
             <div style={{marginTop:10,maxHeight:380,overflowY:"auto"}}>
               {filteredProducts.map(p => (
                 <div key={p.id} style={{display:"flex",alignItems:"center",justifyContent:"space-between",padding:"12px 8px",borderBottom:"1px solid #222",gap:10}}>
                   <div>
                     <div style={{fontSize:15,fontWeight:700}}>{p.name}{p.brand && <span style={{color:"#888",fontWeight:600}}> · {p.brand}</span>}</div>
+                    {q && <div style={{fontSize:10,color:"#777",marginTop:1,letterSpacing:"0.5px"}}>{catNameOf(p)}</div>}
                     {p.track_stock && <div style={{fontSize:11,color:Number(p.retail_stock)>0?"#6FB3C0":"#c66",marginTop:2,fontWeight:600}}>Stok: {p.retail_stock||0} adet{Array.isArray(p.variants)&&p.variants.length?" · "+p.variants.filter(v=>Number(v.stock)>0).map(v=>v.name).join("/"):""}</div>}
                     <div style={{fontSize:13,color:"#C8973E",fontWeight:700,marginTop:2}}>{Number(p.price) > 0 ? "₺" + p.price : "Serbest tutar"}</div>
                   </div>
