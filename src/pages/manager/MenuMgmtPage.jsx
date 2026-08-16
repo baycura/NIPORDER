@@ -7,6 +7,7 @@ const cv = "-apple-system,BlinkMacSystemFont,'Segoe UI',Roboto,sans-serif";
 
 export default function MenuMgmtPage() {
   const { staffUser } = useAuth();
+  const [eurRate, setEurRate] = useState(0); // 1 € = ? ₺ (Ayarlar'dan)
   const [categories, setCategories] = useState([]);
   const [products, setProducts] = useState([]);
   const [loading, setLoading] = useState(true);
@@ -27,6 +28,13 @@ export default function MenuMgmtPage() {
     ]);
     setCategories(cats || []);
     setProducts(prods || []);
+    // Euro kuru (Ayarlar > Euro Kuru) — EUR fiyatli urunlerin TL onizlemesi icin
+    supabase.from("app_settings").select("value").eq("key", "eur_rate")
+      .in("store_id", staffUser?.store_ids?.length ? staffUser.store_ids : ["00000000-0000-0000-0000-000000000000"])
+      .then(({ data }) => {
+        const n = Number(String(data?.[0]?.value ?? "").replace(/[^0-9.]/g, ""));
+        setEurRate(Number.isFinite(n) ? n : 0);
+      });
     if (cats && cats.length && !selectedCat) setSelectedCat(cats[0].id);
     setLoading(false);
   };
@@ -87,6 +95,7 @@ export default function MenuMgmtPage() {
       name:"", name_en:"", name_ru:"", brand:"", description:"", description_en:"", description_ru:"", price:'', instant_discount_pct:'', hh_enabled:false, hh_price:'', hh_start:'', hh_end:'', hh_days:[0,1,2,3,4,5,6],
       sold_out_today:false, unavailable_reason:"",
       show_in_party_menu:false, store_id:"", kitchen_destination_store_id:"", is_available:true, prep_time_minutes:null, show_prep_time:false,
+      currency:"TRY", price_eur:"",
       category_id: selectedCat,
       has_options:false,
       options_config:{groups:[]},
@@ -101,6 +110,7 @@ export default function MenuMgmtPage() {
       instant_discount_pct:Number(p.instant_discount_pct)||0,
       sold_out_today:!!p.sold_out_today,
       unavailable_reason:p.unavailable_reason||"",
+      currency: p.currency || "TRY", price_eur: p.price_eur ?? "",
       show_in_party_menu:!!p.show_in_party_menu, store_id:p.store_id||"", additional_store_ids:Array.isArray(p.additional_store_ids)?p.additional_store_ids:[], hh_enabled:!!p.hh_enabled, hh_price:p.hh_price??'', hh_start:p.hh_start||'', hh_end:p.hh_end||'', hh_days:Array.isArray(p.hh_days)?p.hh_days:[0,1,2,3,4,5,6], kitchen_destination_store_id:p.kitchen_destination_store_id||"",
       prep_time_minutes:p.prep_time_minutes||null,
       show_prep_time:!!p.show_prep_time,
@@ -132,6 +142,9 @@ export default function MenuMgmtPage() {
       description_en: prodForm.description_en?.trim() || null,
       description_ru: prodForm.description_ru?.trim() || null,
       price: Number(prodForm.price)||0,
+      // EUR urunlerde TL fiyati veritabani tetikleyicisi kurdan hesaplar
+      currency: prodForm.currency === "EUR" ? "EUR" : "TRY",
+      price_eur: prodForm.currency === "EUR" ? (Number(prodForm.price_eur)||0) : null,
       instant_discount_pct: Number(prodForm.instant_discount_pct)||0,
       sold_out_today: prodForm.sold_out_today,
       unavailable_reason: prodForm.unavailable_reason?.trim() || null,
@@ -379,7 +392,30 @@ export default function MenuMgmtPage() {
           <Field label="AÇIKLAMA (Türkçe)"><textarea value={prodForm.description||""} onChange={e=>setProdForm({...prodForm,description:e.target.value})} rows={2} style={{...inputS,resize:"vertical"}}/></Field>
           <Field label="DESCRIPTION (English)"><textarea value={prodForm.description_en||""} onChange={e=>setProdForm({...prodForm,description_en:e.target.value})} rows={2} placeholder="Optional - shown when customer selects EN" style={{...inputS,resize:"vertical"}}/></Field>
           <Field label="ОПИСАНИЕ (Rusca)"><textarea value={prodForm.description_ru||""} onChange={e=>setProdForm({...prodForm,description_ru:e.target.value})} rows={2} placeholder="Opsiyonel - RU secilince gorunur" style={{...inputS,resize:"vertical"}}/></Field>
-          <Field label="FIYAT (₺)"><input type="number" step="0.01" value={prodForm.price??''} onChange={e=>setProdForm({...prodForm,price:e.target.value})} style={inputS}/></Field>
+          <Field label={prodForm.currency === "EUR" ? "FİYAT (€)" : "FİYAT (₺)"}>
+            <div style={{display:"flex",gap:6}}>
+              <div style={{display:"flex",gap:4,background:"#0C0C0C",border:"1px solid #2A2A2A",borderRadius:8,padding:3,flexShrink:0}}>
+                {[{k:"TRY",l:"₺"},{k:"EUR",l:"€"}].map(c => (
+                  <button key={c.k} type="button" onClick={()=>setProdForm({...prodForm,currency:c.k})}
+                    style={{padding:"6px 12px",border:"none",borderRadius:6,fontSize:14,fontWeight:800,cursor:"pointer",
+                            background:(prodForm.currency||"TRY")===c.k?"#C8973E":"transparent",
+                            color:(prodForm.currency||"TRY")===c.k?"#000":"#888"}}>{c.l}</button>
+                ))}
+              </div>
+              {prodForm.currency === "EUR" ? (
+                <input type="number" step="0.01" value={prodForm.price_eur??''} onChange={e=>setProdForm({...prodForm,price_eur:e.target.value})} placeholder="örn: 25" style={inputS}/>
+              ) : (
+                <input type="number" step="0.01" value={prodForm.price??''} onChange={e=>setProdForm({...prodForm,price:e.target.value})} style={inputS}/>
+              )}
+            </div>
+            {prodForm.currency === "EUR" && (
+              <div style={{fontSize:11,color:"#888",marginTop:5,lineHeight:1.5}}>
+                {eurRate > 0
+                  ? "≈ ₺" + Math.round((Number(prodForm.price_eur)||0) * eurRate) + "  ·  kur 1 € = ₺" + eurRate + " (Ayarlar'dan değişir; kur değişince fiyat kendiliğinden güncellenir)"
+                  : "⚠ Euro kuru tanımlı değil — Ayarlar'dan gir, yoksa TL fiyatı hesaplanamaz."}
+              </div>
+            )}
+          </Field>
           <Field label="ANLIK INDIRIM (%)"><input type="number" step="1" min="0" max="99" value={prodForm.instant_discount_pct??''} onChange={e=>setProdForm({...prodForm,instant_discount_pct:e.target.value})} style={inputS}/></Field>
 
           {/* HAPPY HOUR */}

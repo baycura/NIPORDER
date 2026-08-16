@@ -106,6 +106,14 @@ export default function SettingsPage() {
         <div style={{fontSize:11,color:"#888",marginTop:6}}>NOT: Bu yalniz kisayol dugmelerini etkiler; recetede istedigin miktari her zaman elle yazabilirsin.</div>
       </Section>
 
+      {/* Euro kuru */}
+      <Section icon="💶" title="Euro Kuru" desc="Fiyatini EURO olarak girdigin urunlerin TL karsiligi bu kurla hesaplanir. Kuru degistirdigin anda o urunlerin TL fiyati kendiliginden guncellenir. Siparis, odeme ve raporlar her zaman TL kalir.">
+        <Field label="1 EURO KAC TL?">
+          <input type="number" step="0.01" value={settings.eur_rate || ""} onChange={e=>setKey("eur_rate", e.target.value)} placeholder="Orn: 48" style={inputS}/>
+        </Field>
+        <div style={{fontSize:11,color:"#888",marginTop:6}}>Kuru guncel tutmak sende: degistirip kaydettiginde euro fiyatli tum urunler yeni kura gecer.</div>
+      </Section>
+
       {/* Duyuru seridi */}
       <Section icon="📢" title="Duyuru Seridi (QR Menu)" desc="QR menunun en ustunde ince siyah bir serit olarak gorunur. Kampanya/duyuru icin — Instagram'a ya da tahtaya yazmaya gerek kalmaz.">
         <Toggle checked={settings.announcement_enabled === true || settings.announcement_enabled === "true"} onChange={v=>setKey("announcement_enabled", v)} label="Duyuru seridi aktif"/>
