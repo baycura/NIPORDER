@@ -47,7 +47,11 @@ export default function OrderDetailPage() {
     setCustomers(custs || []);
     const tMap = {}; (tabs||[]).forEach(t => { tMap[t.id] = t.name; });
     setTables(tMap);
-    if (cats && cats.length && !selectedCat) setSelectedCat(cats[0].id);
+    // Ilk sekme: bos ust kategori degil, icinde urun olan ilk kategori
+    if (cats && cats.length && !selectedCat) {
+      const withProds = cats.find(c => (prods || []).some(p => p.category_id === c.id));
+      setSelectedCat((withProds || cats[0]).id);
+    }
     if (o) { setCustomerNameEdit(o.customer_name || ""); setOrderNote(o.note || ""); }
     if (o?.customer_id) loadMemberPrices(o.customer_id); else setMemberPrices({});
     setLoading(false);
@@ -242,6 +246,15 @@ export default function OrderDetailPage() {
         .sort((a, b) => (trLow(a.name).startsWith(q) ? 0 : 1) - (trLow(b.name).startsWith(q) ? 0 : 1))
     : products.filter(p => p.category_id === selectedCat);
   const catNameOf = (p) => categories.find(c => c.id === p.category_id)?.name || "";
+  // Kasada hiyerarsi yok: yalniz icinde urun olan kategoriler cip olarak cikar,
+  // alt kategoriler ust kategorisinin hemen ardinda siralanir.
+  const catChips = categories
+    .filter(c => products.some(p => p.category_id === c.id))
+    .map(c => {
+      const par = c.parent_id ? categories.find(x => x.id === c.parent_id) : null;
+      return { ...c, _key: (par ? (par.sort_order || 0) : (c.sort_order || 0)) * 1000 + (par ? (c.sort_order || 0) : 0) };
+    })
+    .sort((a, b) => a._key - b._key);
   const where = order.table_id ? (tables[order.table_id] || "Masa") : null;
 
   return (
@@ -362,7 +375,7 @@ export default function OrderDetailPage() {
             </div>
             {!q && (
             <div style={{display:"flex",gap:5,overflowX:"auto",marginTop:10,paddingBottom:4}}>
-              {categories.map(c => (
+              {catChips.map(c => (
                 <button key={c.id} onClick={() => setSelectedCat(c.id)} style={{flexShrink:0,padding:"6px 10px",border:"1px solid "+(selectedCat===c.id?"#C8973E":"#333"),borderRadius:12,fontSize:10,fontWeight:700,background:selectedCat===c.id?"rgba(200,151,62,0.2)":"#1A1A1A",color:selectedCat===c.id?"#C8973E":"#aaa",cursor:"pointer",whiteSpace:"nowrap",letterSpacing:"0.5px"}}>
                   {c.icon}{c.name?.toUpperCase()}
                 </button>

@@ -51,6 +51,7 @@ export default function MenuMgmtPage() {
     const payload = {
       name: catForm.name.trim(), name_en: catForm.name_en?.trim() || null, name_ru: catForm.name_ru?.trim() || null, icon: catForm.icon || null,
       sort_order: Number(catForm.sort_order)||100,
+      parent_id: catForm.parent_id || null,
       available_from: catForm.available_from || null,
       available_until: catForm.available_until || null,
       show_in_party_menu: catForm.show_in_party_menu!==false,
@@ -250,6 +251,13 @@ export default function MenuMgmtPage() {
   if (loading) return (<div style={{color:"#888",fontFamily:cv,padding:20}}>Yukleniyor...</div>);
 
   const visibleProducts = products.filter(p => p.category_id === selectedCat).sort((a,b) => ((a.sort_order||0) - (b.sort_order||0)) || (a.name||"").localeCompare(b.name||""));
+  // Alt kategoriler ust kategorisinin hemen ardinda gorunsun
+  const orderedCats = categories
+    .map(c => {
+      const par = c.parent_id ? categories.find(x => x.id === c.parent_id) : null;
+      return { ...c, _k: (par ? (par.sort_order || 0) : (c.sort_order || 0)) * 1000 + (par ? (c.sort_order || 0) : 0) };
+    })
+    .sort((a, b) => a._k - b._k);
 
   return (
     <div style={{fontFamily:cv,color:"#F0EDE8"}}>
@@ -258,8 +266,9 @@ export default function MenuMgmtPage() {
 
       {/* Categories row */}
       <div style={{display:"flex",gap:6,overflowX:"auto",marginBottom:12,paddingBottom:4}}>
-        {categories.map(c => (
+        {orderedCats.map(c => (
           <button key={c.id} onClick={() => setSelectedCat(c.id)} style={{flexShrink:0,padding:"8px 12px",border:"1px solid "+(selectedCat===c.id?"#C8973E":"#333"),borderRadius:14,fontSize:12,fontWeight:700,background:selectedCat===c.id?"rgba(200,151,62,0.2)":"#1A1A1A",color:selectedCat===c.id?"#C8973E":"#aaa",cursor:"pointer",whiteSpace:"nowrap",opacity:c.is_active===false?0.5:1}}>
+            {c.parent_id && <span style={{color:"#666",marginRight:4}}>└</span>}
             {c.icon && <span style={{marginRight:4}}>{c.icon}</span>}{c.name}
           </button>
         ))}
@@ -341,6 +350,14 @@ export default function MenuMgmtPage() {
           <Field label="НАЗВАНИЕ (Rusca)"><input value={catForm.name_ru||""} onChange={e=>setCatForm({...catForm,name_ru:e.target.value})} placeholder="Opsiyonel - RU secilince gorunur" style={inputS}/></Field>
           <Field label="IKON (emoji)"><input value={catForm.icon||""} onChange={e=>setCatForm({...catForm,icon:e.target.value})} placeholder="👕" style={inputS}/></Field>
           <Field label="SIRA (kucuk=once)"><input type="number" value={catForm.sort_order||0} onChange={e=>setCatForm({...catForm,sort_order:e.target.value})} style={inputS}/></Field>
+          <Field label="UST KATEGORI">
+            <select value={catForm.parent_id||""} onChange={e=>setCatForm({...catForm,parent_id:e.target.value||null})} style={inputS}>
+              <option value="">— Yok (menude sekme olur) —</option>
+              {categories.filter(c => !c.parent_id && c.id !== catModal.data?.id && !c.show_in_shop)
+                .map(c => <option key={c.id} value={c.id}>{c.name}</option>)}
+            </select>
+            <div style={{fontSize:10,color:"#777",marginTop:4}}>Secilirse ust kategorinin icinde alt secim olarak gorunur, ust menude yer kaplamaz.</div>
+          </Field>
           <div style={{display:"flex",gap:8}}>
             <Field label="BASLANGIC SAATI"><input type="time" value={catForm.available_from||""} onChange={e=>setCatForm({...catForm,available_from:e.target.value})} style={inputS}/></Field>
             <Field label="BITIS SAATI"><input type="time" value={catForm.available_until||""} onChange={e=>setCatForm({...catForm,available_until:e.target.value})} style={inputS}/></Field>
