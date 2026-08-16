@@ -35,6 +35,7 @@ const RESERVATION_URL = "https://reservation.notinparis.me";
 const RIDES_URL = "https://notinparis.me/pages/rides";
 const YOUTUBE_URL = "https://www.youtube.com/@notinparis";
 const STRAVA_URL = "https://www.strava.com/clubs/notinparis";
+const FIND_BIKE_URL = "https://notinparis.me/pages/find-a-bike";
 const INSTAGRAM_URL = "https://instagram.com/notinparis.me";
 const TIERS = [
   { key: "yeniyuz",   min: 0,    icon: "☕", tr: "Yeni Yüz",  en: "New Face", ru: "Новичок" },
@@ -1125,7 +1126,16 @@ export default function CustomerMenu() {
                   <span style={{fontSize:12,fontWeight:700,flexShrink:0}}>{L("Katıl","Join","Поехали")} →</span>
                 </a>
               ))}
-              <a href={STRAVA_URL} target="_blank" rel="noreferrer" style={{display:"flex",justifyContent:"space-between",alignItems:"center",padding:"14px 16px",background:"#fafafa",border:"1px solid #eee",borderRadius:14,textDecoration:"none",color:"#000",marginTop:14}}>
+              <a href={FIND_BIKE_URL} target="_blank" rel="noreferrer" style={{display:"flex",justifyContent:"space-between",alignItems:"center",gap:10,padding:"14px 16px",background:"#000",color:"#fff",borderRadius:14,textDecoration:"none",marginTop:14}}>
+                <span style={{minWidth:0}}>
+                  <span style={{fontSize:13,fontWeight:800,display:"block"}}>🚲 {L("Bisiklet bul","Find a Bike","Найти велосипед")}</span>
+                  <span style={{fontSize:11,color:"#bbb",display:"block",marginTop:2,lineHeight:1.4}}>
+                    {L("Sürüşe bisikletsiz mi geldin? Kiralık ve ikinci el.","No bike for the ride? Rentals and second-hand.","Приехал без велосипеда? Аренда и б/у.")}
+                  </span>
+                </span>
+                <span style={{flexShrink:0}}>→</span>
+              </a>
+              <a href={STRAVA_URL} target="_blank" rel="noreferrer" style={{display:"flex",justifyContent:"space-between",alignItems:"center",padding:"14px 16px",background:"#fafafa",border:"1px solid #eee",borderRadius:14,textDecoration:"none",color:"#000",marginTop:10}}>
                 <span style={{fontSize:13,fontWeight:800}}>🟠 NIP Cycling Club — Strava</span>
                 <span>↗</span>
               </a>
