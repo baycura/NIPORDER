@@ -66,6 +66,8 @@ const T = {
     menu: "MENÜ",
     partyMode: "PARTİ MODU",
     category_empty: "Bu kategoride ürün yok",
+    all_group: "Tümü",
+    other_group: "Diğer",
     sold_out: "Tükendi",
     optional: "SEÇENEKLI",
     cart: "🛒 Sepetim",
@@ -113,6 +115,8 @@ const T = {
     menu: "MENU",
     partyMode: "PARTY MODE",
     category_empty: "No products in this category",
+    all_group: "All",
+    other_group: "Other",
     sold_out: "Sold out",
     optional: "OPTIONS",
     cart: "🛒 Cart",
@@ -160,6 +164,8 @@ const T = {
     menu: "МЕНЮ",
     partyMode: "PARTY MODE",
     category_empty: "В этой категории пока нет позиций",
+    all_group: "Все",
+    other_group: "Другое",
     sold_out: "Закончилось",
     optional: "ОПЦИИ",
     cart: "🛒 Корзина",
@@ -622,7 +628,11 @@ export default function CustomerMenu() {
       if (hhRes && hhRes.data && hhRes.data[0]) setHh(hhRes.data[0]);
       // Happy hour fiyatlari: kasa ile ayni hesap (src/lib/happyHour.js)
       setHhProductPrices(happyHourPrices(finalProds, hhRules, new Date()));
-      if (cats && cats.length && !selectedCat) setSelectedCat(cats[0].id);
+      // Ilk sekme: alt kategori degil, ust kategori secilir
+      if (!selectedCat) {
+        const firstTop = finalCatsAfterSchedule.find(c => !c.parent_id && !c.show_in_shop);
+        if (firstTop) setSelectedCat(firstTop.id);
+      }
     } catch (e) { console.error("Menu load error", e); }
     setLoading(false);
   };
@@ -685,13 +695,30 @@ export default function CustomerMenu() {
     } catch (e) {}
   };
 
-  const visibleCategories = useMemo(() => {
+  // Menude gorunen tum kategoriler (ust + alt). Saat penceresi her ikisine de isler.
+  const menuCategories = useMemo(() => {
     return categories.filter(c => {
       if (c.show_in_shop) return false; // raf urunleri Menu'de degil Shop sekmesinde
       if (c.available_from && c.available_until && !isInRange(now, c.available_from, c.available_until)) return false;
       return true;
     });
   }, [categories, now]);
+
+  // Ust sekmeler: yalniz parent_id bos olanlar. Alt kategoriler sekme olmaz.
+  const visibleCategories = useMemo(
+    () => menuCategories.filter(c => !c.parent_id),
+    [menuCategories]);
+
+  // Ust kategori -> alt kategorileri (sort_order'a gore)
+  const subCatsByParent = useMemo(() => {
+    const m = {};
+    for (const c of menuCategories) {
+      if (!c.parent_id) continue;
+      (m[c.parent_id] = m[c.parent_id] || []).push(c);
+    }
+    Object.values(m).forEach(list => list.sort((a, b) => (a.sort_order || 0) - (b.sort_order || 0)));
+    return m;
+  }, [menuCategories]);
 
   // Shop sekmesi: raf/marka kategorileri ve urunleri (siparis edilebilir vitrin)
   // Siralama sort_order ile: Not in Paris (100) en ustte, Ceren Studio (101), digerleri
@@ -721,14 +748,41 @@ export default function CustomerMenu() {
     return m;
   }, [products, shopCatIds]);
 
-  const visibleProducts = useMemo(() => {
-    let list = products.filter(p => p.category_id === selectedCat);
-    if (partyMode) {
-      const partyProducts = list.filter(p => p.show_in_party_menu);
-      if (partyProducts.length > 0) list = partyProducts;
+  // Secili ust kategorinin altinda hangi alt kategori acik: null = Tumu,
+  // "__diger" = alt kategorisi olmayip dogrudan ust kategoride duran urunler.
+  const [selectedSub, setSelectedSub] = useState(null);
+  useEffect(() => { setSelectedSub(null); }, [selectedCat]);
+
+  const activeSubs = subCatsByParent[selectedCat] || [];
+  // Ust kategoride dogrudan duran urun var mi (Kakao, Sahlep gibi)
+  const hasDirect = useMemo(
+    () => activeSubs.length > 0 && products.some(p => p.category_id === selectedCat),
+    [products, selectedCat, activeSubs.length]);
+
+  // Urunler bolum bolum: [{ key, title, items }]. Alt kategori secilmisse tek
+  // bolum (basliksiz), "Tumu" ise her alt kategori kendi basligiyla listelenir.
+  const productSections = useMemo(() => {
+    const party = (list) => {
+      if (!partyMode) return list;
+      const only = list.filter(p => p.show_in_party_menu);
+      return only.length > 0 ? only : list;
+    };
+    const inCat = (id) => party(products.filter(p => p.category_id === id));
+
+    if (activeSubs.length === 0) return [{ key: selectedCat, title: null, items: inCat(selectedCat) }];
+    if (selectedSub === "__diger") return [{ key: "__diger", title: null, items: inCat(selectedCat) }];
+    if (selectedSub) {
+      const sc = activeSubs.find(c => c.id === selectedSub);
+      return [{ key: selectedSub, title: null, items: sc ? inCat(sc.id) : [] }];
     }
-    return list;
-  }, [products, selectedCat, partyMode]);
+    const secs = activeSubs.map(sc => ({ key: sc.id, title: cName(sc), items: inCat(sc.id) }));
+    if (hasDirect) secs.push({ key: "__diger", title: t.other_group, items: inCat(selectedCat) });
+    return secs.filter(s => s.items.length > 0);
+  }, [products, selectedCat, selectedSub, partyMode, activeSubs, hasDirect, lang]);
+
+  const visibleProducts = useMemo(
+    () => productSections.flatMap(s => s.items),
+    [productSections]);
 
   const calcPrice = (p, options) => {
     // Add price modifiers from selected options (e.g. Single/Double pour size)
@@ -1039,6 +1093,7 @@ export default function CustomerMenu() {
           </div>
         </div>
         {custTab === "menu" && (
+        <>
         <div style={{display:"flex",gap:6,overflowX:"auto",marginTop:12,paddingBottom:4}}>
           {visibleCategories.map(c => (
             <button key={c.id} onClick={() => setSelectedCat(c.id)} style={{flexShrink:0,padding:"8px 14px",border:"none",borderRadius:16,fontSize:12,fontWeight:700,background:selectedCat===c.id?"#000":"#f2f2f2",color:selectedCat===c.id?"#fff":"#333",cursor:"pointer",whiteSpace:"nowrap",letterSpacing:"0.3px"}}>
@@ -1046,6 +1101,23 @@ export default function CustomerMenu() {
             </button>
           ))}
         </div>
+        {activeSubs.length > 0 && (
+          <div style={{display:"flex",gap:6,overflowX:"auto",marginTop:8,paddingBottom:2}}>
+            {[{id:null,label:t.all_group},
+              ...activeSubs.map(sc => ({id:sc.id,label:cName(sc)})),
+              ...(hasDirect ? [{id:"__diger",label:t.other_group}] : [])
+            ].map(s => (
+              <button key={s.id || "__all"} onClick={() => setSelectedSub(s.id)}
+                style={{flexShrink:0,padding:"6px 12px",borderRadius:14,fontSize:11,fontWeight:700,cursor:"pointer",whiteSpace:"nowrap",letterSpacing:"0.3px",
+                        border:"1px solid " + (selectedSub===s.id ? "#000" : "#ddd"),
+                        background:selectedSub===s.id?"#000":"#fff",
+                        color:selectedSub===s.id?"#fff":"#555"}}>
+                {s.label}
+              </button>
+            ))}
+          </div>
+        )}
+        </>
         )}
         </div>
       </div>
@@ -1354,7 +1426,12 @@ export default function CustomerMenu() {
       {custTab === "menu" && (
       <div style={{padding:"14px 16px"}}>
         {visibleProducts.length === 0 && <div style={{textAlign:"center",color:"#888",padding:40,fontSize:13}}>{t.category_empty}</div>}
-        {visibleProducts.map(p => {
+        {productSections.map(sec => (
+        <div key={sec.key}>
+        {sec.title && (
+          <div style={{fontSize:10,fontWeight:800,letterSpacing:"1.5px",color:"#999",textTransform:"uppercase",padding:"18px 0 2px"}}>{sec.title}</div>
+        )}
+        {sec.items.map(p => {
           const fp = calcPrice(p);
           const dis = fp < Number(p.price);
           const fadedInfo = fadedProdInfo[p.id];
@@ -1396,6 +1473,8 @@ export default function CustomerMenu() {
             </div>
           );
         })}
+        </div>
+        ))}
       </div>
       )}
 
