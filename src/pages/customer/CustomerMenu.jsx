@@ -1088,7 +1088,7 @@ export default function CustomerMenu() {
                                   <button onClick={() => updateQty(cartIdx, +1)} style={{width:24,height:24,background:"transparent",color:"#fff",border:"none",fontSize:16,cursor:"pointer",fontWeight:700,padding:0}}>+</button>
                                 </div>
                               ) : (
-                                <button onClick={() => onProductTap(p)} style={{width:30,height:30,background:"#000",color:"#fff",border:"none",borderRadius:"50%",fontSize:20,fontWeight:300,cursor:"pointer",display:"flex",alignItems:"center",justifyContent:"center",padding:0,lineHeight:1}}>+</button>
+                                <button onClick={() => onProductTap(p)} style={{width:30,height:30,flexShrink:0,background:"#fff",color:"#000",border:"2px solid #000",borderRadius:7,fontSize:19,fontWeight:900,cursor:"pointer",display:"flex",alignItems:"center",justifyContent:"center",padding:0,lineHeight:1}}>+</button>
                               ))}
                             </div>
                             {p.has_options && !soldOut && <div style={{fontSize:9,color:"#C8973E",fontWeight:700,letterSpacing:"0.4px"}}>{t.optional}</div>}
@@ -1192,7 +1192,7 @@ export default function CustomerMenu() {
                       <button onClick={() => updateQty(cartIdx, +1)} style={{width:28,height:28,background:"transparent",color:"#fff",border:"none",borderRadius:"50%",fontSize:18,cursor:"pointer",fontWeight:700}}>+</button>
                     </div>
                   ) : (
-                    <button onClick={() => onProductTap(p)} style={{width:36,height:36,background:"#000",color:"#fff",border:"none",borderRadius:"50%",fontSize:22,cursor:"pointer",fontWeight:700,display:"flex",alignItems:"center",justifyContent:"center",padding:0,lineHeight:1,fontSize:24,fontWeight:300}}>+</button>
+                    <button onClick={() => onProductTap(p)} style={{width:36,height:36,flexShrink:0,background:"#fff",color:"#000",border:"2px solid #000",borderRadius:8,fontSize:22,cursor:"pointer",fontWeight:900,display:"flex",alignItems:"center",justifyContent:"center",padding:0,lineHeight:1}}>+</button>
                   )}
                 </div>
               )}
