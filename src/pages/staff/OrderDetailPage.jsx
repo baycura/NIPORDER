@@ -1,6 +1,7 @@
 import { useEffect, useState } from "react";
 import { useParams, useNavigate } from "react-router-dom";
 import { supabase } from "../../lib/supabase.js";
+import { happyHourPrices } from "../../lib/happyHour.js";
 
 const cv = "-apple-system,BlinkMacSystemFont,'Segoe UI',Roboto,sans-serif";
 
@@ -19,6 +20,7 @@ export default function OrderDetailPage() {
   const [loading, setLoading] = useState(true);
   const [selectedCat, setSelectedCat] = useState(null);
   const [prodSearch, setProdSearch] = useState("");
+  const [hhPrices, setHhPrices] = useState({}); // happy hour: { urun_id: fiyat }
   const [menuOpen, setMenuOpen] = useState(true);
   const [customerNameEdit, setCustomerNameEdit] = useState("");
   const [orderNote, setOrderNote] = useState("");
@@ -35,6 +37,9 @@ export default function OrderDetailPage() {
       supabase.from("cafe_tables").select("id, name"),
       supabase.from("customers").select("id, name, phone").order("name"),
     ]);
+    // Happy hour kurallari: kasada da ayni indirimli fiyat uygulanir
+    const { data: hhRules } = await supabase.from("happy_hour_rules").select("*").eq("is_active", true);
+    setHhPrices(happyHourPrices(prods || [], hhRules || [], new Date()));
     setOrder(o);
     setItems(its || []);
     setCategories(cats || []);
@@ -144,6 +149,8 @@ export default function OrderDetailPage() {
       price = Number(String(inp).replace(",", "."));
       if (!price || price <= 0) { alert("Geçerli bir tutar gir"); return; }
     }
+    // Happy hour saatindeyse taban fiyat indirimli fiyattir (menu ile ayni hesap)
+    if (hhPrices[p.id] != null && Number(p.price) > 0) price = Number(hhPrices[p.id]);
     // Kampanya fiyati ile uye fiyati karsilastirilir; musteri DUSUK olani oder
     let fp = price * (100 - Number(p.instant_discount_pct || 0)) / 100;
     const mp = memberPriceFor(p);
@@ -370,7 +377,15 @@ export default function OrderDetailPage() {
                     <div style={{fontSize:15,fontWeight:700}}>{p.name}{p.brand && <span style={{color:"#888",fontWeight:600}}> · {p.brand}</span>}</div>
                     {q && <div style={{fontSize:10,color:"#777",marginTop:1,letterSpacing:"0.5px"}}>{catNameOf(p)}</div>}
                     {p.track_stock && <div style={{fontSize:11,color:Number(p.retail_stock)>0?"#6FB3C0":"#c66",marginTop:2,fontWeight:600}}>Stok: {p.retail_stock||0} adet{Array.isArray(p.variants)&&p.variants.length?" · "+p.variants.filter(v=>Number(v.stock)>0).map(v=>v.name).join("/"):""}</div>}
-                    <div style={{fontSize:13,color:"#C8973E",fontWeight:700,marginTop:2}}>{Number(p.price) > 0 ? "₺" + p.price : "Serbest tutar"}</div>
+                    <div style={{fontSize:13,color:"#C8973E",fontWeight:700,marginTop:2}}>
+                      {hhPrices[p.id] != null && Number(p.price) > 0 ? (
+                        <>
+                          <span style={{color:"#666",textDecoration:"line-through",fontWeight:600,marginRight:6}}>₺{Math.round(Number(p.price))}</span>
+                          <span>₺{Math.round(Number(hhPrices[p.id]))}</span>
+                          <span style={{marginLeft:6,fontSize:9,padding:"2px 6px",background:"#C8973E",color:"#000",borderRadius:5,letterSpacing:"0.5px"}}>HAPPY HOUR</span>
+                        </>
+                      ) : (Number(p.price) > 0 ? "₺" + p.price : "Serbest tutar")}
+                    </div>
                   </div>
                   <button onClick={() => addProduct(p)} style={{width:46,height:46,background:"#C8973E",color:"#000",border:"none",borderRadius:"50%",fontSize:24,fontWeight:800,cursor:"pointer",flexShrink:0,display:"flex",alignItems:"center",justifyContent:"center",lineHeight:1}}>+</button>
                 </div>
