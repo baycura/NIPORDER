@@ -1,4 +1,5 @@
 import { useEffect, useState } from "react";
+import { parseUblInvoice } from "../../lib/ublInvoice.js";
 import { supabase } from "../../lib/supabase.js";
 import { useAuth } from "../../contexts/AuthContext.jsx";
 
@@ -41,6 +42,7 @@ export default function InvoicesPage() {
   const [photoPreview, setPhotoPreview] = useState(null);
   const [busy, setBusy] = useState(false);
   const [ocrBusy, setOcrBusy] = useState(false);
+  const [xmlInfo, setXmlInfo] = useState(null); // e-Fatura XML ozeti
   const [priceAlerts, setPriceAlerts] = useState([]);
 
   const load = async () => {
@@ -58,7 +60,7 @@ export default function InvoicesPage() {
   const openNew = () => {
     setModal({mode:"new"});
     setForm({supplier_name:"", invoice_date: new Date().toISOString().slice(0,10), total_amount:0, notes:""});
-    setLines([blankLine("ml")]);
+    setLines([blankLine("ml")]); setXmlInfo(null);
     setPhotoFile(null); setPhotoPreview(null);
   };
 
@@ -121,6 +123,44 @@ export default function InvoicesPage() {
   };
 
   const UNITS = ["ml","cl","l","g","kg","adet","şişe","porsiyon"];
+
+  // e-Fatura XML: kalemler dosyada yazili — OCR'a gerek yok, tahmin payi sifir
+  const onXml = async (e) => {
+    const file = (e.target.files || [])[0];
+    if (!file) return;
+    try {
+      const parsed = parseUblInvoice(await file.text());
+      if (!parsed.lines.length) { alert("XML'de fatura kalemi bulunamadi"); return; }
+      setForm(f => ({
+        ...f,
+        supplier_name: parsed.supplier_name || f.supplier_name,
+        invoice_date: parsed.invoice_date || f.invoice_date,
+      }));
+      const newLines = parsed.lines.map(l => {
+        const match = matchIngredient(l.name);
+        const unit = match?.unit || (UNITS.includes(l.unit) ? l.unit : "adet");
+        const base = {
+          qty: l.qty, unit_cost: l.unit_cost, buy_mode: "adet",
+          pack_qty: Math.max(1, Number(match?.pack_qty) || 1),
+          content: match ? contentDefault(match, unit) : 1,
+          vat_pct: l.vat_pct, discount_pct: l.discount_pct, list_unit_cost: l.list_unit_cost,
+        };
+        return match
+          ? { ...base, ingredient_id: match.id, isNew: false, newName: "", newUnit: unit }
+          : { ...base, ingredient_id: "", isNew: true, newName: l.name, newUnit: unit };
+      });
+      setLines(newLines);
+      const matched = newLines.filter(l => !l.isNew).length;
+      const toplam = parsed.lines.reduce((s2, l) => s2 + l.qty * l.unit_cost, 0);
+      setXmlInfo({
+        no: parsed.invoice_no, adet: newLines.length, eslesen: matched,
+        beyan: parsed.grand_total, hesap: Math.round(toplam * 100) / 100,
+        currency: parsed.currency,
+      });
+    } catch (err) {
+      alert("XML okunamadi: " + (err?.message || err));
+    }
+  };
   const runOcr = async () => {
     if (!photoFile) { alert("Once fatura fotografi sec"); return; }
     if (ocrBusy) return;
@@ -371,6 +411,27 @@ export default function InvoicesPage() {
           <div style={{display:"flex",gap:8}}>
             <Field label="TARIH"><input type="date" value={form.invoice_date||""} onChange={e=>setForm({...form,invoice_date:e.target.value})} style={inputS}/></Field>
           </div>
+
+          {modal.mode !== "manual" && (
+          <div style={{marginBottom:10,background:"rgba(62,207,142,0.07)",border:"1px dashed #3ECF8E",borderRadius:10,padding:12}}>
+            <div style={{fontSize:10,color:"#3ECF8E",letterSpacing:"1.5px",fontWeight:700,marginBottom:5}}>📄 E-FATURA XML YÜKLE (ÖNERİLEN)</div>
+            <input type="file" accept=".xml,text/xml,application/xml" onChange={onXml} style={{...inputS, padding:"8px"}}/>
+            {xmlInfo && (
+              <div style={{marginTop:8,fontSize:11,color:"#9CC",lineHeight:1.6}}>
+                ✅ {xmlInfo.adet} kalem okundu ({xmlInfo.eslesen} mevcut hammaddeyle eşleşti)
+                {xmlInfo.no ? " · Fatura no " + xmlInfo.no : ""}
+                <br/>Kalem toplamı ₺{xmlInfo.hesap} · faturada yazan ₺{xmlInfo.beyan}
+                {xmlInfo.beyan > 0 && Math.abs(xmlInfo.hesap - xmlInfo.beyan) > Math.max(2, xmlInfo.beyan * 0.02)
+                  ? <span style={{color:"#E0A458"}}> — fark var, kalemleri kontrol et</span>
+                  : <span style={{color:"#3ECF8E"}}> ✓ tutuyor</span>}
+                {xmlInfo.currency && xmlInfo.currency !== "TRY" ? <span style={{color:"#E0A458"}}><br/>⚠ Fatura {xmlInfo.currency} — tutarlar TL değil</span> : null}
+              </div>
+            )}
+            <div style={{fontSize:10,color:"#888",marginTop:6,lineHeight:1.5}}>
+              TÜRMOB Luca e-Belge portalından faturanın XML'ini indir, buraya yükle. Miktar, iskonto ve KDV dosyada yazılı olduğu için tahmin payı yok.
+            </div>
+          </div>
+          )}
 
           {modal.mode !== "manual" && (
           <div style={{marginBottom:14,background:"rgba(200,151,62,0.06)",border:"1px dashed #C8973E",borderRadius:10,padding:12}}>
