@@ -27,6 +27,7 @@ const MANAGER_NAV = [
   {to:"/qr-codes", icon:"📱", label:"QR Kodlar"},
   {to:"/retail",      icon:"🛍", label:"Ürünler (Raf)"},
   {to:"/content",     icon:"📰", label:"Vitrin & Blog"},
+  {to:"/polls",       icon:"🗳", label:"Oylamalar"},
   {to:"/settings",    icon:"⚙",   label:"Ayarlar"},
 ];
 
