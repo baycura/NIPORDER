@@ -95,7 +95,7 @@ export default function MenuMgmtPage() {
       name:"", name_en:"", name_ru:"", brand:"", description:"", description_en:"", description_ru:"", price:'', instant_discount_pct:'', hh_enabled:false, hh_price:'', hh_start:'', hh_end:'', hh_days:[0,1,2,3,4,5,6],
       sold_out_today:false, unavailable_reason:"",
       show_in_party_menu:false, store_id:"", kitchen_destination_store_id:"", is_available:true, prep_time_minutes:null, show_prep_time:false,
-      currency:"TRY", price_eur:"",
+      currency:"TRY", price_eur:"", shop_group:"",
       category_id: selectedCat,
       has_options:false,
       options_config:{groups:[]},
@@ -110,7 +110,7 @@ export default function MenuMgmtPage() {
       instant_discount_pct:Number(p.instant_discount_pct)||0,
       sold_out_today:!!p.sold_out_today,
       unavailable_reason:p.unavailable_reason||"",
-      currency: p.currency || "TRY", price_eur: p.price_eur ?? "",
+      currency: p.currency || "TRY", price_eur: p.price_eur ?? "", shop_group: p.shop_group || "",
       show_in_party_menu:!!p.show_in_party_menu, store_id:p.store_id||"", additional_store_ids:Array.isArray(p.additional_store_ids)?p.additional_store_ids:[], hh_enabled:!!p.hh_enabled, hh_price:p.hh_price??'', hh_start:p.hh_start||'', hh_end:p.hh_end||'', hh_days:Array.isArray(p.hh_days)?p.hh_days:[0,1,2,3,4,5,6], kitchen_destination_store_id:p.kitchen_destination_store_id||"",
       prep_time_minutes:p.prep_time_minutes||null,
       show_prep_time:!!p.show_prep_time,
@@ -145,6 +145,7 @@ export default function MenuMgmtPage() {
       // EUR urunlerde TL fiyati veritabani tetikleyicisi kurdan hesaplar
       currency: prodForm.currency === "EUR" ? "EUR" : "TRY",
       price_eur: prodForm.currency === "EUR" ? (Number(prodForm.price_eur)||0) : null,
+      shop_group: prodForm.shop_group?.trim() || null,
       instant_discount_pct: Number(prodForm.instant_discount_pct)||0,
       sold_out_today: prodForm.sold_out_today,
       unavailable_reason: prodForm.unavailable_reason?.trim() || null,
@@ -392,6 +393,16 @@ export default function MenuMgmtPage() {
           <Field label="AÇIKLAMA (Türkçe)"><textarea value={prodForm.description||""} onChange={e=>setProdForm({...prodForm,description:e.target.value})} rows={2} style={{...inputS,resize:"vertical"}}/></Field>
           <Field label="DESCRIPTION (English)"><textarea value={prodForm.description_en||""} onChange={e=>setProdForm({...prodForm,description_en:e.target.value})} rows={2} placeholder="Optional - shown when customer selects EN" style={{...inputS,resize:"vertical"}}/></Field>
           <Field label="ОПИСАНИЕ (Rusca)"><textarea value={prodForm.description_ru||""} onChange={e=>setProdForm({...prodForm,description_ru:e.target.value})} rows={2} placeholder="Opsiyonel - RU secilince gorunur" style={{...inputS,resize:"vertical"}}/></Field>
+          <Field label="🛍 SHOP ALT GRUBU (opsiyonel)">
+            <input list="nip-shop-groups" value={prodForm.shop_group||""} onChange={e=>setProdForm({...prodForm,shop_group:e.target.value})}
+              placeholder="örn: Tişörtler, Şapkalar, Takılar" style={inputS}/>
+            <datalist id="nip-shop-groups">
+              {[...new Set(products.map(p=>p.shop_group).filter(Boolean))].map(g => <option key={g} value={g}/>)}
+            </datalist>
+            <div style={{fontSize:10,color:"#777",marginTop:4,lineHeight:1.5}}>
+              Shop sekmesinde marka kutusu içinde bu grup bir seçenek olarak çıkar; müşteri dokununca grubun ürünleri açılır. Boş bırakırsan ürün "Diğer" altında görünür.
+            </div>
+          </Field>
           <Field label={prodForm.currency === "EUR" ? "FİYAT (€)" : "FİYAT (₺)"}>
             <div style={{display:"flex",gap:6}}>
               <div style={{display:"flex",gap:4,background:"#0C0C0C",border:"1px solid #2A2A2A",borderRadius:8,padding:3,flexShrink:0}}>
