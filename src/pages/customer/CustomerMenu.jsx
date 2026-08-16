@@ -1142,7 +1142,7 @@ export default function CustomerMenu() {
                           {voted && <span style={{position:"absolute",inset:0,width:pct+"%",background:picked?"#000":"#ececec",opacity:picked?0.09:1,transition:"width .35s"}}/>}
                           <span style={{position:"relative",display:"flex",justifyContent:"space-between",gap:10,alignItems:"center"}}>
                             <span>{picked ? "✓ " : ""}{optLabel(o)}</span>
-                            {voted && <span style={{fontSize:12,fontWeight:800,color:"#666",flexShrink:0}}>%{pct}</span>}
+                            {voted && <span style={{fontSize:12,fontWeight:800,color:"#666",flexShrink:0}}>{L("%" + pct, pct + "%", pct + "%")}</span>}
                           </span>
                         </button>
                       );
