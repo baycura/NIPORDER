@@ -25,8 +25,8 @@ export default function ContentPage() {
   };
   useEffect(() => { load(); }, []);
 
-  const openNew = () => { setModal({ mode: "new" }); setForm({ kind, title: "", body: "", title_en: "", body_en: "", title_ru: "", body_ru: "", images: [], is_active: true, sort_order: 0 }); };
-  const openEdit = (p) => { setModal({ mode: "edit", data: p }); setForm({ kind: p.kind, title: p.title || "", body: p.body || "", title_en: p.title_en || "", body_en: p.body_en || "", title_ru: p.title_ru || "", body_ru: p.body_ru || "", images: p.images || [], is_active: p.is_active !== false, sort_order: p.sort_order || 0 }); };
+  const openNew = () => { setModal({ mode: "new" }); setForm({ kind, title: "", body: "", title_en: "", body_en: "", title_ru: "", body_ru: "", images: [], is_active: true, sort_order: 0, link_url: "" }); };
+  const openEdit = (p) => { setModal({ mode: "edit", data: p }); setForm({ kind: p.kind, title: p.title || "", body: p.body || "", title_en: p.title_en || "", body_en: p.body_en || "", title_ru: p.title_ru || "", body_ru: p.body_ru || "", images: p.images || [], is_active: p.is_active !== false, sort_order: p.sort_order || 0, link_url: p.link_url || "" }); };
 
   const uploadPhotos = async (e) => {
     const files = Array.from(e.target.files || []);
@@ -100,6 +100,8 @@ export default function ContentPage() {
       title_ru: form.title_ru?.trim() || null, body_ru: form.body_ru?.trim() || null,
       images: form.images || [], is_active: form.is_active !== false,
       sort_order: Number(form.sort_order) || 0, updated_at: new Date().toISOString(),
+      // link_url yalniz doluysa gonderilir: kolon migration'i uygulanmadan da kayit calisir
+      ...(form.link_url?.trim() ? { link_url: form.link_url.trim() } : {}),
     };
     const { error } = modal.mode === "new"
       ? await supabase.from("posts").insert(payload)
@@ -210,6 +212,10 @@ export default function ContentPage() {
               <Field label="ЗАГОЛОВОК"><input value={form.title_ru||""} onChange={e=>setForm({...form,title_ru:e.target.value})} style={inputS}/></Field>
               <Field label="ТЕКСТ"><textarea value={form.body_ru||""} onChange={e=>setForm({...form,body_ru:e.target.value})} rows={4} style={{...inputS,resize:"vertical"}}/></Field>
             </div>
+
+            <Field label="🔗 LİNK (opsiyonel — karta tıklayınca bu sayfa açılır)">
+              <input value={form.link_url||""} onChange={e=>setForm({...form,link_url:e.target.value})} placeholder="örn: https://notinparis.me/pages/cote-de-lycia" style={inputS}/>
+            </Field>
 
             <div style={{marginBottom:12}}>
               <div style={{fontSize:10,color:"#888",letterSpacing:"1.5px",fontWeight:700,marginBottom:5}}>FOTOĞRAFLAR</div>
