@@ -201,6 +201,25 @@ const T = {
 // Secenek gruplari/degerleri DB'de tek (kanonik) dilde saklanir; mutfak ve kasa
 // hep ayni degeri gorur. Burasi YALNIZ musteri ekraninda gosterim cevirisidir.
 // Sozlukte olmayan degerler (Jägermeister, Macallan...) oldugu gibi gecer.
+// Shop alt gruplari (marka kutusu icinde "Tisortler / Sapkalar / Takilar").
+// Grup adi urunde Turkce saklanir; burada olmayan grup Turkcesiyle gorunur.
+const GROUP_I18N = {
+  "Tişörtler":    { en: "T-Shirts",    ru: "Футболки" },
+  "Şapkalar":     { en: "Caps",        ru: "Кепки" },
+  "Takılar":      { en: "Jewellery",   ru: "Украшения" },
+  "Aksesuar":     { en: "Accessories", ru: "Аксессуары" },
+  "Giyim":        { en: "Clothing",    ru: "Одежда" },
+  "Formalar":     { en: "Jerseys",     ru: "Джерси" },
+  "Yelekler":     { en: "Gilets",      ru: "Жилеты" },
+  "İçlikler":     { en: "Base Layers", ru: "Термобельё" },
+  "Çanta":        { en: "Bags",        ru: "Сумки" },
+  "Bardaklar":    { en: "Cups & Mugs", ru: "Стаканы и кружки" },
+  "Tabaklar":     { en: "Plates",      ru: "Тарелки" },
+  "Tütsü & Koku": { en: "Incense",     ru: "Благовония" },
+  "Sabunlar":     { en: "Soaps",       ru: "Мыло" },
+  "Bakım":        { en: "Skincare",    ru: "Уход" },
+};
+
 const OPT_I18N = {
   "Milk":            { tr: "Süt",             ru: "Молоко" },
   "Flavor":          { tr: "Aroma",           ru: "Сироп" },
@@ -674,6 +693,19 @@ export default function CustomerMenu() {
       .sort((a, b) => (a.sort_order || 0) - (b.sort_order || 0) || String(a.name).localeCompare(String(b.name), "tr")),
     [categories]);
   const shopCatIds = useMemo(() => new Set(shopCats.map(c => c.id)), [shopCats]);
+  // Marka kutusunda acik olan alt grup: { kategori_id: "Şapkalar" | "__diger" | null }
+  const [openGroup, setOpenGroup] = useState({});
+  const gLabel = (g) => (GROUP_I18N[g] && GROUP_I18N[g][lang]) || g;
+  // Grup secilmemisse hicbir urun gosterilmez (once grup secilir); gruplu urun
+  // yoksa tum urunler dogrudan listelenir — eski davranis korunur.
+  const visibleShopProds = (sc, prods) => {
+    const hasGroups = prods.some(p => p.shop_group);
+    if (!hasGroups) return prods;
+    const open = openGroup[sc.id];
+    if (!open) return [];
+    if (open === "__diger") return prods.filter(p => !p.shop_group);
+    return prods.filter(p => p.shop_group === open);
+  };
   const shopProductsByCat = useMemo(() => {
     const m = {};
     for (const p of products) {
@@ -1179,8 +1211,40 @@ export default function CustomerMenu() {
                       {scTag && <span style={{fontSize:10,fontWeight:800,letterSpacing:"0.5px",padding:"3px 9px",background:"#000",color:"#fff",borderRadius:20,textTransform:"uppercase"}}>{scTag}</span>}
                     </div>
                     {scDesc && <div style={{fontSize:12,color:"#666",lineHeight:1.5,margin:"5px 2px 0"}}>{scDesc}</div>}
+
+                    {/* Alt gruplar: once "Şapkalar / Takılar" gibi secenekler, secilince o grubun urunleri */}
+                    {(() => {
+                      const groups = [...new Set(prods.map(p => p.shop_group).filter(Boolean))];
+                      if (!groups.length) return null;
+                      const open = openGroup[sc.id];
+                      return (
+                        <div style={{display:"flex",gap:6,flexWrap:"wrap",marginTop:11}}>
+                          {groups.map(g => {
+                            const sel = open === g;
+                            const n = prods.filter(p => p.shop_group === g).length;
+                            return (
+                              <button key={g} onClick={() => setOpenGroup(s => ({ ...s, [sc.id]: sel ? null : g }))}
+                                style={{padding:"9px 14px",background:sel?"#000":"#fff",color:sel?"#fff":"#333",
+                                        border:"1.5px solid "+(sel?"#000":"#e2e2e2"),borderRadius:22,fontSize:13,
+                                        fontWeight:sel?800:600,cursor:"pointer",fontFamily:"inherit"}}>
+                                {gLabel(g)} <span style={{opacity:0.55,fontWeight:600}}>{n}</span>
+                              </button>
+                            );
+                          })}
+                          {prods.some(p => !p.shop_group) && (
+                            <button onClick={() => setOpenGroup(s => ({ ...s, [sc.id]: open === "__diger" ? null : "__diger" }))}
+                              style={{padding:"9px 14px",background:open==="__diger"?"#000":"#fff",color:open==="__diger"?"#fff":"#333",
+                                      border:"1.5px solid "+(open==="__diger"?"#000":"#e2e2e2"),borderRadius:22,fontSize:13,
+                                      fontWeight:open==="__diger"?800:600,cursor:"pointer",fontFamily:"inherit"}}>
+                              {L("Diğer","Other","Другое")} <span style={{opacity:0.55,fontWeight:600}}>{prods.filter(p => !p.shop_group).length}</span>
+                            </button>
+                          )}
+                        </div>
+                      );
+                    })()}
+
                     <div style={{display:"grid",gridTemplateColumns:"1fr 1fr",gap:10,marginTop:12}}>
-                      {prods.map(p => {
+                      {visibleShopProds(sc, prods).map(p => {
                         const fp = calcPrice(p);
                         const soldOut = p.sold_out_today;
                         const cartIdx = cart.findIndex(ci => ci.product.id === p.id && !ci.options);
