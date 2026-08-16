@@ -1347,9 +1347,17 @@ export default function CustomerMenu() {
                   {optT(group.name)?.toUpperCase()}{group.required && <span style={{color:"#c44",marginLeft:4}}>*</span>}
                 </div>
                 <div style={{display:"flex",flexWrap:"wrap",gap:6}}>
-                  {(group.options || []).map(opt => (
-                    <button key={opt} onClick={()=>setOptSelected(group.multi?{...optSelected,[group.name]:((optSelected[group.name]||[]).includes(opt)?(optSelected[group.name]||[]).filter(x=>x!==opt):[...(optSelected[group.name]||[]),opt])}:{...optSelected,[group.name]:opt})} style={{padding:"10px 14px",background:(group.multi?(optSelected[group.name]||[]).includes(opt):optSelected[group.name]===opt)?"#000":"#f2f2f2",color:(group.multi?(optSelected[group.name]||[]).includes(opt):optSelected[group.name]===opt)?"#fff":"#333",border:"none",borderRadius:10,fontSize:13,fontWeight:700,cursor:"pointer"}}>{optT(opt)}</button>
-                  ))}
+                  {(group.options || []).map(opt => {
+                    // Fiyat farki secenek ustunde gorunur — musteri sepette surprizle karsilasmasin
+                    const pm = Number(group.price_modifiers?.[opt] || 0);
+                    const sel = group.multi ? (optSelected[group.name]||[]).includes(opt) : optSelected[group.name]===opt;
+                    return (
+                    <button key={opt} onClick={()=>setOptSelected(group.multi?{...optSelected,[group.name]:((optSelected[group.name]||[]).includes(opt)?(optSelected[group.name]||[]).filter(x=>x!==opt):[...(optSelected[group.name]||[]),opt])}:{...optSelected,[group.name]:opt})} style={{padding:"10px 14px",background:sel?"#000":"#f2f2f2",color:sel?"#fff":"#333",border:"none",borderRadius:10,fontSize:13,fontWeight:700,cursor:"pointer"}}>
+                      {optT(opt)}
+                      {pm !== 0 && <span style={{fontSize:11,fontWeight:800,marginLeft:5,color:sel?"#E0AB4A":"#a3781f"}}>{pm > 0 ? "+" : "−"}₺{Math.abs(pm)}</span>}
+                    </button>
+                    );
+                  })}
                 </div>
               </div>
             ))}
