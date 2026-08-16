@@ -2,6 +2,7 @@ import { useEffect, useMemo, useRef, useState } from "react";
 import { useParams, useNavigate, useSearchParams } from "react-router-dom";
 import { supabase } from "../../lib/supabase.js";
 import { useAuth } from "../../contexts/AuthContext.jsx";
+import { happyHourPrices } from "../../lib/happyHour.js";
 
 const cv = "-apple-system,BlinkMacSystemFont,'Segoe UI',Roboto,sans-serif";
 
@@ -593,24 +594,8 @@ export default function CustomerMenu() {
       setSettings(settingsObj);
 
       if (hhRes && hhRes.data && hhRes.data[0]) setHh(hhRes.data[0]);
-      // Compute product-based happy hour prices from new hhRules query
-      const _now = new Date();
-      const _dow = _now.getDay() === 0 ? 7 : _now.getDay();
-      const _mins = _now.getHours() * 60 + _now.getMinutes();
-      const _productPrices = {};
-      (hhRules || []).forEach(rule => {
-        if (!rule.days_of_week || !rule.days_of_week.includes(_dow)) return;
-        const [sh, sm] = rule.start_time.split(":").map(Number);
-        const [eh, em] = rule.end_time.split(":").map(Number);
-        const sMin = sh * 60 + sm;
-        const eMin = eh * 60 + em;
-        let inRng;
-        if (sMin <= eMin) inRng = _mins >= sMin && _mins < eMin;
-        else inRng = _mins >= sMin || _mins < eMin;
-        if (inRng) Object.assign(_productPrices, rule.product_overrides || {});
-      });
-      (finalProds||[]).forEach(function(p){ if(p && p.hh_enabled && p.hh_price!=null && p.hh_price!=='' && p.hh_start && p.hh_end){ var _d=new Date(); var _day=_d.getDay(); var _days=Array.isArray(p.hh_days)?p.hh_days:[0,1,2,3,4,5,6]; if(_days.indexOf(_day)>=0){ var _ps=String(p.hh_start).split(':'); var _pe=String(p.hh_end).split(':'); var _sMin=Number(_ps[0])*60+Number(_ps[1]); var _eMin=Number(_pe[0])*60+Number(_pe[1]); var _cur=_d.getHours()*60+_d.getMinutes(); var _inR=_sMin<=_eMin?(_cur>=_sMin && _cur<_eMin):(_cur>=_sMin || _cur<_eMin); if(_inR) _productPrices[p.id]=Number(p.hh_price); } } });
-      setHhProductPrices(_productPrices);
+      // Happy hour fiyatlari: kasa ile ayni hesap (src/lib/happyHour.js)
+      setHhProductPrices(happyHourPrices(finalProds, hhRules, new Date()));
       if (cats && cats.length && !selectedCat) setSelectedCat(cats[0].id);
     } catch (e) { console.error("Menu load error", e); }
     setLoading(false);

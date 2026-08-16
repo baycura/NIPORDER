@@ -19,6 +19,9 @@ export default function HappyHourPage() {
   const [rules, setRules] = useState([]);
   const [products, setProducts] = useState([]);
   const [showAdd, setShowAdd] = useState(false);
+  const [busy, setBusy] = useState(false);
+  const [search, setSearch] = useState("");     // urun arama
+  const [bulkPct, setBulkPct] = useState("20"); // secililere toplu indirim
   const [form, setForm] = useState({
     name: "",
     start_time: "17:00",
@@ -51,8 +54,11 @@ export default function HappyHourPage() {
   };
 
   const save = async () => {
-    if (!form.name) return alert("Kural ismi gerekli");
-    if (Object.keys(form.product_overrides).length === 0) return alert("En az bir ürün seçin");
+    if (!form.name.trim()) return alert("Kural ismi gerekli");
+    if (Object.keys(form.product_overrides).length === 0) return alert("En az bir ürün seçip yeni fiyatını yaz");
+    if (!form.days_of_week.length) return alert("En az bir gün seç");
+    if (!staffUser?.store_ids?.[0]) return alert("Hesabına mağaza atanmamış — yönetici ile görüş.");
+    setBusy(true);
     const payload = {
       name: form.name,
       start_time: form.start_time,
@@ -63,8 +69,10 @@ export default function HappyHourPage() {
       store_id: staffUser?.store_ids?.[0],
       is_active: true,
     };
-    const { error } = await supabase.from("happy_hour_rules").insert(payload);
-    if (error) return alert("Hata: " + error.message);
+    const { data, error } = await supabase.from("happy_hour_rules").insert(payload).select("id");
+    setBusy(false);
+    if (error) return alert("Kaydedilemedi: " + error.message);
+    if (!data?.length) return alert("Kaydedilemedi: bu işlem için yetkin yok.");
     setShowAdd(false);
     setForm({ name: "", start_time: "17:00", end_time: "19:00", days_of_week: [1, 2, 3, 4, 5, 6, 7], product_overrides: {} });
     load();
@@ -73,6 +81,26 @@ export default function HappyHourPage() {
   const toggleDay = (idx) => {
     const d = form.days_of_week.includes(idx) ? form.days_of_week.filter(x => x !== idx) : [...form.days_of_week, idx];
     setForm({ ...form, days_of_week: d });
+  };
+
+  // Secili urunlere yuzde indirim uygula (fiyatlari tek tek yazmaya gerek kalmasin)
+  const applyBulkPct = () => {
+    const pct = Number(bulkPct);
+    if (!pct || pct <= 0 || pct >= 100) { alert("1-99 arasi bir yüzde gir"); return; }
+    const po = { ...form.product_overrides };
+    const ids = Object.keys(po);
+    if (!ids.length) { alert("Önce ürünleri işaretle"); return; }
+    ids.forEach(pid => {
+      const prod = products.find(x => x.id === pid);
+      if (prod) po[pid] = Math.round(Number(prod.price) * (100 - pct) / 100);
+    });
+    setForm({ ...form, product_overrides: po });
+  };
+
+  const selectAllFiltered = (list) => {
+    const po = { ...form.product_overrides };
+    list.forEach(p => { if (po[p.id] == null) po[p.id] = Math.round(Number(p.price)); });
+    setForm({ ...form, product_overrides: po });
   };
 
   const setProductPrice = (pid, defaultPrice, newPrice) => {
@@ -84,6 +112,11 @@ export default function HappyHourPage() {
     }
     setForm({ ...form, product_overrides: po });
   };
+
+  const selectedCount = Object.keys(form.product_overrides).length;
+  const canSave = !!form.name.trim() && selectedCount > 0 && form.days_of_week.length > 0;
+  const q = search.trim().toLocaleLowerCase("tr");
+  const shownProducts = q ? products.filter(p => String(p.name).toLocaleLowerCase("tr").includes(q)) : products;
 
   return (
     <div style={{ fontFamily: cv, color: "#F0EDE8" }}>
@@ -140,9 +173,22 @@ export default function HappyHourPage() {
                 <button key={d.idx} onClick={() => toggleDay(d.idx)} style={{ padding: "8px 12px", background: form.days_of_week.includes(d.idx) ? "#C8973E" : "#222", color: form.days_of_week.includes(d.idx) ? "#000" : "#aaa", border: "none", borderRadius: 6, fontWeight: 700, fontSize: 12, cursor: "pointer", minWidth: 50 }}>{d.label}</button>
               ))}
             </div>
-            <label style={{ display: "block", color: "#aaa", fontSize: 12, marginBottom: 8 }}>ÜRÜNLER VE YENİ FİYATLAR</label>
+            <label style={{ display: "block", color: "#aaa", fontSize: 12, marginBottom: 8 }}>
+              ÜRÜNLER VE YENİ FİYATLAR
+              <span style={{ color: selectedCount > 0 ? "#C8973E" : "#ef4444", fontWeight: 800, marginLeft: 8 }}>
+                {selectedCount > 0 ? selectedCount + " ürün seçildi" : "henüz ürün seçmedin"}
+              </span>
+            </label>
+            <div style={{ display: "flex", gap: 6, marginBottom: 8, flexWrap: "wrap" }}>
+              <input value={search} onChange={e => setSearch(e.target.value)} placeholder="🔍 Ürün ara"
+                style={{ flex: 1, minWidth: 140, padding: 9, background: "#000", color: "#fff", border: "1px solid #333", borderRadius: 6 }} />
+              <input type="number" value={bulkPct} onChange={e => setBulkPct(e.target.value)}
+                style={{ width: 60, padding: 9, background: "#000", color: "#C8973E", border: "1px solid #333", borderRadius: 6, fontWeight: 700 }} />
+              <button onClick={applyBulkPct} style={{ padding: "9px 12px", background: "#222", color: "#C8973E", border: "1px solid #333", borderRadius: 6, fontSize: 12, fontWeight: 700, cursor: "pointer" }}>% indir</button>
+              <button onClick={() => selectAllFiltered(shownProducts)} style={{ padding: "9px 12px", background: "#222", color: "#aaa", border: "1px solid #333", borderRadius: 6, fontSize: 12, fontWeight: 700, cursor: "pointer" }}>Tümünü seç</button>
+            </div>
             <div style={{ background: "#000", padding: 12, borderRadius: 6, border: "1px solid #333", maxHeight: 300, overflowY: "auto", marginBottom: 16 }}>
-              {products.map(p => {
+              {shownProducts.map(p => {
                 const newPrice = form.product_overrides[p.id];
                 const isSelected = newPrice != null;
                 return (
@@ -161,11 +207,15 @@ export default function HappyHourPage() {
                   </div>
                 );
               })}
-              {products.length === 0 && <div style={{ color: "#666", textAlign: "center", padding: 16 }}>Ürün yükleniyor…</div>}
+              {shownProducts.length === 0 && <div style={{ color: "#666", textAlign: "center", padding: 16 }}>{products.length === 0 ? "Ürün yükleniyor…" : "Aramaya uyan ürün yok"}</div>}
             </div>
             <div style={{ display: "flex", gap: 8, justifyContent: "flex-end" }}>
               <button onClick={() => setShowAdd(false)} style={{ padding: "10px 20px", background: "#333", color: "#fff", border: "none", borderRadius: 6, fontWeight: 700, fontSize: 12, cursor: "pointer" }}>İPTAL</button>
-              <button onClick={save} style={{ padding: "10px 20px", background: "#C8973E", color: "#000", border: "none", borderRadius: 6, fontWeight: 700, fontSize: 12, cursor: "pointer" }}>KAYDET</button>
+              <button onClick={save} disabled={!canSave || busy}
+                title={canSave ? "" : "İsim yaz ve en az bir ürün seç"}
+                style={{ padding: "10px 20px", background: canSave ? "#C8973E" : "#3a3a3a", color: canSave ? "#000" : "#888", border: "none", borderRadius: 6, fontWeight: 700, fontSize: 12, cursor: canSave ? "pointer" : "not-allowed", opacity: busy ? 0.6 : 1 }}>
+                {busy ? "KAYDEDİLİYOR…" : "KAYDET"}
+              </button>
             </div>
           </div>
         </div>
