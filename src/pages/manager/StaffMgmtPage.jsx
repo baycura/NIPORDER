@@ -66,7 +66,7 @@ export default function StaffMgmtPage() {
       });
       if (error) { alert("Hata: " + error.message); setBusy(false); return; }
       // Update display_role + phone after creation
-      await supabase.from("staff").update({
+      const { error: upErr } = await supabase.from("staff").update({
         display_role: form.display_role || "Yönetici",
         phone: form.phone?.trim() || null,
         store_ids: form.store_ids || [],

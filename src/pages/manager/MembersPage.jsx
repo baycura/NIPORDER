@@ -109,7 +109,8 @@ export default function MembersPage() {
     }
     // Uye urun indirimlerini kaydet (tam liste yeniden yazilir)
     if (customerId) {
-      await supabase.from("member_discounts").delete().eq("customer_id", customerId);
+      const { error: dd } = await supabase.from("member_discounts").delete().eq("customer_id", customerId);
+      if (dd) { alert("Eski üye fiyatları temizlenemedi: " + dd.message); setBusy(false); return; }
       // Artik net fiyat kaydediliyor (price); amount eski kayitlar icin duruyor
       const rows = Object.entries(prodDiscounts)
         .filter(([, v]) => v !== "" && v != null && Number(v) >= 0)

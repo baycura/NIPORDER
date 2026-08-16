@@ -160,7 +160,8 @@ export default function MenuMgmtPage() {
 
   const delProd = async (p) => {
     if (!confirm('"' + p.name + '" silinsin mi?')) return;
-    await supabase.from("products").delete().eq("id", p.id);
+    const { error: pdErr } = await supabase.from("products").delete().eq("id", p.id);
+    if (pdErr) { alert("Silinemedi: " + pdErr.message); return; }
     load();
   };
 
