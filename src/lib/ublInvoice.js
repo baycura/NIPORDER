@@ -89,23 +89,27 @@ export function parseUblInvoice(xmlText) {
     const priceEl = child(ln, "Price");
     const listUnit = num(text(priceEl, "PriceAmount"));
 
-    // Iskonto: ChargeIndicator=false olan AllowanceCharge satirlari.
+    // Iskonto — uc farkli yazimla karsilastik, ucu de gecerli:
+    //   a) Kavmar: LineExtensionAmount NET (iskonto zaten dusulmus)
+    //   b) Erbak/Uludag: LEA BRUT, ChargeIndicator=false ile iskonto
+    //   c) Acarlar: LEA BRUT, iskonto ChargeIndicator=TRUE yazilmis (!)
+    //      — standart disi ama fatura toplami boyle tutuyor.
     //
-    // DIKKAT — iki farkli yazim var, ikisi de gecerli:
-    //   a) Iskonto ZATEN DUSULMUS: LineExtensionAmount nettir (BaseAmount
-    //      satir tutarindan buyuktur). Orn. Kavmar faturalari.
-    //   b) Iskonto AYRICA DUSULECEK: LineExtensionAmount bruttur ve
-    //      AllowanceCharge'in BaseAmount'u ona esittir. Orn. Erbak/Uludag.
-    // Ayirt etmezsek (b) tipi faturalarda maliyet iki katina cikar.
-    let discount = 0, discountOnTop = 0;
+    // Ayirt etme: LEA, miktar x liste fiyata esitse satir BRUTTUR; o zaman
+    // uzerindeki tum indirim satirlari dusulur. Degilse LEA zaten nettir.
+    // (Bu kural olmadan Uludag/Acarlar faturalarinda maliyet %20-100 sisiyor.)
+    const grossFromPrice = qty * listUnit;
+    const isGross = listUnit > 0 && Math.abs(lineAmount - grossFromPrice) < 0.02;
+
+    let discount = 0;
     for (const ac of childAll(ln, "AllowanceCharge")) {
-      if ((text(ac, "ChargeIndicator") || "").toLowerCase() !== "false") continue;
       const amount = num(text(ac, "Amount"));
-      const base = num(text(ac, "BaseAmount"));
-      discount += amount;
-      if (base > 0 && Math.abs(base - lineAmount) < 0.01) discountOnTop += amount;
+      const isDiscountFlag = (text(ac, "ChargeIndicator") || "").toLowerCase() === "false";
+      const reason = text(ac, "AllowanceChargeReason");
+      const looksLikeDiscount = isDiscountFlag || /indirim|iskonto/i.test(reason) || isGross;
+      if (looksLikeDiscount) discount += amount;
     }
-    const netAmount = lineAmount - discountOnTop;
+    const netAmount = isGross ? Math.max(0, lineAmount - discount) : lineAmount;
 
     // KDV orani: gercek e-Faturalarda Percent, TaxSubtotal'in DOGRUDAN altinda
     // durur (TaxCategory'nin icinde degil). Iki yeri de deneriz.
