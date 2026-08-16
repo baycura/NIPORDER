@@ -10,9 +10,23 @@ const CUST_TABS = [
   { key: "menu",   icon: "🍽", tr: "Menü",     en: "Menu",   ru: "Меню" },
   { key: "events", icon: "🎟", tr: "Etkinlik", en: "Events", ru: "События" },
   { key: "rides",  icon: "🚴", tr: "Sürüş",    en: "Rides",  ru: "Заезды" },
+  { key: "vote",   icon: "📊", tr: "Oyla",     en: "Vote",   ru: "Голос" },
   { key: "shop",   icon: "👕", tr: "Shop",     en: "Shop",   ru: "Шоп" },
   { key: "blog",   icon: "📰", tr: "Blog",     en: "Blog",   ru: "Блог" },
 ];
+
+// Misafir de oy verebilsin: kimlik yerine telefonda saklanan anonim anahtar
+function getVoterKey() {
+  try {
+    let k = localStorage.getItem("nip_voter_key");
+    if (!k) {
+      k = (crypto.randomUUID && crypto.randomUUID()) ||
+        ("v" + Date.now() + Math.random().toString(36).slice(2));
+      localStorage.setItem("nip_voter_key", k);
+    }
+    return k;
+  } catch (e) { return "anon-" + Math.random().toString(36).slice(2); }
+}
 // Etkinlik + surusler dogrudan rezervasyon sisteminin (NIP RESERVE) public verisinden okunur
 const RESERVE_URL = "https://diqparjrtvvfxvwxebov.supabase.co";
 const RESERVE_KEY = "eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJpc3MiOiJzdXBhYmFzZSIsInJlZiI6ImRpcXBhcmpydHZ2Znh2d3hlYm92Iiwicm9sZSI6ImFub24iLCJpYXQiOjE3NzM5Mzc3OTMsImV4cCI6MjA4OTUxMzc5M30.pNI2yU6LDG8583HBPq-5puxkpEVEAYwhGp9ibJ1WBsI";
@@ -403,13 +417,59 @@ export default function CustomerMenu() {
         .then(d => setFeeds(f => ({ ...f, rides: Array.isArray(d) ? d : [] })))
         .catch(() => setFeeds(f => ({ ...f, rides: [] })));
     }
+    if (custTab === "vote" && !feeds.polls && currentStoreId) loadPolls();
     if ((custTab === "shop" || custTab === "blog") && !postFeeds[custTab]) {
       supabase.from("posts").select("*")
         .eq("kind", custTab === "shop" ? "urun" : "blog").eq("is_active", true)
         .order("sort_order").order("created_at", { ascending: false })
         .then(({ data }) => setPostFeeds(f => ({ ...f, [custTab]: data || [] })));
     }
-  }, [custTab]);
+  }, [custTab, currentStoreId]);
+
+  // --- Oylama (Vote sekmesi) ---
+  const [pollResults, setPollResults] = useState({}); // { pollId: {total, counts, free_count} }
+  const [myVotes, setMyVotes] = useState({});         // { pollId: {option_id, free_text} }
+  const [freeAnswer, setFreeAnswer] = useState({});   // { pollId: yazilan metin }
+  const [voteBusy, setVoteBusy] = useState(null);
+
+  const loadPolls = async () => {
+    const nowIso = new Date().toISOString();
+    const { data } = await supabase.from("polls").select("*")
+      .eq("store_id", currentStoreId).eq("is_active", true)
+      .lte("starts_at", nowIso).order("sort_order").order("created_at", { ascending: false });
+    const list = (data || []).filter(p => !p.ends_at || p.ends_at > nowIso);
+    setFeeds(f => ({ ...f, polls: list }));
+    const vk = getVoterKey();
+    for (const p of list) {
+      supabase.rpc("poll_results", { p_poll_id: p.id })
+        .then(({ data: r }) => setPollResults(s => ({ ...s, [p.id]: r || {} })));
+      supabase.rpc("poll_my_vote", { p_poll_id: p.id, p_voter_key: vk })
+        .then(({ data: v }) => { if (v && (v.option_id || v.free_text)) setMyVotes(s => ({ ...s, [p.id]: v })); });
+    }
+  };
+
+  const sendVote = async (poll, optionId, freeText) => {
+    if (voteBusy) return;
+    setVoteBusy(poll.id);
+    const vk = getVoterKey();
+    const { data, error } = await supabase.rpc("poll_vote", {
+      p_poll_id: poll.id, p_option_id: optionId || null,
+      p_free_text: freeText || null, p_voter_key: vk,
+    });
+    setVoteBusy(null);
+    if (error || data?.error) {
+      alert(L("Oy gönderilemedi: ", "Could not send vote: ", "Не удалось отправить голос: ") + (data?.error || error?.message || ""));
+      return;
+    }
+    setMyVotes(s => ({ ...s, [poll.id]: { option_id: optionId || null, free_text: freeText || null } }));
+    if (freeText) setFreeAnswer(s => ({ ...s, [poll.id]: "" }));
+    const { data: r } = await supabase.rpc("poll_results", { p_poll_id: poll.id });
+    setPollResults(s => ({ ...s, [poll.id]: r || {} }));
+  };
+
+  const pollQ = (p) => (lang === "en" && p?.question_en) ? p.question_en
+                     : (lang === "ru" && p?.question_ru) ? p.question_ru : p?.question;
+  const optLabel = (o) => (lang === "en" && o?.en) ? o.en : (lang === "ru" && o?.ru) ? o.ru : o?.tr;
 
   const pName = (p) => (lang === "en" && p?.name_en) ? p.name_en : (lang === "ru" && p?.name_ru) ? p.name_ru : p?.name;
   const pDesc = (p) => (lang === "en" && p?.description_en) ? p.description_en : (lang === "ru" && p?.description_ru) ? p.description_ru : p?.description;
@@ -1052,6 +1112,72 @@ export default function CustomerMenu() {
                 <span style={{fontSize:13,fontWeight:800}}>🟠 NIP Cycling Club — Strava</span>
                 <span>↗</span>
               </a>
+            </>
+          )}
+          {custTab === "vote" && (
+            <>
+              {feeds.polls === undefined && <div style={{textAlign:"center",color:"#888",padding:30,fontSize:13}}>...</div>}
+              {feeds.polls?.length === 0 && (
+                <div style={{textAlign:"center",color:"#888",padding:30,fontSize:13,lineHeight:1.6}}>
+                  {L("Şu an açık oylama yok — yakında yeni sorular 🗳","No open polls right now — new questions soon 🗳","Сейчас нет открытых голосований — скоро новые вопросы 🗳")}
+                </div>
+              )}
+              {(feeds.polls || []).map(poll => {
+                const res = pollResults[poll.id] || {};
+                const mine = myVotes[poll.id];
+                const voted = !!(mine && (mine.option_id || mine.free_text));
+                const total = Number(res.total || 0);
+                return (
+                  <div key={poll.id} style={{background:"#fafafa",border:"1px solid #eee",borderRadius:16,padding:"14px 14px 12px",marginBottom:14}}>
+                    <div style={{fontSize:15,fontWeight:800,lineHeight:1.35,marginBottom:10}}>{pollQ(poll)}</div>
+                    {(poll.options || []).map(o => {
+                      const n = Number(res.counts?.[o.id] || 0);
+                      const pct = total > 0 ? Math.round((n / total) * 100) : 0;
+                      const picked = mine?.option_id === o.id;
+                      return (
+                        <button key={o.id} onClick={() => sendVote(poll, o.id, null)} disabled={voteBusy === poll.id}
+                          style={{position:"relative",overflow:"hidden",width:"100%",textAlign:"left",marginBottom:7,padding:"12px 14px",
+                                  background:"#fff",border:"1.5px solid "+(picked?"#000":"#e6e6e6"),borderRadius:12,
+                                  fontSize:14,fontWeight:picked?800:600,cursor:"pointer",fontFamily:"inherit",color:"#000"}}>
+                          {voted && <span style={{position:"absolute",inset:0,width:pct+"%",background:picked?"#000":"#ececec",opacity:picked?0.09:1,transition:"width .35s"}}/>}
+                          <span style={{position:"relative",display:"flex",justifyContent:"space-between",gap:10,alignItems:"center"}}>
+                            <span>{picked ? "✓ " : ""}{optLabel(o)}</span>
+                            {voted && <span style={{fontSize:12,fontWeight:800,color:"#666",flexShrink:0}}>%{pct}</span>}
+                          </span>
+                        </button>
+                      );
+                    })}
+                    {poll.allow_free_text && (
+                      <div style={{display:"flex",gap:6,marginTop:(poll.options||[]).length?8:0}}>
+                        <input value={freeAnswer[poll.id] || ""} onChange={e => setFreeAnswer(s => ({ ...s, [poll.id]: e.target.value }))}
+                          maxLength={140} placeholder={L("Kendi cevabını yaz…","Write your own answer…","Напишите свой вариант…")}
+                          style={{flex:1,minWidth:0,padding:"11px 13px",background:"#fff",border:"1.5px solid #e6e6e6",borderRadius:12,fontSize:14,outline:"none",fontFamily:"inherit"}}/>
+                        <button onClick={() => sendVote(poll, null, (freeAnswer[poll.id] || "").trim())}
+                          disabled={voteBusy === poll.id || !(freeAnswer[poll.id] || "").trim()}
+                          style={{padding:"11px 16px",background:(freeAnswer[poll.id]||"").trim()?"#000":"#ddd",color:(freeAnswer[poll.id]||"").trim()?"#fff":"#999",
+                                  border:"none",borderRadius:12,fontSize:13,fontWeight:800,cursor:"pointer",flexShrink:0,fontFamily:"inherit"}}>
+                          {L("Gönder","Send","Отправить")}
+                        </button>
+                      </div>
+                    )}
+                    {mine?.free_text && (
+                      <div style={{fontSize:12,color:"#1a7f37",fontWeight:700,marginTop:8}}>
+                        ✓ {L("Cevabın alındı","Your answer is in","Ваш ответ принят")}: “{mine.free_text}”
+                      </div>
+                    )}
+                    <div style={{fontSize:11,color:"#999",marginTop:9,lineHeight:1.5}}>
+                      {voted
+                        ? L(total + " kişi oy verdi · fikrini değiştirebilirsin", total + " people voted · you can change your mind", "Проголосовало: " + total + " · можно передумать")
+                        : L("Oyla, sonucu gör 👀","Vote to see the results 👀","Проголосуйте, чтобы увидеть результаты 👀")}
+                    </div>
+                  </div>
+                );
+              })}
+              <div style={{fontSize:11,color:"#999",textAlign:"center",marginTop:4,lineHeight:1.6}}>
+                {L("Cevaplarını okuyoruz — bazıları menüde ve çalma listesinde karşına çıkacak ♥",
+                   "We read every answer — some will show up on the menu and the playlist ♥",
+                   "Мы читаем все ответы — часть из них появится в меню и плейлисте ♥")}
+              </div>
             </>
           )}
           {custTab === "shop" && shopCats.length > 0 && (
