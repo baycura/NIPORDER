@@ -589,8 +589,11 @@ export default function CustomerMenu() {
         }
         finalCats.sort((a, b) => (a.sort_order || 0) - (b.sort_order || 0));
       }
-      // Hide Brunch tab from paris view (all Brunch products visible under Kitchen tab now)
-      const finalCatsFiltered = finalCats.filter(c => c.name !== "Brunch");
+      // Paris'in KENDI Brunch kategorisi gizlenir — urunleri zaten yukarida
+      // doner mutfak sekmesine kopyalandi, iki kere gorunmesin.
+      // DIKKAT: store_id sarti sart. Doner'deki kategorinin adi da "Brunch"
+      // oldugu icin ada gore filtrelemek mutfak sekmesinin tamamini siliyordu.
+      const finalCatsFiltered = finalCats.filter(c => !(c.name === "Brunch" && c.store_id === storeId));
       // Apply category schedule rules (hide categories during certain time windows)
       const now = new Date();
       const dayOfWeek = now.getDay() === 0 ? 7 : now.getDay(); // kurallar 1=Pzt..7=Paz saklanir
