@@ -41,8 +41,8 @@ export default function MenuMgmtPage() {
   useEffect(() => { load(); }, []);
 
   // -------- CATEGORIES --------
-  const openNewCat = () => { setCatModal({mode:"new"}); setCatForm({name:"", name_en:"", name_ru:"", icon:"", sort_order:100, available_from:"", available_until:"", show_in_party_menu:true, staff_only:false, show_in_shop:false, is_active:true, description:"", description_en:"", description_ru:"", shop_tag:"", shop_tag_en:"", shop_tag_ru:""}); };
-  const openEditCat = (c) => { setCatModal({mode:"edit", data:c}); setCatForm({name:c.name||"", name_en:c.name_en||"", name_ru:c.name_ru||"", icon:c.icon||"", sort_order:c.sort_order||100, available_from:c.available_from||"", available_until:c.available_until||"", show_in_party_menu:c.show_in_party_menu!==false, staff_only:!!c.staff_only, show_in_shop:!!c.show_in_shop, is_active:c.is_active!==false, description:c.description||"", description_en:c.description_en||"", description_ru:c.description_ru||"", shop_tag:c.shop_tag||"", shop_tag_en:c.shop_tag_en||"", shop_tag_ru:c.shop_tag_ru||""}); };
+  const openNewCat = () => { setCatModal({mode:"new"}); setCatForm({name:"", name_en:"", name_ru:"", icon:"", sort_order:100, available_from:"", available_until:"", show_in_party_menu:true, staff_only:false, show_in_shop:false, show_in_paris_menu:false, is_active:true, description:"", description_en:"", description_ru:"", shop_tag:"", shop_tag_en:"", shop_tag_ru:""}); };
+  const openEditCat = (c) => { setCatModal({mode:"edit", data:c}); setCatForm({name:c.name||"", name_en:c.name_en||"", name_ru:c.name_ru||"", icon:c.icon||"", sort_order:c.sort_order||100, available_from:c.available_from||"", available_until:c.available_until||"", show_in_party_menu:c.show_in_party_menu!==false, staff_only:!!c.staff_only, show_in_shop:!!c.show_in_shop, show_in_paris_menu:!!c.show_in_paris_menu, parent_id:c.parent_id||"", is_active:c.is_active!==false, description:c.description||"", description_en:c.description_en||"", description_ru:c.description_ru||"", shop_tag:c.shop_tag||"", shop_tag_en:c.shop_tag_en||"", shop_tag_ru:c.shop_tag_ru||""}); };
 
   const saveCat = async () => {
     if (busy) return;
@@ -57,6 +57,7 @@ export default function MenuMgmtPage() {
       show_in_party_menu: catForm.show_in_party_menu!==false,
       staff_only: !!catForm.staff_only,
       show_in_shop: !!catForm.show_in_shop,
+      show_in_paris_menu: !!catForm.show_in_paris_menu,
       description: catForm.description?.trim() || null,
       description_en: catForm.description_en?.trim() || null,
       description_ru: catForm.description_ru?.trim() || null,
@@ -374,6 +375,12 @@ export default function MenuMgmtPage() {
             <input type="checkbox" checked={!!catForm.show_in_shop} onChange={e=>setCatForm({...catForm,show_in_shop:e.target.checked})}/>
             <span style={{fontSize:13,color:"#F0EDE8"}}>🛒 Müşteride SHOP sekmesinde göster (menüde değil — kişisel bakım, şapka, kolye, marka ürünleri)</span>
           </label>
+          {catModal.data?.store_id === DONER_STORE_ID && (
+            <label style={{display:"flex",alignItems:"center",gap:8,marginBottom:10,cursor:"pointer"}}>
+              <input type="checkbox" checked={!!catForm.show_in_paris_menu} onChange={e=>setCatForm({...catForm,show_in_paris_menu:e.target.checked})}/>
+              <span style={{fontSize:13,color:"#F0EDE8"}}>🍳 Paris menüsünde de göster (döner mutfağının ürünleri Paris'ten de sipariş edilebilsin)</span>
+            </label>
+          )}
           {catForm.show_in_shop && (
             <div style={{background:"#161616",border:"1px solid #2A2A2A",borderRadius:10,padding:12,marginBottom:12}}>
               <div style={{fontSize:10,color:"#C8973E",letterSpacing:"1.5px",fontWeight:700,marginBottom:8}}>🛍 MARKA KUTUSU (Shop sekmesinde görünür)</div>
