@@ -35,6 +35,12 @@ const RESERVATION_URL = "https://reservation.notinparis.me";
 const RIDES_URL = "https://notinparis.me/pages/rides";
 const YOUTUBE_URL = "https://www.youtube.com/@notinparis";
 const STRAVA_URL = "https://www.strava.com/clubs/notinparis";
+const STRAVA_CLUB_ID = "1100024";
+// Surus Strava etkinligiyse "Katil" dogrudan oraya gitsin — kayit orada yapiliyor
+const rideLink = (r) =>
+  r?.strava_event_id ? "https://www.strava.com/clubs/" + STRAVA_CLUB_ID + "/group_events/" + r.strava_event_id
+  : (r?.route_url && /strava\.com/.test(r.route_url)) ? r.route_url
+  : RIDES_URL;
 const FIND_BIKE_URL = "https://notinparis.me/pages/find-a-bike";
 const INSTAGRAM_URL = "https://instagram.com/notinparis.me";
 const TIERS = [
@@ -432,7 +438,7 @@ export default function CustomerMenu() {
         .catch(() => setFeeds(f => ({ ...f, events: [] })));
     }
     if (custTab === "rides" && !feeds.rides) {
-      fetch(RESERVE_URL + "/rest/v1/ride_posts?select=title,ride_date,ride_time,pace,distance_km,elevation_m,meet_point&ride_date=gte." + today + "&order=ride_date.asc&limit=12",
+      fetch(RESERVE_URL + "/rest/v1/ride_posts?select=title,ride_date,ride_time,pace,distance_km,elevation_m,meet_point,route_url,strava_event_id&ride_date=gte." + today + "&order=ride_date.asc&limit=12",
         { headers: { apikey: RESERVE_KEY } })
         .then(r => r.json())
         .then(d => setFeeds(f => ({ ...f, rides: Array.isArray(d) ? d : [] })))
@@ -1113,7 +1119,7 @@ export default function CustomerMenu() {
                 </div>
               )}
               {(feeds.rides || []).map((r, i) => (
-                <a key={i} href={RIDES_URL} target="_blank" rel="noreferrer" style={{display:"flex",alignItems:"center",gap:10,padding:"14px 2px",borderBottom:"1px solid #f0f0f0",textDecoration:"none",color:"#000"}}>
+                <a key={i} href={rideLink(r)} target="_blank" rel="noreferrer" style={{display:"flex",alignItems:"center",gap:10,padding:"14px 2px",borderBottom:"1px solid #f0f0f0",textDecoration:"none",color:"#000"}}>
                   <div style={{flex:1,minWidth:0}}>
                     <div style={{fontSize:15,fontWeight:800,lineHeight:1.3}}>{r.title}</div>
                     <div style={{fontSize:12,color:"#666",marginTop:3}}>
@@ -1123,7 +1129,10 @@ export default function CustomerMenu() {
                       {[r.pace, r.distance_km ? Math.round(r.distance_km) + " km" : null, r.elevation_m ? Math.round(r.elevation_m) + " m↑" : null, r.meet_point].filter(Boolean).join(" · ")}
                     </div>
                   </div>
-                  <span style={{fontSize:12,fontWeight:700,flexShrink:0}}>{L("Katıl","Join","Поехали")} →</span>
+                  <span style={{fontSize:12,fontWeight:700,flexShrink:0,textAlign:"right"}}>
+                    {L("Katıl","Join","Поехали")} →
+                    {r.strava_event_id && <span style={{display:"block",fontSize:9,color:"#FC5200",fontWeight:800,letterSpacing:"0.3px"}}>STRAVA</span>}
+                  </span>
                 </a>
               ))}
               <a href={FIND_BIKE_URL} target="_blank" rel="noreferrer" style={{display:"flex",justifyContent:"space-between",alignItems:"center",gap:10,padding:"14px 16px",background:"#000",color:"#fff",borderRadius:14,textDecoration:"none",marginTop:14}}>
