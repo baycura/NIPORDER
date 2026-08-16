@@ -557,43 +557,21 @@ export default function CustomerMenu() {
       const finalCats = [...custCats];
       const finalProds = [...(prods || []).filter(p => !staffOnlyCatIds.has(p.category_id))];
       if (storeId === PARIS_STORE_UUID) {
-        const { data: kCats } = await supabase.from("categories").select("*").eq("is_active", true).eq("store_id", DONER_STORE_UUID).eq("name_en", "Brunch");
+        // Doner'in Paris menusunde de gorunecek kategorileri BAYRAKLA secilir.
+        // Onceden kategori adina bakiliyordu; ad degisince (Kitchen -> Brunch)
+        // mutfak sekmesi sessizce kaybolmustu. Ad artik hicbir yerde kural degil.
+        const { data: kCats } = await supabase.from("categories").select("*")
+          .eq("is_active", true).eq("store_id", DONER_STORE_UUID).eq("show_in_paris_menu", true);
         if (kCats && kCats.length > 0) {
           finalCats.push(...kCats);
-          const kitchenCatId = kCats[0].id;
-          const kCatIds = kCats.map(c => c.id);
-          const { data: kProds } = await supabase.from("products").select("*").eq("is_available", true).eq("store_id", DONER_STORE_UUID).in("category_id", kCatIds).order("sort_order");
-          if (kProds && kProds.length > 0) {
-            // Move drinks (Coke, Ayran) to paris Cold Drinks tab as visual alias
-            // Skip Water/Soda from doner — paris already has its own Water/Soda in Cold Drinks
-            const coldDrinksCat = finalCats.find(c => c.name === "Cold Drinks");
-            const drinkAliasNames = ["Coke", "Ayran"];
-            const skipNames = ["Water", "Soda"];
-            kProds.forEach(p => {
-              if (skipNames.includes(p.name)) {
-                return; // skip — paris view has its own Water/Soda
-              }
-              if (coldDrinksCat && drinkAliasNames.includes(p.name)) {
-                finalProds.push({ ...p, category_id: coldDrinksCat.id });
-              } else {
-                finalProds.push(p);
-              }
-            });
-          }
-          // Visual alias: also show paris Brunch products under Kitchen tab. Order routing unchanged (same product_id => paris kitchen).
-          const brunchCat = finalCats.find(c => c.name === "Brunch" && c.store_id === storeId);
-          if (brunchCat) {
-            const brunchAliases = finalProds.filter(p => p.category_id === brunchCat.id).map(p => ({ ...p, category_id: kitchenCatId }));
-            finalProds.push(...brunchAliases);
-          }
+          const { data: kProds } = await supabase.from("products").select("*")
+            .eq("is_available", true).eq("store_id", DONER_STORE_UUID)
+            .in("category_id", kCats.map(c => c.id)).order("sort_order");
+          finalProds.push(...(kProds || []));
         }
         finalCats.sort((a, b) => (a.sort_order || 0) - (b.sort_order || 0));
       }
-      // Paris'in KENDI Brunch kategorisi gizlenir — urunleri zaten yukarida
-      // doner mutfak sekmesine kopyalandi, iki kere gorunmesin.
-      // DIKKAT: store_id sarti sart. Doner'deki kategorinin adi da "Brunch"
-      // oldugu icin ada gore filtrelemek mutfak sekmesinin tamamini siliyordu.
-      const finalCatsFiltered = finalCats.filter(c => !(c.name === "Brunch" && c.store_id === storeId));
+      const finalCatsFiltered = finalCats;
       // Apply category schedule rules (hide categories during certain time windows)
       const now = new Date();
       const dayOfWeek = now.getDay() === 0 ? 7 : now.getDay(); // kurallar 1=Pzt..7=Paz saklanir
@@ -707,16 +685,20 @@ export default function CustomerMenu() {
     });
   }, [categories, now]);
 
-  // Ust sekmeler: yalniz parent_id bos olanlar. Alt kategoriler sekme olmaz.
-  const visibleCategories = useMemo(
-    () => menuCategories.filter(c => !c.parent_id),
-    [menuCategories]);
+  // Ust sekmeler: parent_id bos olanlar. Ust kategorisi bu listede olmayan bir
+  // alt kategori de sekme olur — aksi halde hicbir yerde gorunmezdi. (Doner
+  // menusunde "Yiyecekler"in ust kategorisi Paris'te; oradan bakinca yetim kalir.)
+  const visibleCategories = useMemo(() => {
+    const ids = new Set(menuCategories.map(c => c.id));
+    return menuCategories.filter(c => !c.parent_id || !ids.has(c.parent_id));
+  }, [menuCategories]);
 
   // Ust kategori -> alt kategorileri (sort_order'a gore)
   const subCatsByParent = useMemo(() => {
     const m = {};
+    const ids = new Set(menuCategories.map(c => c.id));
     for (const c of menuCategories) {
-      if (!c.parent_id) continue;
+      if (!c.parent_id || !ids.has(c.parent_id)) continue; // yetimler sekme oldu
       (m[c.parent_id] = m[c.parent_id] || []).push(c);
     }
     Object.values(m).forEach(list => list.sort((a, b) => (a.sort_order || 0) - (b.sort_order || 0)));
