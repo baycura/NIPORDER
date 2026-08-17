@@ -10,7 +10,7 @@ export default function ReportsPage() {
   const storeIds = staffUser?.store_ids || [];
   const [stores, setStores] = useState([]);
   const [selectedStore, setSelectedStore] = useState(null);
-  const [data, setData] = useState({ today: 0, yesterday: 0, activeOrders: 0, completed: 0, topProducts: [], hourly: [], weekTotal: 0 });
+  const [data, setData] = useState({ today: 0, yesterday: 0, activeOrders: 0, completed: 0, topProducts: [], hourly: [], weekTotal: 0, kitchenToday: 0 });
   const [loading, setLoading] = useState(true);
 
   useEffect(() => {
@@ -34,7 +34,7 @@ export default function ReportsPage() {
     const [todayRes, yesterdayRes, weekRes] = await Promise.all([
       // NOT: order_items'ta unit_price yok — dogru sutun final_price.
       // Eskiden unit_price isteniyordu, PostgREST 400 doner ve gunun raporu bos gelirdi.
-      supabase.from("orders").select("id,total,status,created_at,order_items(quantity,final_price,product_id,products(name))").eq("origin_store_id", selectedStore).gte("created_at", todayStart),
+      supabase.from("orders").select("id,total,status,created_at,order_items(quantity,final_price,product_id,products(name,kitchen_consignment))").eq("origin_store_id", selectedStore).gte("created_at", todayStart),
       supabase.from("orders").select("total,status").eq("origin_store_id", selectedStore).gte("created_at", yesterdayStart).lt("created_at", todayStart),
       supabase.from("orders").select("total,status").eq("origin_store_id", selectedStore).gte("created_at", weekStart),
     ]);
@@ -57,6 +57,12 @@ export default function ReportsPage() {
     }));
     const topProducts = Object.entries(pCount).sort((a,b) => b[1]-a[1]).slice(0,5);
 
+    // NIP Kitchen envanteri: ciroya girer ama bize kalmaz — ay sonu mutfaga
+    // oldugu gibi odenir. Ciroyu bu yuzden ikiye ayirip gosteriyoruz.
+    const kitchenToday = todayPaid.reduce((s,o) => s + (o.order_items||[])
+      .filter(oi => oi.products?.kitchen_consignment)
+      .reduce((t,oi) => t + Number(oi.final_price||0) * Number(oi.quantity||0), 0), 0);
+
     const hourly = Array.from({length:16}, (_,i) => ({ hour: 8+i, total: 0 }));
     todayPaid.forEach(o => {
       const h = new Date(o.created_at).getHours();
@@ -64,7 +70,7 @@ export default function ReportsPage() {
       if (slot) slot.total += Number(o.total||0);
     });
 
-    setData({ today: todayTotal, yesterday: yesterdayTotal, activeOrders: active, completed: todayPaid.length, topProducts, hourly, weekTotal });
+    setData({ today: todayTotal, yesterday: yesterdayTotal, activeOrders: active, completed: todayPaid.length, topProducts, hourly, weekTotal, kitchenToday });
     setLoading(false);
   }
 
@@ -104,6 +110,18 @@ export default function ReportsPage() {
             {diff !== null && (
               <div style={{ fontSize: 14, marginTop: 8, color: diff >= 0 ? "#9f9" : "#f99" }}>
                 {diff >= 0 ? "↗" : "↘"} %{Math.abs(diff).toFixed(0)} dünden (₺{data.yesterday.toFixed(2)})
+              </div>
+            )}
+            {data.kitchenToday > 0 && (
+              <div style={{ marginTop: 14, paddingTop: 12, borderTop: "1px solid rgba(255,255,255,0.15)", display: "flex", justifyContent: "space-between", gap: 10, fontSize: 13 }}>
+                <div>
+                  <div style={{ opacity: 0.55, fontSize: 11 }}>🥙 MUTFAĞA ÖDENECEK</div>
+                  <div style={{ fontWeight: 700, fontSize: 18 }}>₺{data.kitchenToday.toFixed(2)}</div>
+                </div>
+                <div style={{ textAlign: "right" }}>
+                  <div style={{ opacity: 0.55, fontSize: 11 }}>🏠 BİZE KALAN CİRO</div>
+                  <div style={{ fontWeight: 700, fontSize: 18, color: "#d4af37" }}>₺{(data.today - data.kitchenToday).toFixed(2)}</div>
+                </div>
               </div>
             )}
           </div>

@@ -31,6 +31,7 @@ const presetsFor = (unit, pourCl) => {
 export default function RecipesMgmtPage() {
   const { staffUser } = useAuth();
   const [products, setProducts] = useState([]);
+  const [kitchenCount, setKitchenCount] = useState(0);
   const [ingredients, setIngredients] = useState([]);
   const [recipes, setRecipes] = useState([]);
   const [loading, setLoading] = useState(true);
@@ -50,13 +51,17 @@ export default function RecipesMgmtPage() {
   const load = async () => {
     setLoading(true);
     const [{ data: prods }, { data: ings }, { data: recs }, { data: setting }] = await Promise.all([
-      supabase.from("products").select("id, name, price, category_id, track_stock, takeaway_cup, takeaway_straw, categories(name)").order("name"),
+      supabase.from("products").select("id, name, price, category_id, track_stock, kitchen_consignment, takeaway_cup, takeaway_straw, categories(name)").order("name"),
       supabase.from("ingredients").select("*").order("name"),
       supabase.from("recipes").select("*").in("store_id", staffUser?.store_ids?.length ? staffUser.store_ids : ["00000000-0000-0000-0000-000000000000"]),
       supabase.from("app_settings").select("value").eq("key", "house_pour_cl").maybeSingle(),
     ]);
     setPourCl(Number(setting?.value) || 4);
-    setProducts((prods || []).filter(p => !p.track_stock)); // raf urunlerinin recetesi olmaz
+    // Raf urunlerinin recetesi olmaz. NIP Kitchen envanteri de burada gorunmez:
+    // mutfak hazirliyor, maliyetini biz tutmuyoruz — "recetesi yok" listesini
+    // bosuna sisirmesinler.
+    setProducts((prods || []).filter(p => !p.track_stock && !p.kitchen_consignment));
+    setKitchenCount((prods || []).filter(p => p.kitchen_consignment).length);
     setIngredients(ings || []);
     setRecipes(recs || []);
     setLoading(false);
@@ -416,6 +421,11 @@ export default function RecipesMgmtPage() {
       <div style={{ fontSize: 11, color: "#888", letterSpacing: "1px", marginBottom: 14 }}>
         {recipes.length} SATIR · {products.length} ÜRÜN{noRecipe > 0 ? " · " + noRecipe + " ÜRÜNÜN REÇETESİ YOK" : ""}
       </div>
+      {kitchenCount > 0 && (
+        <div style={{ fontSize: 11, color: "#777", background: "#141414", border: "1px solid #242424", borderRadius: 8, padding: "8px 10px", marginBottom: 14, lineHeight: 1.5 }}>
+          🥙 {kitchenCount} ürün <b>NIP Kitchen envanteri</b> — mutfak hazırlıyor, maliyeti bizde tutulmuyor. Bu listede yer almazlar.
+        </div>
+      )}
 
       <input value={search} onChange={e => setSearch(e.target.value)} placeholder="Ürün ara..." style={{ width: "100%", padding: "12px 14px", background: "#1A1A1A", border: "1px solid #2A2A2A", borderRadius: 10, color: "#F0EDE8", fontSize: 14, outline: "none", marginBottom: 10, fontFamily: "inherit" }} />
 
