@@ -589,6 +589,10 @@ export default function CustomerMenu() {
           finalProds.push(...(kProds || []));
         }
         finalCats.sort((a, b) => (a.sort_order || 0) - (b.sort_order || 0));
+        // Iki magazanin urunleri ust uste eklendi; her liste kendi icinde
+        // siraliydi ama birlesince sira bozuluyor. Brunch gibi karisik
+        // kategorilerde (Kruvasan Paris, Menemen doner) menu sirasi sasiyordu.
+        finalProds.sort((a, b) => (a.sort_order || 0) - (b.sort_order || 0));
       }
       const finalCatsFiltered = finalCats;
       // Apply category schedule rules (hide categories during certain time windows)
