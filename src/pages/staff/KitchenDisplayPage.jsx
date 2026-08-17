@@ -1,6 +1,7 @@
 import { useEffect, useRef, useState } from "react";
 import { supabase } from "../../lib/supabase.js";
 import { useAuth } from "../../contexts/AuthContext.jsx";
+import { optionsText } from "../../lib/productOptions.js";
 
 const cv = "-apple-system,BlinkMacSystemFont,'Segoe UI',Roboto,sans-serif";
 
@@ -150,7 +151,7 @@ export default function KitchenDisplayPage() {
                 <div style={{fontSize:20,fontWeight:900,color:urgent?"#ff6666":"#C8973E"}}>{waitMin}'</div>
               </div>
               {t.items.map(it => {
-                const opts = it.selected_options ? Object.values(it.selected_options).join(" · ") : null;
+                const opts = optionsText(it.selected_options);
                 return (
                   <div key={it.id} style={{padding:"8px 0",borderTop:"1px solid #333"}}>
                     <div style={{fontSize:16,fontWeight:700,color:it.kitchen_status==="ready"?"#3ECF8E":it.kitchen_status==="preparing"?"#E07A3E":"#fff"}}>

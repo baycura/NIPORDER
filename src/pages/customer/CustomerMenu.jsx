@@ -3,6 +3,7 @@ import { useParams, useNavigate, useSearchParams } from "react-router-dom";
 import { supabase } from "../../lib/supabase.js";
 import { useAuth } from "../../contexts/AuthContext.jsx";
 import { happyHourPrices } from "../../lib/happyHour.js";
+import { optionMod } from "../../lib/productOptions.js";
 
 const cv = "-apple-system,BlinkMacSystemFont,'Segoe UI',Roboto,sans-serif";
 
@@ -67,6 +68,7 @@ const T = {
     partyMode: "PARTİ MODU",
     category_empty: "Bu kategoride ürün yok",
     all_group: "Tümü",
+    multi_select: "birden fazla seçebilirsin",
     other_group: "Diğer",
     sold_out: "Tükendi",
     optional: "SEÇENEKLI",
@@ -116,6 +118,7 @@ const T = {
     partyMode: "PARTY MODE",
     category_empty: "No products in this category",
     all_group: "All",
+    multi_select: "choose more than one",
     other_group: "Other",
     sold_out: "Sold out",
     optional: "OPTIONS",
@@ -165,6 +168,7 @@ const T = {
     partyMode: "PARTY MODE",
     category_empty: "В этой категории пока нет позиций",
     all_group: "Все",
+    multi_select: "можно выбрать несколько",
     other_group: "Другое",
     sold_out: "Закончилось",
     optional: "ОПЦИИ",
@@ -234,6 +238,21 @@ const GROUP_I18N = {
 };
 
 const OPT_I18N = {
+  "Protein":            { en: "Protein",              ru: "Протеин" },
+  "Soslar":             { en: "Sauces",               ru: "Соусы" },
+  "İçindekiler":        { en: "Fillings",             ru: "Начинка" },
+  "Döner":              { en: "Doner",                ru: "Донер" },
+  "Falafel":            { ru: "Фалафель" },
+  "Sarımsaklı Mayonez": { en: "Garlic Mayo",          ru: "Чесночный майонез" },
+  "Mayonez":            { en: "Mayo",                 ru: "Майонез" },
+  "Tatziki":            { en: "Tzatziki",             ru: "Дзадзики" },
+  "Köz Biber Sosu":     { en: "Roasted Pepper Sauce", ru: "Соус из печёного перца" },
+  "Cheddar":            { ru: "Чеддер" },
+  "Karamelize Soğan":   { en: "Caramelised Onion",    ru: "Карамелизованный лук" },
+  "Soğan":              { en: "Onion",                ru: "Лук" },
+  "Kırmızı Marul":      { en: "Red Lettuce",          ru: "Красный салат" },
+  "Coleslaw":           { ru: "Коулслоу" },
+  "Turşu":              { en: "Pickles",              ru: "Солёные огурцы" },
   "Milk":            { tr: "Süt",             ru: "Молоко" },
   "Flavor":          { tr: "Aroma",           ru: "Сироп" },
   "Pour size":       { tr: "Ölçü",            ru: "Объём" },
@@ -770,16 +789,8 @@ export default function CustomerMenu() {
     [productSections]);
 
   const calcPrice = (p, options) => {
-    // Add price modifiers from selected options (e.g. Single/Double pour size)
-    let mod = 0;
-    if (options && p.options_config?.groups) {
-      for (const group of p.options_config.groups) {
-        const selectedOpt = options[group.name];
-        if (selectedOpt && group.price_modifiers && group.price_modifiers[selectedOpt] != null) {
-          mod += Number(group.price_modifiers[selectedOpt]) || 0;
-        }
-      }
-    }
+    // Secenek fiyat farki (tek + coklu gruplar) — src/lib/productOptions.js
+    const mod = optionMod(p, options);
     // Product-based happy hour: use new price directly
     const basePrice = (hhProductPrices[p.id] != null ? Number(hhProductPrices[p.id]) : Number(p.price)) + mod;
     let pct = 0;
@@ -794,16 +805,7 @@ export default function CustomerMenu() {
 
   // Ustu cizilecek liste fiyati: yalniz gercekten indirim varsa
   const listPrice = (p, options) => {
-    let mod = 0;
-    if (options && p.options_config?.groups) {
-      for (const group of p.options_config.groups) {
-        const selectedOpt = options[group.name];
-        if (selectedOpt && group.price_modifiers && group.price_modifiers[selectedOpt] != null) {
-          mod += Number(group.price_modifiers[selectedOpt]) || 0;
-        }
-      }
-    }
-    return Math.round(Number(p.price) + mod);
+    return Math.round(Number(p.price) + optionMod(p, options));
   };
 
   const cartTotal = useMemo(() => cart.reduce((s, it) => s + calcPrice(it.product, it.options) * it.quantity, 0), [cart, hh, memberDiscounts]);
@@ -1606,6 +1608,7 @@ export default function CustomerMenu() {
               <div key={group.name} style={{marginBottom:14}}>
                 <div style={{fontSize:11,color:"#333",letterSpacing:"1px",fontWeight:700,marginBottom:6}}>
                   {optT(group.name)?.toUpperCase()}{group.required && <span style={{color:"#c44",marginLeft:4}}>*</span>}
+                  {group.multi && <span style={{color:"#999",fontWeight:600,marginLeft:6}}>· {t.multi_select}</span>}
                 </div>
                 <div style={{display:"flex",flexWrap:"wrap",gap:6}}>
                   {(group.options || []).map(opt => {
