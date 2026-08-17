@@ -1,6 +1,7 @@
 import { useEffect, useRef, useState } from "react";
 import { supabase } from "../../lib/supabase.js";
 import { useAuth } from "../../contexts/AuthContext.jsx";
+import { optionsText } from "../../lib/productOptions.js";
 
 const cv = "-apple-system,BlinkMacSystemFont,'Segoe UI',Roboto,sans-serif";
 
@@ -254,7 +255,7 @@ export default function KitchenPage() {
             )}
 
             {t.items.map(it => {
-              const opts = it.selected_options ? Object.values(it.selected_options).join(" · ") : null;
+              const opts = optionsText(it.selected_options);
               const itemColor = it.kitchen_status === "ready" ? "#3ECF8E"
                               : it.kitchen_status === "preparing" ? "#E07A3E"
                               : "#F0EDE8";

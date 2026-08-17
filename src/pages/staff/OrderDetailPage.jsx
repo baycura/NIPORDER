@@ -2,6 +2,7 @@ import { useEffect, useState } from "react";
 import { useParams, useNavigate } from "react-router-dom";
 import { supabase } from "../../lib/supabase.js";
 import { happyHourPrices } from "../../lib/happyHour.js";
+import { optionsText } from "../../lib/productOptions.js";
 
 const cv = "-apple-system,BlinkMacSystemFont,'Segoe UI',Roboto,sans-serif";
 
@@ -311,7 +312,7 @@ export default function OrderDetailPage() {
       <div style={{marginBottom:14}}>
         {items.length === 0 && <div style={{color:"#666",fontSize:12,textAlign:"center",padding:20}}>Henüz ürün yok. Aşağıdan ekle.</div>}
         {items.map(it => {
-          const opts = it.selected_options ? Object.values(it.selected_options).join(" · ") : null;
+          const opts = optionsText(it.selected_options);
           const prod = products.find(p => p.id === it.product_id);
           const statusColor = it.kitchen_status === "ready" ? "#3ECF8E"
                             : it.kitchen_status === "preparing" ? "#E07A3E"
