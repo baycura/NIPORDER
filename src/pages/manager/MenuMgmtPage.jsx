@@ -96,7 +96,7 @@ export default function MenuMgmtPage() {
     setProdForm({
       name:"", name_en:"", name_ru:"", brand:"", description:"", description_en:"", description_ru:"", price:'', instant_discount_pct:'', hh_enabled:false, hh_price:'', hh_start:'', hh_end:'', hh_days:[0,1,2,3,4,5,6],
       sold_out_today:false, unavailable_reason:"",
-      show_in_party_menu:false, store_id:"", kitchen_destination_store_id:"", is_available:true, prep_time_minutes:null, show_prep_time:false,
+      show_in_party_menu:false, kitchen_consignment:false, store_id:"", kitchen_destination_store_id:"", is_available:true, prep_time_minutes:null, show_prep_time:false,
       currency:"TRY", price_eur:"", shop_group:"",
       category_id: selectedCat,
       has_options:false,
@@ -113,7 +113,7 @@ export default function MenuMgmtPage() {
       sold_out_today:!!p.sold_out_today,
       unavailable_reason:p.unavailable_reason||"",
       currency: p.currency || "TRY", price_eur: p.price_eur ?? "", shop_group: p.shop_group || "",
-      show_in_party_menu:!!p.show_in_party_menu, store_id:p.store_id||"", additional_store_ids:Array.isArray(p.additional_store_ids)?p.additional_store_ids:[], hh_enabled:!!p.hh_enabled, hh_price:p.hh_price??'', hh_start:p.hh_start||'', hh_end:p.hh_end||'', hh_days:Array.isArray(p.hh_days)?p.hh_days:[0,1,2,3,4,5,6], kitchen_destination_store_id:p.kitchen_destination_store_id||"",
+      show_in_party_menu:!!p.show_in_party_menu, kitchen_consignment:!!p.kitchen_consignment, store_id:p.store_id||"", additional_store_ids:Array.isArray(p.additional_store_ids)?p.additional_store_ids:[], hh_enabled:!!p.hh_enabled, hh_price:p.hh_price??'', hh_start:p.hh_start||'', hh_end:p.hh_end||'', hh_days:Array.isArray(p.hh_days)?p.hh_days:[0,1,2,3,4,5,6], kitchen_destination_store_id:p.kitchen_destination_store_id||"",
       prep_time_minutes:p.prep_time_minutes||null,
       show_prep_time:!!p.show_prep_time,
       is_available:p.is_available!==false,
@@ -152,6 +152,7 @@ export default function MenuMgmtPage() {
       sold_out_today: prodForm.sold_out_today,
       unavailable_reason: prodForm.unavailable_reason?.trim() || null,
       show_in_party_menu: prodForm.show_in_party_menu,
+      kitchen_consignment: !!prodForm.kitchen_consignment,
       store_id: prodForm.store_id || staffUser?.store_ids?.[0],
       additional_store_ids: prodForm.additional_store_ids || [],
       hh_enabled: !!prodForm.hh_enabled,
@@ -330,6 +331,7 @@ export default function MenuMgmtPage() {
                 {p.sold_out_today && <span style={{fontSize:9,padding:"2px 6px",background:"#552222",color:"#FFB0B0",borderRadius:6,fontWeight:700}}>TUKENDI</span>}
                 {p.show_in_party_menu && <span style={{fontSize:9,padding:"2px 6px",background:"#3D2D5C",color:"#D0B0FF",borderRadius:6,fontWeight:700}}>PARTI</span>}
                 {p.has_options && <span style={{fontSize:9,padding:"2px 6px",background:"#2D3D5C",color:"#B0D0FF",borderRadius:6,fontWeight:700}}>SEÇENEKLI</span>}
+                {p.kitchen_consignment && <span style={{fontSize:9,padding:"2px 6px",background:"#1F3D2A",color:"#9FE3B4",borderRadius:6,fontWeight:700}}>MUTFAK</span>}
                 {p.instant_discount_pct > 0 && <span style={{fontSize:9,padding:"2px 6px",background:"#3D2D18",color:"#FFD088",borderRadius:6,fontWeight:700}}>-%{p.instant_discount_pct}</span>}
               </div>
               {p.description && <div style={{fontSize:11,color:"#888",marginTop:3}}>{p.description}</div>}
@@ -549,6 +551,15 @@ export default function MenuMgmtPage() {
             <input type="checkbox" checked={!!prodForm.show_in_party_menu} onChange={e=>setProdForm({...prodForm,show_in_party_menu:e.target.checked})}/>
             <span style={{fontSize:13,color:"#F0EDE8"}}>Sadece parti menüsünde</span>
           </label>
+
+          <label style={{display:"flex",alignItems:"flex-start",gap:8,marginBottom:4,cursor:"pointer"}}>
+            <input type="checkbox" checked={!!prodForm.kitchen_consignment} onChange={e=>setProdForm({...prodForm,kitchen_consignment:e.target.checked})} style={{marginTop:3}}/>
+            <span style={{fontSize:13,color:"#F0EDE8"}}>🥙 NIP Kitchen envanteri</span>
+          </label>
+          <div style={{fontSize:10,color:"#777",marginBottom:12,marginLeft:24,lineHeight:1.5}}>
+            Mutfak hazırlıyor, maliyetini biz tutmuyoruz ve kâr etmiyoruz. Satış tutarı ay sonu mutfağa ödenir.
+            Reçete ekranında çıkmaz, kâr hesabına girmez, raporda ayrı gösterilir.
+          </div>
 
           <label style={{display:"flex",alignItems:"center",gap:8,marginBottom:12,cursor:"pointer"}}>
             <input type="checkbox" checked={prodForm.is_available!==false} onChange={e=>setProdForm({...prodForm,is_available:e.target.checked})}/>
