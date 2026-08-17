@@ -68,6 +68,9 @@ const T = {
     partyMode: "PARTİ MODU",
     category_empty: "Bu kategoride ürün yok",
     all_group: "Tümü",
+    order_hours: "sipariş saatleri",
+    order_between: "arası sipariş verilebilir",
+    closed_now: "Şu an bu saatler dışındasın",
     multi_select: "birden fazla seçebilirsin",
     other_group: "Diğer",
     sold_out: "Tükendi",
@@ -118,6 +121,9 @@ const T = {
     partyMode: "PARTY MODE",
     category_empty: "No products in this category",
     all_group: "All",
+    order_hours: "ordering hours",
+    order_between: "for ordering",
+    closed_now: "Outside ordering hours right now",
     multi_select: "choose more than one",
     other_group: "Other",
     sold_out: "Sold out",
@@ -168,6 +174,9 @@ const T = {
     partyMode: "PARTY MODE",
     category_empty: "В этой категории пока нет позиций",
     all_group: "Все",
+    order_hours: "часы заказа",
+    order_between: "приём заказов",
+    closed_now: "Сейчас вне часов заказа",
     multi_select: "можно выбрать несколько",
     other_group: "Другое",
     sold_out: "Закончилось",
@@ -699,14 +708,40 @@ export default function CustomerMenu() {
     } catch (e) {}
   };
 
-  // Menude gorunen tum kategoriler (ust + alt). Saat penceresi her ikisine de isler.
-  const menuCategories = useMemo(() => {
-    return categories.filter(c => {
-      if (c.show_in_shop) return false; // raf urunleri Menu'de degil Shop sekmesinde
-      if (c.available_from && c.available_until && !isInRange(now, c.available_from, c.available_until)) return false;
-      return true;
-    });
-  }, [categories, now]);
+  // Menude gorunen tum kategoriler (ust + alt).
+  const menuCategories = useMemo(
+    () => categories.filter(c => !c.show_in_shop), // raf urunleri Menu'de degil Shop sekmesinde
+    [categories]);
+
+  // SIPARIS SAATI: kategorinin available_from/until araligi. Kategori GIZLENMEZ —
+  // menu her saat okunabilir; saat disinda urunler silik gorunur ve "+" calismaz.
+  // (Tamamen gizlemek icin Kategori Zamanlama kurallari var, o ayri bir sey.)
+  const catById = useMemo(() => {
+    const m = {};
+    for (const c of categories) m[c.id] = c;
+    return m;
+  }, [categories]);
+  const orderWindow = (catId) => {
+    const c = catById[catId];
+    return (c?.available_from && c?.available_until) ? { from: c.available_from, until: c.available_until } : null;
+  };
+  const hhmm = (s) => String(s || "").slice(0, 5);
+  const windowText = (w) => w ? `${hhmm(w.from)} – ${hhmm(w.until)}` : "";
+  const closedNow = (catId) => {
+    const w = orderWindow(catId);
+    return w ? !isInRange(now, w.from, w.until) : false;
+  };
+
+  // Bir urun su an sepete eklenebilir mi? Iki sebeple hayir olabilir:
+  // kategorisinin siparis saati disindayiz ya da zamanlama kurali onu soldurmus.
+  // Eskiden solmus urunun "+" butonu yine calisiyordu — mutfak kapaliyken
+  // siparis gecebiliyordu.
+  const blockedInfo = (p) => {
+    const w = orderWindow(p.category_id);
+    if (w && !isInRange(now, w.from, w.until)) return { start: w.from, end: w.until, window: true };
+    const f = fadedProdInfo[p.id];
+    return f ? { ...f, window: false } : null;
+  };
 
   // Ust sekmeler: parent_id bos olanlar. Ust kategorisi bu listede olmayan bir
   // alt kategori de sekme olur — aksi halde hicbir yerde gorunmezdi. (Doner
@@ -777,16 +812,19 @@ export default function CustomerMenu() {
     };
     const inCat = (id) => party(products.filter(p => p.category_id === id));
 
-    if (activeSubs.length === 0) return [{ key: selectedCat, title: null, items: inCat(selectedCat) }];
-    if (selectedSub === "__diger") return [{ key: "__diger", title: null, items: inCat(selectedCat) }];
+    // hours: bolum basliginin altinda gorunen siparis saati araligi
+    const sec = (key, title, catId, items) => ({ key, title, items, hours: windowText(orderWindow(catId)) });
+
+    if (activeSubs.length === 0) return [sec(selectedCat, null, selectedCat, inCat(selectedCat))];
+    if (selectedSub === "__diger") return [sec("__diger", null, selectedCat, inCat(selectedCat))];
     if (selectedSub) {
       const sc = activeSubs.find(c => c.id === selectedSub);
-      return [{ key: selectedSub, title: null, items: sc ? inCat(sc.id) : [] }];
+      return [sec(selectedSub, null, selectedSub, sc ? inCat(sc.id) : [])];
     }
-    const secs = activeSubs.map(sc => ({ key: sc.id, title: cName(sc), items: inCat(sc.id) }));
-    if (hasDirect) secs.push({ key: "__diger", title: t.other_group, items: inCat(selectedCat) });
+    const secs = activeSubs.map(sc => sec(sc.id, cName(sc), sc.id, inCat(sc.id)));
+    if (hasDirect) secs.push(sec("__diger", t.other_group, selectedCat, inCat(selectedCat)));
     return secs.filter(s => s.items.length > 0);
-  }, [products, selectedCat, selectedSub, partyMode, activeSubs, hasDirect, lang]);
+  }, [products, selectedCat, selectedSub, partyMode, activeSubs, hasDirect, lang, categories, now]);
 
   const visibleProducts = useMemo(
     () => productSections.flatMap(s => s.items),
@@ -836,6 +874,9 @@ export default function CustomerMenu() {
   const onProductTap = (p) => {
     unlockAudio();
     if (p.sold_out_today) { alert(t.sold_out_alert + (p.unavailable_reason || "")); return; }
+    // Saat disinda "+" zaten gorunmuyor; yine de tek kapi olsun
+    const blk = blockedInfo(p);
+    if (blk) { alert(`${hhmm(blk.window ? blk.start : blk.end)} – ${hhmm(blk.window ? blk.end : blk.start)} ${t.order_between}`); return; }
     if (p.has_options && p.options_config) {
       setOptModal(p); setOptSelected({}); setOptNote("");
     } else { addToCart(p, null, null); }
@@ -1422,11 +1463,16 @@ export default function CustomerMenu() {
         {sec.title && (
           <div style={{fontSize:10,fontWeight:800,letterSpacing:"1.5px",color:"#999",textTransform:"uppercase",padding:"18px 0 2px"}}>{sec.title}</div>
         )}
+        {sec.hours && (
+          <div style={{fontSize:11,color:"#a0a0a0",fontWeight:600,padding:sec.title?"0 0 6px":"14px 0 6px"}}>
+            🕐 {sec.hours} · {t.order_hours}
+          </div>
+        )}
         {sec.items.map(p => {
           const fp = calcPrice(p);
           const dis = fp < Number(p.price);
-          const fadedInfo = fadedProdInfo[p.id];
-          const isFaded = !!fadedInfo;
+          const blocked = blockedInfo(p);
+          const isFaded = !!blocked;
           const soldOut = p.sold_out_today;
           const cartIdx = cart.findIndex(c => c.product.id === p.id && !c.options);
           const inCart = cartIdx >= 0 ? cart[cartIdx].quantity : 0;
@@ -1435,7 +1481,13 @@ export default function CustomerMenu() {
               <div style={{flex:1,minWidth:0}}>
                 <div style={{fontSize:15,fontWeight:700,color:"#000",lineHeight:1.3}}>{pName(p)}</div>
                 {pDesc(p) && <div style={{fontSize:12,color:"#666",marginTop:3,lineHeight:1.4}}>{pDesc(p)}</div>}
-                {isFaded && fadedInfo && <div style={{fontSize:11,color:"#C8973E",marginTop:3,fontWeight:600}}>{L("","Available ","Доступно ")}{fadedInfo.end.slice(0,5)} - {fadedInfo.start.slice(0,5)}{L(" arası mevcut","","")}</div>}
+                {blocked && (
+                  <div style={{fontSize:11,color:"#C8973E",marginTop:3,fontWeight:600}}>
+                    {blocked.window
+                      ? `${hhmm(blocked.start)} – ${hhmm(blocked.end)} ${t.order_between}`
+                      : `${hhmm(blocked.end)} – ${hhmm(blocked.start)} ${t.order_between}`}
+                  </div>
+                )}
                 {p.show_prep_time && p.prep_time_minutes && <div style={{fontSize:12,color:"#888",marginTop:4,display:"flex",alignItems:"center",gap:4}}>⏱ <span>~{p.prep_time_minutes} {L("dk","min","мин")}</span></div>}
                 {soldOut && <div style={{fontSize:11,color:"#c44",marginTop:4,fontWeight:600}}>{p.unavailable_reason || t.sold_out}</div>}
                 {p.has_options && !soldOut && <div style={{fontSize:10,color:"#C8973E",marginTop:3,fontWeight:700,letterSpacing:"0.5px"}}>{t.optional}</div>}
@@ -1448,7 +1500,7 @@ export default function CustomerMenu() {
                   {memberPriceFor(p) != null && memberPriceFor(p) <= fp && <span style={{fontSize:9,padding:"2px 6px",background:"#000",color:"#FFD700",borderRadius:6,fontWeight:800,letterSpacing:"0.5px"}}>{L("SANA ÖZEL","YOUR PRICE","ВАША ЦЕНА")}</span>}
                 </div>
               </div>
-              {!soldOut && (
+              {!soldOut && !isFaded && (
                 <div style={{display:"flex",alignItems:"center",flexShrink:0}}>
                   {inCart > 0 && !p.has_options ? (
                     <div style={{display:"flex",alignItems:"center",gap:8,background:"#000",borderRadius:24,padding:"4px 6px"}}>

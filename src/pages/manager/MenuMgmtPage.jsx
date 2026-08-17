@@ -360,8 +360,13 @@ export default function MenuMgmtPage() {
             <div style={{fontSize:10,color:"#777",marginTop:4}}>Secilirse ust kategorinin icinde alt secim olarak gorunur, ust menude yer kaplamaz.</div>
           </Field>
           <div style={{display:"flex",gap:8}}>
-            <Field label="BASLANGIC SAATI"><input type="time" value={catForm.available_from||""} onChange={e=>setCatForm({...catForm,available_from:e.target.value})} style={inputS}/></Field>
-            <Field label="BITIS SAATI"><input type="time" value={catForm.available_until||""} onChange={e=>setCatForm({...catForm,available_until:e.target.value})} style={inputS}/></Field>
+            <Field label="SİPARİŞ SAATİ — BAŞLANGIÇ"><input type="time" value={catForm.available_from||""} onChange={e=>setCatForm({...catForm,available_from:e.target.value})} style={inputS}/></Field>
+            <Field label="SİPARİŞ SAATİ — BİTİŞ"><input type="time" value={catForm.available_until||""} onChange={e=>setCatForm({...catForm,available_until:e.target.value})} style={inputS}/></Field>
+          </div>
+          <div style={{fontSize:10,color:"#777",marginTop:-6,marginBottom:12,lineHeight:1.5}}>
+            Menü her saat okunur; bu aralığın dışında ürünler silik görünür ve sipariş butonu çalışmaz.
+            Başlığın altında aralık yazar. Boş bırakırsan kısıt yoktur.<br/>
+            Kategoriyi tamamen <b>gizlemek</b> için Kategori Zamanlama sayfasını kullan.
           </div>
           <label style={{display:"flex",alignItems:"center",gap:8,marginBottom:12,cursor:"pointer"}}>
             <input type="checkbox" checked={catForm.show_in_party_menu!==false} onChange={e=>setCatForm({...catForm,show_in_party_menu:e.target.checked})}/>
