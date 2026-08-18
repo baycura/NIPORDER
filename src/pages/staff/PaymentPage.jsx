@@ -5,6 +5,17 @@ import { useAuth } from "../../contexts/AuthContext.jsx";
 
 const cv = "-apple-system,BlinkMacSystemFont,'Segoe UI',Roboto,sans-serif";
 
+// Hesabin ne kadar suredir acik oldugu. 12 saati gecen hesap "unutulmus" sayilir.
+const BAYAT_SAAT = 12;
+const saatFarki = (iso) => {
+  const dk = Math.floor((Date.now() - new Date(iso).getTime()) / 60000);
+  if (dk < 60) return dk + " dk önce açıldı";
+  const sa = Math.floor(dk / 60);
+  if (sa < 24) return sa + " saat önce açıldı";
+  return Math.floor(sa / 24) + " gün önce açıldı";
+};
+const bayatMi = (iso) => (Date.now() - new Date(iso).getTime()) > BAYAT_SAAT * 3600 * 1000;
+
 export default function PaymentPage() {
   const navigate = useNavigate();
   const { staffUser } = useAuth();
@@ -34,6 +45,17 @@ export default function PaymentPage() {
     setLoading(false);
   };
   useEffect(() => { load(); }, []);
+
+  // Unutulmus hesap: gun icinde kapatilmayip ekranda kalan siparis. Odeme
+  // alinmadigi icin "tahsil et" yanlis olur; kasa gecmisine sahte ciro yazmasin
+  // diye iptal ediyoruz. Silmiyoruz — kalemler ve saat kaydi duruyor.
+  const cancelOrder = async (o) => {
+    const nerede = o.table_id ? (tables[o.table_id] || "Masa") : (o.customer_name || "Misafir");
+    if (!confirm(`"${nerede}" hesabı iptal edilsin mi?\n₺${o.total || 0} · ${saatFarki(o.created_at)}\n\nCiroya YAZILMAZ. Ödeme alındıysa bunun yerine "Tahsil Et" kullan.`)) return;
+    const { error } = await supabase.from("orders").update({ status: "cancelled" }).eq("id", o.id);
+    if (error) { alert("İptal edilemedi: " + error.message); return; }
+    setOrders(prev => prev.filter(x => x.id !== o.id));
+  };
 
   const openPay = (o) => {
     setModal(o); setMethod("cash"); setAmount(String(o.total || 0));
@@ -106,7 +128,11 @@ export default function PaymentPage() {
   return (
     <div style={{fontFamily:cv,color:"#F0EDE8"}}>
       <div style={{fontSize:24,fontWeight:800,marginBottom:4}}>Kasa</div>
-      <div style={{fontSize:11,color:"#888",letterSpacing:"1px",marginBottom:18}}>{orders.length} BEKLEYEN HESAP</div>
+      <div style={{fontSize:11,color:"#888",letterSpacing:"1px",marginBottom:18}}>
+        {orders.length} BEKLEYEN HESAP
+        {orders.filter(o => bayatMi(o.created_at)).length > 0 &&
+          <span style={{color:"#C8973E"}}> · {orders.filter(o => bayatMi(o.created_at)).length} UNUTULMUŞ</span>}
+      </div>
 
       {orders.length === 0 && <div style={{textAlign:"center",padding:40,color:"#666",fontSize:13}}>Bekleyen hesap yok</div>}
 
@@ -115,15 +141,22 @@ export default function PaymentPage() {
         const storeSlug = o.stores?.slug;
         const storeBadge = storeSlug === "doner" ? "🥙 DÖNER" : storeSlug === "paris" ? "🗼 PARIS" : null;
         const storeBadgeColor = storeSlug === "doner" ? "#C8973E" : "#3ECF8E";
+        const eski = bayatMi(o.created_at);
         return (
-          <div key={o.id} style={{background:"#1A1A1A",border:"1px solid #2A2A2A",borderRadius:10,padding:14,marginBottom:8,display:"flex",alignItems:"center",gap:12}}>
+          <div key={o.id} style={{background:"#1A1A1A",border:"1px solid "+(eski?"#4A3A1A":"#2A2A2A"),borderRadius:10,padding:14,marginBottom:8,display:"flex",alignItems:"center",gap:12}}>
             <div style={{flex:1,minWidth:0}}>
               {storeBadge && <div style={{display:"inline-block",background:storeBadgeColor,color:"#000",padding:"2px 8px",borderRadius:6,fontSize:10,fontWeight:800,letterSpacing:"0.5px",marginBottom:4}}>{storeBadge}</div>}
               <div style={{fontSize:14,fontWeight:700,color:"#F0EDE8"}}>{where}</div>
-              <div style={{fontSize:11,color:"#888",marginTop:2}}>{new Date(o.created_at).toLocaleTimeString("tr-TR", {hour:"2-digit", minute:"2-digit"})}</div>
+              <div style={{fontSize:11,color: eski ? "#C8973E" : "#888",marginTop:2}}>
+                {new Date(o.created_at).toLocaleTimeString("tr-TR", {hour:"2-digit", minute:"2-digit"})}
+                {eski && " · ⏳ " + saatFarki(o.created_at)}
+              </div>
             </div>
             <div style={{fontSize:16,fontWeight:800,color:"#F0EDE8"}}>₺{o.total || 0}</div>
-            <button onClick={() => openPay(o)} style={{padding:"8px 14px",background:"#3ECF8E",color:"#000",border:"none",borderRadius:8,fontSize:12,fontWeight:800,cursor:"pointer"}}>Tahsil Et</button>
+            <div style={{display:"flex",flexDirection:"column",gap:5}}>
+              <button onClick={() => openPay(o)} style={{padding:"8px 14px",background:"#3ECF8E",color:"#000",border:"none",borderRadius:8,fontSize:12,fontWeight:800,cursor:"pointer"}}>Tahsil Et</button>
+              {eski && <button onClick={() => cancelOrder(o)} style={{padding:"6px 14px",background:"transparent",color:"#a06060",border:"1px solid #553333",borderRadius:8,fontSize:11,fontWeight:700,cursor:"pointer"}}>İptal</button>}
+            </div>
           </div>
         );
       })}
