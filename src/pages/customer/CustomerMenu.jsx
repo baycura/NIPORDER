@@ -367,6 +367,16 @@ export default function CustomerMenu() {
   const storeSlugParam = (searchParams.get("store") || "paris").toLowerCase();
   const [currentStoreId, setCurrentStoreId] = useState(null);
 
+  // Karsilama ekrani: cihaz basina BIR KEZ. Masadaki QR'i okutan musteri her
+  // seferinde duvarla karsilasmasin — bir dokunusla gecilir ve bir daha cikmaz.
+  const [showWelcome, setShowWelcome] = useState(() => {
+    try { return !localStorage.getItem("nip_welcome_seen"); } catch (e) { return false; }
+  });
+  const dismissWelcome = () => {
+    try { localStorage.setItem("nip_welcome_seen", "1"); } catch (e) {}
+    setShowWelcome(false);
+  };
+
   const [lang, setLang] = useState(() => {
     // Ilk giris Ingilizce (turist agirlikli); musteri TR/RU secerse hatirlanir
     try { return localStorage.getItem("nip_lang") || "en"; } catch (e) { return "en"; }
@@ -1014,6 +1024,61 @@ export default function CustomerMenu() {
       <button onClick={() => setLanguage("ru")} style={{padding:"10px 16px",minWidth:48,minHeight:36,background:lang==="ru"?"#000":"transparent",color:lang==="ru"?"#fff":"#666",border:"none",borderRadius:14,fontSize:11,fontWeight:700,cursor:"pointer"}}>🇷🇺 RU</button>
     </div>
   );
+
+  if (!loading && showWelcome) {
+    // Karsilama: beyaz zemin, kucuk siyah bisiklet, tek buyuk cumle.
+    // Vurgulanan kelime Fransiz bayragi mavisi (#0055A4) — "Not in Paris"
+    // adiyla oynayan tek seferlik bir saka, o yuzden altin degil.
+    const W = {
+      tr: { h: ["BU SADECE", "BİR MENÜ", "DEĞİL."],
+            p1: "Sürüşleri görebilir, etkinlikler için rezervasyon yapabilir, yarının kahve çekirdeğini seçebilir ve mağazadaki ürünler hakkında bilgi alabilirsin.",
+            p2: "Üye olup puan biriktirebilir, üyelere özel happy hour indirimlerinden yararlanabilirsin.",
+            go: "Başla" },
+      en: { h: ["THIS IS", "NOT JUST", "A MENU."],
+            p1: "See the rides, book a place at events, pick tomorrow’s coffee beans and read up on everything in the shop.",
+            p2: "Become a member to collect points and use the members-only happy hour discounts.",
+            go: "Start" },
+      ru: { h: ["ЭТО", "НЕ ПРОСТО", "МЕНЮ."],
+            p1: "Смотрите заезды, бронируйте места на события, выбирайте кофе на завтра и узнавайте о товарах магазина.",
+            p2: "Станьте участником: копите баллы и пользуйтесь скидками happy hour.",
+            go: "Начать" },
+    }[lang] || {};
+    // Baslik marka yazi tipiyle: Coolvetica Heavy Compressed'te hem Turkce
+    // hem Kiril harfler var (790 glif), yani uc dil de ayni yuzle yaziliyor.
+    // Rusca kelimeler uzun oldugu icin punto bir tik dusuruluyor.
+    const headFont = {
+      fontFamily: "'Coolvetica Heavy','Bebas Neue','Barlow Condensed',Impact,sans-serif",
+      fontWeight: 400, fontSize: lang === "ru" ? 54 : 62,
+      lineHeight: 0.92, letterSpacing: "0.005em", textTransform: "uppercase",
+    };
+    return (
+      <div className="nip-customer" style={{fontFamily:cv,background:"#fff",color:"#101214",minHeight:"100vh",display:"flex",flexDirection:"column",justifyContent:"space-between",padding:"34px 28px",maxWidth:520,margin:"0 auto"}}>
+        <img src="/icons/logo-mark.png" alt="Not in Paris" style={{width:38,height:"auto"}}/>
+
+        <div>
+          <div style={headFont}>
+            {W.h?.[0]}<br/>{W.h?.[1]}<br/><span style={{color:"#0055A4"}}>{W.h?.[2]}</span>
+          </div>
+          <div style={{fontWeight:300,fontSize:15.5,lineHeight:1.62,color:"#2B3138",marginTop:24}}>{W.p1}</div>
+          <div style={{fontWeight:300,fontSize:14,lineHeight:1.62,color:"#6B7278",marginTop:14,paddingTop:14,borderTop:"1px solid #E9EBED"}}>{W.p2}</div>
+        </div>
+
+        <div>
+          <div style={{display:"flex",gap:16,marginBottom:16}}>
+            {["tr","en","ru"].map(k => (
+              <button key={k} onClick={() => setLanguage(k)}
+                style={{background:"none",border:"none",padding:"4px 0",cursor:"pointer",fontFamily:"inherit",
+                        fontSize:11,letterSpacing:"0.12em",fontWeight:700,
+                        color:lang===k?"#101214":"#B8BCC1"}}>{k.toUpperCase()}</button>
+            ))}
+          </div>
+          <button onClick={dismissWelcome} style={{width:"100%",padding:17,borderRadius:999,background:"#101214",color:"#fff",border:"none",fontSize:15,fontWeight:700,letterSpacing:"0.02em",cursor:"pointer",fontFamily:"inherit"}}>
+            {W.go}
+          </button>
+        </div>
+      </div>
+    );
+  }
 
   if (loading) {
     // Acilis ekrani: beyaz zeminde siyah bisiklet, hafifce nabiz atar.
