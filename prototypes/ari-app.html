@@ -166,6 +166,10 @@ select.inp{appearance:none;-webkit-appearance:none;padding-right:38px;
 .addrow button{width:46px;border-radius:10px;background:var(--y);color:#000;font-size:22px;flex-shrink:0;}
 
 /* ─ istatistik ─ */
+.rank{width:22px;flex-shrink:0;text-align:center;font-size:13px;font-weight:700;color:var(--t4);}
+.rank.lead{color:var(--y);}
+.meter{display:block;height:3px;border-radius:2px;background:var(--s4);margin-top:7px;overflow:hidden;}
+.meter i{display:block;height:100%;background:var(--y);border-radius:2px;}
 .stats{display:flex;background:var(--s2);border-radius:14px;padding:14px 10px;}
 .stats>div{flex:1;text-align:center;border-left:1px solid var(--line);}
 .stats>div:first-child{border-left:none;}
@@ -488,6 +492,39 @@ function openTaskCount(){
     return !t.done && (!t.assignee || t.assignee === me.id || me.role === "patron");
   }).length;
 }
+/* PUAN — yalnızca yöneticinin gördüğü verimlilik ölçüsü.
+   İsme atanan işi o kişi yaptı ....... 1  (zaten onun işiydi)
+   İsme atanan işi başkası yaptı ...... 2  (devraldı, kapattı)
+   Ortaya atılan işi biri aldı ........ 3  (inisiyatif)
+   Türetilmiş değer: görev geri alınınca puan da kendiliğinden düşer. */
+function taskPoints(t){
+  if (!t.done || !t.doneBy) return 0;
+  if (!t.assignee) return 3;
+  return t.doneBy === t.assignee ? 1 : 2;
+}
+function localDay(iso){
+  var d = new Date(iso);
+  return isNaN(d.getTime()) ? "" : key(d.getFullYear(), d.getMonth(), d.getDate());
+}
+function perfRows(period){
+  var start = null;
+  if (period === "month"){ var n = new Date(); start = key(n.getFullYear(), n.getMonth(), 1); }
+  var byId = {}, rows = S.users.map(function(u){
+    var r = { u:u, pts:0, done:0, own:0, open:0, taken:0, self:0 };
+    byId[u.id] = r; return r;
+  });
+  S.tasks.forEach(function(t){
+    if (!t.done || !t.doneBy) return;
+    if (start && localDay(t.doneAt) < start) return;
+    var r = byId[t.doneBy]; if (!r) return;
+    r.pts += taskPoints(t); r.done++;
+    if (!t.assignee){ r.open++; if (t.createdBy === t.doneBy) r.self++; }
+    else if (t.assignee === t.doneBy) r.own++;
+    else r.taken++;
+  });
+  return rows.sort(function(a,b){ return (b.pts - a.pts) || (b.done - a.done); });
+}
+
 var STATUS = {
   plan: { label:"Planlandı",  cls:"n" },
   out:  { label:"Sahada",     cls:"o" },
@@ -705,7 +742,7 @@ function tasksView(){
     var late = !t.done && t.due && t.due < todayKey();
     var meta = [
       t.desc || "",
-      who || "",
+      who || (t.done ? "" : "ortada"),
       t.done ? relTime(t.doneAt) + (t.doneBy ? " · " + userName(t.doneBy) : "")
              : (t.due ? shortDate(t.due) : "")
     ].filter(Boolean).map(h).join(" · ");
@@ -714,6 +751,7 @@ function tasksView(){
       + (t.done ? TICK : "") + '</span>'
       + '<span class="gr"><span class="p1"' + (t.done ? ' style="color:var(--t3);text-decoration:line-through"' : '') + '>'
       + h(t.title) + '</span><span class="p2">' + meta + '</span></span>'
+      + (!t.done && !t.assignee ? '<span class="pill y">ortada</span>' : '')
       + (late ? '<span class="pill r">gecikti</span>' : '')
       + (me.role === "patron" && !readOnly
           ? '<button class="iconbtn" data-act="task-edit" data-id="' + h(t.id) + '" aria-label="Düzenle">✎</button>' : '')
@@ -814,7 +852,37 @@ function admView(){
 
   var hasDemo = S.events.some(function(e){ return e.demo; });
 
+  var period = nav.perf === "all" ? "all" : "month";
+  var rows = perfRows(period);
+  var top = rows[0] && rows[0].pts > 0 ? rows[0].pts : 0;
+  var perf = '<div class="sec">Verimlilik</div><div class="wrap">'
+    + '<div class="chips" style="margin-bottom:10px">'
+    + '<button class="chip' + (period === "month" ? " on" : "") + '" data-act="perf-period" data-k="month">Bu ay</button>'
+    + '<button class="chip' + (period === "all" ? " on" : "") + '" data-act="perf-period" data-k="all">Tümü</button>'
+    + '</div><div class="card">'
+    + rows.map(function(r, ix){
+        var parts = [];
+        if (r.own) parts.push(r.own + " kendi işi");
+        if (r.open) parts.push(r.open + " ortadan");
+        if (r.taken) parts.push(r.taken + " devraldı");
+        var line = parts.length ? parts.join(" · ") : "tamamlanan iş yok";
+        if (r.self) line += " · kendi açtığı " + r.self;
+        return '<div class="row">'
+          + '<span class="rank num' + (ix === 0 && r.pts > 0 ? " lead" : "") + '">' + (ix + 1) + '</span>'
+          + '<span class="gr"><span class="p1">' + h(r.u.name)
+          + (r.u.role === "patron" ? ' <span class="pill n">yönetici</span>' : '') + '</span>'
+          + '<span class="p2">' + h(line) + '</span>'
+          + '<span class="meter"><i style="width:' + (top ? Math.round(r.pts / top * 100) : 0) + '%"></i></span></span>'
+          + '<span class="rt"><span class="p1 num" style="font-weight:700;color:'
+          + (r.pts ? "var(--y)" : "var(--t4)") + '">' + r.pts + '</span>'
+          + '<span class="p2">puan</span></span></div>';
+      }).join("")
+    + '</div>'
+    + '<p class="note">Puan yalnızca bu ekranda görünür; ekip kendi puanını görmez. '
+    + 'İsme atanan işi sahibi yaparsa 1, başkası devralırsa 2, ortaya atılan işi biri alırsa 3 puan.</p></div>';
+
   return '<div class="head"><h1 class="title">Yönetici</h1></div>'
+    + perf
     + '<div class="sec">Etkinlikler</div><div class="wrap"><div class="card">'
     + '<button class="row tap" data-act="ev-new"><span class="avatar" style="background:var(--yd);color:var(--y)">+</span>'
     + '<span class="gr"><span class="p1">Yeni etkinlik</span><span class="p2">Tarih, ekip, rider</span></span>' + CHEV + '</button>'
@@ -1003,7 +1071,7 @@ function sheetTaskForm(s){
     + field("Başlık", '<input class="inp" id="f-title" value="' + h(fv("f-title", t ? t.title : "")) + '" placeholder="örn. CO2 tüplerini doldurt">')
     + field("Açıklama", '<input class="inp" id="f-desc" value="' + h(fv("f-desc", t ? t.desc : "")) + '" placeholder="opsiyonel">')
     + '<div class="two">'
-    + field("Kime", '<select class="inp" id="f-assignee"><option value="">Herkes</option>'
+    + field("Kime", '<select class="inp" id="f-assignee"><option value="">Ortaya — kim alırsa</option>'
         + S.users.map(function(u){
             return '<option value="' + h(u.id) + '"' + (t && t.assignee === u.id ? " selected" : "") + '>'
               + h(u.name) + '</option>'; }).join("") + '</select>')
@@ -1169,6 +1237,7 @@ var ACTIONS = {
   },
 
   /* envanter */
+  "perf-period": function(d){ nav.perf = d.k; render(); },
   "inv-cat": function(d){ nav.cat = d.k; render(); },
   "inv-clear": function(){ nav.q = ""; render(); },
   "inv-open": function(d){ nav.sheet = { type:"item", id:d.id }; render(); },
@@ -1459,7 +1528,7 @@ document.addEventListener("change", function(ev){
 /* ═══════════ açılış ═══════════ */
 function freshNav(){
   var n = new Date();
-  return { tab:"cal", eventId:null, sheet:null, ask:null, q:"", cat:"Tümü",
+  return { tab:"cal", eventId:null, sheet:null, ask:null, q:"", cat:"Tümü", perf:"month",
            calY:n.getFullYear(), calM:n.getMonth() };
 }
 
@@ -1473,7 +1542,7 @@ function boot(){
       nav.tab = saved.tab || nav.tab;
       nav.eventId = saved.eventId || null;
       nav.sheet = saved.sheet || null;
-      nav.q = saved.q || ""; nav.cat = saved.cat || "Tümü";
+      nav.q = saved.q || ""; nav.cat = saved.cat || "Tümü"; nav.perf = saved.perf || "month";
       if (typeof saved.calY === "number") nav.calY = saved.calY;
       if (typeof saved.calM === "number") nav.calM = saved.calM;
     }

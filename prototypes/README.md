@@ -32,6 +32,22 @@ rozetiyle, takvimde kalın sarı çizgiyle ayrışır.
 Başlangıç PIN'leri: Levent `1234` (yönetici) · Ömer `1111` · Berkay `2222` ·
 Sadi `3333` · Emir `4444` · Bolat `5555`. Yönetici > Ekip'ten değiştirilir.
 
+### Görev puanı (yalnızca yönetici görür)
+
+Görevler bir kişiye atanabilir ya da **ortaya** bırakılabilir. Tamamlanan her
+görev puan üretir:
+
+| Durum | Puan |
+|---|---|
+| İsme atanan işi sahibi yaptı | 1 |
+| İsme atanan işi başkası devraldı | 2 |
+| Ortaya atılan işi biri aldı | 3 |
+
+Puanlar Yönetici > Verimlilik'te sıralı olarak görünür; ekip hiçbir yerde puan
+görmez. Görev geri alınırsa puan da düşer (değer saklanmaz, hesaplanır).
+Kırılımda "kendi açtığı" sayısı da yazar — biri kendi açtığı işleri kapatarak
+puan biriktiriyorsa orada görünür.
+
 ### Envanter kuralı
 
 "Sahada" adedi elle girilmez. Bir etkinlik **Yüklendi** işaretlenince rider'ındaki
