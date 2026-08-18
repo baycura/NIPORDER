@@ -33,7 +33,11 @@ import FixedExpensesPage from "./pages/manager/FixedExpensesPage.jsx";
 
 function PrivateRoute({ children, managerOnly = false, adminOnly = false, allowViewer = false, deny = [] }) {
   const { session, staffUser, isManager, isAdmin, isViewer, loading } = useAuth();
-  if (loading) return (<div style={{display:"flex",alignItems:"center",justifyContent:"center",height:"100vh",color:"#888",fontSize:14,letterSpacing:"2px"}}>YUKLENIYOR...</div>);
+  if (loading) return (
+    <div style={{display:"flex",alignItems:"center",justifyContent:"center",height:"100vh",background:"#fff"}}>
+      <img src="/icons/logo-mark.png" alt="" className="nip-splash-mark" style={{width:110,height:"auto"}}/>
+    </div>
+  );
   if (!session || !staffUser) return (<Navigate to="/login" replace />);
   const home = isViewer ? "/reports" : "/tables";
   if (adminOnly && !isAdmin && !(allowViewer && isViewer)) return (<Navigate to={home} replace />);

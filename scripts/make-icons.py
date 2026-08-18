@@ -11,6 +11,8 @@ Uretilenler (public/icons/ altina):
     apple-touch-icon.png    iPhone ana ekran (180)
     favicon-32.png          tarayici sekmesi
     og.png                  link onizlemesi (1200x630, WhatsApp/Instagram/Telegram)
+    logo-mark.png           saydam zeminli siyah logo (acilis ekrani)
+    logo-mark-light.png     saydam zeminli beyaz logo
 
 Neden script: alti ayri boyut ve iki ayri zemin var. Elle yapinca biri hep
 unutuluyor, kisayol ikonu eski logoda kaliyor ve haftalarca fark edilmiyor.
@@ -95,6 +97,15 @@ def main():
 
     make_og(logo).save(os.path.join(OUT, "og.png"), optimize=True)
     print("  ✓ og.png 1200x630")
+
+    # Saydam zeminli isaret: acilis ekrani gibi zemini kendi olan yerlerde
+    # kullanilir, kare ikonun beyaz/siyah kutusu araya girmesin diye.
+    for name, ink in [("logo-mark.png", INK_DARK), ("logo-mark-light.png", INK_LIGHT)]:
+        w, h = logo.size
+        sc = 512 / max(w, h)
+        tint(logo, ink).resize((int(w * sc), int(h * sc)), Image.LANCZOS) \
+            .save(os.path.join(OUT, name), optimize=True)
+        print("  ✓", name)
     print("  zemin:", "koyu" if dark else "açık")
 
 
