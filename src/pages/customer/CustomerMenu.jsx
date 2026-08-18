@@ -1533,7 +1533,7 @@ export default function CustomerMenu() {
         {productSections.map(sec => (
         <div key={sec.key}>
         {sec.title && (
-          <div style={{fontSize:10,fontWeight:800,letterSpacing:"1.5px",color:"#999",textTransform:"uppercase",padding:"18px 0 2px"}}>{sec.title}</div>
+          <div style={{fontSize:15,fontWeight:800,letterSpacing:"0.8px",color:"#000",textTransform:"uppercase",padding:"26px 0 4px"}}>{sec.title}</div>
         )}
         {sec.hours && (
           <div style={{fontSize:11,color:"#a0a0a0",fontWeight:600,padding:sec.title?"0 0 6px":"14px 0 6px"}}>
