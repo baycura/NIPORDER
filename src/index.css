@@ -41,3 +41,14 @@ body {
   padding-top: env(safe-area-inset-top);
   padding-bottom: env(safe-area-inset-bottom);
 }
+
+/* Acilis ekrani: bisiklet isareti hafifce nabiz atar — sayfa donmus gibi
+   gorunmesin. Hareket hassasiyeti olan kullanicida animasyon calismaz. */
+@keyframes nip-pulse {
+  0%, 100% { opacity: 0.35; transform: scale(0.97); }
+  50%      { opacity: 1;    transform: scale(1); }
+}
+.nip-splash-mark { animation: nip-pulse 1.4s ease-in-out infinite; }
+@media (prefers-reduced-motion: reduce) {
+  .nip-splash-mark { animation: none; opacity: 0.9; }
+}

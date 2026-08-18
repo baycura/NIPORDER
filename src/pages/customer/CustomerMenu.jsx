@@ -1016,7 +1016,14 @@ export default function CustomerMenu() {
   );
 
   if (loading) {
-    return (<div className="nip-customer" style={{fontFamily:cv,background:"#fff",minHeight:"100vh",display:"flex",alignItems:"center",justifyContent:"center",color:"#888"}}>...</div>);
+    // Acilis ekrani: beyaz zeminde siyah bisiklet, hafifce nabiz atar.
+    // Animasyon prefers-reduced-motion'da durur (index.css).
+    return (
+      <div className="nip-customer" style={{fontFamily:cv,background:"#fff",minHeight:"100vh",display:"flex",alignItems:"center",justifyContent:"center"}}>
+        <img src="/icons/logo-mark.png" alt="Not in Paris" className="nip-splash-mark"
+             style={{width:120,height:"auto",opacity:0.9}}/>
+      </div>
+    );
   }
 
   if (successOrderId && !browsing) {
