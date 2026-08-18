@@ -122,9 +122,13 @@ export function AuthProvider({ children }) {
   const isViewer  = role === "viewer";
   const isParttime = role === "parttime";
 
+  // Profil formu kaydettikten sonra uygulamanin elindeki musteri de tazelenmeli;
+  // yoksa "ad ve telefon eksik" penceresi kaydedilmis olmasina ragmen kaliyor.
+  const refreshCustomer = (patch) => setCustomer(prev => prev ? { ...prev, ...patch } : prev);
+
   return (
     <AuthContext.Provider value={{
-      session, staffUser, customer, loading,
+      session, staffUser, customer, loading, refreshCustomer,
       signIn, signInWithGoogle, signOut,
       isAdmin, isManager, isWaiter, isKitchen, isCashier, isViewer, isParttime,
     }}>

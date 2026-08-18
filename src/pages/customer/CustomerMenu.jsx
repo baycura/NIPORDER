@@ -4,6 +4,7 @@ import { supabase } from "../../lib/supabase.js";
 import { useAuth } from "../../contexts/AuthContext.jsx";
 import { happyHourPrices } from "../../lib/happyHour.js";
 import { optionMod } from "../../lib/productOptions.js";
+import { PHONE_CODES, toE164 } from "../../lib/phoneCodes.js";
 
 const cv = "-apple-system,BlinkMacSystemFont,'Segoe UI',Roboto,sans-serif";
 
@@ -68,6 +69,15 @@ const T = {
     partyMode: "PARTİ MODU",
     category_empty: "Bu kategoride ürün yok",
     all_group: "Tümü",
+    pf_title: "Birkaç bilgi kaldı",
+    pf_sub: "Siparişin hazır olduğunda sana ulaşabilmemiz için adını ve telefonunu alalım.",
+    pf_first: "Adın", pf_last: "Soyadın", pf_phone: "Telefon numaran", pf_country: "Ülke kodu",
+    pf_save: "Kaydet ve devam et", pf_saving: "Kaydediliyor...",
+    pf_signout: "Vazgeç, çıkış yap",
+    pf_need_first: "Adını yazar mısın?",
+    pf_need_last: "Soyadını yazar mısın?",
+    pf_need_phone: "Telefon numaranı kontrol eder misin?",
+    pf_error: "Kaydedilemedi:",
     order_hours: "sipariş saatleri",
     order_between: "arası sipariş verilebilir",
     closed_now: "Şu an bu saatler dışındasın",
@@ -121,6 +131,15 @@ const T = {
     partyMode: "PARTY MODE",
     category_empty: "No products in this category",
     all_group: "All",
+    pf_title: "One last thing",
+    pf_sub: "We need your name and phone so we can reach you when your order is ready.",
+    pf_first: "First name", pf_last: "Last name", pf_phone: "Phone number", pf_country: "Country code",
+    pf_save: "Save and continue", pf_saving: "Saving...",
+    pf_signout: "Never mind, sign out",
+    pf_need_first: "Please enter your first name.",
+    pf_need_last: "Please enter your last name.",
+    pf_need_phone: "Please check your phone number.",
+    pf_error: "Could not save:",
     order_hours: "ordering hours",
     order_between: "for ordering",
     closed_now: "Outside ordering hours right now",
@@ -174,6 +193,15 @@ const T = {
     partyMode: "PARTY MODE",
     category_empty: "В этой категории пока нет позиций",
     all_group: "Все",
+    pf_title: "Осталось немного",
+    pf_sub: "Укажите имя и телефон, чтобы мы могли сообщить, когда заказ будет готов.",
+    pf_first: "Имя", pf_last: "Фамилия", pf_phone: "Номер телефона", pf_country: "Код страны",
+    pf_save: "Сохранить и продолжить", pf_saving: "Сохранение...",
+    pf_signout: "Отмена, выйти",
+    pf_need_first: "Введите имя.",
+    pf_need_last: "Введите фамилию.",
+    pf_need_phone: "Проверьте номер телефона.",
+    pf_error: "Не удалось сохранить:",
     order_hours: "часы заказа",
     order_between: "приём заказов",
     closed_now: "Сейчас вне часов заказа",
@@ -405,7 +433,7 @@ export default function CustomerMenu() {
     isInRange(now, settings.party_mode_from, settings.party_mode_until);
 
   // Uye sistemi: Google ile giren musteri + urun bazli sabit (₺) indirimleri
-  const { customer, signInWithGoogle, signOut, loading: authLoading } = useAuth();
+  const { customer, signInWithGoogle, signOut, loading: authLoading, refreshCustomer } = useAuth();
 
   // Karsilama ekrani UYE OLMAYANA her aciliste cikar, uyeye hic cikmaz.
   // Cihazda "gordum" kaydi tutmuyoruz: ekranin isi uye olmayana ne
@@ -418,6 +446,38 @@ export default function CustomerMenu() {
     ? !welcomeDismissed
     : (!welcomeDismissed && !authLoading && !customer);
   const dismissWelcome = () => setWelcomeDismissed(true);
+
+  // UYELIK TAMAMLAMA: Google girisi ad veriyor ama soyad garanti degil,
+  // telefon hic gelmiyor. Siparis hazir oldugunda ulasabilmek icin ikisi de
+  // zorunlu. Eksikse musteri menuye giremiyor — tek cikis yolu oturumu kapatmak.
+  const nameParts = String(customer?.name || "").trim().split(/\s+/).filter(Boolean);
+  const profileComplete = !!customer && nameParts.length >= 2 && !!String(customer?.phone || "").trim();
+  const needsProfile = !!customer && !authLoading && !profileComplete;
+
+  const [pf, setPf] = useState({ first: "", last: "", dial: "90", tel: "" });
+  const [pfBusy, setPfBusy] = useState(false);
+  const pfSeeded = useRef(false);
+  useEffect(() => {
+    // Google'dan gelen adi bir kez on-doldur; kullanici duzelttikten sonra ezme
+    if (!needsProfile || pfSeeded.current) return;
+    pfSeeded.current = true;
+    setPf(f => ({ ...f, first: nameParts[0] || "", last: nameParts.slice(1).join(" ") }));
+  }, [needsProfile]);
+
+  const savePf = async () => {
+    if (pfBusy) return;
+    const first = pf.first.trim(), last = pf.last.trim();
+    if (first.length < 2) { alert(t.pf_need_first); return; }
+    if (last.length < 2)  { alert(t.pf_need_last); return; }
+    const e164 = toE164(pf.dial, pf.tel);
+    if (!e164) { alert(t.pf_need_phone); return; }
+    setPfBusy(true);
+    const patch = { name: first + " " + last, phone: e164 };
+    const { error } = await supabase.from("customers").update(patch).eq("id", customer.id);
+    setPfBusy(false);
+    if (error) { alert(t.pf_error + " " + error.message); return; }
+    refreshCustomer(patch);
+  };
 
 
   // Uye profili karti (uye seridine tiklayinca acilir)
@@ -1027,6 +1087,52 @@ export default function CustomerMenu() {
       <button onClick={() => setLanguage("ru")} style={{padding:"10px 16px",minWidth:48,minHeight:36,background:lang==="ru"?"#000":"transparent",color:lang==="ru"?"#fff":"#666",border:"none",borderRadius:14,fontSize:11,fontWeight:700,cursor:"pointer"}}>🇷🇺 RU</button>
     </div>
   );
+
+  if (needsProfile) {
+    return (
+      <div className="nip-customer" style={{fontFamily:cv,background:"#fff",color:"#101214",minHeight:"100vh",display:"flex",flexDirection:"column",justifyContent:"space-between",padding:"34px 28px",maxWidth:520,margin:"0 auto"}}>
+        <img src="/icons/logo-mark.png" alt="" style={{width:38,height:"auto"}}/>
+
+        <div>
+          <div style={{fontSize:22,fontWeight:800,letterSpacing:"-0.01em"}}>{t.pf_title}</div>
+          <div style={{fontSize:14,color:"#5C636B",lineHeight:1.6,marginTop:8}}>{t.pf_sub}</div>
+
+          <div style={{marginTop:26,display:"flex",flexDirection:"column",gap:12}}>
+            <input value={pf.first} onChange={e=>setPf({...pf,first:e.target.value})}
+              placeholder={t.pf_first} autoComplete="given-name"
+              style={{width:"100%",padding:"15px 16px",background:"#F6F7F8",border:"1px solid #E4E7EA",borderRadius:12,fontSize:16,outline:"none",fontFamily:"inherit"}}/>
+            <input value={pf.last} onChange={e=>setPf({...pf,last:e.target.value})}
+              placeholder={t.pf_last} autoComplete="family-name"
+              style={{width:"100%",padding:"15px 16px",background:"#F6F7F8",border:"1px solid #E4E7EA",borderRadius:12,fontSize:16,outline:"none",fontFamily:"inherit"}}/>
+
+            <div style={{display:"flex",gap:8}}>
+              <select value={pf.dial} onChange={e=>setPf({...pf,dial:e.target.value})}
+                aria-label={t.pf_country}
+                style={{flex:"0 0 122px",padding:"15px 8px",background:"#F6F7F8",border:"1px solid #E4E7EA",borderRadius:12,fontSize:16,outline:"none",fontFamily:"inherit"}}>
+                {PHONE_CODES.map(c => (
+                  <option key={c.iso} value={c.dial}>{c.flag} +{c.dial}</option>
+                ))}
+              </select>
+              <input value={pf.tel} onChange={e=>setPf({...pf,tel:e.target.value})}
+                placeholder={t.pf_phone} inputMode="tel" autoComplete="tel-national"
+                style={{flex:1,minWidth:0,padding:"15px 16px",background:"#F6F7F8",border:"1px solid #E4E7EA",borderRadius:12,fontSize:16,outline:"none",fontFamily:"inherit"}}/>
+            </div>
+          </div>
+        </div>
+
+        <div>
+          <button onClick={savePf} disabled={pfBusy}
+            style={{width:"100%",padding:17,borderRadius:999,background:pfBusy?"#8B9198":"#101214",color:"#fff",border:"none",fontSize:15,fontWeight:700,cursor:pfBusy?"default":"pointer",fontFamily:"inherit"}}>
+            {pfBusy ? t.pf_saving : t.pf_save}
+          </button>
+          <button onClick={signOut}
+            style={{width:"100%",marginTop:12,background:"none",border:"none",color:"#9AA0A6",fontSize:12.5,cursor:"pointer",fontFamily:"inherit"}}>
+            {t.pf_signout}
+          </button>
+        </div>
+      </div>
+    );
+  }
 
   if (!loading && showWelcome) {
     // Karsilama: beyaz zemin, kucuk siyah bisiklet, tek buyuk cumle.
