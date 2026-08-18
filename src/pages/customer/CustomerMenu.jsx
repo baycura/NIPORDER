@@ -367,6 +367,16 @@ export default function CustomerMenu() {
   const storeSlugParam = (searchParams.get("store") || "paris").toLowerCase();
   const [currentStoreId, setCurrentStoreId] = useState(null);
 
+  // Karsilama ekrani: cihaz basina BIR KEZ. Masadaki QR'i okutan musteri her
+  // seferinde duvarla karsilasmasin — bir dokunusla gecilir ve bir daha cikmaz.
+  const [showWelcome, setShowWelcome] = useState(() => {
+    try { return !localStorage.getItem("nip_welcome_seen"); } catch (e) { return false; }
+  });
+  const dismissWelcome = () => {
+    try { localStorage.setItem("nip_welcome_seen", "1"); } catch (e) {}
+    setShowWelcome(false);
+  };
+
   const [lang, setLang] = useState(() => {
     // Ilk giris Ingilizce (turist agirlikli); musteri TR/RU secerse hatirlanir
     try { return localStorage.getItem("nip_lang") || "en"; } catch (e) { return "en"; }
@@ -1014,6 +1024,60 @@ export default function CustomerMenu() {
       <button onClick={() => setLanguage("ru")} style={{padding:"10px 16px",minWidth:48,minHeight:36,background:lang==="ru"?"#000":"transparent",color:lang==="ru"?"#fff":"#666",border:"none",borderRadius:14,fontSize:11,fontWeight:700,cursor:"pointer"}}>🇷🇺 RU</button>
     </div>
   );
+
+  if (!loading && showWelcome) {
+    const W = {
+      tr: { hi: "Hoş geldin",
+            p1: "Masandan sipariş ver, hazır olunca haber verelim.",
+            p2: "Etkinlikler, sürüşler, oylamalar ve mağaza da burada.",
+            p3: "Üye olursan puan kazanırsın; happy hour ve kampanyaları görürsün.",
+            go: "Menüye geç" },
+      en: { hi: "Welcome",
+            p1: "Order from your table — we'll let you know when it's ready.",
+            p2: "Events, rides, polls and the shop are all here too.",
+            p3: "Sign in to earn points and unlock happy hour and campaigns.",
+            go: "Go to menu" },
+      ru: { hi: "Добро пожаловать",
+            p1: "Заказывайте прямо со столика — сообщим, когда будет готово.",
+            p2: "Здесь же события, велозаезды, опросы и магазин.",
+            p3: "Зарегистрируйтесь: баллы, happy hour и акции.",
+            go: "В меню" },
+    }[lang] || {};
+    return (
+      <div className="nip-customer" style={{fontFamily:cv,background:"#0C0C0C",color:"#F0EDE8",minHeight:"100vh",display:"flex",flexDirection:"column",justifyContent:"space-between",padding:"28px 22px 32px",maxWidth:520,margin:"0 auto"}}>
+        <div style={{display:"flex",justifyContent:"center",gap:4,background:"rgba(255,255,255,0.06)",borderRadius:18,padding:3,alignSelf:"center"}}>
+          {[["tr","🇹🇷 TR"],["en","🇬🇧 EN"],["ru","🇷🇺 RU"]].map(([k,l]) => (
+            <button key={k} onClick={() => setLanguage(k)} style={{padding:"9px 16px",minHeight:36,background:lang===k?"#F0EDE8":"transparent",color:lang===k?"#0C0C0C":"#8a8a8a",border:"none",borderRadius:15,fontSize:11,fontWeight:800,cursor:"pointer",fontFamily:"inherit"}}>{l}</button>
+          ))}
+        </div>
+
+        <div style={{textAlign:"center",padding:"12px 0"}}>
+          <img src="/icons/logo-mark-light.png" alt="" style={{width:150,height:"auto",margin:"0 auto 22px",display:"block"}}/>
+          <div style={{fontSize:30,fontWeight:400,letterSpacing:"0.01em",fontFamily:"'Coolvetica Heavy','Coolvetica Condensed','Barlow Condensed',sans-serif",textTransform:"uppercase",lineHeight:1.05}}>Not in Paris</div>
+          <div style={{fontSize:10,color:"#7a7a7a",letterSpacing:"3px",marginTop:6}}>FETHİYE</div>
+
+          <div style={{fontSize:19,fontWeight:800,marginTop:30}}>{W.hi}</div>
+          <div style={{fontSize:14,color:"#c8c4be",lineHeight:1.65,marginTop:10}}>{W.p1}</div>
+          <div style={{fontSize:14,color:"#c8c4be",lineHeight:1.65,marginTop:6}}>{W.p2}</div>
+          <div style={{fontSize:13,color:"#C8973E",lineHeight:1.6,marginTop:16,fontWeight:600}}>⭐ {W.p3}</div>
+        </div>
+
+        <div>
+          <div style={{display:"flex",justifyContent:"center",flexWrap:"wrap",gap:"10px 18px",marginBottom:22,opacity:0.75}}>
+            {CUST_TABS.map(tab => (
+              <div key={tab.key} style={{display:"flex",flexDirection:"column",alignItems:"center",gap:3,minWidth:46}}>
+                <span style={{fontSize:19}}>{tab.icon}</span>
+                <span style={{fontSize:9,color:"#8a8a8a",fontWeight:600,letterSpacing:"0.3px"}}>{tab[["en","ru"].includes(lang)?lang:"tr"]}</span>
+              </div>
+            ))}
+          </div>
+          <button onClick={dismissWelcome} style={{width:"100%",padding:"17px 20px",background:"#F0EDE8",color:"#0C0C0C",border:"none",borderRadius:14,fontSize:15,fontWeight:800,cursor:"pointer",fontFamily:"inherit",letterSpacing:"0.3px"}}>
+            {W.go} →
+          </button>
+        </div>
+      </div>
+    );
+  }
 
   if (loading) {
     // Acilis ekrani: beyaz zeminde siyah bisiklet, hafifce nabiz atar.
