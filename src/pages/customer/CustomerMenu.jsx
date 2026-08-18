@@ -369,7 +369,10 @@ export default function CustomerMenu() {
 
   // Karsilama ekrani: cihaz basina BIR KEZ. Masadaki QR'i okutan musteri her
   // seferinde duvarla karsilasmasin — bir dokunusla gecilir ve bir daha cikmaz.
+  // ?welcome=1 ile zorla acilir: bir kez gecildikten sonra tekrar bakmanin
+  // baska yolu tarayici verisini silmek, o da her seferinde zahmet.
   const [showWelcome, setShowWelcome] = useState(() => {
+    if (searchParams.get("welcome") === "1") return true;
     try { return !localStorage.getItem("nip_welcome_seen"); } catch (e) { return false; }
   });
   const dismissWelcome = () => {
