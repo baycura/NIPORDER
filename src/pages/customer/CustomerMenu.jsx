@@ -367,19 +367,6 @@ export default function CustomerMenu() {
   const storeSlugParam = (searchParams.get("store") || "paris").toLowerCase();
   const [currentStoreId, setCurrentStoreId] = useState(null);
 
-  // Karsilama ekrani: cihaz basina BIR KEZ. Masadaki QR'i okutan musteri her
-  // seferinde duvarla karsilasmasin — bir dokunusla gecilir ve bir daha cikmaz.
-  // ?welcome=1 ile zorla acilir: bir kez gecildikten sonra tekrar bakmanin
-  // baska yolu tarayici verisini silmek, o da her seferinde zahmet.
-  const [showWelcome, setShowWelcome] = useState(() => {
-    if (searchParams.get("welcome") === "1") return true;
-    try { return !localStorage.getItem("nip_welcome_seen"); } catch (e) { return false; }
-  });
-  const dismissWelcome = () => {
-    try { localStorage.setItem("nip_welcome_seen", "1"); } catch (e) {}
-    setShowWelcome(false);
-  };
-
   const [lang, setLang] = useState(() => {
     // Ilk giris Ingilizce (turist agirlikli); musteri TR/RU secerse hatirlanir
     try { return localStorage.getItem("nip_lang") || "en"; } catch (e) { return "en"; }
@@ -418,7 +405,20 @@ export default function CustomerMenu() {
     isInRange(now, settings.party_mode_from, settings.party_mode_until);
 
   // Uye sistemi: Google ile giren musteri + urun bazli sabit (₺) indirimleri
-  const { customer, signInWithGoogle, signOut } = useAuth();
+  const { customer, signInWithGoogle, signOut, loading: authLoading } = useAuth();
+
+  // Karsilama ekrani UYE OLMAYANA her aciliste cikar, uyeye hic cikmaz.
+  // Cihazda "gordum" kaydi tutmuyoruz: ekranin isi uye olmayana ne
+  // kacirdigini anlatmak, uye olunca isi bitiyor.
+  // Kapatma yalniz bu acilis icin gecerli — sonraki aciliste yine gelir.
+  const [welcomeDismissed, setWelcomeDismissed] = useState(false);
+  const forceWelcome = searchParams.get("welcome") === "1";   // onizleme icin
+  // authLoading bitmeden karar verilmez; yoksa uyenin ekraninda bir an parliyor
+  const showWelcome = forceWelcome
+    ? !welcomeDismissed
+    : (!welcomeDismissed && !authLoading && !customer);
+  const dismissWelcome = () => setWelcomeDismissed(true);
+
 
   // Uye profili karti (uye seridine tiklayinca acilir)
   const [profileOpen, setProfileOpen] = useState(false);
