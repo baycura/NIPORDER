@@ -257,7 +257,8 @@ select.inp{appearance:none;-webkit-appearance:none;padding-right:38px;
 
 <div id="root"></div>
 
-<script id="ari-state" type="application/json">null</script>
+<!-- Sunucuda kayıt yoksa ilk kurulumda kullanılacak veri. -->
+<script id="ari-state" type="application/json">{"users":[{"id":"u-levent","name":"Levent","pin":"1234","role":"patron"},{"id":"u-omer","name":"Ömer","pin":"1111","role":"crew"},{"id":"u-berkay","name":"Berkay","pin":"2222","role":"crew"},{"id":"u-sadi","name":"Sadi","pin":"3333","role":"crew"},{"id":"u-emir","name":"Emir","pin":"4444","role":"crew"},{"id":"u-bolat","name":"Bolat","pin":"5555","role":"crew"}],"cats":["Hoparlör","Mixer","Işık","Kablo","Efekt","Enstrüman","Diğer","LED EKRAN"],"inventory":[{"id":"imsz93q55jl3c","name":"Led Ekran","cat":"LED EKRAN","total":14,"perCase":4,"faults":0,"notes":[],"acc":[]}],"events":[{"id":"emsz91hqeiafo","name":"NEON PARTY","client":"SENO","venue":"","date":"2026-08-19","time":"09:00","meetTime":"02:00","crew":["u-omer","u-sadi","u-emir"],"rider":[],"status":"plan","checked":[],"notes":[]}],"tasks":[]}</script>
 
 <script id="ari-app">
 /* ARI Saha — etkinlik, ekip ve envanter takibi.
@@ -361,33 +362,37 @@ function demoEvents(users, inv){
   ];
 }
 
-/* ═══════════ kalıcılık ═══════════ */
-var LS_STATE = "ari.state", LS_ME = "ari.me", SS_NAV = "ari.nav", SS_PEND = "ari.pending";
-var api = null;          /* artifact yetkisi (yayımlanmışsa) */
-var readOnly = false;    /* salt okunur görüntüleyici */
+/* ═══════════ sunucu ═══════════
+   Veri ortak bir sunucu satırında durur; açmak için hesap gerekmez.
+   Yazmalar sürüm damgasıyla korunur; iki kişi aynı anda yazarsa kayıt
+   bazında birleştirilir. Ağ yoksa uygulama cihazda çalışmaya devam eder
+   ve bağlantı gelince gönderir. */
+var SB_BASE = "https://diqparjrtvvfxvwxebov.supabase.co/rest/v1/ari_state";
+var SB_KEY  = "sb_publishable_CrO9N4G_6IaxkMFr4H9ZZA_v2-2zyE5";
+var ROW_ID  = "saha";
+var VFILTER = encodeURIComponent("payload->>v");
+
+var LS_STATE = "ari.state", LS_ME = "ari.me", SS_NAV = "ari.nav";
+var readOnly = false;
 var S, me = null, nav, pin = { buf:"", err:false, user:null }, askFn = null;
+var curV = 0, baseline = null, dirty = false, sending = false, offline = false;
+var saveTimer = null, pollTimer = null;
 
 function safeParse(txt, fb){ try { var v = JSON.parse(txt); return v == null ? fb : v; } catch (e) { return fb; } }
 function lsGet(k, fb){ try { var v = localStorage.getItem(k); return v == null ? fb : safeParse(v, fb); } catch (e) { return fb; } }
 function lsSet(k, v){ try { localStorage.setItem(k, JSON.stringify(v)); } catch (e) {} }
-function ssGet(k){ try { return sessionStorage.getItem(k); } catch (e) { return null; } }
-function ssSet(k, v){ try { sessionStorage.setItem(k, v); } catch (e) {} }
-function ssDel(k){ try { sessionStorage.removeItem(k); } catch (e) {} }
+function clone(o){ return JSON.parse(JSON.stringify(o)); }
 
-/* Kod güncellendiğinde sayfa boş durumla yeniden yayımlanır. O durumda
-   cihazdaki son yedek geri yüklenir ve ilk açan kişi paylaşılan kopyayı
-   da onarır — böylece güncelleme veriyi silmez. */
-var restored = false;
-function loadState(){
+/* İlk kurulumda kullanılacak kayıtlar (sayfadaki ari-state bloğu). */
+function firstRun(){
   var node = el("ari-state");
-  var embedded = node ? safeParse(node.textContent, null) : null;
-  if (embedded && embedded.users) return migrate(embedded);
-  var local = lsGet(LS_STATE, null);
-  if (local && local.users){ restored = true; return migrate(local); }
-  return seed();
+  var v = node ? safeParse(node.textContent, null) : null;
+  return migrate((v && v.users) ? v : seed());
 }
+
 /* Eski/eksik kayıtlarda uygulama çökmesin. */
 function migrate(s){
+  s = s || {};
   s.users = s.users || []; s.events = s.events || []; s.tasks = s.tasks || [];
   s.inventory = s.inventory || []; s.cats = s.cats || seed().cats;
   s.events.forEach(function(e){
@@ -401,55 +406,117 @@ function migrate(s){
   return s;
 }
 
-/* ── Yayımlama ──
-   Sayfa kendini yeniden yazar: biçim ve kod DOM'dan METİN olarak okunur,
-   yalnızca durum JSON'u değişir. (Canlı DOM serileştirilmez.) */
-function buildHtml(state){
-  var css = el("ari-style").textContent;
-  var app = el("ari-app").textContent;
-  var json = JSON.stringify(state).replace(/</g, "\\u003c");
-  var OPEN = "<" + "script", CLOSE = "<" + "/script>";
-  return '<!doctype html>\n<html lang="tr">\n<head>\n<meta charset="utf-8">\n'
-    + '<meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover">\n'
-    + '<meta name="theme-color" content="#000000">\n'
-    + '<meta name="apple-mobile-web-app-capable" content="yes">\n'
-    + '<meta name="apple-mobile-web-app-status-bar-style" content="black">\n'
-    + '<title>ARI Saha</title>\n'
-    + '<style id="ari-style">' + css + '</style>\n</head>\n<body>\n<div id="root"></div>\n'
-    + OPEN + ' id="ari-state" type="application/json">' + json + CLOSE + '\n'
-    + OPEN + ' id="ari-app">' + app + CLOSE + '\n</body>\n</html>';
+/* ── sunucu çağrıları ── */
+function hdrs(extra){
+  var h = { "apikey": SB_KEY, "Authorization": "Bearer " + SB_KEY, "Content-Type": "application/json" };
+  if (extra) for (var k in extra) h[k] = extra[k];
+  return h;
+}
+function jsonOrThrow(r){ if (!r.ok) throw new Error("HTTP " + r.status); return r.json(); }
+
+function fetchRemote(){
+  return fetch(SB_BASE + "?id=eq." + ROW_ID + "&select=payload", { headers: hdrs(), cache:"no-store" })
+    .then(jsonOrThrow)
+    .then(function(rows){ return (rows && rows[0]) ? rows[0].payload : null; });
+}
+function createRemote(state){
+  return fetch(SB_BASE, {
+    method:"POST", headers: hdrs({ "Prefer":"return=representation" }),
+    body: JSON.stringify({ id: ROW_ID, payload: { v:1, s:state } })
+  }).then(function(r){ return r.status === 409 ? null : jsonOrThrow(r); });
+}
+function pushRemote(state, v){
+  return fetch(SB_BASE + "?id=eq." + ROW_ID + "&" + VFILTER + "=eq." + v, {
+    method:"PATCH", headers: hdrs({ "Prefer":"return=representation" }),
+    body: JSON.stringify({ payload: { v: v + 1, s: state } })
+  }).then(jsonOrThrow);
 }
 
-var saveTimer = null, savePending = false;
+/* ── kayıt bazında birleştirme ──
+   İki kişi aynı anda yazarsa ikisinin de dokunduğu kayıt korunur. */
+function byId(arr){ var m = {}; (arr || []).forEach(function(x){ m[x.id] = x; }); return m; }
+function mergeList(base, mine, theirs){
+  var b = byId(base), m = byId(mine), out = (theirs || []).slice();
+  (mine || []).forEach(function(x){
+    if (b[x.id] && JSON.stringify(b[x.id]) === JSON.stringify(x)) return;  /* yerelde dokunulmamış */
+    var at = -1;
+    for (var i = 0; i < out.length; i++) if (out[i].id === x.id) { at = i; break; }
+    if (at < 0) out.push(x); else out[at] = x;                              /* yerel sürüm kazanır */
+  });
+  Object.keys(b).forEach(function(id){                                      /* yerelde silinenler */
+    if (m[id]) return;
+    for (var i = 0; i < out.length; i++) if (out[i].id === id) { out.splice(i, 1); return; }
+  });
+  return out;
+}
+function mergeState(base, mine, theirs){
+  if (!base) return theirs;
+  var cats = (theirs.cats || []).slice();
+  (mine.cats || []).forEach(function(c){ if (cats.indexOf(c) < 0) cats.push(c); });
+  return {
+    users:     mergeList(base.users,     mine.users,     theirs.users),
+    events:    mergeList(base.events,    mine.events,    theirs.events),
+    tasks:     mergeList(base.tasks,     mine.tasks,     theirs.tasks),
+    inventory: mergeList(base.inventory, mine.inventory, theirs.inventory),
+    cats:      cats
+  };
+}
+function adopt(payload){
+  S = migrate(payload.s);
+  curV = payload.v;
+  baseline = clone(S);
+  lsSet(LS_STATE, S);
+}
+
+/* ── kaydetme ── */
 function save(){
-  if (readOnly) return;
-  lsSet(LS_STATE, S);                 /* cihaz yedeği — her iki kipte de */
-  if (!api) return;
-  /* Yayım isteği sürerken yapılan değişiklik, yayım sonrası otomatik
-     yenilemede kaybolmasın diye oturum deposunda bekletilir. */
-  ssSet(SS_PEND, JSON.stringify(S));
-  savePending = true;
+  dirty = true;
+  lsSet(LS_STATE, S);
   setStatus("kaydediliyor…");
   clearTimeout(saveTimer);
-  saveTimer = setTimeout(flush, 900);
+  saveTimer = setTimeout(flush, 700);
 }
 function flush(){
-  if (!api || !savePending || readOnly) return;
-  savePending = false;
+  if (!dirty || sending) return;
+  sending = true;
+  var snapshot = clone(S), atV = curV;
   try { sessionStorage.setItem(SS_NAV, JSON.stringify(nav)); } catch (e) {}
-  api.publish(buildHtml(S)).catch(function(err){
-    var c = err && err.code;
-    if (c === "conflict") { setStatus("güncelleniyor…"); return; }   /* görünüm birazdan yenilenir */
-    if (c === "not_writer" || c === "not_granted" || c === "not_declared"
-        || c === "capability_disabled" || c === "capability_removed" || c === "consent_required") {
-      readOnly = true; ssDel(SS_PEND); setStatus(""); render(); return;
+  pushRemote(snapshot, atV).then(function(rows){
+    if (rows && rows.length){
+      curV = rows[0].payload.v;
+      baseline = clone(rows[0].payload.s);
+      dirty = false; offline = false;
+      setStatus("");
+      return;
     }
-    savePending = true;
+    /* Sürüm tutmadı — arada biri yazmış; birleştirip yeniden gönder */
+    return fetchRemote().then(function(remote){
+      if (!remote) return;
+      S = migrate(mergeState(baseline, snapshot, migrate(remote.s)));
+      curV = remote.v; baseline = clone(S);
+      lsSet(LS_STATE, S);
+      render();
+      clearTimeout(saveTimer);
+      saveTimer = setTimeout(flush, 300);
+    });
+  }).catch(function(){
+    offline = true;
+    setStatus("bağlantı yok — cihazda saklandı", true);
     clearTimeout(saveTimer);
-    if (c === "rate_limited") { setStatus("kaydediliyor…"); saveTimer = setTimeout(flush, 4000); return; }
-    setStatus("kaydedilemedi — tekrar denenecek", true);
-    saveTimer = setTimeout(flush, 5000);
-  });
+    saveTimer = setTimeout(flush, 6000);
+  }).then(function(){ sending = false; });
+}
+
+/* ── başkalarının değişikliklerini al ── */
+function poll(){
+  if (document.hidden || dirty || sending || nav.sheet) return;
+  fetchRemote().then(function(remote){
+    if (!remote) { offline = false; return; }
+    offline = false;
+    if (remote.v === curV) return;
+    adopt(remote);
+    render();
+  }).catch(function(){ offline = true; });
 }
 function setStatus(txt, bad){
   var n = el("savebar");
@@ -904,9 +971,9 @@ function admView(){
     + '<span class="p1" style="color:var(--r)">Her şeyi sıfırla</span>'
     + '<span class="p2">Etkinlik, görev ve envanter başa döner</span></span>' + CHEV + '</button>'
     + '</div>'
-    + '<p class="note">' + (api
-        ? "Veri bu sayfanın içinde tutuluyor — bağlantıyı paylaştığın herkes aynı kayıtları görür ve yazma yetkisi verdiklerin değiştirebilir."
-        : "Bu kopya yalnızca bu cihazda saklanıyor. Ekiple ortak kullanmak için yayımlanmış bağlantıyı aç.") + '</p></div>';
+    + '<p class="note">' + (offline
+        ? "Şu an bağlantı yok. Değişiklikler cihazda bekliyor, internet gelince gönderilecek."
+        : "Veri ortak sunucuda tutuluyor — bağlantıyı açan herkes aynı kayıtları görür, hesap gerekmez.") + '</p></div>';
 }
 
 /* ═══════════ paneller ═══════════ */
@@ -1535,30 +1602,18 @@ function freshNav(){
 
 function boot(){
   root = el("root");
-  S = loadState();
+  /* Önce cihazdaki son hâlle çiz — açılış ağı beklemesin */
+  S = migrate(lsGet(LS_STATE, null) || firstRun());
   nav = freshNav();
   try {
     var saved = safeParse(sessionStorage.getItem(SS_NAV), null);
     if (saved){
       nav.tab = saved.tab || nav.tab;
-      nav.eventId = saved.eventId || null;
-      nav.sheet = saved.sheet || null;
       nav.q = saved.q || ""; nav.cat = saved.cat || "Tümü"; nav.perf = saved.perf || "month";
       if (typeof saved.calY === "number") nav.calY = saved.calY;
       if (typeof saved.calM === "number") nav.calM = saved.calM;
     }
   } catch (e) {}
-
-  /* Yayım sırasında kaçmış değişiklik var mı? */
-  var pendingRaw = ssGet(SS_PEND), replay = false;
-  if (pendingRaw){
-    if (pendingRaw === JSON.stringify(S)) ssDel(SS_PEND);   /* zaten yayımlanmış */
-    else {
-      var pj = safeParse(pendingRaw, null);
-      if (pj && pj.users){ S = migrate(pj); replay = true; }
-      else ssDel(SS_PEND);
-    }
-  }
 
   var savedMe = lsGet(LS_ME, null);
   if (savedMe && savedMe.id){
@@ -1568,14 +1623,22 @@ function boot(){
   if (me && me.role !== "patron" && nav.tab === "adm") nav.tab = "cal";
   render();
 
-  if (window.claude && typeof window.claude.use === "function"){
-    window.claude.use("artifact").then(function(a){
-      api = a || null;
-      if (!api) return;
-      render();                          /* "veri ortak" bilgisi görünsün */
-      if (replay || restored) save();    /* kaçan değişikliği / yedeği yayımla */
-    }).catch(function(){ api = null; });
-  }
+  /* Sonra sunucuyla eşitle */
+  fetchRemote().then(function(remote){
+    if (remote){ adopt(remote); render(); return; }
+    return createRemote(firstRun()).then(function(rows){
+      if (rows && rows.length){ adopt(rows[0].payload); render(); }
+      else return fetchRemote().then(function(r){ if (r){ adopt(r); render(); } });
+    });
+  }).catch(function(){
+    offline = true;
+    setStatus("bağlantı yok — cihazda saklanıyor", true);
+  });
+
+  clearInterval(pollTimer);
+  pollTimer = setInterval(poll, 5000);
+  document.addEventListener("visibilitychange", function(){ if (!document.hidden) poll(); });
+  window.addEventListener("online", function(){ if (dirty) flush(); else poll(); });
 }
 
 if (document.readyState === "loading") document.addEventListener("DOMContentLoaded", boot);
