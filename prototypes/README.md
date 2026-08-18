@@ -9,6 +9,9 @@ buradaki dosyalar üretim çıktısına dahil olmaz.
 ARI Müzik'in saha işleri için tek dosyalık uygulama: takvim, etkinlik rider'ı,
 görevler ve envanter. Bağımlılık yok — tarayıcıda doğrudan açılır.
 
+Etkinlikler ve envanter **boş başlar**; gerçek program Yönetici > Etkinlikler'den,
+ekipman Envanter > + Ürün'den girilir. Ekip ve kategoriler hazır gelir.
+
 ### Çalışma kipleri
 
 | Nerede açıldığı | Veri nerede |

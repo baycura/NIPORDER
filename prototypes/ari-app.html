@@ -328,18 +328,7 @@ function seed(){
       { id:"u-bolat",  name:"Bolat",  pin:"5555", role:"crew" }
     ],
     cats: ["Hoparlör","Mixer","Işık","Kablo","Efekt","Enstrüman","Diğer"],
-    inventory: [
-      { id:"i-eon",  name:"JBL EON615",      cat:"Hoparlör", total:8,  perCase:2,  faults:1, notes:[], acc:[{id:"a1",name:"Güç Kablosu",per:1}] },
-      { id:"i-srx",  name:"JBL SRX835P",     cat:"Hoparlör", total:4,  perCase:2,  faults:0, notes:[], acc:[] },
-      { id:"i-k12",  name:"QSC K12.2",       cat:"Hoparlör", total:6,  perCase:2,  faults:0, notes:[], acc:[{id:"a1",name:"Güç Kablosu",per:1}] },
-      { id:"i-pix",  name:"Pixel LED",       cat:"Işık",     total:24, perCase:4,  faults:0, notes:[], acc:[{id:"a1",name:"Data Kablo",per:1},{id:"a2",name:"Güç Kablosu",per:1}] },
-      { id:"i-par",  name:"PAR LED 64",      cat:"Işık",     total:40, perCase:8,  faults:0, notes:[], acc:[] },
-      { id:"i-mac",  name:"Martin MAC Aura", cat:"Işık",     total:12, perCase:4,  faults:2, notes:["2 adette motor arızası var"], acc:[{id:"a1",name:"Güç Kablosu",per:1},{id:"a2",name:"Sinyal Kablo",per:1}] },
-      { id:"i-dlv",  name:"A&H dLive S5000", cat:"Mixer",    total:1,  perCase:1,  faults:0, notes:[], acc:[{id:"a1",name:"Güç Kablosu",per:1},{id:"a2",name:"CAT6 Kablo",per:2}] },
-      { id:"i-djm",  name:"Pioneer DJM-900", cat:"Mixer",    total:2,  perCase:1,  faults:0, notes:[], acc:[{id:"a1",name:"Güç Kablosu",per:1}] },
-      { id:"i-co2",  name:"CO2 Jet",         cat:"Efekt",    total:4,  perCase:2,  faults:0, notes:[], acc:[{id:"a1",name:"CO2 Hortumu",per:1}] },
-      { id:"i-xlr",  name:"XLR Kablo 10m",   cat:"Kablo",    total:30, perCase:10, faults:0, notes:[], acc:[] }
-    ],
+    inventory: [],
     events: [],
     tasks: []
   };
@@ -350,22 +339,24 @@ function demoEvents(users, inv){
   var n = new Date(), y = n.getFullYear(), m = n.getMonth(), last = dim(y,m);
   var crew = users.filter(function(u){ return u.role === "crew"; }).map(function(u){ return u.id; });
   function d(off){ return key(y, m, clamp(n.getDate() + off, 1, last)); }
-  function r(iid, qty){
+  /* Envanter boşsa örnek rider serbest metinle çalışır; ürün girildikçe
+     yeni etkinliklerde listeden seçilir. */
+  function r(iid, qty, nm){
     var it = inv.filter(function(x){ return x.id === iid; })[0];
-    return { id: uid("r"), itemId: iid, name: it ? it.name : "", qty: qty, u: "adet" };
+    return { id: uid("r"), itemId: it ? iid : null, name: it ? it.name : nm, qty: qty, u: "adet" };
   }
   return [
     { id:"e-demo1", demo:true, client:"Robinson", name:"Neon Party", date:d(1), time:"22:00", meetTime:"19:00",
       venue:"Robinson Dalaman", crew:[crew[0], crew[1]].filter(Boolean), status:"plan",
-      rider:[ r("i-eon",4), r("i-par",12), r("i-xlr",8) ],
+      rider:[ r("i-eon",4,"JBL EON615"), r("i-par",12,"PAR LED 64"), r("i-xlr",8,"XLR Kablo 10m") ],
       notes:[{ text:"Havuz başı sahne. Islak zemin, kablo güzergahına dikkat.", by:"Levent", at:new Date().toISOString() }],
       checked:[] },
     { id:"e-demo2", demo:true, client:"Fortezza", name:"Party Efekt", date:d(4), time:"23:30", meetTime:"20:00",
       venue:"Fortezza Bodrum", crew:[crew[1], crew[2]].filter(Boolean), status:"plan",
-      rider:[ r("i-mac",8), r("i-co2",4) ], notes:[], checked:[] },
+      rider:[ r("i-mac",8,"Martin MAC Aura"), r("i-co2",4,"CO2 Jet") ], notes:[], checked:[] },
     { id:"e-demo3", demo:true, client:"Regata", name:"Boynuzbükü", date:d(8), time:"20:00", meetTime:"11:00",
       venue:"Regata Marina", crew:crew.slice(), status:"plan",
-      rider:[ r("i-dlv",1), r("i-k12",4), r("i-pix",12) ],
+      rider:[ r("i-dlv",1,"A&H dLive S5000"), r("i-k12",4,"QSC K12.2"), r("i-pix",12,"Pixel LED") ],
       notes:[{ text:"Büyük organizasyon, 2 araç.", by:"Levent", at:new Date().toISOString() }], checked:[] }
   ];
 }
@@ -824,7 +815,12 @@ function invView(){
     + '<div><div class="v num" style="color:var(--o)">' + totalOut + '</div><div class="l">Sahada</div></div>'
     + '<div><div class="v num" style="color:var(--r)">' + totalFault + '</div><div class="l">Arızalı</div></div>'
     + '</div></div>'
-    + (list.length ? body : '<div class="empty">Ürün bulunamadı</div>');
+    + (list.length ? body
+        : S.inventory.length === 0
+          ? '<div class="empty">Envanter boş.<br><span style="font-size:13px">'
+            + (me.role === "patron" ? 'Yukarıdaki “+ Ürün” ile ekipmanı eklemeye başla.'
+                                    : 'Ekipmanı yönetici ekleyecek.') + '</span></div>'
+          : '<div class="empty">Ürün bulunamadı</div>');
 }
 
 /* ── yönetici ── */
