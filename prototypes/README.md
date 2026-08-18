@@ -21,12 +21,16 @@ Yayım kipinde her değişiklik sayfayı yeni bir sürüm olarak yeniden yayıml
 
 ### Roller
 
-- **Yönetici** — etkinlik/kişi/ürün ekler, düzenler, siler; tüm etkinlikleri görür.
-- **Ekip** — yalnızca atandığı etkinlikleri görür; rider tikler, not ve görev
-  ekler, arıza kaydeder. Ana kayıtları değiştiremez.
+Etkinliklerin tamamını **herkes görür** — hazırlık depoda birlikte yapıldığı ve
+planlama buna göre kurulduğu için. Kendi atandığın işler listelerde "sen"
+rozetiyle, takvimde kalın sarı çizgiyle ayrışır.
+
+- **Yönetici** — etkinlik/kişi/ürün ekler, düzenler, siler.
+- **Ekip** — her etkinlikte rider tikler, not ve görev ekler, arıza kaydeder,
+  yüklendi/döndü işaretler. Ana kayıtları (etkinlik, kişi, ürün) değiştiremez.
 
 Başlangıç PIN'leri: Levent `1234` (yönetici) · Ömer `1111` · Berkay `2222` ·
-Sadi `3333` · Emir `4444`. Yönetici > Ekip'ten değiştirilir.
+Sadi `3333` · Emir `4444` · Bolat `5555`. Yönetici > Ekip'ten değiştirilir.
 
 ### Envanter kuralı
 

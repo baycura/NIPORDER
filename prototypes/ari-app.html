@@ -126,8 +126,10 @@ select.inp{appearance:none;-webkit-appearance:none;padding-right:38px;
 .day .n{font-size:10px;color:var(--t3);text-align:right;line-height:1;}
 .day.today .n{color:var(--y);font-weight:700;}
 .day .n.we{color:var(--t4);}
-.ev{font-size:7.5px;line-height:1.25;color:var(--t2);background:var(--yd);border-left:1.5px solid var(--yb);
-  border-radius:0 2px 2px 0;padding:1px 3px;overflow:hidden;text-overflow:ellipsis;white-space:nowrap;}
+.ev{font-size:7.5px;line-height:1.25;color:var(--t3);background:rgba(255,255,255,.05);
+  border-left:1.5px solid var(--t4);border-radius:0 2px 2px 0;padding:1px 3px;
+  overflow:hidden;text-overflow:ellipsis;white-space:nowrap;}
+.ev.mine{color:var(--t2);background:var(--yd);border-left-color:var(--yb);border-left-width:3px;}
 .ev.out{background:var(--od);border-left-color:var(--o);}
 .ev.done{background:var(--s3);border-left-color:var(--t4);color:var(--t3);}
 .more{font-size:7.5px;color:var(--t4);text-align:center;}
@@ -318,7 +320,8 @@ function seed(){
       { id:"u-omer",   name:"Ömer",   pin:"1111", role:"crew" },
       { id:"u-berkay", name:"Berkay", pin:"2222", role:"crew" },
       { id:"u-sadi",   name:"Sadi",   pin:"3333", role:"crew" },
-      { id:"u-emir",   name:"Emir",   pin:"4444", role:"crew" }
+      { id:"u-emir",   name:"Emir",   pin:"4444", role:"crew" },
+      { id:"u-bolat",  name:"Bolat",  pin:"5555", role:"crew" }
     ],
     cats: ["Hoparlör","Mixer","Işık","Kablo","Efekt","Enstrüman","Diğer"],
     inventory: [
@@ -474,10 +477,11 @@ function outCount(itemId){
 }
 function availOf(item){ return Math.max(0, item.total - outCount(item.id)); }
 
-function myEvents(){
-  if (!me) return [];
-  return S.events.filter(function(e){ return me.role === "patron" || e.crew.indexOf(me.id) >= 0; });
-}
+/* Herkes tüm etkinlikleri görür — hazırlık depoda birlikte yapılıyor ve
+   planlama buna göre kuruluyor. Kendi atandığın işler "sen" rozetiyle
+   ayrışır. */
+function visibleEvents(){ return me ? S.events : []; }
+function isMine(e){ return !!me && e.crew.indexOf(me.id) >= 0; }
 function openTaskCount(){
   if (!me) return 0;
   return S.tasks.filter(function(t){
@@ -564,7 +568,7 @@ function appView(){
 
 /* ── takvim ── */
 function calView(){
-  var t = todayKey(), evs = myEvents();
+  var t = todayKey(), evs = visibleEvents();
   var y = nav.calY, m = nav.calM, n = dim(y, m);
   var first = new Date(y, m, 1).getDay(), off = first === 0 ? 6 : first - 1;
 
@@ -581,8 +585,8 @@ function calView(){
       + (list.length ? ' data-act="cal-day" data-id="' + k + '"' : '') + '>'
       + '<span class="n' + (we ? " we" : "") + '">' + d + '</span>'
       + list.slice(0,2).map(function(e){
-          return '<span class="ev ' + (e.status === "out" ? "out" : e.status === "done" ? "done" : "")
-            + '">' + h(e.name) + '</span>'; }).join("")
+          var cls = (e.status === "out" ? "out " : e.status === "done" ? "done " : "") + (isMine(e) ? "mine" : "");
+          return '<span class="ev ' + cls + '">' + h(e.name) + '</span>'; }).join("")
       + (list.length > 2 ? '<span class="more">+' + (list.length - 2) + '</span>' : '')
       + '</div>';
   }
@@ -615,14 +619,15 @@ function eventRow(e){
     + '<span class="gr"><span class="p1">' + h(e.name) + '</span>'
     + '<span class="p2">' + h(e.client || "—") + (e.venue ? " · " + h(e.venue) : "")
     + (e.time ? ' · <span class="num" style="color:var(--y)">' + h(e.time) + '</span>' : '') + '</span></span>'
+    + (isMine(e) ? '<span class="pill y">sen</span>' : '')
     + (e.status === "plan" ? "" : '<span class="pill ' + st.cls + '">' + st.label + '</span>')
     + CHEV + '</button>';
 }
 
 /* ── etkinlik detayı ── */
 function eventView(e){
-  var mine = me.role === "patron" || e.crew.indexOf(me.id) >= 0;
-  var canEdit = mine && !readOnly;
+  var mine = isMine(e);
+  var canEdit = !readOnly;   /* hazırlığı depoda herkes birlikte yapıyor */
   var done = e.rider.filter(function(r){ return e.checked.indexOf(r.id) >= 0; }).length;
   var pct = e.rider.length ? done / e.rider.length : 0;
   var all = e.rider.length > 0 && done === e.rider.length;
@@ -666,7 +671,8 @@ function eventView(e){
     + ' <span class="pill ' + st.cls + '" style="margin-left:6px">' + st.label + '</span></p>'
     + '<h1>' + h(e.name) + '</h1>'
     + (e.venue ? '<p class="ven">' + h(e.venue) + '</p>' : '')
-    + '<p class="crew">' + (e.crew.length ? e.crew.map(userName).map(h).join(" · ") : "Ekip atanmadı") + '</p>'
+    + '<p class="crew">' + (e.crew.length ? e.crew.map(userName).map(h).join(" · ") : "Ekip atanmadı")
+    + (mine ? ' <span class="pill y">sen</span>' : '') + '</p>'
     + ((e.meetTime || e.time) ? '<div class="times">'
         + (e.meetTime ? '<div><div class="lb">BULUŞMA</div><div class="vl num" style="color:var(--t2)">' + h(e.meetTime) + '</div></div>' : '')
         + (e.time ? '<div><div class="lb">ETKİNLİK</div><div class="vl num" style="color:var(--y)">' + h(e.time) + '</div></div>' : '')
@@ -855,7 +861,7 @@ function shead(title, sub){
 }
 
 function sheetDay(s){
-  var list = sortBy(myEvents().filter(function(e){ return e.date === s.id; }), function(e){ return e.time || ""; });
+  var list = sortBy(visibleEvents().filter(function(e){ return e.date === s.id; }), function(e){ return e.time || ""; });
   return shead(longDate(s.id), list.length + " etkinlik")
     + '<div class="sbody"><div class="card">' + list.map(eventRow).join("") + '</div></div>';
 }
