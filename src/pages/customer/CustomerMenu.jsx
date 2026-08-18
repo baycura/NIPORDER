@@ -1026,53 +1026,54 @@ export default function CustomerMenu() {
   );
 
   if (!loading && showWelcome) {
+    // Karsilama: beyaz zemin, kucuk siyah bisiklet, tek buyuk cumle.
+    // Vurgulanan kelime Fransiz bayragi mavisi (#0055A4) — "Not in Paris"
+    // adiyla oynayan tek seferlik bir saka, o yuzden altin degil.
     const W = {
-      tr: { hi: "Hoş geldin",
-            p1: "Masandan sipariş ver, hazır olunca haber verelim.",
-            p2: "Etkinlikler, sürüşler, oylamalar ve mağaza da burada.",
-            p3: "Üye olursan puan kazanırsın; happy hour ve kampanyaları görürsün.",
-            go: "Menüye geç" },
-      en: { hi: "Welcome",
-            p1: "Order from your table — we'll let you know when it's ready.",
-            p2: "Events, rides, polls and the shop are all here too.",
-            p3: "Sign in to earn points and unlock happy hour and campaigns.",
-            go: "Go to menu" },
-      ru: { hi: "Добро пожаловать",
-            p1: "Заказывайте прямо со столика — сообщим, когда будет готово.",
-            p2: "Здесь же события, велозаезды, опросы и магазин.",
-            p3: "Зарегистрируйтесь: баллы, happy hour и акции.",
-            go: "В меню" },
+      tr: { h: ["BU SADECE", "BİR MENÜ", "DEĞİL."],
+            p1: "Sürüşleri görebilir, etkinlikler için rezervasyon yapabilir, yarının kahve çekirdeğini seçebilir ve mağazadaki ürünler hakkında bilgi alabilirsin.",
+            p2: "Üye olup puan biriktirebilir, üyelere özel happy hour indirimlerinden yararlanabilirsin.",
+            go: "Başla" },
+      en: { h: ["THIS IS", "NOT JUST", "A MENU."],
+            p1: "See the rides, book a place at events, pick tomorrow’s coffee beans and read up on everything in the shop.",
+            p2: "Become a member to collect points and use the members-only happy hour discounts.",
+            go: "Start" },
+      ru: { h: ["ЭТО", "НЕ ПРОСТО", "МЕНЮ."],
+            p1: "Смотрите заезды, бронируйте места на события, выбирайте кофе на завтра и узнавайте о товарах магазина.",
+            p2: "Станьте участником: копите баллы и пользуйтесь скидками happy hour.",
+            go: "Начать" },
     }[lang] || {};
+    // Baslik marka yazi tipiyle: Coolvetica Heavy Compressed'te hem Turkce
+    // hem Kiril harfler var (790 glif), yani uc dil de ayni yuzle yaziliyor.
+    // Rusca kelimeler uzun oldugu icin punto bir tik dusuruluyor.
+    const headFont = {
+      fontFamily: "'Coolvetica Heavy','Bebas Neue','Barlow Condensed',Impact,sans-serif",
+      fontWeight: 400, fontSize: lang === "ru" ? 54 : 62,
+      lineHeight: 0.92, letterSpacing: "0.005em", textTransform: "uppercase",
+    };
     return (
-      <div className="nip-customer" style={{fontFamily:cv,background:"#0C0C0C",color:"#F0EDE8",minHeight:"100vh",display:"flex",flexDirection:"column",justifyContent:"space-between",padding:"28px 22px 32px",maxWidth:520,margin:"0 auto"}}>
-        <div style={{display:"flex",justifyContent:"center",gap:4,background:"rgba(255,255,255,0.06)",borderRadius:18,padding:3,alignSelf:"center"}}>
-          {[["tr","🇹🇷 TR"],["en","🇬🇧 EN"],["ru","🇷🇺 RU"]].map(([k,l]) => (
-            <button key={k} onClick={() => setLanguage(k)} style={{padding:"9px 16px",minHeight:36,background:lang===k?"#F0EDE8":"transparent",color:lang===k?"#0C0C0C":"#8a8a8a",border:"none",borderRadius:15,fontSize:11,fontWeight:800,cursor:"pointer",fontFamily:"inherit"}}>{l}</button>
-          ))}
-        </div>
+      <div className="nip-customer" style={{fontFamily:cv,background:"#fff",color:"#101214",minHeight:"100vh",display:"flex",flexDirection:"column",justifyContent:"space-between",padding:"34px 28px",maxWidth:520,margin:"0 auto"}}>
+        <img src="/icons/logo-mark.png" alt="Not in Paris" style={{width:38,height:"auto"}}/>
 
-        <div style={{textAlign:"center",padding:"12px 0"}}>
-          <img src="/icons/logo-mark-light.png" alt="" style={{width:150,height:"auto",margin:"0 auto 22px",display:"block"}}/>
-          <div style={{fontSize:30,fontWeight:400,letterSpacing:"0.01em",fontFamily:"'Coolvetica Heavy','Coolvetica Condensed','Barlow Condensed',sans-serif",textTransform:"uppercase",lineHeight:1.05}}>Not in Paris</div>
-          <div style={{fontSize:10,color:"#7a7a7a",letterSpacing:"3px",marginTop:6}}>FETHİYE</div>
-
-          <div style={{fontSize:19,fontWeight:800,marginTop:30}}>{W.hi}</div>
-          <div style={{fontSize:14,color:"#c8c4be",lineHeight:1.65,marginTop:10}}>{W.p1}</div>
-          <div style={{fontSize:14,color:"#c8c4be",lineHeight:1.65,marginTop:6}}>{W.p2}</div>
-          <div style={{fontSize:13,color:"#C8973E",lineHeight:1.6,marginTop:16,fontWeight:600}}>⭐ {W.p3}</div>
+        <div>
+          <div style={headFont}>
+            {W.h?.[0]}<br/>{W.h?.[1]}<br/><span style={{color:"#0055A4"}}>{W.h?.[2]}</span>
+          </div>
+          <div style={{fontWeight:300,fontSize:15.5,lineHeight:1.62,color:"#2B3138",marginTop:24}}>{W.p1}</div>
+          <div style={{fontWeight:300,fontSize:14,lineHeight:1.62,color:"#6B7278",marginTop:14,paddingTop:14,borderTop:"1px solid #E9EBED"}}>{W.p2}</div>
         </div>
 
         <div>
-          <div style={{display:"flex",justifyContent:"center",flexWrap:"wrap",gap:"10px 18px",marginBottom:22,opacity:0.75}}>
-            {CUST_TABS.map(tab => (
-              <div key={tab.key} style={{display:"flex",flexDirection:"column",alignItems:"center",gap:3,minWidth:46}}>
-                <span style={{fontSize:19}}>{tab.icon}</span>
-                <span style={{fontSize:9,color:"#8a8a8a",fontWeight:600,letterSpacing:"0.3px"}}>{tab[["en","ru"].includes(lang)?lang:"tr"]}</span>
-              </div>
+          <div style={{display:"flex",gap:16,marginBottom:16}}>
+            {["tr","en","ru"].map(k => (
+              <button key={k} onClick={() => setLanguage(k)}
+                style={{background:"none",border:"none",padding:"4px 0",cursor:"pointer",fontFamily:"inherit",
+                        fontSize:11,letterSpacing:"0.12em",fontWeight:700,
+                        color:lang===k?"#101214":"#B8BCC1"}}>{k.toUpperCase()}</button>
             ))}
           </div>
-          <button onClick={dismissWelcome} style={{width:"100%",padding:"17px 20px",background:"#F0EDE8",color:"#0C0C0C",border:"none",borderRadius:14,fontSize:15,fontWeight:800,cursor:"pointer",fontFamily:"inherit",letterSpacing:"0.3px"}}>
-            {W.go} →
+          <button onClick={dismissWelcome} style={{width:"100%",padding:17,borderRadius:999,background:"#101214",color:"#fff",border:"none",fontSize:15,fontWeight:700,letterSpacing:"0.02em",cursor:"pointer",fontFamily:"inherit"}}>
+            {W.go}
           </button>
         </div>
       </div>
