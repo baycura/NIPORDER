@@ -374,12 +374,16 @@ function ssGet(k){ try { return sessionStorage.getItem(k); } catch (e) { return 
 function ssSet(k, v){ try { sessionStorage.setItem(k, v); } catch (e) {} }
 function ssDel(k){ try { sessionStorage.removeItem(k); } catch (e) {} }
 
+/* Kod güncellendiğinde sayfa boş durumla yeniden yayımlanır. O durumda
+   cihazdaki son yedek geri yüklenir ve ilk açan kişi paylaşılan kopyayı
+   da onarır — böylece güncelleme veriyi silmez. */
+var restored = false;
 function loadState(){
   var node = el("ari-state");
   var embedded = node ? safeParse(node.textContent, null) : null;
   if (embedded && embedded.users) return migrate(embedded);
   var local = lsGet(LS_STATE, null);
-  if (local && local.users) return migrate(local);
+  if (local && local.users){ restored = true; return migrate(local); }
   return seed();
 }
 /* Eski/eksik kayıtlarda uygulama çökmesin. */
@@ -419,7 +423,8 @@ function buildHtml(state){
 var saveTimer = null, savePending = false;
 function save(){
   if (readOnly) return;
-  if (!api) { lsSet(LS_STATE, S); return; }
+  lsSet(LS_STATE, S);                 /* cihaz yedeği — her iki kipte de */
+  if (!api) return;
   /* Yayım isteği sürerken yapılan değişiklik, yayım sonrası otomatik
      yenilemede kaybolmasın diye oturum deposunda bekletilir. */
   ssSet(SS_PEND, JSON.stringify(S));
@@ -1567,8 +1572,8 @@ function boot(){
     window.claude.use("artifact").then(function(a){
       api = a || null;
       if (!api) return;
-      render();                   /* "veri ortak" bilgisi görünsün */
-      if (replay) save();         /* kaçan değişikliği yayımla */
+      render();                          /* "veri ortak" bilgisi görünsün */
+      if (replay || restored) save();    /* kaçan değişikliği / yedeği yayımla */
     }).catch(function(){ api = null; });
   }
 }
