@@ -12,15 +12,29 @@ görevler ve envanter. Bağımlılık yok — tarayıcıda doğrudan açılır.
 Etkinlikler ve envanter **boş başlar**; gerçek program Yönetici > Etkinlikler'den,
 ekipman Envanter > + Ürün'den girilir. Ekip ve kategoriler hazır gelir.
 
-### Çalışma kipleri
+### Nerede yayında
 
-| Nerede açıldığı | Veri nerede |
-|---|---|
-| Claude Artifact olarak yayımlanmış bağlantı | Sayfanın kendi içinde. Bağlantıyı açan herkes aynı kayıtları görür; yazma yetkisi olanlar değiştirir. |
-| Dosyadan / yerelden | O cihazın `localStorage`'ında (`ari.*`). Cihazlar arası paylaşım yok. |
+`public/ari/index.html` olarak siteyle birlikte servis edilir (`/ari/`).
+Kaynak `prototypes/ari-app.html`; yayınlanan dosya ondan üretilir (doctype +
+head/body sarmalayıcısı). Vite `public/` klasörünü olduğu gibi kopyaladığı
+için ayrı bir kurulum adımı yoktur.
 
-Yayım kipinde her değişiklik sayfayı yeni bir sürüm olarak yeniden yayımlar
-(yazmalar ~1 sn içinde toplanır) ve açık olan tüm görünümler tazelenir.
+### Veri
+
+Ortak bir Supabase satırında: `NIP RESERVE` projesi, `public.ari_state`
+tablosu, `id = 'saha'`. Açmak için hesap gerekmez — RLS anon rolüne bu tabloda
+tam yetki verir.
+
+- Yazmalar ~0.7 sn toplanır, `version` sütunuyla korunur (compare-and-set).
+- İki kişi aynı anda yazarsa kayıt bazında birleştirilir: ekleme, düzenleme ve
+  silme ayrı ayrı ele alınır, kimsenin işi ezilmez.
+- 5 saniyede bir yoklama ile başkalarının değişikliği gelir. Panel açıkken
+  veya gönderilmemiş değişiklik varken yoklama durur.
+- Ağ yoksa uygulama `localStorage` ile çalışmaya devam eder, bağlantı gelince
+  gönderir.
+
+**Güvenlik:** anon anahtar sayfanın içindedir; bağlantıyı bilen herkes okur ve
+yazar. PIN'ler kim ne yaptı ayrımı içindir, koruma değildir.
 
 ### Roller
 
