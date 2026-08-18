@@ -1,1456 +1,1509 @@
-<!DOCTYPE html>
-<html lang="tr">
-<head>
-  <meta charset="UTF-8"/>
-  <meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover"/>
-  <meta name="apple-mobile-web-app-capable" content="yes"/>
-  <meta name="apple-mobile-web-app-status-bar-style" content="black"/>
-  <meta name="theme-color" content="#000000"/>
-  <title>ARI</title>
-  <link rel="icon" href="data:image/svg+xml,<svg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 100 100'><rect width='100' height='100' rx='22' fill='%23000'/><text x='50' y='72' text-anchor='middle' font-size='62' font-family='sans-serif' font-weight='bold' fill='%23FFE500'>A</text></svg>"/>
-  <script src="https://cdnjs.cloudflare.com/ajax/libs/react/18.2.0/umd/react.production.min.js"></script>
-  <script src="https://cdnjs.cloudflare.com/ajax/libs/react-dom/18.2.0/umd/react-dom.production.min.js"></script>
-  <script src="https://cdnjs.cloudflare.com/ajax/libs/babel-standalone/7.23.2/babel.min.js"></script>
-  <style>
-    *{box-sizing:border-box;margin:0;padding:0;-webkit-tap-highlight-color:transparent;}
-    body{background:#000;color:#fff;overscroll-behavior-y:none;}
-    input::placeholder{color:rgba(255,255,255,0.25);}
-    input[type=number]::-webkit-inner-spin-button,
-    input[type=number]::-webkit-outer-spin-button{-webkit-appearance:none;margin:0;}
-    input[type=number]{-moz-appearance:textfield;}
-    ::-webkit-scrollbar{display:none;}
-    @keyframes fadeUp{from{opacity:0;transform:translateY(8px)}to{opacity:1;transform:translateY(0)}}
-    @keyframes shake{0%,100%{transform:translateX(0)}25%,75%{transform:translateX(-5px)}50%{transform:translateX(5px)}}
-    @keyframes sheetUp{from{transform:translateY(24px);opacity:0}to{transform:translateY(0);opacity:1}}
-  </style>
-</head>
-<body>
+<title>ARI Saha</title>
+<meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover"/>
+<meta name="theme-color" content="#000000"/>
+
+<style id="ari-style">
+/* ARI Saha — sahada, karanlıkta, tek elle kullanılan bir araç.
+   Bilinçli olarak tek temalı (koyu): her renk açıkça boyanır. */
+:root{
+  --bg:#000; --s1:#141416; --s2:#1c1c1e; --s3:#2c2c2e; --s4:#3a3a3c;
+  --line:rgba(255,255,255,.09); --line2:rgba(255,255,255,.18);
+  --t1:#fff; --t2:rgba(255,255,255,.64); --t3:rgba(255,255,255,.42); --t4:rgba(255,255,255,.26);
+  --y:#FFE500; --yd:rgba(255,229,0,.12); --yb:rgba(255,229,0,.38);
+  --g:#32d74b; --gd:rgba(50,215,75,.13);
+  --r:#ff453a; --rd:rgba(255,69,58,.13);
+  --o:#ff9f0a; --od:rgba(255,159,10,.13);
+  --ui:-apple-system,BlinkMacSystemFont,'SF Pro Text','Segoe UI',Roboto,'Helvetica Neue',sans-serif;
+  --mono:ui-monospace,'SF Mono','Menlo','Roboto Mono',monospace;
+  --pad:16px;
+}
+*{box-sizing:border-box;margin:0;padding:0;-webkit-tap-highlight-color:transparent;}
+html,body{background:#000;}
+body{color:#fff;font-family:var(--ui);font-size:16px;line-height:1.4;
+     overscroll-behavior-y:none;-webkit-font-smoothing:antialiased;}
+::-webkit-scrollbar{display:none;}
+button,input,select,textarea{font:inherit;color:inherit;}
+button{background:none;border:none;cursor:pointer;}
+:focus-visible{outline:2px solid var(--y);outline-offset:2px;border-radius:4px;}
+.num{font-family:var(--mono);font-variant-numeric:tabular-nums;}
+
+/* ─ iskelet ─ */
+#root{max-width:460px;margin:0 auto;min-height:100dvh;position:relative;background:var(--bg);}
+.topbar{position:sticky;top:0;z-index:40;display:flex;align-items:center;justify-content:space-between;
+  gap:10px;padding:10px var(--pad);background:rgba(0,0,0,.82);backdrop-filter:blur(20px);
+  -webkit-backdrop-filter:blur(20px);border-bottom:1px solid var(--line);}
+.who{font-size:13px;color:var(--t2);white-space:nowrap;overflow:hidden;text-overflow:ellipsis;}
+.who b{color:var(--t1);font-weight:600;}
+.who .rl{color:var(--y);}
+.iconbtn{width:30px;height:30px;border-radius:8px;background:var(--s3);color:var(--t2);
+  display:flex;align-items:center;justify-content:center;font-size:14px;flex-shrink:0;}
+.page{padding-bottom:calc(88px + env(safe-area-inset-bottom,0px));animation:fade .18s ease;}
+@keyframes fade{from{opacity:0;transform:translateY(6px)}to{opacity:1;transform:none}}
+@media (prefers-reduced-motion:reduce){*{animation:none!important;transition:none!important;}}
+
+h1.title{font-size:clamp(26px,7vw,32px);font-weight:700;letter-spacing:-.6px;text-wrap:balance;}
+.head{display:flex;align-items:flex-end;justify-content:space-between;gap:12px;padding:10px var(--pad) 12px;}
+.link{color:var(--y);font-size:15px;}
+.sec{padding:20px var(--pad) 6px;font-size:12px;font-weight:600;color:var(--t3);
+  letter-spacing:.6px;text-transform:uppercase;}
+.wrap{padding:0 var(--pad);}
+.card{background:var(--s2);border-radius:14px;overflow:hidden;}
+.empty{padding:48px 24px;text-align:center;color:var(--t3);font-size:15px;}
+.note{padding:12px var(--pad) 0;font-size:12px;color:var(--t3);line-height:1.5;}
+
+/* ─ satır ─ */
+.row{display:flex;align-items:center;gap:12px;padding:12px 14px;background:var(--s2);
+  border-bottom:1px solid var(--line);width:100%;text-align:left;}
+.row:last-child{border-bottom:none;}
+.row.tap{cursor:pointer;}
+.row.tap:hover,.row.tap:active{background:var(--s3);}
+.row .gr{flex:1;min-width:0;}
+.row .p1{display:block;font-size:15px;color:var(--t1);overflow:hidden;text-overflow:ellipsis;white-space:nowrap;}
+.row .p2{display:block;font-size:12px;color:var(--t3);margin-top:2px;overflow:hidden;
+  text-overflow:ellipsis;white-space:nowrap;}
+.row .rt{text-align:right;flex-shrink:0;}
+.chev{width:7px;height:12px;flex-shrink:0;opacity:.35;}
+.avatar{width:34px;height:34px;border-radius:50%;background:var(--s3);display:flex;align-items:center;
+  justify-content:center;font-size:15px;font-weight:600;flex-shrink:0;}
+.datechip{width:38px;height:38px;border-radius:9px;background:var(--yd);display:flex;flex-direction:column;
+  align-items:center;justify-content:center;flex-shrink:0;line-height:1;}
+.datechip .m{font-size:9px;font-weight:700;color:var(--y);letter-spacing:.4px;}
+.datechip .d{font-size:15px;font-weight:700;color:var(--y);}
+
+/* ─ rozet ─ */
+.pill{display:inline-block;font-size:10px;font-weight:600;letter-spacing:.3px;padding:2px 7px;
+  border-radius:6px;flex-shrink:0;white-space:nowrap;vertical-align:middle;}
+.pill.y{background:var(--yd);color:var(--y);}
+.pill.g{background:var(--gd);color:var(--g);}
+.pill.r{background:var(--rd);color:var(--r);}
+.pill.o{background:var(--od);color:var(--o);}
+.pill.n{background:var(--s3);color:var(--t2);}
+
+/* ─ butonlar ─ */
+.btn{display:block;width:100%;padding:14px 0;border-radius:12px;font-size:16px;font-weight:600;text-align:center;}
+.btn.pri{background:var(--y);color:#000;}
+.btn.sec{background:var(--s3);color:var(--t1);}
+.btn.dan{background:var(--r);color:#fff;}
+.btn.gho{background:transparent;border:1px solid var(--line2);color:var(--t1);}
+.btn.dgho{background:transparent;border:1px solid rgba(255,69,58,.4);color:var(--r);}
+.btn+.btn{margin-top:8px;}
+.btnrow{display:flex;gap:8px;}
+.btnrow>*{flex:1;margin-top:0;}
+.chip{flex-shrink:0;padding:7px 13px;border-radius:20px;background:var(--s3);color:var(--t2);
+  font-size:13px;border:1px solid transparent;}
+.chip.on{background:var(--yd);color:var(--y);border-color:var(--yb);}
+.chips{display:flex;gap:8px;flex-wrap:wrap;}
+.chips.scroll{flex-wrap:nowrap;overflow-x:auto;padding:0 var(--pad) 14px;}
+
+/* ─ form ─ */
+.field{display:block;margin-bottom:14px;}
+.field>span{display:block;font-size:12px;color:var(--t3);letter-spacing:.4px;
+  text-transform:uppercase;margin:0 0 6px 4px;}
+.inp{width:100%;background:var(--s3);border:1px solid transparent;border-radius:10px;
+  padding:12px 14px;font-size:16px;color:var(--t1);outline:none;}
+.inp:focus{border-color:var(--yb);}
+.inp::placeholder{color:var(--t4);}
+select.inp{appearance:none;-webkit-appearance:none;padding-right:38px;
+  background-image:linear-gradient(45deg,transparent 50%,rgba(255,255,255,.42) 50%),
+                   linear-gradient(135deg,rgba(255,255,255,.42) 50%,transparent 50%);
+  background-position:calc(100% - 19px) 22px,calc(100% - 14px) 22px;
+  background-size:5px 5px,5px 5px;background-repeat:no-repeat;}
+.two{display:grid;grid-template-columns:1fr 1fr;gap:10px;}
+.err{color:var(--r);font-size:13px;}
+
+/* ─ takvim ─ */
+.calnav{display:flex;align-items:center;justify-content:space-between;padding:0 var(--pad) 12px;}
+.calnav b{font-size:16px;font-weight:600;}
+.calnav button{width:34px;height:34px;border-radius:9px;background:var(--s2);color:var(--y);font-size:16px;}
+.dow{display:grid;grid-template-columns:repeat(7,1fr);padding:0 12px;margin-bottom:4px;}
+.dow span{text-align:center;font-size:11px;font-weight:600;color:var(--t3);}
+.dow span.we{color:var(--r);}
+.grid{display:grid;grid-template-columns:repeat(7,1fr);gap:3px;padding:0 12px;}
+.day{aspect-ratio:1/1.12;background:var(--s2);border-radius:9px;padding:4px 3px;overflow:hidden;
+  border:1px solid transparent;display:flex;flex-direction:column;gap:1px;}
+.day.has{cursor:pointer;}
+.day.today{border-color:var(--yb);}
+.day .n{font-size:10px;color:var(--t3);text-align:right;line-height:1;}
+.day.today .n{color:var(--y);font-weight:700;}
+.day .n.we{color:var(--t4);}
+.ev{font-size:7.5px;line-height:1.25;color:var(--t2);background:var(--yd);border-left:1.5px solid var(--yb);
+  border-radius:0 2px 2px 0;padding:1px 3px;overflow:hidden;text-overflow:ellipsis;white-space:nowrap;}
+.ev.out{background:var(--od);border-left-color:var(--o);}
+.ev.done{background:var(--s3);border-left-color:var(--t4);color:var(--t3);}
+.more{font-size:7.5px;color:var(--t4);text-align:center;}
+
+/* ─ etkinlik ─ */
+.hero{padding:14px 20px 16px;}
+.hero .meta{font-size:13px;color:var(--t3);}
+.hero h1{font-size:clamp(24px,7vw,30px);font-weight:700;letter-spacing:-.6px;margin:3px 0 6px;text-wrap:balance;}
+.hero .ven{font-size:14px;color:var(--t2);}
+.hero .crew{font-size:13px;color:var(--t3);margin-top:2px;}
+.times{display:flex;gap:22px;margin-top:14px;}
+.times .lb{font-size:11px;color:var(--t4);letter-spacing:.5px;}
+.times .vl{font-size:27px;font-weight:300;}
+.bar{height:3px;background:var(--s3);border-radius:2px;overflow:hidden;}
+.bar i{display:block;height:100%;background:var(--y);transition:width .3s ease;}
+.bar.full i{background:var(--g);}
+.check{display:flex;align-items:center;gap:14px;padding:15px 14px;background:var(--s2);
+  border-bottom:1px solid var(--line);width:100%;text-align:left;}
+.check:last-child{border-bottom:none;}
+.check.on{background:var(--yd);}
+.box{width:24px;height:24px;border-radius:50%;border:1.5px solid var(--s4);flex-shrink:0;
+  display:flex;align-items:center;justify-content:center;}
+.check.on .box{background:var(--y);border-color:var(--y);}
+.check .nm{flex:1;min-width:0;font-size:16px;}
+.check.on .nm{color:var(--t3);text-decoration:line-through;}
+.check .qt{font-size:16px;font-weight:600;color:var(--y);flex-shrink:0;}
+.check.on .qt{color:var(--t4);}
+.check .qt small{font-size:11px;font-weight:400;color:var(--t4);}
+.short{display:block;font-size:11px;color:var(--r);margin-top:2px;text-decoration:none;}
+.banner{border-radius:14px;padding:16px;text-align:center;font-size:16px;font-weight:600;}
+.banner.g{background:var(--gd);color:var(--g);}
+.addrow{display:flex;gap:8px;margin-top:10px;}
+.addrow .inp{flex:1;}
+.addrow button{width:46px;border-radius:10px;background:var(--y);color:#000;font-size:22px;flex-shrink:0;}
+
+/* ─ istatistik ─ */
+.stats{display:flex;background:var(--s2);border-radius:14px;padding:14px 10px;}
+.stats>div{flex:1;text-align:center;border-left:1px solid var(--line);}
+.stats>div:first-child{border-left:none;}
+.stats .v{font-size:23px;font-weight:700;line-height:1;}
+.stats .l{font-size:10px;color:var(--t3);margin-top:4px;}
+.grid3{display:grid;grid-template-columns:repeat(3,1fr);gap:8px;text-align:center;}
+.grid3 .v{font-size:27px;font-weight:700;line-height:1;}
+.grid3 .l{font-size:11px;color:var(--t3);margin-top:5px;}
+.blk{background:var(--s3);border-radius:14px;padding:15px;}
+.blk h3{font-size:12px;color:var(--t3);letter-spacing:.5px;text-transform:uppercase;
+  font-weight:600;margin-bottom:11px;}
+.cases{display:flex;flex-wrap:wrap;gap:6px;}
+.cs{width:38px;height:38px;border-radius:9px;display:flex;align-items:center;justify-content:center;
+  font-size:10px;font-weight:700;background:var(--yd);color:var(--y);border:1px solid var(--yb);
+  font-family:var(--mono);}
+.cs.out{background:var(--rd);color:var(--r);border-color:rgba(255,69,58,.4);}
+.kv{display:flex;justify-content:space-between;gap:10px;font-size:15px;padding:5px 0;}
+.kv .k{color:var(--t2);}
+.stepper{display:flex;align-items:center;gap:12px;background:rgba(0,0,0,.35);border-radius:10px;
+  padding:5px 12px;flex-shrink:0;}
+.stepper button{font-size:19px;color:var(--y);line-height:1;width:22px;}
+.stepper .n{font-size:15px;min-width:22px;text-align:center;}
+
+/* ─ arama ─ */
+.search{display:flex;align-items:center;gap:9px;background:var(--s3);border-radius:11px;
+  padding:9px 13px;margin:0 var(--pad) 12px;}
+.search input{flex:1;background:none;border:none;outline:none;font-size:16px;color:var(--t1);min-width:0;}
+.search input::placeholder{color:var(--t4);}
+
+/* ─ sekmeler ─ */
+.tabbar{position:fixed;bottom:0;left:50%;transform:translateX(-50%);width:100%;max-width:460px;z-index:45;
+  display:flex;background:rgba(0,0,0,.88);backdrop-filter:blur(24px);-webkit-backdrop-filter:blur(24px);
+  border-top:1px solid var(--line);padding-bottom:calc(8px + env(safe-area-inset-bottom,0px));}
+.tabbar button{position:relative;flex:1;display:flex;flex-direction:column;align-items:center;gap:4px;
+  padding:9px 0 2px;color:var(--t3);}
+.tabbar button.on{color:var(--y);}
+.tabbar span.lb{font-size:10px;letter-spacing:.2px;}
+.tabbar button.on span.lb{font-weight:600;}
+.tabbar .dot{position:absolute;top:7px;left:calc(50% + 8px);width:7px;height:7px;
+  border-radius:50%;background:var(--r);}
+
+/* ─ paneller ─ */
+.scrim{position:fixed;inset:0;z-index:100;background:rgba(0,0,0,.72);backdrop-filter:blur(8px);
+  -webkit-backdrop-filter:blur(8px);display:flex;flex-direction:column;justify-content:flex-end;}
+.sheet{background:var(--s2);border-radius:20px 20px 0 0;max-height:92dvh;overflow-y:auto;
+  padding-bottom:calc(20px + env(safe-area-inset-bottom,0px));animation:up .22s ease;
+  max-width:460px;width:100%;margin:0 auto;}
+@keyframes up{from{transform:translateY(20px);opacity:0}to{transform:none;opacity:1}}
+.grab{width:36px;height:4px;border-radius:2px;background:var(--s4);margin:12px auto 4px;}
+.shead{display:flex;justify-content:space-between;align-items:flex-start;gap:12px;padding:8px 20px 16px;}
+.shead .sub{font-size:13px;color:var(--t3);}
+.shead h2{font-size:21px;font-weight:700;letter-spacing:-.3px;}
+.shead .id{font-size:11px;color:var(--t4);margin-top:3px;}
+.sbody{padding:0 var(--pad);display:flex;flex-direction:column;gap:12px;}
+.sbody .field{margin-bottom:0;}
+.dialog{position:fixed;inset:0;z-index:120;background:rgba(0,0,0,.72);backdrop-filter:blur(6px);
+  -webkit-backdrop-filter:blur(6px);display:flex;align-items:center;justify-content:center;padding:24px;}
+.dbox{background:var(--s2);border-radius:16px;padding:22px 20px 16px;width:100%;max-width:320px;}
+.dbox p{font-size:16px;text-align:center;margin-bottom:18px;line-height:1.45;}
+
+/* ─ giriş ─ */
+.login{min-height:100dvh;display:flex;flex-direction:column;align-items:center;justify-content:center;
+  padding:76px 24px;position:relative;}
+.login .hint{font-size:13px;color:var(--t3);text-align:center;margin-bottom:20px;}
+.login .nm{font-size:22px;font-weight:600;}
+.login .sb{font-size:14px;color:var(--t3);margin-bottom:30px;}
+.dots{display:flex;gap:16px;margin-bottom:36px;}
+.dots i{width:12px;height:12px;border-radius:50%;background:var(--s4);transition:background .12s,transform .12s;}
+.dots i.f{background:var(--y);transform:scale(1.12);}
+.dots.err i.f{background:var(--r);}
+.dots.err{animation:shake .35s;}
+@keyframes shake{0%,100%{transform:none}25%,75%{transform:translateX(-5px)}50%{transform:translateX(5px)}}
+.pad{display:grid;grid-template-columns:repeat(3,1fr);gap:12px;width:min(72vw,262px);}
+.pad button{background:var(--s3);border-radius:12px;height:clamp(54px,14vw,64px);
+  font-size:clamp(21px,5vw,25px);font-weight:300;}
+.pad button:active{background:var(--s4);}
+
+/* ─ durum göstergesi ─ */
+.saving{position:fixed;left:50%;transform:translateX(-50%);bottom:calc(78px + env(safe-area-inset-bottom,0px));
+  z-index:60;background:var(--s3);color:var(--t2);font-size:12px;padding:8px 15px;border-radius:20px;
+  white-space:nowrap;animation:fade .2s ease;}
+.saving.bad{background:var(--rd);color:var(--r);}
+.robar{background:var(--od);color:var(--o);font-size:12px;padding:7px var(--pad);text-align:center;}
+</style>
+
 <div id="root"></div>
-<script type="text/babel">
-const { useState, useRef, useCallback, useEffect, useMemo } = React;
 
-/* ─────────────────────────────────────────
-   DESIGN TOKENS  (iOS dark palette + ARI)
-───────────────────────────────────────── */
-const T = {
-  bg0: "#000",
-  bg1: "#1c1c1e",
-  bg2: "#2c2c2e",
-  bg3: "#3a3a3c",
-  sep: "rgba(255,255,255,0.08)",
-  sep2:"rgba(255,255,255,0.14)",
-  L1: "#fff",
-  L2: "rgba(255,255,255,0.55)",
-  L3: "rgba(255,255,255,0.30)",
-  L4: "rgba(255,255,255,0.12)",
-  Y: "#FFE500",
-  Yd:"rgba(255,229,0,0.12)",
-  G: "#32d74b",
-  Gd:"rgba(50,215,75,0.12)",
-  R: "#ff453a",
-  Rd:"rgba(255,69,58,0.12)",
-};
+<script id="ari-state" type="application/json">null</script>
 
-const SF = `-apple-system,BlinkMacSystemFont,'SF Pro Display','Helvetica Neue',sans-serif`;
-const MONO = `'SF Mono','Fira Code',ui-monospace,monospace`;
+<script id="ari-app">
+/* ARI Saha — etkinlik, ekip ve envanter takibi.
+   Tek dosya, bağımlılık yok. İki çalışma kipi:
+     · Artifact olarak yayımlandığında  -> veri sayfanın içinde, bağlantıyı açan herkes aynısını görür
+     · Dosyadan açıldığında             -> veri o cihazın localStorage'ında
+*/
+(function () {
+"use strict";
 
-/* ─────────────────────────────────────────
-   TARİH YARDIMCILARI
-   Not: new Date("2025-05-02") UTC olarak okunur ve negatif saat
-   dilimlerinde bir gün geriye kayar. Bu yüzden her yerde
-   yerel saate göre kuran/okuyan yardımcıları kullanıyoruz.
-───────────────────────────────────────── */
-const pad2 = n => String(n).padStart(2, "0");
-const dateKey = (y, m, d) => `${y}-${pad2(m + 1)}-${pad2(d)}`;
-const parseKey = k => { const [y, m, d] = k.split("-").map(Number); return new Date(y, m - 1, d); };
-const daysInMonth = (y, m) => new Date(y, m + 1, 0).getDate();
-const startOfToday = () => { const n = new Date(); return new Date(n.getFullYear(), n.getMonth(), n.getDate()); };
+/* ═══════════ yardımcılar ═══════════ */
+var ESCM = { "&":"&amp;", "<":"&lt;", ">":"&gt;", '"':"&quot;", "'":"&#39;" };
+function h(v){ return String(v == null ? "" : v).replace(/[&<>"']/g, function(c){ return ESCM[c]; }); }
+function el(id){ return document.getElementById(id); }
+function pad2(n){ return String(n).padStart(2,"0"); }
+function uid(p){ return (p||"x") + Date.now().toString(36) + Math.floor(Math.random()*1e6).toString(36); }
+function clamp(n,a,b){ return Math.max(a, Math.min(b, n)); }
+function intOf(v,d){ var n = parseInt(v,10); return isNaN(n) ? (d||0) : n; }
+function sortBy(arr,f){ return arr.slice().sort(function(a,b){ var x=f(a),y=f(b); return x<y?-1:x>y?1:0; }); }
 
-const MONTHS_TR = ["Ocak","Şubat","Mart","Nisan","Mayıs","Haziran","Temmuz","Ağustos","Eylül","Ekim","Kasım","Aralık"];
-const MONTHS_TR_SHORT = ["OCA","ŞUB","MAR","NİS","MAY","HAZ","TEM","AĞU","EYL","EKI","KAS","ARA"];
+var AYLAR = ["Ocak","Şubat","Mart","Nisan","Mayıs","Haziran","Temmuz","Ağustos","Eylül","Ekim","Kasım","Aralık"];
+var AYKISA = ["OCA","ŞUB","MAR","NİS","MAY","HAZ","TEM","AĞU","EYL","EKİ","KAS","ARA"];
+var GUNLER = ["Pt","Sa","Ça","Pe","Cu","Ct","Pz"];
 
-const fmtLongDate = key => { const d = parseKey(key); return `${d.getDate()} ${MONTHS_TR[d.getMonth()]}`; };
-
-/* Göreli zaman: "Az önce" · "12 dk önce" · "3 sa önce" · "8 Mayıs" */
-const relTime = iso => {
+function key(y,m,d){ return y + "-" + pad2(m+1) + "-" + pad2(d); }
+function parseKey(k){ var p = String(k||"").split("-"); return new Date(+p[0], (+p[1]||1)-1, +p[2]||1); }
+function todayKey(){ var n = new Date(); return key(n.getFullYear(), n.getMonth(), n.getDate()); }
+function dim(y,m){ return new Date(y, m+1, 0).getDate(); }
+function longDate(k){ var d = parseKey(k); return d.getDate() + " " + AYLAR[d.getMonth()]; }
+function shortDate(k){ var d = parseKey(k); return d.getDate() + " " + AYKISA[d.getMonth()]; }
+function relTime(iso){
   if (!iso) return "";
-  const t = new Date(iso);
-  if (isNaN(t)) return String(iso);
-  const diff = (Date.now() - t.getTime()) / 1000;
-  if (diff < 60)     return "Az önce";
-  if (diff < 3600)   return `${Math.floor(diff / 60)} dk önce`;
-  if (diff < 86400)  return `${Math.floor(diff / 3600)} sa önce`;
-  if (diff < 172800) return "Dün";
-  return `${t.getDate()} ${MONTHS_TR[t.getMonth()]}`;
+  var t = new Date(iso); if (isNaN(t.getTime())) return "";
+  var s = (Date.now() - t.getTime()) / 1000;
+  if (s < 60) return "az önce";
+  if (s < 3600) return Math.floor(s/60) + " dk önce";
+  if (s < 86400) return Math.floor(s/3600) + " sa önce";
+  if (s < 172800) return "dün";
+  return t.getDate() + " " + AYKISA[t.getMonth()].toLowerCase();
+}
+
+var CHEV = '<svg class="chev" viewBox="0 0 7 12" fill="none" aria-hidden="true"><path d="M1 1l5 5-5 5" stroke="currentColor" stroke-width="1.6" stroke-linecap="round" stroke-linejoin="round"/></svg>';
+var TICK = '<svg width="12" height="9" viewBox="0 0 12 9" fill="none" aria-hidden="true"><path d="M1 4l3.5 3.5L11 1" stroke="#000" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"/></svg>';
+var LOGO = '<svg width="62" height="28" viewBox="0 0 110 50" role="img" aria-label="ARI">'
+  + '<g fill="none" stroke="#FFE500" stroke-width="3.4" stroke-linecap="round" stroke-linejoin="round">'
+  + '<path d="M20 6l-11 19 11 19 11-19z"/><path d="M9 25h22"/></g>'
+  + '<text x="44" y="35" fill="#fff" font-family="-apple-system,Segoe UI,sans-serif" font-size="27" font-weight="700" letter-spacing="3">ARI</text></svg>';
+
+var ICONS = {
+  cal:'<svg width="21" height="21" viewBox="0 0 20 20" fill="none"><rect x="2" y="4" width="16" height="14" rx="3" stroke="currentColor" stroke-width="1.5"/><path d="M2 8h16M6 2v4M14 2v4" stroke="currentColor" stroke-width="1.5" stroke-linecap="round"/></svg>',
+  task:'<svg width="21" height="21" viewBox="0 0 20 20" fill="none"><rect x="2" y="2" width="16" height="16" rx="3.5" stroke="currentColor" stroke-width="1.5"/><path d="M5.6 10l2.6 2.6L14.4 6.4" stroke="currentColor" stroke-width="1.5" stroke-linecap="round" stroke-linejoin="round"/></svg>',
+  inv:'<svg width="21" height="21" viewBox="0 0 20 20" fill="none"><rect x="2" y="2" width="7" height="7" rx="1.6" stroke="currentColor" stroke-width="1.5"/><rect x="11" y="2" width="7" height="7" rx="1.6" stroke="currentColor" stroke-width="1.5"/><rect x="2" y="11" width="7" height="7" rx="1.6" stroke="currentColor" stroke-width="1.5"/><rect x="11" y="11" width="7" height="7" rx="1.6" stroke="currentColor" stroke-width="1.5"/></svg>',
+  adm:'<svg width="21" height="21" viewBox="0 0 20 20" fill="none"><circle cx="10" cy="7" r="3.5" stroke="currentColor" stroke-width="1.5"/><path d="M3.2 17c0-3.3 3-6 6.8-6s6.8 2.7 6.8 6" stroke="currentColor" stroke-width="1.5" stroke-linecap="round"/></svg>'
 };
 
-/* ─────────────────────────────────────────
-   KALICI DEPOLAMA
-   Prototipte veri sunucuda tutulmuyor; tarayıcıda saklıyoruz ki
-   sekme değiştirince / sayfa yenilenince yapılan işler kaybolmasın.
-───────────────────────────────────────── */
-const store = {
-  get(key, fallback) {
-    try {
-      const raw = localStorage.getItem("ari:" + key);
-      return raw == null ? fallback : JSON.parse(raw);
-    } catch { return fallback; }
-  },
-  set(key, value) {
-    try { localStorage.setItem("ari:" + key, JSON.stringify(value)); } catch { /* özel mod / kota */ }
-  },
-};
-
-function usePersisted(key, initial) {
-  const [value, setValue] = useState(() => store.get(key, initial));
-  useEffect(() => { store.set(key, value); }, [key, value]);
-  return [value, setValue];
-}
-
-/* Çakışmayan id üretimi (Math.random tek başına çakışabiliyordu) */
-let idSeq = 0;
-const genId = () => `${Date.now().toString(36)}-${(idSeq++).toString(36)}`.toUpperCase();
-
-/* ─── KULLANICILAR ─── */
-const CREW = [
-  { id:2, name:"Ömer",   pin:"1111" },
-  { id:3, name:"Berkay", pin:"2222" },
-  { id:4, name:"Sadi",   pin:"3333" },
-  { id:5, name:"Emir",   pin:"4444" },
-];
-const PATRON = { id:1, name:"Levent", role:"patron", pin:"1234" };
-const ALL_USERS = [...CREW, PATRON];
-const uName = id => ALL_USERS.find(u => u.id === id)?.name ?? "—";
-
-/* ─── ETKİNLİKLER ───
-   Demo verisi ayın gününe göre tanımlı; açılışta içinde bulunulan aya
-   yerleştiriliyor. Böylece takvim her zaman dolu görünüyor ve
-   "Yaklaşan" listesi boş kalmıyor. */
-const EVENT_SEED = [
-  { id:1,  client:"Robinson",  name:"Neon Party",   day:2,  time:"22:00", meetTime:"19:00", venue:"Robinson Dalaman",    crew:[2,3],     rider:[{id:1,name:"JBL EON615",qty:4,u:"adet"},{id:2,name:"A&H Mixer",qty:1,u:"adet"},{id:3,name:"LED Par 64",qty:12,u:"adet"},{id:4,name:"Smoke Machine",qty:2,u:"adet"},{id:5,name:"XLR 10m",qty:8,u:"adet"}], notes:["Havuz başı sahne. Kablo güzergahına dikkat, ıslak zemin."] },
-  { id:2,  client:"Robinson",  name:"Beach Luha",   day:2,  time:"20:00", meetTime:"17:30", venue:"Robinson Beach Club", crew:[4,5],     rider:[{id:1,name:"QSC K12.2",qty:2,u:"adet"},{id:2,name:"Pioneer DJM-900",qty:1,u:"adet"},{id:3,name:"Moving Head",qty:6,u:"adet"}], notes:["DJ 21:00'de gelecek."] },
-  { id:3,  client:"Seno",      name:"Neon Party",   day:5,  time:"23:00", meetTime:"20:00", venue:"Seno Club Bodrum",    crew:[2,4],     rider:[{id:1,name:"JBL SRX835P",qty:2,u:"adet"},{id:2,name:"UV Par",qty:8,u:"adet"},{id:3,name:"Neon Strip",qty:20,u:"m"}], notes:["Kablolar siyah olacak."] },
-  { id:4,  client:"Robinson",  name:"D. Dimonds",   day:5,  time:"21:00", meetTime:"18:00", venue:"Robinson Dalaman",    crew:[3,5],     rider:[{id:1,name:"d&b Y8",qty:4,u:"adet"}], notes:[] },
-  { id:5,  client:"Seno",      name:"White Party",  day:6,  time:"22:00", meetTime:"19:00", venue:"Seno Club Bodrum",    crew:[2,3,4],   rider:[{id:1,name:"QSC K12.2",qty:4,u:"adet"},{id:2,name:"White LED Par",qty:20,u:"adet"}], notes:["Sahne örtüsü getirilecek."] },
-  { id:6,  client:"Düğün",     name:"Dinner Bodrum",day:13, time:"17:00", meetTime:"13:00", venue:"Bodrum Marina",       crew:[2,5],     rider:[{id:1,name:"Line Array",qty:1,u:"set"},{id:2,name:"Wireless Mik",qty:4,u:"adet"}], notes:["Nikah 19:00, yemek 20:30."] },
-  { id:7,  client:"Fortezza",  name:"Party Efekt",  day:14, time:"23:30", meetTime:"20:00", venue:"Fortezza Bodrum",     crew:[3,4],     rider:[{id:1,name:"Martin MAC Aura",qty:8,u:"adet"},{id:2,name:"CO2 Jet",qty:4,u:"adet"},{id:3,name:"Konfeti",qty:2,u:"adet"}], notes:["CO2 tüpleri dolu gelecek."] },
-  { id:8,  client:"Düğün",     name:"Marin",        day:11, time:"16:00", meetTime:"12:00", venue:"Marin Bodrum",        crew:[2,5],     rider:[{id:1,name:"Line Array",qty:1,u:"set"},{id:2,name:"Wireless Mik",qty:4,u:"adet"}], notes:[] },
-  { id:9,  client:"Corporate", name:"Party Antalya",day:13, time:"19:00", meetTime:"06:00", venue:"Antalya Convention",  crew:[3,4],     rider:[{id:1,name:"JBL SRX835P",qty:4,u:"adet"}], notes:["Araç 06:00 yola çıkacak."] },
-  { id:10, client:"Robinson",  name:"Türk Gecesi",  day:9,  time:"21:00", meetTime:"18:00", venue:"Robinson Dalaman",    crew:[4,5],     rider:[{id:1,name:"JBL EON615",qty:6,u:"adet"},{id:2,name:"Wireless Mik",qty:6,u:"adet"}], notes:[] },
-  { id:11, client:"Robinson",  name:"Retro Party",  day:10, time:"22:00", meetTime:"19:00", venue:"Robinson Beach",      crew:[2,3],     rider:[{id:1,name:"QSC K12.2",qty:2,u:"adet"}], notes:[] },
-  { id:12, client:"Robinson",  name:"Neon Party",   day:12, time:"22:00", meetTime:"19:00", venue:"Robinson Dalaman",    crew:[3,4],     rider:[{id:1,name:"JBL EON615",qty:4,u:"adet"},{id:2,name:"LED Par 64",qty:12,u:"adet"}], notes:[] },
-  { id:13, client:"Regata",    name:"Boynuzbuku",   day:23, time:"20:00", meetTime:"11:00", venue:"Regata Marina",       crew:[2,3,4,5], rider:[{id:1,name:"d&b Y-Serisi",qty:1,u:"set"},{id:2,name:"DiGiCo SD11",qty:1,u:"adet"},{id:3,name:"Laser RGB",qty:2,u:"adet"}], notes:["Büyük org. 2 araç."] },
-  { id:14, client:"Düğün",     name:"Karya",        day:23, time:"16:00", meetTime:"12:00", venue:"Karya Bodrum",        crew:[3,5],     rider:[{id:1,name:"Line Array",qty:1,u:"set"}], notes:[] },
-  { id:15, client:"Robinson",  name:"Türk Gecesi",  day:23, time:"21:00", meetTime:"18:00", venue:"Robinson Dalaman",    crew:[2,3],     rider:[{id:1,name:"JBL EON615",qty:6,u:"adet"}], notes:[] },
-  { id:16, client:"Regata",    name:"Boynuzbuku",   day:24, time:"20:00", meetTime:"11:00", venue:"Regata Marina",       crew:[2,4],     rider:[{id:1,name:"d&b Y-Serisi",qty:1,u:"set"}], notes:[] },
-  { id:17, client:"Robinson",  name:"Retro Party",  day:24, time:"22:00", meetTime:"19:00", venue:"Robinson Beach",      crew:[4,5],     rider:[{id:1,name:"QSC K12.2",qty:2,u:"adet"}], notes:[] },
-  { id:18, client:"Robinson",  name:"Neon Party",   day:26, time:"22:00", meetTime:"19:00", venue:"Robinson Dalaman",    crew:[2,3],     rider:[{id:1,name:"JBL EON615",qty:4,u:"adet"}], notes:[] },
-  { id:19, client:"Seno",      name:"Neon Party",   day:27, time:"23:00", meetTime:"20:00", venue:"Seno Club",           crew:[4,5],     rider:[{id:1,name:"QSC K12.2",qty:4,u:"adet"}], notes:[] },
-  { id:20, client:"Fortezza",  name:"Party Efekt",  day:28, time:"23:30", meetTime:"20:00", venue:"Fortezza",            crew:[2,3],     rider:[{id:1,name:"CO2 Jet",qty:4,u:"adet"}], notes:[] },
-  { id:21, client:"Robinson",  name:"Beach Luha",   day:30, time:"20:00", meetTime:"17:00", venue:"Robinson Beach",      crew:[4,5],     rider:[{id:1,name:"QSC K12.2",qty:2,u:"adet"}], notes:[] },
-];
-
-const EVENTS = (() => {
-  const now = new Date();
-  const y = now.getFullYear(), m = now.getMonth(), dim = daysInMonth(y, m);
-  return EVENT_SEED
-    .map(({ day, ...e }) => ({ ...e, date: dateKey(y, m, Math.min(day, dim)) }))
-    .sort((a, b) => (a.date + a.time).localeCompare(b.date + b.time));
-})();
-
-const TASKS_INIT = [
-  { id:1, title:"CO2 tüplerini doldurt",                desc:"Fortezza Party Efekt öncesi", done:false, doneBy:null, doneAt:null },
-  { id:2, title:"JBL EON615 #7 servise gönder",         desc:"Geçen haftadan arıza mevcut", done:false, doneBy:null, doneAt:null },
-  { id:3, title:"Robinson Haziran takvimini netleştir", desc:"Levent arayacak",             done:false, doneBy:null, doneAt:null },
-  { id:4, title:"XLR kablo siparişi ver",               desc:"10 adet × 10m",               done:true,  doneBy:3,    doneAt:new Date(Date.now() - 26*3600*1000).toISOString() },
-];
-
-const DEFAULT_CATS = ["Hoparlör","Mixer","Işık","Kablo","Efekt","Enstrüman","Diğer"];
-
-const INVENTORY_INIT = [
-  { id:"JBL-EON",  name:"JBL EON615",      cat:"Hoparlör", total:8,  out:2, perCase:2,  faults:1, notes:[], addedBy:"Levent",
-    accessories:[{id:"a1",name:"Güç Kablosu",perUnit:1}] },
-  { id:"JBL-SRX",  name:"JBL SRX835P",     cat:"Hoparlör", total:4,  out:0, perCase:2,  faults:0, notes:[], addedBy:"Levent",
-    accessories:[] },
-  { id:"QSC-K12",  name:"QSC K12.2",       cat:"Hoparlör", total:6,  out:4, perCase:2,  faults:0, notes:[], addedBy:"Levent",
-    accessories:[{id:"a1",name:"Güç Kablosu",perUnit:1}] },
-  { id:"PIX-LED",  name:"Pixel LED",       cat:"Işık",     total:24, out:0, perCase:4,  faults:0, notes:[], addedBy:"Levent",
-    accessories:[{id:"a1",name:"Data Kablo",perUnit:1},{id:"a2",name:"Güç Kablosu",perUnit:1}] },
-  { id:"PAR-LED",  name:"PAR LED 64",      cat:"Işık",     total:40, out:8, perCase:8,  faults:0, notes:[], addedBy:"Levent",
-    accessories:[] },
-  { id:"MAC-AURA", name:"Martin MAC Aura", cat:"Işık",     total:12, out:0, perCase:4,  faults:2, notes:["2 adette motor arızası var"], addedBy:"Levent",
-    accessories:[{id:"a1",name:"Güç Kablosu",perUnit:1},{id:"a2",name:"Sinyal Kablo",perUnit:1}] },
-  { id:"AH-DLV",   name:"A&H dLive S5000", cat:"Mixer",    total:1,  out:0, perCase:1,  faults:0, notes:[], addedBy:"Levent",
-    accessories:[{id:"a1",name:"Güç Kablosu",perUnit:1},{id:"a2",name:"CAT6 Kablo",perUnit:2}] },
-  { id:"PIO-DJM",  name:"Pioneer DJM-900", cat:"Mixer",    total:2,  out:0, perCase:1,  faults:0, notes:[], addedBy:"Levent",
-    accessories:[{id:"a1",name:"Güç Kablosu",perUnit:1}] },
-  { id:"CO2-JET",  name:"CO2 Jet",         cat:"Efekt",    total:4,  out:0, perCase:2,  faults:0, notes:[], addedBy:"Levent",
-    accessories:[{id:"a1",name:"CO2 Hortumu",perUnit:1}] },
-  { id:"XLR-10M",  name:"XLR Kablo 10m",   cat:"Kablo",    total:30, out:8, perCase:10, faults:0, notes:[], addedBy:"Levent",
-    accessories:[] },
-];
-
-/* ─────────────────────────────────────────
-   ORTAK PARÇALAR
-───────────────────────────────────────── */
-/* Logo daha önce yerel bir dosya yoluna (/mnt/…/IMG_1586.png) bakıyordu ve
-   hiçbir ortamda yüklenmiyordu. Tek dosya kalsın diye satır içi SVG. */
-const Logo = ({ size = 28 }) => (
-  <svg width={size * 2.2} height={size} viewBox="0 0 110 50" role="img" aria-label="ARI">
-    <g fill="none" stroke={T.Y} strokeWidth="3.4" strokeLinecap="round" strokeLinejoin="round">
-      <path d="M20 6l-11 19 11 19 11-19z"/>
-      <path d="M9 25h22"/>
-    </g>
-    <text x="44" y="35" fill={T.L1} fontFamily={SF} fontSize="27" fontWeight="700" letterSpacing="3">ARI</text>
-  </svg>
-);
-
-const PageTitle = ({ children, right }) => (
-  <div style={{ display:"flex", alignItems:"flex-end", justifyContent:"space-between", padding:"8px 20px 12px" }}>
-    <h1 style={{ margin:0, fontSize:"clamp(26px,7vw,34px)", fontWeight:700, letterSpacing:-0.5, color:T.L1, fontFamily:SF }}>
-      {children}
-    </h1>
-    {right}
-  </div>
-);
-
-const SectionHeader = ({ children }) => (
-  <div style={{ padding:"20px 20px 6px", fontSize:13, fontWeight:600, color:T.L3, letterSpacing:0.2, fontFamily:SF, textTransform:"uppercase" }}>
-    {children}
-  </div>
-);
-
-const Cell = ({ children, first, last, onClick, style = {} }) => {
-  const base = style.background || T.bg1;
-  const hl = e => { if (onClick) e.currentTarget.style.background = T.bg2; };
-  const un = e => { if (onClick) e.currentTarget.style.background = base; };
-  return (
-    <div
-      onClick={onClick}
-      role={onClick ? "button" : undefined}
-      tabIndex={onClick ? 0 : undefined}
-      onKeyDown={onClick ? e => { if (e.key === "Enter" || e.key === " ") { e.preventDefault(); onClick(e); } } : undefined}
-      style={{
-        background: base,
-        padding: "12px 16px",
-        borderRadius: first && last ? "12px" : first ? "12px 12px 0 0" : last ? "0 0 12px 12px" : 0,
-        borderBottom: last ? "none" : `1px solid ${T.sep}`,
-        display:"flex", alignItems:"center", gap:12,
-        cursor: onClick ? "pointer" : "default",
-        transition: onClick ? "background .1s" : "none",
-        outline:"none",
-        fontFamily: SF,
-        ...style,
-      }}
-      onTouchStart={hl} onTouchEnd={un} onTouchCancel={un}
-      onMouseEnter={hl} onMouseLeave={un}
-    >
-      {children}
-    </div>
-  );
-};
-
-const Chevron = () => (
-  <svg width="7" height="12" viewBox="0 0 7 12" fill="none" style={{ flexShrink:0 }} aria-hidden="true">
-    <path d="M1 1l5 5-5 5" stroke={T.L4} strokeWidth="1.5" strokeLinecap="round" strokeLinejoin="round"/>
-  </svg>
-);
-
-const Empty = ({ children }) => (
-  <div style={{ textAlign:"center", padding:"56px 20px" }}>
-    <p style={{ margin:0, fontSize:15, color:T.L4, fontFamily:SF }}>{children}</p>
-  </div>
-);
-
-/* Alttan açılan panel — swipe'ın altındaki sayfayı kaydırmaması için
-   data-noswipe taşır. */
-const Sheet = ({ title, subtitle, meta, onClose, children, maxHeight = "90dvh", dismissOnBackdrop = true }) => (
-  <div data-noswipe="1"
-    style={{ position:"fixed", inset:0, background:"rgba(0,0,0,0.7)", backdropFilter:"blur(8px)", WebkitBackdropFilter:"blur(8px)", zIndex:200, display:"flex", flexDirection:"column", justifyContent:"flex-end" }}
-    onClick={dismissOnBackdrop ? onClose : undefined}>
-    <div onClick={e => e.stopPropagation()}
-      style={{ background:T.bg1, borderRadius:"20px 20px 0 0", padding:"0 0 calc(16px + env(safe-area-inset-bottom, 0px))", maxHeight, overflowY:"auto", animation:"sheetUp .22s ease" }}>
-      <div style={{ display:"flex", justifyContent:"center", padding:"12px 0 4px" }}>
-        <div style={{ width:36, height:4, borderRadius:2, background:T.bg3 }}/>
-      </div>
-      <div style={{ display:"flex", justifyContent:"space-between", alignItems:"flex-start", padding:"8px 20px 16px", gap:12 }}>
-        <div style={{ minWidth:0 }}>
-          {subtitle && <p style={{ margin:"0 0 2px", fontSize:13, color:T.L3, fontFamily:SF }}>{subtitle}</p>}
-          <p style={{ margin:0, fontSize:22, fontWeight:700, color:T.L1, fontFamily:SF }}>{title}</p>
-          {meta && <p style={{ margin:"3px 0 0", fontSize:11, color:T.L4, fontFamily:MONO }}>{meta}</p>}
-        </div>
-        <button onClick={onClose}
-          style={{ background:"none", border:"none", color:T.Y, fontSize:15, cursor:"pointer", fontFamily:SF, marginTop:4, flexShrink:0 }}>Kapat</button>
-      </div>
-      {children}
-    </div>
-  </div>
-);
-
-const ConfirmDialog = ({ text, confirmLabel = "Sil", onConfirm, onCancel }) => (
-  <div data-noswipe="1" onClick={onCancel}
-    style={{ position:"fixed", inset:0, background:"rgba(0,0,0,0.65)", backdropFilter:"blur(6px)", WebkitBackdropFilter:"blur(6px)", zIndex:300, display:"flex", alignItems:"center", justifyContent:"center", padding:24 }}>
-    <div onClick={e => e.stopPropagation()}
-      style={{ background:T.bg1, borderRadius:16, padding:"22px 20px 16px", width:"100%", maxWidth:300, fontFamily:SF }}>
-      <p style={{ margin:"0 0 18px", fontSize:16, color:T.L1, lineHeight:1.4, textAlign:"center" }}>{text}</p>
-      <div style={{ display:"flex", gap:8 }}>
-        <button onClick={onCancel}
-          style={{ flex:1, background:T.bg2, border:"none", borderRadius:10, padding:"12px 0", fontSize:15, color:T.L1, cursor:"pointer", fontFamily:SF }}>Vazgeç</button>
-        <button onClick={onConfirm}
-          style={{ flex:1, background:T.R, border:"none", borderRadius:10, padding:"12px 0", fontSize:15, fontWeight:600, color:"#fff", cursor:"pointer", fontFamily:SF }}>{confirmLabel}</button>
-      </div>
-    </div>
-  </div>
-);
-
-/* ─────────────────────────────────────────
-   PIN PAD
-   Eski sürümde onComplete, setPin güncelleyicisinin *içinden*
-   çağrılıyordu — güncelleyiciler saf olmalı ve React bunları iki kez
-   çalıştırabilir. Artık yan etki useEffect'te.
-───────────────────────────────────────── */
-function PinPad({ onSubmit, accent = T.Y }) {
-  const [pin, setPin] = useState("");
-  const [err, setErr] = useState(false);
-
-  const press = useCallback(d => setPin(p => (p.length >= 4 ? p : p + d)), []);
-  const del = useCallback(() => setPin(p => p.slice(0, -1)), []);
-
-  /* 4 hane tamamlanınca doğrula */
-  useEffect(() => {
-    if (pin.length !== 4) return;
-    const t = setTimeout(() => {
-      if (onSubmit(pin)) return;          // doğruysa üst bileşen ekranı değiştirir
-      setErr(true);
-      setPin("");
-      setTimeout(() => setErr(false), 420);
-    }, 130);
-    return () => clearTimeout(t);
-  }, [pin, onSubmit]);
-
-  /* Masaüstünde klavyeyle de girilebilsin */
-  useEffect(() => {
-    const onKey = e => {
-      if (/^[0-9]$/.test(e.key)) press(e.key);
-      else if (e.key === "Backspace") del();
-    };
-    window.addEventListener("keydown", onKey);
-    return () => window.removeEventListener("keydown", onKey);
-  }, [press, del]);
-
-  const KEYS = [1,2,3,4,5,6,7,8,9,null,0,"del"];
-
-  return (
-    <div style={{ display:"flex", flexDirection:"column", alignItems:"center" }}>
-      <div style={{ display:"flex", gap:16, marginBottom:40, animation: err ? "shake .35s" : "none" }}>
-        {[0,1,2,3].map(i => (
-          <div key={i} style={{
-            width:12, height:12, borderRadius:"50%",
-            background: i < pin.length ? (err ? T.R : accent) : T.bg3,
-            transition:"background .12s, transform .12s",
-            transform: i < pin.length ? "scale(1.1)" : "scale(1)",
-          }}/>
-        ))}
-      </div>
-
-      <div style={{ display:"grid", gridTemplateColumns:"repeat(3,1fr)", gap:12, width:"min(72vw, 260px)" }}>
-        {KEYS.map((k, i) => {
-          if (k === null) return <div key={i}/>;
-          const isDel = k === "del";
-          return (
-            <button key={i}
-              onClick={() => (isDel ? del() : press(String(k)))}
-              aria-label={isDel ? "Sil" : String(k)}
-              style={{
-                background: T.bg2, border:"none", borderRadius:12,
-                height:"clamp(54px,14vw,64px)",
-                fontSize: isDel ? 18 : "clamp(20px,5vw,24px)",
-                fontWeight: isDel ? 400 : 300,
-                color: T.L1, cursor:"pointer", fontFamily: SF,
-                transition:"background .1s", WebkitTapHighlightColor:"transparent",
-              }}
-              onTouchStart={e => (e.currentTarget.style.background = T.bg3)}
-              onTouchEnd={e => (e.currentTarget.style.background = T.bg2)}
-            >
-              {isDel ? "⌫" : k}
-            </button>
-          );
-        })}
-      </div>
-    </div>
-  );
-}
-
-/* ─────────────────────────────────────────
-   GİRİŞ — EKİP
-───────────────────────────────────────── */
-function CrewLogin({ onLogin, onPatron }) {
-  const [picked, setPicked] = useState(null);
-
-  const handlePin = useCallback(pin => {
-    if (!picked || pin !== picked.pin) return false;
-    onLogin({ id:picked.id, name:picked.name, role:"crew" });
-    return true;
-  }, [picked, onLogin]);
-
-  return (
-    <div style={{ minHeight:"100dvh", background:T.bg0, display:"flex", flexDirection:"column", alignItems:"center", justifyContent:"center", padding:"64px 24px", fontFamily:SF, position:"relative" }}>
-
-      <div style={{ marginBottom:48 }}><Logo size={54}/></div>
-
-      {!picked ? (
-        <div style={{ width:"100%", maxWidth:320 }}>
-          <p style={{ textAlign:"center", fontSize:13, color:T.L3, letterSpacing:0.2, marginBottom:20 }}>Devam etmek için adını seç</p>
-          <div style={{ borderRadius:12, overflow:"hidden" }}>
-            {CREW.map((u, i) => (
-              <Cell key={u.id} first={i === 0} last={i === CREW.length - 1} onClick={() => setPicked(u)}>
-                <div style={{ width:34, height:34, borderRadius:"50%", background:T.bg2, display:"flex", alignItems:"center", justifyContent:"center", fontSize:15, flexShrink:0 }}>
-                  {u.name.charAt(0)}
-                </div>
-                <span style={{ flex:1, fontSize:17, color:T.L1 }}>{u.name}</span>
-                <Chevron/>
-              </Cell>
-            ))}
-          </div>
-        </div>
-      ) : (
-        <div style={{ display:"flex", flexDirection:"column", alignItems:"center", width:"100%", maxWidth:320 }}>
-          <button onClick={() => setPicked(null)}
-            style={{ background:"none", border:"none", color:T.Y, fontSize:15, cursor:"pointer", marginBottom:32, fontFamily:SF, alignSelf:"flex-start", paddingLeft:4 }}>
-            ‹ Geri
-          </button>
-          <p style={{ margin:"0 0 4px", fontSize:22, fontWeight:600, color:T.L1 }}>{picked.name}</p>
-          <p style={{ margin:"0 0 32px", fontSize:14, color:T.L3 }}>PIN'ini gir</p>
-          <PinPad onSubmit={handlePin}/>
-        </div>
-      )}
-
-      {!picked && <button onClick={onPatron}
-        style={{ position:"absolute", bottom:"calc(24px + env(safe-area-inset-bottom, 0px))", background:"none", border:"none", color:T.L3, fontSize:12, cursor:"pointer", letterSpacing:0.5, fontFamily:SF }}>
-        Yönetici Girişi
-      </button>}
-    </div>
-  );
-}
-
-/* ─────────────────────────────────────────
-   GİRİŞ — PATRON
-───────────────────────────────────────── */
-function PatronLogin({ onLogin, onBack }) {
-  const handlePin = useCallback(pin => {
-    if (pin !== PATRON.pin) return false;
-    onLogin({ id:PATRON.id, name:PATRON.name, role:"patron" });
-    return true;
-  }, [onLogin]);
-
-  return (
-    <div style={{ minHeight:"100dvh", background:"#050505", display:"flex", flexDirection:"column", alignItems:"center", justifyContent:"center", padding:"64px 24px", fontFamily:SF, position:"relative" }}>
-      <button onClick={onBack}
-        style={{ position:"absolute", top:"calc(16px + env(safe-area-inset-top, 0px))", left:20, background:"none", border:"none", color:T.Y, fontSize:15, cursor:"pointer", fontFamily:SF }}>‹ Geri</button>
-
-      <div style={{ marginBottom:48, textAlign:"center" }}>
-        <div style={{ width:52, height:52, border:`1px solid ${T.sep2}`, borderRadius:14, display:"flex", alignItems:"center", justifyContent:"center", margin:"0 auto 16px", fontSize:22 }}>⬡</div>
-        <p style={{ margin:"0 0 4px", fontSize:22, fontWeight:600, color:T.L1 }}>Yönetici Portalı</p>
-        <p style={{ margin:0, fontSize:14, color:T.L3 }}>PIN'ini gir</p>
-      </div>
-
-      <PinPad onSubmit={handlePin}/>
-    </div>
-  );
-}
-
-/* ─────────────────────────────────────────
-   TAKVİM
-───────────────────────────────────────── */
-const DAY_H = ["Pt","Sa","Ça","Pe","Cu","Ct","Pz"];
-
-function CalendarView({ user, onPick }) {
-  const today = useMemo(startOfToday, []);
-  const [cursor, setCursor] = useState(() => ({ y: today.getFullYear(), m: today.getMonth() }));
-  const [dayKey, setDayKey] = useState(null);
-
-  const visible = useMemo(
-    () => EVENTS.filter(e => user.role === "patron" || e.crew.includes(user.id)),
-    [user.role, user.id]
-  );
-
-  const byDay = useMemo(() => {
-    const map = new Map();
-    visible.forEach(e => { if (!map.has(e.date)) map.set(e.date, []); map.get(e.date).push(e); });
-    return map;
-  }, [visible]);
-
-  const upcoming = useMemo(
-    () => visible.filter(e => parseKey(e.date) >= today).slice(0, 6),
-    [visible, today]
-  );
-
-  const { y, m } = cursor;
-  const dim = daysInMonth(y, m);
-  const offset = (() => { const d = new Date(y, m, 1).getDay(); return d === 0 ? 6 : d - 1; })();
-  const shift = n => setCursor(c => { const d = new Date(c.y, c.m + n, 1); return { y:d.getFullYear(), m:d.getMonth() }; });
-
-  const navBtn = {
-    background:T.bg1, border:"none", color:T.Y, width:32, height:32, borderRadius:8,
-    fontSize:15, cursor:"pointer", fontFamily:SF, display:"flex", alignItems:"center", justifyContent:"center",
+/* ═══════════ başlangıç verisi ═══════════
+   Ekip ve envanter hazır gelir; etkinlikler baştan boştur —
+   gerçek işler Yönetici > Etkinlikler'den girilir. */
+function seed(){
+  return {
+    v: 1,
+    users: [
+      { id:"u-levent", name:"Levent", pin:"1234", role:"patron" },
+      { id:"u-omer",   name:"Ömer",   pin:"1111", role:"crew" },
+      { id:"u-berkay", name:"Berkay", pin:"2222", role:"crew" },
+      { id:"u-sadi",   name:"Sadi",   pin:"3333", role:"crew" },
+      { id:"u-emir",   name:"Emir",   pin:"4444", role:"crew" }
+    ],
+    cats: ["Hoparlör","Mixer","Işık","Kablo","Efekt","Enstrüman","Diğer"],
+    inventory: [
+      { id:"i-eon",  name:"JBL EON615",      cat:"Hoparlör", total:8,  perCase:2,  faults:1, notes:[], acc:[{id:"a1",name:"Güç Kablosu",per:1}] },
+      { id:"i-srx",  name:"JBL SRX835P",     cat:"Hoparlör", total:4,  perCase:2,  faults:0, notes:[], acc:[] },
+      { id:"i-k12",  name:"QSC K12.2",       cat:"Hoparlör", total:6,  perCase:2,  faults:0, notes:[], acc:[{id:"a1",name:"Güç Kablosu",per:1}] },
+      { id:"i-pix",  name:"Pixel LED",       cat:"Işık",     total:24, perCase:4,  faults:0, notes:[], acc:[{id:"a1",name:"Data Kablo",per:1},{id:"a2",name:"Güç Kablosu",per:1}] },
+      { id:"i-par",  name:"PAR LED 64",      cat:"Işık",     total:40, perCase:8,  faults:0, notes:[], acc:[] },
+      { id:"i-mac",  name:"Martin MAC Aura", cat:"Işık",     total:12, perCase:4,  faults:2, notes:["2 adette motor arızası var"], acc:[{id:"a1",name:"Güç Kablosu",per:1},{id:"a2",name:"Sinyal Kablo",per:1}] },
+      { id:"i-dlv",  name:"A&H dLive S5000", cat:"Mixer",    total:1,  perCase:1,  faults:0, notes:[], acc:[{id:"a1",name:"Güç Kablosu",per:1},{id:"a2",name:"CAT6 Kablo",per:2}] },
+      { id:"i-djm",  name:"Pioneer DJM-900", cat:"Mixer",    total:2,  perCase:1,  faults:0, notes:[], acc:[{id:"a1",name:"Güç Kablosu",per:1}] },
+      { id:"i-co2",  name:"CO2 Jet",         cat:"Efekt",    total:4,  perCase:2,  faults:0, notes:[], acc:[{id:"a1",name:"CO2 Hortumu",per:1}] },
+      { id:"i-xlr",  name:"XLR Kablo 10m",   cat:"Kablo",    total:30, perCase:10, faults:0, notes:[], acc:[] }
+    ],
+    events: [],
+    tasks: []
   };
-
-  const dayEvents = dayKey ? (byDay.get(dayKey) || []) : [];
-
-  return (
-    <div style={{ paddingBottom:100 }}>
-      <PageTitle>Takvim</PageTitle>
-
-      {/* Ay gezinme — eskiden takvim Mayıs 2025'e sabitti */}
-      <div data-noswipe="1" style={{ display:"flex", alignItems:"center", justifyContent:"space-between", padding:"0 16px 12px" }}>
-        <button onClick={() => shift(-1)} style={navBtn} aria-label="Önceki ay">‹</button>
-        <span style={{ fontSize:16, fontWeight:600, color:T.L1, fontFamily:SF }}>{MONTHS_TR[m]} {y}</span>
-        <button onClick={() => shift(1)} style={navBtn} aria-label="Sonraki ay">›</button>
-      </div>
-
-      <div style={{ display:"grid", gridTemplateColumns:"repeat(7,1fr)", padding:"0 12px", marginBottom:4 }}>
-        {DAY_H.map((d, i) => (
-          <div key={d} style={{ textAlign:"center", fontSize:11, fontWeight:600, color:i >= 5 ? T.R : T.L3, padding:"2px 0", fontFamily:SF }}>
-            {d}
-          </div>
-        ))}
-      </div>
-
-      <div style={{ display:"grid", gridTemplateColumns:"repeat(7,1fr)", gap:2, padding:"0 12px" }}>
-        {Array(offset).fill(null).map((_, i) => <div key={`pad${i}`}/>)}
-        {Array(dim).fill(null).map((_, i) => {
-          const day = i + 1;
-          const key = dateKey(y, m, day);
-          const evs = byDay.get(key) || [];
-          const isToday = key === dateKey(today.getFullYear(), today.getMonth(), today.getDate());
-          const isWe = (i + offset) % 7 >= 5;
-          return (
-            <div key={day}
-              onClick={() => evs.length && setDayKey(key)}
-              style={{
-                aspectRatio:"1/1.15", background:T.bg1, borderRadius:8, padding:"4px 3px",
-                overflow:"hidden", border:isToday ? `1px solid rgba(255,229,0,0.4)` : "1px solid transparent",
-                position:"relative", cursor:evs.length ? "pointer" : "default",
-              }}>
-              <div style={{ fontSize:10, fontWeight:isToday ? 700 : 400, color:isToday ? T.Y : isWe ? "#666" : T.L3, textAlign:"right", marginBottom:2, fontFamily:SF, lineHeight:1 }}>{day}</div>
-              {evs.slice(0, 2).map(ev => (
-                <div key={ev.id}
-                  style={{ fontSize:7, lineHeight:1.3, color:T.L2, background:"rgba(255,229,0,0.08)", borderLeft:`1.5px solid rgba(255,229,0,0.5)`, borderRadius:"0 2px 2px 0", padding:"1px 3px", marginBottom:1, overflow:"hidden", textOverflow:"ellipsis", whiteSpace:"nowrap", fontFamily:SF }}>
-                  {ev.name}
-                </div>
-              ))}
-              {evs.length > 2 && <div style={{ fontSize:7, color:T.L4, textAlign:"center", fontFamily:SF }}>+{evs.length - 2}</div>}
-            </div>
-          );
-        })}
-      </div>
-
-      <SectionHeader>Yaklaşan</SectionHeader>
-      <div style={{ padding:"0 16px" }}>
-        {upcoming.length === 0 ? (
-          <Cell first last><span style={{ fontSize:14, color:T.L4 }}>Yaklaşan etkinlik yok</span></Cell>
-        ) : (
-          <div style={{ borderRadius:12, overflow:"hidden" }}>
-            {upcoming.map((ev, i, arr) => (
-              <EventRow key={ev.id} ev={ev} first={i === 0} last={i === arr.length - 1} onPick={onPick}/>
-            ))}
-          </div>
-        )}
-      </div>
-
-      {/* Gün detayı — bir güne sığmayan etkinlikler artık ulaşılabilir */}
-      {dayKey && (
-        <Sheet title={fmtLongDate(dayKey)} subtitle={`${dayEvents.length} etkinlik`} onClose={() => setDayKey(null)} maxHeight="70dvh">
-          <div style={{ padding:"0 16px 16px" }}>
-            <div style={{ borderRadius:12, overflow:"hidden" }}>
-              {dayEvents.map((ev, i, arr) => (
-                <EventRow key={ev.id} ev={ev} first={i === 0} last={i === arr.length - 1}
-                  onPick={e => { setDayKey(null); onPick(e); }}/>
-              ))}
-            </div>
-          </div>
-        </Sheet>
-      )}
-    </div>
-  );
 }
 
-function EventRow({ ev, first, last, onPick }) {
-  const d = parseKey(ev.date);
-  return (
-    <Cell first={first} last={last} onClick={() => onPick(ev)}>
-      <div style={{ width:36, height:36, borderRadius:9, background:T.Yd, display:"flex", flexDirection:"column", alignItems:"center", justifyContent:"center", flexShrink:0 }}>
-        <span style={{ fontSize:9, color:T.Y, fontWeight:700, fontFamily:SF }}>{MONTHS_TR_SHORT[d.getMonth()]}</span>
-        <span style={{ fontSize:14, color:T.Y, fontWeight:700, fontFamily:SF, lineHeight:1 }}>{d.getDate()}</span>
-      </div>
-      <div style={{ flex:1, minWidth:0 }}>
-        <p style={{ margin:0, fontSize:15, fontWeight:500, color:T.L1, fontFamily:SF, whiteSpace:"nowrap", overflow:"hidden", textOverflow:"ellipsis" }}>{ev.name}</p>
-        <p style={{ margin:0, fontSize:12, color:T.L3, fontFamily:SF }}>
-          {ev.client}
-          {ev.meetTime && <span style={{ color:T.L4 }}> · buluşma <span style={{ fontFamily:MONO }}>{ev.meetTime}</span></span>}
-          <span style={{ color:T.Y, fontFamily:MONO }}> · {ev.time}</span>
-        </p>
-      </div>
-      <Chevron/>
-    </Cell>
-  );
+/* Deneme için örnek program — Yönetici > Veri'den yüklenir/silinir. */
+function demoEvents(users, inv){
+  var n = new Date(), y = n.getFullYear(), m = n.getMonth(), last = dim(y,m);
+  var crew = users.filter(function(u){ return u.role === "crew"; }).map(function(u){ return u.id; });
+  function d(off){ return key(y, m, clamp(n.getDate() + off, 1, last)); }
+  function r(iid, qty){
+    var it = inv.filter(function(x){ return x.id === iid; })[0];
+    return { id: uid("r"), itemId: iid, name: it ? it.name : "", qty: qty, u: "adet" };
+  }
+  return [
+    { id:"e-demo1", demo:true, client:"Robinson", name:"Neon Party", date:d(1), time:"22:00", meetTime:"19:00",
+      venue:"Robinson Dalaman", crew:[crew[0], crew[1]].filter(Boolean), status:"plan",
+      rider:[ r("i-eon",4), r("i-par",12), r("i-xlr",8) ],
+      notes:[{ text:"Havuz başı sahne. Islak zemin, kablo güzergahına dikkat.", by:"Levent", at:new Date().toISOString() }],
+      checked:[] },
+    { id:"e-demo2", demo:true, client:"Fortezza", name:"Party Efekt", date:d(4), time:"23:30", meetTime:"20:00",
+      venue:"Fortezza Bodrum", crew:[crew[1], crew[2]].filter(Boolean), status:"plan",
+      rider:[ r("i-mac",8), r("i-co2",4) ], notes:[], checked:[] },
+    { id:"e-demo3", demo:true, client:"Regata", name:"Boynuzbükü", date:d(8), time:"20:00", meetTime:"11:00",
+      venue:"Regata Marina", crew:crew.slice(), status:"plan",
+      rider:[ r("i-dlv",1), r("i-k12",4), r("i-pix",12) ],
+      notes:[{ text:"Büyük organizasyon, 2 araç.", by:"Levent", at:new Date().toISOString() }], checked:[] }
+  ];
 }
 
-/* ─────────────────────────────────────────
-   ETKİNLİK DETAY
-   Rider tikleri ve notlar artık üst seviyede tutuluyor; geri gidip
-   dönünce (ve sayfa yenilenince) kaybolmuyor.
-───────────────────────────────────────── */
-function EventDetail({ ev, user, state, onChange, onBack }) {
-  const [input, setInput] = useState("");
-  const checkedIds = state?.checked || [];
-  const notes = state?.notes || [];
+/* ═══════════ kalıcılık ═══════════ */
+var LS_STATE = "ari.state", LS_ME = "ari.me", SS_NAV = "ari.nav", SS_PEND = "ari.pending";
+var api = null;          /* artifact yetkisi (yayımlanmışsa) */
+var readOnly = false;    /* salt okunur görüntüleyici */
+var S, me = null, nav, pin = { buf:"", err:false, user:null }, askFn = null;
 
-  const toggle = id => onChange({
-    ...state,
-    checked: checkedIds.includes(id) ? checkedIds.filter(x => x !== id) : [...checkedIds, id],
+function safeParse(txt, fb){ try { var v = JSON.parse(txt); return v == null ? fb : v; } catch (e) { return fb; } }
+function lsGet(k, fb){ try { var v = localStorage.getItem(k); return v == null ? fb : safeParse(v, fb); } catch (e) { return fb; } }
+function lsSet(k, v){ try { localStorage.setItem(k, JSON.stringify(v)); } catch (e) {} }
+function ssGet(k){ try { return sessionStorage.getItem(k); } catch (e) { return null; } }
+function ssSet(k, v){ try { sessionStorage.setItem(k, v); } catch (e) {} }
+function ssDel(k){ try { sessionStorage.removeItem(k); } catch (e) {} }
+
+function loadState(){
+  var node = el("ari-state");
+  var embedded = node ? safeParse(node.textContent, null) : null;
+  if (embedded && embedded.users) return migrate(embedded);
+  var local = lsGet(LS_STATE, null);
+  if (local && local.users) return migrate(local);
+  return seed();
+}
+/* Eski/eksik kayıtlarda uygulama çökmesin. */
+function migrate(s){
+  s.users = s.users || []; s.events = s.events || []; s.tasks = s.tasks || [];
+  s.inventory = s.inventory || []; s.cats = s.cats || seed().cats;
+  s.events.forEach(function(e){
+    e.rider = e.rider || []; e.notes = e.notes || []; e.crew = e.crew || [];
+    e.checked = e.checked || []; e.status = e.status || "plan";
   });
-
-  const addNote = () => {
-    const text = input.trim();
-    if (!text) return;
-    onChange({ ...state, notes:[...notes, { text, by:user.name, at:new Date().toISOString() }] });
-    setInput("");
-  };
-
-  const checked = ev.rider.filter(r => checkedIds.includes(r.id)).length;
-  const pct = ev.rider.length ? checked / ev.rider.length : 0;
-  const allDone = ev.rider.length > 0 && checked === ev.rider.length;
-
-  const seeded = ev.notes.map(text => ({ text, by:"Levent", at:null, seeded:true }));
-  const allNotes = [...seeded, ...notes];
-
-  return (
-    <div style={{ fontFamily:SF, minHeight:"100dvh", background:T.bg0, paddingBottom:60 }}>
-
-      <div style={{ padding:"12px 16px 0" }}>
-        <button onClick={onBack} style={{ background:"none", border:"none", color:T.Y, fontSize:15, cursor:"pointer", padding:0, fontFamily:SF }}>‹ Takvim</button>
-      </div>
-
-      {/* Başlık */}
-      <div style={{ padding:"14px 20px 16px" }}>
-        <p style={{ margin:"0 0 3px", fontSize:13, color:T.L3 }}>{ev.client}  ·  {fmtLongDate(ev.date)}</p>
-        <h1 style={{ margin:"0 0 6px", fontSize:"clamp(24px,7vw,30px)", fontWeight:700, letterSpacing:-0.5, color:T.L1 }}>{ev.name}</h1>
-        <p style={{ margin:"0 0 3px", fontSize:14, color:T.L2 }}>📍 {ev.venue}</p>
-        <p style={{ margin:"0 0 12px", fontSize:13, color:T.L3 }}>{ev.crew.map(uName).join("  ·  ")}</p>
-        <div style={{ display:"flex", alignItems:"flex-end", gap:20 }}>
-          {ev.meetTime && (
-            <div>
-              <p style={{ margin:"0 0 3px", fontSize:11, color:T.L4, letterSpacing:0.3 }}>BULUŞMA</p>
-              <span style={{ fontSize:28, fontWeight:300, color:T.L2, fontFamily:MONO }}>{ev.meetTime}</span>
-            </div>
-          )}
-          <div>
-            <p style={{ margin:"0 0 3px", fontSize:11, color:T.L4, letterSpacing:0.3 }}>ETKİNLİK</p>
-            <span style={{ fontSize:28, fontWeight:300, color:T.Y, fontFamily:MONO }}>{ev.time}</span>
-          </div>
-        </div>
-      </div>
-
-      {/* İlerleme */}
-      <div style={{ padding:"0 20px 20px" }}>
-        <div style={{ height:2, background:T.bg2, borderRadius:1 }}>
-          <div style={{ height:"100%", width:`${pct * 100}%`, background:allDone ? T.G : T.Y, borderRadius:1, transition:"width .3s ease" }}/>
-        </div>
-        <div style={{ display:"flex", justifyContent:"space-between", marginTop:7 }}>
-          <span style={{ fontSize:12, color:T.L3 }}>Rider</span>
-          <span style={{ fontSize:12, color:allDone ? T.G : T.L3, fontFamily:MONO, transition:"color .3s" }}>{checked}/{ev.rider.length}</span>
-        </div>
-      </div>
-
-      {/* Rider listesi */}
-      <div style={{ padding:"0 16px" }}>
-        <div style={{ borderRadius:14, overflow:"hidden", display:"flex", flexDirection:"column", gap:2 }}>
-          {ev.rider.map(item => {
-            const on = checkedIds.includes(item.id);
-            return (
-              <div key={item.id} onClick={() => toggle(item.id)}
-                style={{
-                  background: on ? T.Yd : T.bg1, padding:"16px",
-                  display:"flex", alignItems:"center", gap:14,
-                  cursor:"pointer", transition:"background .15s", WebkitTapHighlightColor:"transparent",
-                }}>
-                <div style={{
-                  width:24, height:24, borderRadius:"50%",
-                  border:`1.5px solid ${on ? T.Y : T.bg3}`, background: on ? T.Y : "transparent",
-                  display:"flex", alignItems:"center", justifyContent:"center", flexShrink:0, transition:"all .15s",
-                }}>
-                  {on && (
-                    <svg width="12" height="9" viewBox="0 0 12 9" fill="none">
-                      <path d="M1 4l3.5 3.5L11 1" stroke="#000" strokeWidth="1.8" strokeLinecap="round" strokeLinejoin="round"/>
-                    </svg>
-                  )}
-                </div>
-                <span style={{ flex:1, fontSize:16, color:on ? T.L3 : T.L1, textDecoration:on ? "line-through" : "none", transition:"color .15s" }}>
-                  {item.name}
-                </span>
-                <span style={{ fontSize:16, fontWeight:600, color:on ? T.L4 : T.Y, fontFamily:MONO, transition:"color .15s" }}>
-                  {item.qty} <span style={{ fontSize:11, fontWeight:400, color:T.L4 }}>{item.u}</span>
-                </span>
-              </div>
-            );
-          })}
-        </div>
-
-        {allDone && (
-          <div style={{ background:T.Gd, borderRadius:14, padding:"18px 20px", textAlign:"center", marginTop:10 }}>
-            <p style={{ margin:0, fontSize:17, fontWeight:600, color:T.G }}>Tümü hazır ✓</p>
-          </div>
-        )}
-      </div>
-
-      {/* Notlar */}
-      <div style={{ padding:"24px 16px 0" }}>
-        <SectionHeader>Notlar</SectionHeader>
-        <div style={{ borderRadius:12, overflow:"hidden", marginBottom:10 }}>
-          {allNotes.length === 0 && (
-            <Cell first last><span style={{ fontSize:14, color:T.L4 }}>Henüz not yok</span></Cell>
-          )}
-          {allNotes.map((n, i, arr) => (
-            <Cell key={i} first={i === 0} last={i === arr.length - 1}>
-              <div>
-                <p style={{ margin:"0 0 3px", fontSize:14, color:T.L1 }}>{n.text}</p>
-                <p style={{ margin:0, fontSize:11, color:T.L4 }}>{n.by}  ·  {n.seeded ? "Önceden" : relTime(n.at)}</p>
-              </div>
-            </Cell>
-          ))}
-        </div>
-        <div style={{ display:"flex", gap:8 }}>
-          <input value={input} onChange={e => setInput(e.target.value)}
-            onKeyDown={e => { if (e.key === "Enter") addNote(); }}
-            placeholder="Not ekle…" enterKeyHint="done"
-            style={{ flex:1, background:T.bg1, border:"none", outline:"none", borderRadius:10, padding:"12px 14px", fontSize:15, color:T.L1, fontFamily:SF }}/>
-          <button onClick={addNote} aria-label="Not ekle"
-            style={{ background:T.Y, border:"none", borderRadius:10, width:44, fontSize:22, cursor:"pointer", flexShrink:0 }}>+</button>
-        </div>
-      </div>
-    </div>
-  );
+  s.inventory.forEach(function(i){
+    i.notes = i.notes || []; i.acc = i.acc || []; i.faults = i.faults || 0;
+    i.perCase = i.perCase || 1; i.total = i.total || 0;
+  });
+  return s;
 }
 
-/* ─────────────────────────────────────────
-   GÖREVLER
-───────────────────────────────────────── */
-function TasksView({ user }) {
-  const [tasks, setTasks] = usePersisted("tasks", TASKS_INIT);
-  const [adding, setAdding] = useState(false);
-  const [newT, setNewT] = useState({ title:"", desc:"" });
-
-  /* Tamamlanan görev geri alınabiliyor — eskiden tek yönlüydü */
-  const toggle = id => setTasks(p => p.map(t => t.id === id
-    ? { ...t, done:!t.done, doneBy:!t.done ? user.id : null, doneAt:!t.done ? new Date().toISOString() : null }
-    : t));
-
-  const add = () => {
-    const title = newT.title.trim();
-    if (!title) return;
-    setTasks(p => [...p, { id:genId(), title, desc:newT.desc.trim(), done:false, doneBy:null, doneAt:null }]);
-    setNewT({ title:"", desc:"" });
-    setAdding(false);
-  };
-
-  const remove = id => setTasks(p => p.filter(t => t.id !== id));
-
-  const active = tasks.filter(t => !t.done);
-  const done = tasks.filter(t => t.done);
-
-  return (
-    <div style={{ paddingBottom:100, fontFamily:SF }}>
-      <PageTitle right={user.role === "patron" && (
-        <button onClick={() => setAdding(a => !a)}
-          style={{ background:"none", border:"none", color:T.Y, fontSize:15, cursor:"pointer", fontFamily:SF, paddingBottom:4 }}>
-          {adding ? "İptal" : "+ Ekle"}
-        </button>
-      )}>Görevler</PageTitle>
-
-      {adding && (
-        <div style={{ margin:"0 16px 16px", background:T.bg1, borderRadius:12, padding:16 }}>
-          <input value={newT.title} onChange={e => setNewT(p => ({ ...p, title:e.target.value }))}
-            placeholder="Görev başlığı" autoFocus
-            onKeyDown={e => { if (e.key === "Enter") add(); }}
-            style={{ width:"100%", background:T.bg2, border:"none", outline:"none", borderRadius:8, padding:"10px 12px", fontSize:15, color:T.L1, fontFamily:SF, marginBottom:8 }}/>
-          <input value={newT.desc} onChange={e => setNewT(p => ({ ...p, desc:e.target.value }))}
-            placeholder="Açıklama (opsiyonel)"
-            onKeyDown={e => { if (e.key === "Enter") add(); }}
-            style={{ width:"100%", background:T.bg2, border:"none", outline:"none", borderRadius:8, padding:"10px 12px", fontSize:14, color:T.L2, fontFamily:SF, marginBottom:12 }}/>
-          <button onClick={add}
-            style={{ width:"100%", background:T.Y, border:"none", borderRadius:10, padding:"12px 0", fontSize:15, fontWeight:600, color:"#000", cursor:"pointer", fontFamily:SF }}>
-            Oluştur
-          </button>
-        </div>
-      )}
-
-      {tasks.length === 0 && <Empty>Görev yok</Empty>}
-
-      {active.length > 0 && (
-        <div style={{ padding:"0 16px" }}>
-          <div style={{ borderRadius:12, overflow:"hidden" }}>
-            {active.map((t, i, arr) => (
-              <Cell key={t.id} first={i === 0} last={i === arr.length - 1} onClick={() => toggle(t.id)}>
-                <div style={{ width:22, height:22, borderRadius:"50%", border:`1.5px solid ${T.bg3}`, flexShrink:0 }}/>
-                <div style={{ flex:1, minWidth:0 }}>
-                  <p style={{ margin:0, fontSize:15, color:T.L1 }}>{t.title}</p>
-                  {t.desc && <p style={{ margin:"2px 0 0", fontSize:13, color:T.L3 }}>{t.desc}</p>}
-                </div>
-                {user.role === "patron" && (
-                  <button onClick={e => { e.stopPropagation(); remove(t.id); }} aria-label="Görevi sil"
-                    style={{ background:"none", border:"none", color:T.L4, fontSize:15, cursor:"pointer", padding:"0 2px", flexShrink:0 }}>✕</button>
-                )}
-              </Cell>
-            ))}
-          </div>
-        </div>
-      )}
-
-      {done.length > 0 && (
-        <div style={{ padding:"0 16px" }}>
-          <SectionHeader>Tamamlandı</SectionHeader>
-          <div style={{ borderRadius:12, overflow:"hidden" }}>
-            {done.map((t, i, arr) => (
-              <Cell key={t.id} first={i === 0} last={i === arr.length - 1} onClick={() => toggle(t.id)} style={{ opacity:0.5 }}>
-                <div style={{ width:22, height:22, borderRadius:"50%", background:T.G, display:"flex", alignItems:"center", justifyContent:"center", flexShrink:0 }}>
-                  <svg width="11" height="8" viewBox="0 0 11 8"><path d="M1 3.5l3 3L10 1" stroke="#000" strokeWidth="1.6" strokeLinecap="round" strokeLinejoin="round" fill="none"/></svg>
-                </div>
-                <div style={{ flex:1, minWidth:0 }}>
-                  <p style={{ margin:0, fontSize:15, color:T.L3, textDecoration:"line-through" }}>{t.title}</p>
-                  {user.role === "patron" && t.doneBy && (
-                    <p style={{ margin:"2px 0 0", fontSize:12, color:T.L4 }}>{uName(t.doneBy)}  ·  {relTime(t.doneAt)}</p>
-                  )}
-                </div>
-              </Cell>
-            ))}
-          </div>
-        </div>
-      )}
-    </div>
-  );
+/* ── Yayımlama ──
+   Sayfa kendini yeniden yazar: biçim ve kod DOM'dan METİN olarak okunur,
+   yalnızca durum JSON'u değişir. (Canlı DOM serileştirilmez.) */
+function buildHtml(state){
+  var css = el("ari-style").textContent;
+  var app = el("ari-app").textContent;
+  var json = JSON.stringify(state).replace(/</g, "\\u003c");
+  var OPEN = "<" + "script", CLOSE = "<" + "/script>";
+  return '<!doctype html>\n<html lang="tr">\n<head>\n<meta charset="utf-8">\n'
+    + '<meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover">\n'
+    + '<meta name="theme-color" content="#000000">\n'
+    + '<meta name="apple-mobile-web-app-capable" content="yes">\n'
+    + '<meta name="apple-mobile-web-app-status-bar-style" content="black">\n'
+    + '<title>ARI Saha</title>\n'
+    + '<style id="ari-style">' + css + '</style>\n</head>\n<body>\n<div id="root"></div>\n'
+    + OPEN + ' id="ari-state" type="application/json">' + json + CLOSE + '\n'
+    + OPEN + ' id="ari-app">' + app + CLOSE + '\n</body>\n</html>';
 }
 
-/* ─────────────────────────────────────────
-   ENVANTER
-───────────────────────────────────────── */
-function AddProductSheet({ cats, onSave, onClose }) {
-  const [form, setForm] = useState({ name:"", cat:cats[0] || "", total:"1", perCase:"1" });
-  const [accs, setAccs] = useState([]);
-  const [newCat, setNewCat] = useState("");
-  const [addingCat, setAddingCat] = useState(false);
-  const [localCats, setLocalCats] = useState(cats);
-  const [err, setErr] = useState("");
-
-  const addAcc = () => setAccs(p => [...p, { id:genId(), name:"", perUnit:1 }]);
-  const updAcc = (id, k, v) => setAccs(p => p.map(a => (a.id === id ? { ...a, [k]:v } : a)));
-  const delAcc = id => setAccs(p => p.filter(a => a.id !== id));
-
-  const total = Math.max(0, parseInt(form.total, 10) || 0);
-  const perCase = Math.max(1, parseInt(form.perCase, 10) || 1);
-
-  const save = () => {
-    if (!form.name.trim()) { setErr("Ürün adı gerekli."); return; }
-    if (total < 1) { setErr("Toplam adet en az 1 olmalı."); return; }
-    onSave({
-      id:genId(), name:form.name.trim(), cat:form.cat || "Diğer",
-      total, out:0, perCase, faults:0, notes:[], addedBy:"Ekip",
-      accessories:accs.filter(a => a.name.trim()).map(a => ({ ...a, name:a.name.trim() })),
-    });
-  };
-
-  const iStyle = { width:"100%", background:T.bg2, border:"none", outline:"none", borderRadius:10, padding:"11px 14px", fontSize:15, color:T.L1, fontFamily:SF };
-
-  return (
-    <Sheet title="Ürün Ekle" onClose={onClose} maxHeight="92dvh" dismissOnBackdrop={false}>
-      <div style={{ padding:"0 16px", display:"flex", flexDirection:"column", gap:14 }}>
-
-        <div>
-          <p style={{ margin:"0 0 6px 4px", fontSize:12, color:T.L3, fontFamily:SF }}>ÜRÜN ADI</p>
-          <input value={form.name} onChange={e => { setErr(""); setForm(p => ({ ...p, name:e.target.value })); }}
-            placeholder="örn. Pixel LED" autoFocus style={iStyle}/>
-        </div>
-
-        <div>
-          <div style={{ display:"flex", justifyContent:"space-between", marginBottom:8 }}>
-            <p style={{ margin:0, fontSize:12, color:T.L3, fontFamily:SF }}>KATEGORİ</p>
-            <button onClick={() => setAddingCat(a => !a)} style={{ background:"none", border:"none", color:T.Y, fontSize:12, cursor:"pointer", fontFamily:SF }}>+ Yeni</button>
-          </div>
-          {addingCat && (
-            <div style={{ display:"flex", gap:8, marginBottom:10 }}>
-              <input value={newCat} onChange={e => setNewCat(e.target.value)} placeholder="Kategori adı" style={{ ...iStyle, flex:1 }}/>
-              <button onClick={() => {
-                  const c = newCat.trim();
-                  if (!c) return;
-                  setLocalCats(p => (p.includes(c) ? p : [...p, c]));
-                  setForm(f => ({ ...f, cat:c }));
-                  setNewCat(""); setAddingCat(false);
-                }}
-                style={{ background:T.Y, border:"none", borderRadius:10, padding:"0 16px", color:"#000", fontWeight:700, cursor:"pointer", fontFamily:SF, fontSize:14, flexShrink:0 }}>Ekle</button>
-            </div>
-          )}
-          <div style={{ display:"flex", flexWrap:"wrap", gap:8 }}>
-            {localCats.map(c => (
-              <button key={c} onClick={() => setForm(p => ({ ...p, cat:c }))}
-                style={{ background:form.cat === c ? T.Yd : T.bg2, border:`1px solid ${form.cat === c ? T.Y + "55" : "transparent"}`, borderRadius:20, padding:"7px 14px", fontSize:14, color:form.cat === c ? T.Y : T.L2, cursor:"pointer", fontFamily:SF, transition:"all .15s" }}>
-                {c}
-              </button>
-            ))}
-          </div>
-        </div>
-
-        <div style={{ display:"grid", gridTemplateColumns:"1fr 1fr", gap:10 }}>
-          <div>
-            <p style={{ margin:"0 0 6px 4px", fontSize:12, color:T.L3, fontFamily:SF }}>TOPLAM ADET</p>
-            <input type="number" inputMode="numeric" min="1" value={form.total}
-              onChange={e => { setErr(""); setForm(p => ({ ...p, total:e.target.value })); }} style={iStyle}/>
-          </div>
-          <div>
-            <p style={{ margin:"0 0 6px 4px", fontSize:12, color:T.L3, fontFamily:SF }}>CASE KAPASİTESİ</p>
-            <input type="number" inputMode="numeric" min="1" value={form.perCase}
-              onChange={e => setForm(p => ({ ...p, perCase:e.target.value }))} style={iStyle}/>
-          </div>
-        </div>
-
-        {total > 0 && (
-          <div style={{ background:T.Yd, borderRadius:10, padding:"10px 14px", display:"flex", justifyContent:"space-between" }}>
-            <span style={{ fontSize:13, color:T.Y, fontFamily:SF }}>{total} adet ÷ {perCase}/case</span>
-            <span style={{ fontSize:15, fontWeight:700, color:T.Y, fontFamily:SF }}>{Math.ceil(total / perCase)} case</span>
-          </div>
-        )}
-
-        <div>
-          <div style={{ display:"flex", justifyContent:"space-between", alignItems:"center", marginBottom:8 }}>
-            <p style={{ margin:0, fontSize:12, color:T.L3, fontFamily:SF }}>BİRLİKTE GELEN AKSESUARLAR</p>
-            <button onClick={addAcc} style={{ background:"none", border:"none", color:T.Y, fontSize:12, cursor:"pointer", fontFamily:SF }}>+ Ekle</button>
-          </div>
-          {accs.length === 0 && <p style={{ fontSize:13, color:T.L4, fontFamily:SF, margin:0 }}>Her üniteyle birlikte gelen kablo, adaptör vs.</p>}
-          {accs.map(a => (
-            <div key={a.id} style={{ display:"flex", gap:8, marginBottom:8, alignItems:"center" }}>
-              <input value={a.name} onChange={e => updAcc(a.id, "name", e.target.value)} placeholder="örn. Data Kablo" style={{ ...iStyle, flex:1 }}/>
-              <div style={{ display:"flex", alignItems:"center", gap:4, background:T.bg2, borderRadius:10, padding:"0 10px", height:44, flexShrink:0 }}>
-                <button onClick={() => updAcc(a.id, "perUnit", Math.max(1, a.perUnit - 1))} aria-label="Azalt"
-                  style={{ background:"none", border:"none", color:T.L2, fontSize:18, cursor:"pointer" }}>−</button>
-                <span style={{ fontSize:14, color:T.L1, fontFamily:MONO, minWidth:16, textAlign:"center" }}>{a.perUnit}</span>
-                <button onClick={() => updAcc(a.id, "perUnit", a.perUnit + 1)} aria-label="Artır"
-                  style={{ background:"none", border:"none", color:T.L2, fontSize:18, cursor:"pointer" }}>+</button>
-              </div>
-              <button onClick={() => delAcc(a.id)} aria-label="Aksesuarı sil"
-                style={{ background:"none", border:"none", color:T.R, fontSize:18, cursor:"pointer" }}>✕</button>
-            </div>
-          ))}
-        </div>
-
-        {err && <p style={{ margin:0, fontSize:13, color:T.R, fontFamily:SF }}>{err}</p>}
-
-        <button onClick={save}
-          style={{ background:T.Y, border:"none", borderRadius:12, padding:"15px 0", fontSize:16, fontWeight:600, color:"#000", cursor:"pointer", fontFamily:SF, marginBottom:8 }}>
-          Kaydet
-        </button>
-      </div>
-    </Sheet>
-  );
+var saveTimer = null, savePending = false;
+function save(){
+  if (readOnly) return;
+  if (!api) { lsSet(LS_STATE, S); return; }
+  /* Yayım isteği sürerken yapılan değişiklik, yayım sonrası otomatik
+     yenilemede kaybolmasın diye oturum deposunda bekletilir. */
+  ssSet(SS_PEND, JSON.stringify(S));
+  savePending = true;
+  setStatus("kaydediliyor…");
+  clearTimeout(saveTimer);
+  saveTimer = setTimeout(flush, 900);
 }
-
-function ProductDetail({ item, user, onClose, onUpdate, onDelete }) {
-  const [noteInput, setNoteInput] = useState("");
-  const [amount, setAmount] = useState("1");
-  const [mode, setMode] = useState(null); // "add" | "deduct"
-  const [askDelete, setAskDelete] = useState(false);
-
-  const available = Math.max(0, item.total - item.out);
-  const cases = Math.ceil(item.total / item.perCase) || 0;
-  const availCases = Math.floor(available / item.perCase);
-
-  const addNote = () => {
-    const t = noteInput.trim();
-    if (!t) return;
-    onUpdate({ ...item, notes:[...item.notes, t] });
-    setNoteInput("");
-  };
-
-  /* Stok düşerken out/faults toplamı aşmasın — eskiden müsait
-     adet eksiye düşebiliyordu. */
-  const applyStock = () => {
-    const n = Math.max(0, parseInt(amount, 10) || 0);
-    if (n > 0) {
-      const total = mode === "add" ? item.total + n : Math.max(0, item.total - n);
-      onUpdate({ ...item, total, out:Math.min(item.out, total), faults:Math.min(item.faults, total) });
+function flush(){
+  if (!api || !savePending || readOnly) return;
+  savePending = false;
+  try { sessionStorage.setItem(SS_NAV, JSON.stringify(nav)); } catch (e) {}
+  api.publish(buildHtml(S)).catch(function(err){
+    var c = err && err.code;
+    if (c === "conflict") { setStatus("güncelleniyor…"); return; }   /* görünüm birazdan yenilenir */
+    if (c === "not_writer" || c === "not_granted" || c === "not_declared"
+        || c === "capability_disabled" || c === "capability_removed" || c === "consent_required") {
+      readOnly = true; ssDel(SS_PEND); setStatus(""); render(); return;
     }
-    setMode(null); setAmount("1");
-  };
-
-  const setFaults = n => onUpdate({ ...item, faults:Math.min(Math.max(0, n), item.total) });
-
-  const outlineBtn = {
-    flex:1, background:"transparent", border:`1px solid ${T.R}55`, borderRadius:10,
-    padding:"11px 0", fontSize:14, fontWeight:600, color:T.R, cursor:"pointer", fontFamily:SF,
-  };
-
-  return (
-    <Sheet title={item.name} subtitle={item.cat} meta={item.id} onClose={onClose} maxHeight="88dvh">
-      <div style={{ padding:"0 16px", display:"flex", flexDirection:"column", gap:10 }}>
-
-        {/* Stok */}
-        <div style={{ background:T.bg2, borderRadius:14, padding:"16px" }}>
-          <div style={{ display:"grid", gridTemplateColumns:"1fr 1fr 1fr", gap:8, textAlign:"center" }}>
-            {[["Toplam", item.total, T.L1], ["Müsait", available, available > 0 ? T.G : T.R], ["Dışarıda", item.out, T.Y]].map(([l, v, c]) => (
-              <div key={l}>
-                <p style={{ margin:0, fontSize:28, fontWeight:700, color:c, fontFamily:MONO, lineHeight:1 }}>{v}</p>
-                <p style={{ margin:"5px 0 0", fontSize:11, color:T.L3, fontFamily:SF }}>{l}</p>
-              </div>
-            ))}
-          </div>
-          {item.faults > 0 && (
-            <div style={{ marginTop:12, padding:"7px 10px", background:T.Rd, borderRadius:8, fontSize:12, color:T.R, fontFamily:SF }}>
-              ⚠ {item.faults} adet arızalı
-            </div>
-          )}
-        </div>
-
-        {/* Case */}
-        <div style={{ background:T.bg2, borderRadius:14, padding:"14px 16px" }}>
-          <p style={{ margin:"0 0 12px", fontSize:12, color:T.L3, fontFamily:SF }}>CASE  ·  {item.perCase} adet/case</p>
-          {cases === 0 ? (
-            <p style={{ margin:0, fontSize:13, color:T.L4, fontFamily:SF }}>Stok yok</p>
-          ) : (
-            <>
-              <div style={{ display:"flex", flexWrap:"wrap", gap:6 }}>
-                {Array(cases).fill(null).map((_, i) => (
-                  <div key={i} style={{ width:38, height:38, borderRadius:9, background:i < availCases ? T.Yd : T.Rd, border:`1px solid ${i < availCases ? T.Y + "44" : T.R + "44"}`, display:"flex", alignItems:"center", justifyContent:"center" }}>
-                    <span style={{ fontSize:10, fontWeight:700, color:i < availCases ? T.Y : T.R, fontFamily:MONO }}>C{i + 1}</span>
-                  </div>
-                ))}
-              </div>
-              <p style={{ margin:"10px 0 0", fontSize:13, color:T.L3, fontFamily:SF }}>
-                <span style={{ color:T.Y, fontWeight:600 }}>{availCases}/{cases}</span> case müsait
-              </p>
-            </>
-          )}
-        </div>
-
-        {/* Aksesuarlar */}
-        {item.accessories.length > 0 && (
-          <div style={{ background:T.bg2, borderRadius:14, padding:"14px 16px" }}>
-            <p style={{ margin:"0 0 12px", fontSize:12, color:T.L3, fontFamily:SF }}>AKSESUARLAR</p>
-            {item.accessories.map(a => (
-              <div key={a.id} style={{ display:"flex", justifyContent:"space-between", marginBottom:8 }}>
-                <div>
-                  <span style={{ fontSize:15, color:T.L1, fontFamily:SF }}>{a.name}</span>
-                  <span style={{ fontSize:12, color:T.L4, fontFamily:SF, marginLeft:6 }}>{a.perUnit}×/ünite</span>
-                </div>
-                <span style={{ fontSize:15, fontWeight:600, color:T.L1, fontFamily:MONO }}>
-                  {a.perUnit * available}<span style={{ fontSize:11, color:T.L4 }}>/{a.perUnit * item.total}</span>
-                </span>
-              </div>
-            ))}
-          </div>
-        )}
-
-        {/* Notlar */}
-        <div style={{ background:T.bg2, borderRadius:14, padding:"14px 16px" }}>
-          <p style={{ margin:"0 0 10px", fontSize:12, color:T.L3, fontFamily:SF }}>NOTLAR</p>
-          {item.notes.length === 0 && <p style={{ margin:"0 0 10px", fontSize:13, color:T.L4, fontFamily:SF }}>Henüz not yok</p>}
-          {item.notes.map((n, i) => <p key={i} style={{ margin:"0 0 6px", fontSize:14, color:T.L2, fontFamily:SF }}>{n}</p>)}
-          <div style={{ display:"flex", gap:8, marginTop:8 }}>
-            <input value={noteInput} onChange={e => setNoteInput(e.target.value)}
-              onKeyDown={e => { if (e.key === "Enter") addNote(); }}
-              placeholder="Not ekle…" enterKeyHint="done"
-              style={{ flex:1, background:T.bg3, border:"none", outline:"none", borderRadius:8, padding:"9px 12px", fontSize:14, color:T.L1, fontFamily:SF }}/>
-            <button onClick={addNote} aria-label="Not ekle"
-              style={{ background:T.Y, border:"none", borderRadius:8, padding:"0 14px", color:"#000", fontSize:18, cursor:"pointer" }}>+</button>
-          </div>
-        </div>
-
-        {/* Sadece yönetici */}
-        {user.role === "patron" && (
-          <div style={{ background:T.Rd, borderRadius:14, padding:"14px 16px", marginBottom:8 }}>
-            <p style={{ margin:"0 0 10px", fontSize:12, color:T.R, fontFamily:SF }}>STOK İŞLEMLERİ  ·  Yönetici</p>
-
-            {!mode ? (
-              <div style={{ display:"flex", flexDirection:"column", gap:8 }}>
-                <div style={{ display:"flex", gap:8 }}>
-                  <button onClick={() => setMode("add")} style={outlineBtn}>Stok Ekle</button>
-                  <button onClick={() => setMode("deduct")} style={outlineBtn}>Stoktan Düş</button>
-                </div>
-                <div style={{ display:"flex", gap:8, alignItems:"center" }}>
-                  <span style={{ flex:1, fontSize:13, color:T.L3, fontFamily:SF }}>Arızalı adet</span>
-                  <div style={{ display:"flex", alignItems:"center", gap:10, background:"rgba(0,0,0,0.35)", borderRadius:10, padding:"4px 12px" }}>
-                    <button onClick={() => setFaults(item.faults - 1)} aria-label="Arıza azalt"
-                      style={{ background:"none", border:"none", color:T.R, fontSize:18, cursor:"pointer" }}>−</button>
-                    <span style={{ fontSize:15, color:T.L1, fontFamily:MONO, minWidth:18, textAlign:"center" }}>{item.faults}</span>
-                    <button onClick={() => setFaults(item.faults + 1)} aria-label="Arıza artır"
-                      style={{ background:"none", border:"none", color:T.R, fontSize:18, cursor:"pointer" }}>+</button>
-                  </div>
-                </div>
-                <button onClick={() => setAskDelete(true)}
-                  style={{ ...outlineBtn, flex:"none", width:"100%" }}>Ürünü Sil</button>
-              </div>
-            ) : (
-              <div style={{ display:"flex", gap:8, alignItems:"center", flexWrap:"wrap" }}>
-                <input type="number" inputMode="numeric" min="1" value={amount} onChange={e => setAmount(e.target.value)} autoFocus
-                  style={{ width:64, background:T.bg0, border:`1px solid ${T.R}55`, outline:"none", borderRadius:8, padding:"9px 10px", fontSize:16, color:T.R, fontFamily:MONO, textAlign:"center" }}/>
-                <span style={{ fontSize:13, color:T.L3, fontFamily:SF }}>adet {mode === "add" ? "ekle" : "düş"}</span>
-                <button onClick={applyStock}
-                  style={{ flex:1, background:T.R, border:"none", borderRadius:10, padding:"11px 0", fontSize:14, fontWeight:600, color:"#fff", cursor:"pointer", fontFamily:SF }}>
-                  Onayla
-                </button>
-                <button onClick={() => { setMode(null); setAmount("1"); }}
-                  style={{ background:"none", border:"none", color:T.L3, fontSize:13, cursor:"pointer", fontFamily:SF }}>İptal</button>
-              </div>
-            )}
-          </div>
-        )}
-      </div>
-
-      {askDelete && (
-        <ConfirmDialog text={`"${item.name}" envanterden silinsin mi?`}
-          onConfirm={() => { setAskDelete(false); onDelete(item.id); }}
-          onCancel={() => setAskDelete(false)}/>
-      )}
-    </Sheet>
-  );
+    savePending = true;
+    clearTimeout(saveTimer);
+    if (c === "rate_limited") { setStatus("kaydediliyor…"); saveTimer = setTimeout(flush, 4000); return; }
+    setStatus("kaydedilemedi — tekrar denenecek", true);
+    saveTimer = setTimeout(flush, 5000);
+  });
+}
+function setStatus(txt, bad){
+  var n = el("savebar");
+  if (!txt) { if (n) n.parentNode.removeChild(n); return; }
+  if (!n) { n = document.createElement("div"); n.id = "savebar"; document.body.appendChild(n); }
+  n.className = "saving" + (bad ? " bad" : "");
+  n.textContent = txt;
 }
 
-function InventoryView({ user }) {
-  const [items, setItems] = usePersisted("inventory", INVENTORY_INIT);
-  const [q, setQ] = useState("");
-  const [selCat, setSelCat] = useState("Tümü");
-  const [detailId, setDetailId] = useState(null);
-  const [adding, setAdding] = useState(false);
+/* ═══════════ türetilmiş veriler ═══════════ */
+function find(arr, id){ for (var i=0;i<arr.length;i++) if (arr[i].id === id) return arr[i]; return null; }
+function userById(id){ return find(S.users, id); }
+function userName(id){ var u = userById(id); return u ? u.name : "—"; }
+function itemById(id){ return find(S.inventory, id); }
+function eventById(id){ return find(S.events, id); }
+function taskById(id){ return find(S.tasks, id); }
 
-  const addItem = item => { setItems(p => [item, ...p]); setAdding(false); };
-  const updateItem = updated => setItems(p => p.map(i => (i.id === updated.id ? updated : i)));
-  const deleteItem = id => { setItems(p => p.filter(i => i.id !== id)); setDetailId(null); };
-
-  /* Seçili ürünü id ile takip ediyoruz; kopya tutulunca panel güncellemeden
-     sonra eski veriyi gösteriyordu. */
-  const detail = items.find(i => i.id === detailId) || null;
-
-  const allCats = ["Tümü", ...new Set(items.map(i => i.cat))];
-  const needle = q.trim().toLocaleLowerCase("tr");
-  const filtered = items.filter(i =>
-    (!needle || i.name.toLocaleLowerCase("tr").includes(needle) || i.cat.toLocaleLowerCase("tr").includes(needle)) &&
-    (selCat === "Tümü" || i.cat === selCat)
-  );
-  const grouped = [...new Set(filtered.map(i => i.cat))].map(c => ({ cat:c, items:filtered.filter(i => i.cat === c) }));
-
-  /* Filtrelenen kategori silinirse "Tümü"ne dön */
-  useEffect(() => {
-    if (selCat !== "Tümü" && !items.some(i => i.cat === selCat)) setSelCat("Tümü");
-  }, [items, selCat]);
-
-  return (
-    <div style={{ paddingBottom:100, fontFamily:SF }}>
-      <PageTitle right={
-        <button onClick={() => setAdding(true)}
-          style={{ background:"none", border:"none", color:T.Y, fontSize:15, cursor:"pointer", fontFamily:SF, paddingBottom:4 }}>+ Ekle</button>
-      }>Envanter</PageTitle>
-
-      {/* Arama */}
-      <div style={{ padding:"0 16px 10px" }}>
-        <div style={{ background:T.bg2, borderRadius:10, display:"flex", alignItems:"center", padding:"8px 12px", gap:8 }}>
-          <svg width="14" height="14" viewBox="0 0 14 14" fill="none"><circle cx="6" cy="6" r="5" stroke={T.L4} strokeWidth="1.4"/><path d="M10 10l3 3" stroke={T.L4} strokeWidth="1.4" strokeLinecap="round"/></svg>
-          <input value={q} onChange={e => setQ(e.target.value)} placeholder="Ürün ara…" type="search"
-            style={{ flex:1, background:"none", border:"none", outline:"none", fontSize:15, color:T.L1, fontFamily:SF }}/>
-          {q && <button onClick={() => setQ("")} aria-label="Aramayı temizle"
-            style={{ background:"none", border:"none", color:T.L4, cursor:"pointer", fontSize:16, padding:0 }}>✕</button>}
-        </div>
-      </div>
-
-      {/* Kategori seçici — yatay kaydırma sekme değiştirmesin */}
-      <div data-noswipe="1" style={{ padding:"0 16px 14px", display:"flex", gap:8, overflowX:"auto", scrollbarWidth:"none" }}>
-        {allCats.map(c => (
-          <button key={c} onClick={() => setSelCat(c)}
-            style={{ flexShrink:0, background:selCat === c ? T.Yd : T.bg2, border:`1px solid ${selCat === c ? T.Y + "44" : "transparent"}`, borderRadius:20, padding:"6px 14px", fontSize:13, color:selCat === c ? T.Y : T.L2, cursor:"pointer", fontFamily:SF, whiteSpace:"nowrap" }}>
-            {c}
-          </button>
-        ))}
-      </div>
-
-      {/* Özet */}
-      <div style={{ margin:"0 16px 14px", background:T.bg1, borderRadius:12, padding:"12px 16px", display:"flex" }}>
-        {[["Ürün çeşidi", items.length, T.L1],
-          ["Dışarıda", items.reduce((s, i) => s + i.out, 0), T.Y],
-          ["Arızalı", items.reduce((s, i) => s + i.faults, 0), T.R]].map(([label, value, color], idx) => (
-          <div key={label} style={{ flex:1, textAlign:"center", borderLeft:idx > 0 ? `1px solid ${T.sep}` : "none" }}>
-            <p style={{ margin:0, fontSize:22, fontWeight:700, color, fontFamily:MONO }}>{value}</p>
-            <p style={{ margin:"3px 0 0", fontSize:10, color:T.L4, fontFamily:SF }}>{label}</p>
-          </div>
-        ))}
-      </div>
-
-      {/* Liste */}
-      {grouped.map(({ cat, items:gitems }) => (
-        <div key={cat}>
-          <SectionHeader>{cat}</SectionHeader>
-          <div style={{ padding:"0 16px" }}>
-            <div style={{ borderRadius:12, overflow:"hidden" }}>
-              {gitems.map((item, i, arr) => {
-                const avail = Math.max(0, item.total - item.out);
-                const cases = Math.ceil(item.total / item.perCase) || 0;
-                const availCases = Math.floor(avail / item.perCase);
-                return (
-                  <Cell key={item.id} first={i === 0} last={i === arr.length - 1} onClick={() => setDetailId(item.id)}>
-                    <div style={{ flex:1, minWidth:0 }}>
-                      <div style={{ display:"flex", alignItems:"center", gap:7 }}>
-                        <p style={{ margin:0, fontSize:15, color:T.L1, fontWeight:500, whiteSpace:"nowrap", overflow:"hidden", textOverflow:"ellipsis" }}>{item.name}</p>
-                        {item.faults > 0 && <span style={{ fontSize:10, color:T.R, background:T.Rd, padding:"1px 5px", borderRadius:5, flexShrink:0 }}>⚠{item.faults}</span>}
-                      </div>
-                      <p style={{ margin:"3px 0 0", fontSize:11, color:T.L4, fontFamily:SF, whiteSpace:"nowrap", overflow:"hidden", textOverflow:"ellipsis" }}>
-                        {item.perCase}/case
-                        {item.accessories.length > 0 && <span style={{ marginLeft:6 }}>· {item.accessories.map(a => a.name).join(", ")}</span>}
-                      </p>
-                    </div>
-                    <div style={{ textAlign:"right", flexShrink:0, marginRight:4 }}>
-                      <p style={{ margin:0, fontSize:16, fontWeight:700, color:avail > 0 ? T.L1 : T.R, fontFamily:MONO }}>
-                        {avail}<span style={{ fontSize:11, color:T.L4 }}>/{item.total}</span>
-                      </p>
-                      <p style={{ margin:"2px 0 0", fontSize:11, color:T.Y, fontFamily:SF }}>{availCases}/{cases} case</p>
-                    </div>
-                    <Chevron/>
-                  </Cell>
-                );
-              })}
-            </div>
-          </div>
-        </div>
-      ))}
-
-      {filtered.length === 0 && <Empty>Ürün bulunamadı</Empty>}
-
-      {adding && (
-        <AddProductSheet
-          cats={[...new Set([...DEFAULT_CATS, ...items.map(i => i.cat)])]}
-          onSave={addItem} onClose={() => setAdding(false)}/>
-      )}
-      {detail && (
-        <ProductDetail item={detail} user={user}
-          onClose={() => setDetailId(null)} onUpdate={updateItem} onDelete={deleteItem}/>
-      )}
-    </div>
-  );
+/* KURAL: "sahada" adedi elle girilmez — durumu "Sahada" olan
+   etkinliklerin rider'larından hesaplanır. */
+function outCount(itemId){
+  return S.events.reduce(function(sum, e){
+    if (e.status !== "out") return sum;
+    return sum + e.rider.reduce(function(s, r){ return s + (r.itemId === itemId ? intOf(r.qty,0) : 0); }, 0);
+  }, 0);
 }
+function availOf(item){ return Math.max(0, item.total - outCount(item.id)); }
 
-/* ─────────────────────────────────────────
-   YÖNETİCİ PANELİ
-   Kartlar hâlâ ekransız; tıklayınca hiçbir şey olmaması yerine
-   "yakında" durumu açıkça gösteriliyor.
-───────────────────────────────────────── */
-const ADMIN_ITEMS = [
-  { icon:"👤", label:"Kullanıcı Yönetimi", sub:"Ekle · Çıkar · PIN sıfırla" },
-  { icon:"🏨", label:"Rider Şablonları",   sub:"Robinson · Seno · Fortezza…" },
-  { icon:"📅", label:"Etkinlik Oluştur",   sub:"Takvime ekle, ekip ata" },
-  { icon:"🚛", label:"Araç Yönetimi",      sub:"Hangi araç hangi etkinliğe" },
-  { icon:"📊", label:"İstatistikler",      sub:"Arıza · Müşteri · Ekip analizi" },
-];
-
-function AdminView() {
-  const [toast, setToast] = useState("");
-
-  useEffect(() => {
-    if (!toast) return;
-    const t = setTimeout(() => setToast(""), 1800);
-    return () => clearTimeout(t);
-  }, [toast]);
-
-  return (
-    <div style={{ paddingBottom:100, fontFamily:SF }}>
-      <PageTitle>Yönetici</PageTitle>
-      <div style={{ padding:"0 16px" }}>
-        <div style={{ borderRadius:12, overflow:"hidden" }}>
-          {ADMIN_ITEMS.map((it, i, arr) => (
-            <Cell key={it.label} first={i === 0} last={i === arr.length - 1} onClick={() => setToast(it.label)}>
-              <div style={{ width:34, height:34, borderRadius:9, background:T.bg2, display:"flex", alignItems:"center", justifyContent:"center", fontSize:17, flexShrink:0 }}>{it.icon}</div>
-              <div style={{ flex:1, minWidth:0 }}>
-                <p style={{ margin:0, fontSize:15, color:T.L1 }}>{it.label}</p>
-                <p style={{ margin:"2px 0 0", fontSize:12, color:T.L3 }}>{it.sub}</p>
-              </div>
-              <span style={{ fontSize:10, color:T.L4, border:`1px solid ${T.L4}`, borderRadius:5, padding:"1px 6px", flexShrink:0 }}>yakında</span>
-              <Chevron/>
-            </Cell>
-          ))}
-        </div>
-        <p style={{ margin:"14px 4px 0", fontSize:12, color:T.L4 }}>
-          Bu ekranlar henüz tasarımda. Takvim, görev ve envanter akışları çalışır durumda.
-        </p>
-      </div>
-
-      {toast && (
-        <div style={{ position:"fixed", left:"50%", bottom:110, transform:"translateX(-50%)", background:T.bg2, color:T.L1, fontSize:13, padding:"10px 16px", borderRadius:20, zIndex:150, fontFamily:SF, whiteSpace:"nowrap" }}>
-          {toast} · yakında
-        </div>
-      )}
-    </div>
-  );
+function myEvents(){
+  if (!me) return [];
+  return S.events.filter(function(e){ return me.role === "patron" || e.crew.indexOf(me.id) >= 0; });
 }
-
-/* ─────────────────────────────────────────
-   TAB BAR
-───────────────────────────────────────── */
-const TABS_CREW   = [{ id:"cal", label:"Takvim" }, { id:"tasks", label:"Görevler" }, { id:"inv", label:"Envanter" }];
-const TABS_PATRON = [...TABS_CREW, { id:"admin", label:"Yönetici" }];
-
-const TAB_ICON = {
-  cal:   <svg width="20" height="20" viewBox="0 0 20 20" fill="none"><rect x="2" y="4" width="16" height="14" rx="3" stroke="currentColor" strokeWidth="1.4"/><path d="M2 8h16M6 2v4M14 2v4" stroke="currentColor" strokeWidth="1.4" strokeLinecap="round"/></svg>,
-  tasks: <svg width="20" height="20" viewBox="0 0 20 20" fill="none"><path d="M5 10l3 3 7-7" stroke="currentColor" strokeWidth="1.4" strokeLinecap="round" strokeLinejoin="round"/><rect x="2" y="2" width="16" height="16" rx="3" stroke="currentColor" strokeWidth="1.4"/></svg>,
-  inv:   <svg width="20" height="20" viewBox="0 0 20 20" fill="none"><rect x="2" y="2" width="7" height="7" rx="1.5" stroke="currentColor" strokeWidth="1.4"/><rect x="11" y="2" width="7" height="7" rx="1.5" stroke="currentColor" strokeWidth="1.4"/><rect x="2" y="11" width="7" height="7" rx="1.5" stroke="currentColor" strokeWidth="1.4"/><rect x="11" y="11" width="7" height="7" rx="1.5" stroke="currentColor" strokeWidth="1.4"/></svg>,
-  admin: <svg width="20" height="20" viewBox="0 0 20 20" fill="none"><circle cx="10" cy="7" r="3.5" stroke="currentColor" strokeWidth="1.4"/><path d="M3 17c0-3.314 3.134-6 7-6s7 2.686 7 6" stroke="currentColor" strokeWidth="1.4" strokeLinecap="round"/></svg>,
+function openTaskCount(){
+  if (!me) return 0;
+  return S.tasks.filter(function(t){
+    return !t.done && (!t.assignee || t.assignee === me.id || me.role === "patron");
+  }).length;
+}
+var STATUS = {
+  plan: { label:"Planlandı",  cls:"n" },
+  out:  { label:"Sahada",     cls:"o" },
+  done: { label:"Tamamlandı", cls:"g" }
 };
 
-/* ─────────────────────────────────────────
-   ROOT
-───────────────────────────────────────── */
-function App() {
-  /* Eskiden başlangıç kullanıcısı sabit "Ömer" idi; giriş ekranı hiç
-     görünmüyordu. Artık oturum yoksa girişle başlıyor. */
-  const [user, setUser] = usePersisted("session", null);
-  const [patron, setPatron] = useState(false);
-  const [tab, setTab] = useState("cal");
-  const [eventId, setEventId] = useState(null);
-  const [evState, setEvState] = usePersisted("eventState", {});
-  const [askLogout, setAskLogout] = useState(false);
+/* ═══════════ görünüm ═══════════ */
+var root;
 
-  const touch = useRef(null);
-  const dragRef = useRef(null);
+function render(){
+  root.innerHTML = me ? appView() : loginView();
+  restoreFocus();
+}
 
-  const tabs = user?.role === "patron" ? TABS_PATRON : TABS_CREW;
-  const event = eventId != null ? EVENTS.find(e => e.id === eventId) : null;
+/* ── giriş ── */
+function loginView(){
+  if (!pin.user){
+    var list = S.users.map(function(u){
+      return '<button class="row tap" data-act="pick" data-id="' + h(u.id) + '">'
+        + '<span class="avatar">' + h(u.name.charAt(0)) + '</span>'
+        + '<span class="gr"><span class="p1">' + h(u.name) + '</span>'
+        + '<span class="p2">' + (u.role === "patron" ? "Yönetici" : "Ekip") + '</span></span>'
+        + CHEV + '</button>';
+    }).join("");
+    return '<div class="login">' + LOGO
+      + '<div style="height:44px"></div>'
+      + '<div style="width:100%;max-width:330px">'
+      + '<p class="hint">Devam etmek için adını seç</p>'
+      + '<div class="card">' + list + '</div></div></div>';
+  }
+  var dots = [0,1,2,3].map(function(i){ return '<i class="' + (i < pin.buf.length ? "f" : "") + '"></i>'; }).join("");
+  var keys = [1,2,3,4,5,6,7,8,9,null,0,"del"].map(function(k){
+    if (k === null) return '<span></span>';
+    if (k === "del") return '<button data-act="pin-del" aria-label="Sil">⌫</button>';
+    return '<button data-act="pin-key" data-k="' + k + '" aria-label="' + k + '">' + k + '</button>';
+  }).join("");
+  return '<div class="login">'
+    + '<button class="link" data-act="pin-back" style="position:absolute;top:calc(18px + env(safe-area-inset-top,0px));left:18px">‹ Geri</button>'
+    + LOGO + '<div style="height:36px"></div>'
+    + '<p class="nm">' + h(pin.user.name) + '</p>'
+    + '<p class="sb">PIN\'ini gir</p>'
+    + '<div class="dots' + (pin.err ? " err" : "") + '">' + dots + '</div>'
+    + '<div class="pad">' + keys + '</div></div>';
+}
 
-  /* Kullanıcı rol değiştirince (ör. çıkış → ekip girişi) geçersiz sekmede kalmasın */
-  useEffect(() => {
-    if (user && !tabs.some(t => t.id === tab)) setTab("cal");
-  }, [user, tabs, tab]);
+/* ── uygulama kabuğu ── */
+function appView(){
+  var tabs = [{ id:"cal", t:"Takvim", i:"cal" }, { id:"tasks", t:"Görevler", i:"task" }, { id:"inv", t:"Envanter", i:"inv" }];
+  if (me.role === "patron") tabs.push({ id:"adm", t:"Yönetici", i:"adm" });
 
-  const setEventState = next => setEvState(p => ({ ...p, [eventId]:next }));
+  var openEvent = nav.eventId ? eventById(nav.eventId) : null;
+  var body;
+  if (openEvent) body = eventView(openEvent);
+  else if (nav.tab === "tasks") body = tasksView();
+  else if (nav.tab === "inv") body = invView();
+  else if (nav.tab === "adm" && me.role === "patron") body = admView();
+  else body = calView();
 
-  /* ── Kaydırarak sekme değiştirme ──
-     Düzeltmeler: clientX === 0 iken jest yok sayılıyordu (0 falsy);
-     dikey kaydırma yatay sürükleme tetikliyordu; panel/karusel
-     üzerindeki kaydırmalar sekmeyi değiştiriyordu. */
-  const swipeStart = e => {
-    if (event || e.touches.length !== 1 || e.target.closest?.("[data-noswipe]")) { touch.current = null; return; }
-    touch.current = { x:e.touches[0].clientX, y:e.touches[0].clientY, axis:null };
-  };
+  var openCount = openTaskCount();
+  var bar = tabs.map(function(t){
+    var on = (nav.tab === t.id);
+    return '<button class="' + (on ? "on" : "") + '" data-act="tab" data-id="' + t.id + '"'
+      + (on ? ' aria-current="page"' : '') + '>' + ICONS[t.i]
+      + (t.id === "tasks" && openCount ? '<span class="dot"></span>' : '')
+      + '<span class="lb">' + t.t + '</span></button>';
+  }).join("");
 
-  const swipeMove = e => {
-    const t = touch.current;
-    if (!t || !dragRef.current) return;
-    const dx = e.touches[0].clientX - t.x;
-    const dy = e.touches[0].clientY - t.y;
+  return '<div class="topbar">' + LOGO
+    + '<div style="display:flex;align-items:center;gap:10px;min-width:0">'
+    + '<span class="who"><b>' + h(me.name) + '</b>'
+    + (me.role === "patron" ? ' <span class="rl">· yönetici</span>' : '') + '</span>'
+    + '<button class="iconbtn" data-act="logout" aria-label="Çıkış">⏻</button></div></div>'
+    + (readOnly ? '<div class="robar">Salt okunur görünüm — değişiklik kaydedilmez</div>' : '')
+    + '<div class="page">' + body + '</div>'
+    + (openEvent ? '' : '<nav class="tabbar">' + bar + '</nav>')
+    + sheetView() + dialogView();
+}
 
-    if (!t.axis) {
-      if (Math.abs(dx) < 8 && Math.abs(dy) < 8) return;
-      t.axis = Math.abs(dx) > Math.abs(dy) ? "x" : "y";
-    }
-    if (t.axis === "y") return;
+/* ── takvim ── */
+function calView(){
+  var t = todayKey(), evs = myEvents();
+  var y = nav.calY, m = nav.calM, n = dim(y, m);
+  var first = new Date(y, m, 1).getDay(), off = first === 0 ? 6 : first - 1;
 
-    const idx = tabs.findIndex(x => x.id === tab);
-    if ((dx > 0 && idx === 0) || (dx < 0 && idx === tabs.length - 1)) return;
-    dragRef.current.style.transform = `translateX(${dx * 0.32}px)`;
-  };
+  var byDay = {};
+  evs.forEach(function(e){ (byDay[e.date] = byDay[e.date] || []).push(e); });
+  Object.keys(byDay).forEach(function(k){ byDay[k] = sortBy(byDay[k], function(e){ return e.time || ""; }); });
 
-  const swipeEnd = e => {
-    const t = touch.current;
-    touch.current = null;
-    if (!t || t.axis !== "x") return;
-
-    /* Sürükleme izini tamamen sil. Geride kalan bir transform, bu kutuyu
-       position:fixed için "containing block" yapıyor; alttan açılan
-       paneller ve toast ekrana değil bu kutuya sabitleniyordu. */
-    const el = dragRef.current;
-    if (el) {
-      el.style.transition = "transform .2s ease";
-      el.style.transform = "translateX(0)";
-      setTimeout(() => {
-        if (dragRef.current !== el) return;
-        el.style.transition = "";
-        el.style.transform = "";
-      }, 220);
-    }
-
-    const ct = e.changedTouches && e.changedTouches[0];
-    if (!ct) return;
-    const dx = ct.clientX - t.x;
-    if (Math.abs(dx) <= 42) return;
-    const idx = tabs.findIndex(x => x.id === tab);
-    if (dx < 0 && idx < tabs.length - 1) setTab(tabs[idx + 1].id);
-    if (dx > 0 && idx > 0)               setTab(tabs[idx - 1].id);
-  };
-
-  const logout = () => {
-    setAskLogout(false);
-    setUser(null); setPatron(false); setTab("cal"); setEventId(null);
-  };
-
-  /* Giriş ekranları */
-  if (!user) {
-    return patron
-      ? <PatronLogin onLogin={u => { setUser(u); setPatron(false); }} onBack={() => setPatron(false)}/>
-      : <CrewLogin onLogin={setUser} onPatron={() => setPatron(true)}/>;
+  var cells = "";
+  for (var i = 0; i < off; i++) cells += '<span></span>';
+  for (var d = 1; d <= n; d++){
+    var k = key(y, m, d), list = byDay[k] || [];
+    var we = (d + off - 1) % 7 >= 5;
+    cells += '<div class="day' + (list.length ? " has" : "") + (k === t ? " today" : "") + '"'
+      + (list.length ? ' data-act="cal-day" data-id="' + k + '"' : '') + '>'
+      + '<span class="n' + (we ? " we" : "") + '">' + d + '</span>'
+      + list.slice(0,2).map(function(e){
+          return '<span class="ev ' + (e.status === "out" ? "out" : e.status === "done" ? "done" : "")
+            + '">' + h(e.name) + '</span>'; }).join("")
+      + (list.length > 2 ? '<span class="more">+' + (list.length - 2) + '</span>' : '')
+      + '</div>';
   }
 
-  return (
-    <div style={{ minHeight:"100dvh", background:T.bg0, color:T.L1, maxWidth:430, margin:"0 auto", position:"relative", overflowX:"hidden" }}
-      onTouchStart={swipeStart} onTouchMove={swipeMove} onTouchEnd={swipeEnd} onTouchCancel={swipeEnd}>
+  var up = sortBy(evs.filter(function(e){ return e.date >= t && e.status !== "done"; }),
+                  function(e){ return e.date + (e.time || ""); }).slice(0, 8);
+  var live = evs.filter(function(e){ return e.status === "out"; });
 
-      {/* Üst çubuk */}
-      <div style={{ background:"rgba(0,0,0,0.8)", backdropFilter:"blur(20px)", WebkitBackdropFilter:"blur(20px)", borderBottom:`1px solid ${T.sep}`, padding:"10px 16px", display:"flex", alignItems:"center", justifyContent:"space-between", position:"sticky", top:0, zIndex:100 }}>
-        <Logo size={24}/>
-        <div style={{ display:"flex", alignItems:"center", gap:10 }}>
-          <span style={{ fontSize:13, color:T.L2, fontFamily:SF }}>
-            {user.name}{user.role === "patron" && <span style={{ color:T.Y }}> · yönetici</span>}
-          </span>
-          <button onClick={() => setAskLogout(true)} aria-label="Çıkış"
-            style={{ background:T.bg2, border:"none", color:T.L3, borderRadius:6, width:28, height:28, fontSize:13, cursor:"pointer", display:"flex", alignItems:"center", justifyContent:"center" }}>
-            ⏻
-          </button>
-        </div>
-      </div>
-
-      {/* İçerik */}
-      <div ref={dragRef}>
-        {event ? (
-          <EventDetail
-            ev={event} user={user}
-            state={evState[event.id] || { checked:[], notes:[] }}
-            onChange={setEventState}
-            onBack={() => setEventId(null)}/>
-        ) : (
-          <div key={tab} style={{ animation:"fadeUp .2s ease" }}>
-            {tab === "cal"   && <CalendarView user={user} onPick={ev => setEventId(ev.id)}/>}
-            {tab === "tasks" && <TasksView user={user}/>}
-            {tab === "inv"   && <InventoryView user={user}/>}
-            {tab === "admin" && user.role === "patron" && <AdminView/>}
-          </div>
-        )}
-      </div>
-
-      {/* Sekme çubuğu */}
-      {!event && (
-        <div style={{ position:"fixed", bottom:0, left:"50%", transform:"translateX(-50%)", width:"100%", maxWidth:430, background:"rgba(0,0,0,0.85)", backdropFilter:"blur(24px)", WebkitBackdropFilter:"blur(24px)", borderTop:`1px solid ${T.sep}`, display:"flex", paddingBottom:"calc(8px + env(safe-area-inset-bottom, 0px))", zIndex:90 }}>
-          {tabs.map(t => {
-            const active = tab === t.id;
-            return (
-              <button key={t.id} onClick={() => setTab(t.id)} aria-current={active ? "page" : undefined}
-                style={{ flex:1, background:"none", border:"none", display:"flex", flexDirection:"column", alignItems:"center", gap:4, padding:"10px 0 2px", cursor:"pointer", color:active ? T.Y : "rgba(255,255,255,0.42)", transition:"color .15s", WebkitTapHighlightColor:"transparent" }}>
-                {TAB_ICON[t.id]}
-                <span style={{ fontSize:10, fontWeight:active ? 600 : 400, letterSpacing:0.2, fontFamily:SF }}>{t.label}</span>
-              </button>
-            );
-          })}
-        </div>
-      )}
-
-      {askLogout && (
-        <ConfirmDialog text="Çıkış yapılsın mı?" confirmLabel="Çıkış"
-          onConfirm={logout} onCancel={() => setAskLogout(false)}/>
-      )}
-    </div>
-  );
+  return '<div class="head"><h1 class="title">Takvim</h1>'
+    + (me.role === "patron" && !readOnly ? '<button class="link" data-act="ev-new">+ Etkinlik</button>' : '') + '</div>'
+    + '<div class="calnav"><button data-act="cal-shift" data-k="-1" aria-label="Önceki ay">‹</button>'
+    + '<b>' + AYLAR[m] + " " + y + '</b>'
+    + '<button data-act="cal-shift" data-k="1" aria-label="Sonraki ay">›</button></div>'
+    + '<div class="dow">' + GUNLER.map(function(g,i){ return '<span class="' + (i>=5?"we":"") + '">' + g + '</span>'; }).join("") + '</div>'
+    + '<div class="grid">' + cells + '</div>'
+    + (live.length ? '<div class="sec">Sahada</div><div class="wrap"><div class="card">'
+        + live.map(eventRow).join("") + '</div></div>' : '')
+    + '<div class="sec">Yaklaşan</div><div class="wrap">'
+    + (up.length ? '<div class="card">' + up.map(eventRow).join("") + '</div>'
+                 : '<div class="card"><div class="row"><span class="gr"><span class="p2">Yaklaşan etkinlik yok</span></span></div></div>')
+    + '</div>';
 }
 
-ReactDOM.createRoot(document.getElementById("root")).render(React.createElement(App));
+function eventRow(e){
+  var st = STATUS[e.status] || STATUS.plan;
+  var d = parseKey(e.date);
+  return '<button class="row tap" data-act="ev-open" data-id="' + h(e.id) + '">'
+    + '<span class="datechip"><span class="m">' + AYKISA[d.getMonth()] + '</span>'
+    + '<span class="d num">' + d.getDate() + '</span></span>'
+    + '<span class="gr"><span class="p1">' + h(e.name) + '</span>'
+    + '<span class="p2">' + h(e.client || "—") + (e.venue ? " · " + h(e.venue) : "")
+    + (e.time ? ' · <span class="num" style="color:var(--y)">' + h(e.time) + '</span>' : '') + '</span></span>'
+    + (e.status === "plan" ? "" : '<span class="pill ' + st.cls + '">' + st.label + '</span>')
+    + CHEV + '</button>';
+}
+
+/* ── etkinlik detayı ── */
+function eventView(e){
+  var mine = me.role === "patron" || e.crew.indexOf(me.id) >= 0;
+  var canEdit = mine && !readOnly;
+  var done = e.rider.filter(function(r){ return e.checked.indexOf(r.id) >= 0; }).length;
+  var pct = e.rider.length ? done / e.rider.length : 0;
+  var all = e.rider.length > 0 && done === e.rider.length;
+  var st = STATUS[e.status] || STATUS.plan;
+
+  var rider = e.rider.length
+    ? e.rider.map(function(r){
+        var on = e.checked.indexOf(r.id) >= 0;
+        var it = r.itemId ? itemById(r.itemId) : null;
+        var short = it && e.status === "plan" && intOf(r.qty,0) > availOf(it);
+        return '<button class="check' + (on ? " on" : "") + '"'
+          + (canEdit ? ' data-act="ev-tick" data-id="' + h(r.id) + '"' : ' disabled')
+          + '><span class="box">' + (on ? TICK : "") + '</span>'
+          + '<span class="nm">' + h(r.name)
+          + (short ? '<span class="short">stokta ' + availOf(it) + ' adet müsait</span>' : '')
+          + '</span><span class="qt num">' + h(r.qty) + ' <small>' + h(r.u || "adet") + '</small></span></button>';
+      }).join("")
+    : '<div class="row"><span class="gr"><span class="p2">Rider boş</span></span></div>';
+
+  var notes = e.notes.length
+    ? e.notes.map(function(n){
+        return '<div class="row"><span class="gr"><span style="display:block;font-size:14px;white-space:normal">'
+          + h(n.text) + '</span><span class="p2">' + h(n.by) + ' · ' + relTime(n.at) + '</span></span></div>';
+      }).join("")
+    : '<div class="row"><span class="gr"><span class="p2">Henüz not yok</span></span></div>';
+
+  var action = "";
+  if (canEdit){
+    if (e.status === "plan")
+      action = '<button class="btn ' + (all ? "pri" : "gho") + '" data-act="ev-status" data-k="out">'
+        + (all ? "Yüklendi — sahaya çık" : "Yüklendi olarak işaretle") + '</button>';
+    else if (e.status === "out")
+      action = '<button class="btn pri" data-act="ev-status" data-k="done">Ekipman döndü — kapat</button>';
+    else
+      action = '<button class="btn sec" data-act="ev-status" data-k="plan">Yeniden aç</button>';
+  }
+
+  return '<div class="wrap" style="padding-top:12px"><button class="link" data-act="ev-back">‹ Takvim</button></div>'
+    + '<div class="hero">'
+    + '<p class="meta">' + h(e.client || "—") + ' · ' + longDate(e.date)
+    + ' <span class="pill ' + st.cls + '" style="margin-left:6px">' + st.label + '</span></p>'
+    + '<h1>' + h(e.name) + '</h1>'
+    + (e.venue ? '<p class="ven">' + h(e.venue) + '</p>' : '')
+    + '<p class="crew">' + (e.crew.length ? e.crew.map(userName).map(h).join(" · ") : "Ekip atanmadı") + '</p>'
+    + ((e.meetTime || e.time) ? '<div class="times">'
+        + (e.meetTime ? '<div><div class="lb">BULUŞMA</div><div class="vl num" style="color:var(--t2)">' + h(e.meetTime) + '</div></div>' : '')
+        + (e.time ? '<div><div class="lb">ETKİNLİK</div><div class="vl num" style="color:var(--y)">' + h(e.time) + '</div></div>' : '')
+        + '</div>' : '')
+    + '</div>'
+    + '<div class="wrap" style="padding-bottom:18px"><div class="bar' + (all ? " full" : "") + '"><i style="width:'
+    + Math.round(pct*100) + '%"></i></div>'
+    + '<div style="display:flex;justify-content:space-between;margin-top:7px;font-size:12px;color:var(--t3)">'
+    + '<span>Rider</span><span class="num"' + (all ? ' style="color:var(--g)"' : '') + '>' + done + '/' + e.rider.length + '</span></div></div>'
+    + '<div class="wrap"><div class="card">' + rider + '</div>'
+    + (all ? '<div class="banner g" style="margin-top:10px">Tüm ekipman hazır</div>' : '')
+    + (action ? '<div style="margin-top:12px">' + action + '</div>' : '')
+    + (me.role === "patron" && !readOnly
+        ? '<button class="btn gho" style="margin-top:8px" data-act="ev-edit" data-id="' + h(e.id) + '">Etkinliği düzenle</button>' : '')
+    + '</div>'
+    + '<div class="sec">Notlar</div><div class="wrap"><div class="card">' + notes + '</div>'
+    + (canEdit ? '<div class="addrow"><input class="inp" id="notein" placeholder="Not ekle…" enterkeyhint="done" data-enter="ev-note">'
+        + '<button data-act="ev-note" aria-label="Not ekle">+</button></div>' : '')
+    + '</div>';
+}
+
+/* ── görevler ── */
+function tasksView(){
+  var order = function(t){ return (t.assignee === me.id ? "0" : "1") + (t.due || "9999-99-99"); };
+  var open = sortBy(S.tasks.filter(function(t){ return !t.done; }), order);
+  var done = sortBy(S.tasks.filter(function(t){ return t.done; }), function(t){ return t.doneAt || ""; }).reverse();
+
+  function row(t){
+    var who = t.assignee ? userName(t.assignee) : "";
+    var late = !t.done && t.due && t.due < todayKey();
+    var meta = [
+      t.desc || "",
+      who || "",
+      t.done ? relTime(t.doneAt) + (t.doneBy ? " · " + userName(t.doneBy) : "")
+             : (t.due ? shortDate(t.due) : "")
+    ].filter(Boolean).map(h).join(" · ");
+    return '<div class="row tap"' + (readOnly ? "" : ' data-act="task-toggle" data-id="' + h(t.id) + '"') + '>'
+      + '<span class="box"' + (t.done ? ' style="background:var(--g);border-color:var(--g)"' : '') + '>'
+      + (t.done ? TICK : "") + '</span>'
+      + '<span class="gr"><span class="p1"' + (t.done ? ' style="color:var(--t3);text-decoration:line-through"' : '') + '>'
+      + h(t.title) + '</span><span class="p2">' + meta + '</span></span>'
+      + (late ? '<span class="pill r">gecikti</span>' : '')
+      + (me.role === "patron" && !readOnly
+          ? '<button class="iconbtn" data-act="task-edit" data-id="' + h(t.id) + '" aria-label="Düzenle">✎</button>' : '')
+      + '</div>';
+  }
+
+  return '<div class="head"><h1 class="title">Görevler</h1>'
+    + (readOnly ? '' : '<button class="link" data-act="task-new">+ Görev</button>') + '</div>'
+    + (S.tasks.length === 0 ? '<div class="empty">Henüz görev yok</div>' : '')
+    + (open.length ? '<div class="wrap"><div class="card">' + open.map(row).join("") + '</div></div>' : '')
+    + (done.length ? '<div class="sec">Tamamlandı</div><div class="wrap"><div class="card" style="opacity:.55">'
+        + done.map(row).join("") + '</div></div>' : '');
+}
+
+/* ── envanter ── */
+function invView(){
+  var q = (nav.q || "").trim().toLocaleLowerCase("tr");
+  var used = S.cats.filter(function(c){ return S.inventory.some(function(i){ return i.cat === c; }); });
+  var cats = ["Tümü"].concat(used);
+  if (cats.indexOf(nav.cat) < 0) nav.cat = "Tümü";
+
+  var list = S.inventory.filter(function(i){
+    var okQ = !q || i.name.toLocaleLowerCase("tr").indexOf(q) >= 0 || i.cat.toLocaleLowerCase("tr").indexOf(q) >= 0;
+    return okQ && (nav.cat === "Tümü" || i.cat === nav.cat);
+  });
+
+  var totalOut = S.inventory.reduce(function(s,i){ return s + outCount(i.id); }, 0);
+  var totalFault = S.inventory.reduce(function(s,i){ return s + i.faults; }, 0);
+
+  var order = [], groups = {};
+  list.forEach(function(i){
+    if (!groups[i.cat]) { groups[i.cat] = []; order.push(i.cat); }
+    groups[i.cat].push(i);
+  });
+
+  var body = order.map(function(c){
+    return '<div class="sec">' + h(c) + '</div><div class="wrap"><div class="card">'
+      + groups[c].map(function(i){
+          var av = availOf(i), out = outCount(i.id);
+          var cases = i.perCase > 0 ? Math.ceil(i.total / i.perCase) : 0;
+          var avCases = i.perCase > 0 ? Math.floor(av / i.perCase) : 0;
+          return '<button class="row tap" data-act="inv-open" data-id="' + h(i.id) + '">'
+            + '<span class="gr"><span class="p1">' + h(i.name)
+            + (i.faults ? ' <span class="pill r">⚠ ' + i.faults + '</span>' : '') + '</span>'
+            + '<span class="p2">' + (i.perCase > 0 ? i.perCase + '/case' : '—')
+            + (out ? ' · <span style="color:var(--o)">' + out + ' sahada</span>' : '')
+            + (i.acc.length ? ' · ' + h(i.acc.map(function(a){ return a.name; }).join(", ")) : '') + '</span></span>'
+            + '<span class="rt"><span class="p1 num" style="font-weight:700;color:'
+            + (av > 0 ? "var(--t1)" : "var(--r)") + '">' + av
+            + '<small style="color:var(--t4);font-size:11px">/' + i.total + '</small></span>'
+            + '<span class="p2" style="color:var(--y)">' + avCases + '/' + cases + ' case</span></span>'
+            + CHEV + '</button>';
+        }).join("")
+      + '</div></div>';
+  }).join("");
+
+  return '<div class="head"><h1 class="title">Envanter</h1>'
+    + (me.role === "patron" && !readOnly ? '<button class="link" data-act="inv-new">+ Ürün</button>' : '') + '</div>'
+    + '<div class="search"><svg width="15" height="15" viewBox="0 0 14 14" fill="none" aria-hidden="true" style="opacity:.45;flex-shrink:0">'
+    + '<circle cx="6" cy="6" r="5" stroke="currentColor" stroke-width="1.5"/>'
+    + '<path d="M10 10l3 3" stroke="currentColor" stroke-width="1.5" stroke-linecap="round"/></svg>'
+    + '<input id="invq" data-focus="invq" data-input="q" placeholder="Ürün ara…" value="' + h(nav.q || "") + '" type="search">'
+    + (nav.q ? '<button data-act="inv-clear" aria-label="Aramayı temizle" style="color:var(--t3)">✕</button>' : '')
+    + '</div>'
+    + '<div class="chips scroll">' + cats.map(function(c){
+        return '<button class="chip' + (nav.cat === c ? " on" : "") + '" data-act="inv-cat" data-k="' + h(c) + '">' + h(c) + '</button>';
+      }).join("") + '</div>'
+    + '<div class="wrap"><div class="stats">'
+    + '<div><div class="v num">' + S.inventory.length + '</div><div class="l">Ürün çeşidi</div></div>'
+    + '<div><div class="v num" style="color:var(--o)">' + totalOut + '</div><div class="l">Sahada</div></div>'
+    + '<div><div class="v num" style="color:var(--r)">' + totalFault + '</div><div class="l">Arızalı</div></div>'
+    + '</div></div>'
+    + (list.length ? body : '<div class="empty">Ürün bulunamadı</div>');
+}
+
+/* ── yönetici ── */
+function admView(){
+  var t = todayKey();
+  var soon = sortBy(S.events.filter(function(e){ return e.date >= t; }), function(e){ return e.date + (e.time||""); });
+  var past = sortBy(S.events.filter(function(e){ return e.date < t; }), function(e){ return e.date; }).reverse().slice(0, 10);
+
+  function evRow(e){
+    var st = STATUS[e.status] || STATUS.plan;
+    return '<button class="row tap" data-act="ev-edit" data-id="' + h(e.id) + '">'
+      + '<span class="gr"><span class="p1">' + h(e.name) + '</span>'
+      + '<span class="p2">' + longDate(e.date) + ' · ' + h(e.client || "—")
+      + ' · ' + e.crew.length + ' kişi · ' + e.rider.length + ' kalem</span></span>'
+      + '<span class="pill ' + st.cls + '">' + st.label + '</span>' + CHEV + '</button>';
+  }
+
+  var users = S.users.map(function(u){
+    return '<button class="row tap" data-act="user-edit" data-id="' + h(u.id) + '">'
+      + '<span class="avatar">' + h(u.name.charAt(0)) + '</span>'
+      + '<span class="gr"><span class="p1">' + h(u.name) + '</span>'
+      + '<span class="p2">' + (u.role === "patron" ? "Yönetici" : "Ekip") + ' · PIN ••••</span></span>'
+      + CHEV + '</button>';
+  }).join("");
+
+  var hasDemo = S.events.some(function(e){ return e.demo; });
+
+  return '<div class="head"><h1 class="title">Yönetici</h1></div>'
+    + '<div class="sec">Etkinlikler</div><div class="wrap"><div class="card">'
+    + '<button class="row tap" data-act="ev-new"><span class="avatar" style="background:var(--yd);color:var(--y)">+</span>'
+    + '<span class="gr"><span class="p1">Yeni etkinlik</span><span class="p2">Tarih, ekip, rider</span></span>' + CHEV + '</button>'
+    + (soon.length ? soon.map(evRow).join("") : '<div class="row"><span class="gr"><span class="p2">Planlanmış etkinlik yok</span></span></div>')
+    + '</div></div>'
+    + (past.length ? '<div class="sec">Geçmiş</div><div class="wrap"><div class="card" style="opacity:.6">'
+        + past.map(evRow).join("") + '</div></div>' : '')
+    + '<div class="sec">Ekip</div><div class="wrap"><div class="card">'
+    + '<button class="row tap" data-act="user-new"><span class="avatar" style="background:var(--yd);color:var(--y)">+</span>'
+    + '<span class="gr"><span class="p1">Kişi ekle</span><span class="p2">Ad, rol, PIN</span></span>' + CHEV + '</button>'
+    + users + '</div></div>'
+    + '<div class="sec">Veri</div><div class="wrap"><div class="card">'
+    + '<button class="row tap" data-act="demo"><span class="gr">'
+    + '<span class="p1">' + (hasDemo ? "Örnek etkinlikleri sil" : "Örnek etkinlik yükle") + '</span>'
+    + '<span class="p2">' + (hasDemo ? "Sadece örnekler silinir, kendi kayıtların kalır" : "Denemek için 3 etkinlik ekler")
+    + '</span></span>' + CHEV + '</button>'
+    + '<button class="row tap" data-act="reset"><span class="gr">'
+    + '<span class="p1" style="color:var(--r)">Her şeyi sıfırla</span>'
+    + '<span class="p2">Etkinlik, görev ve envanter başa döner</span></span>' + CHEV + '</button>'
+    + '</div>'
+    + '<p class="note">' + (api
+        ? "Veri bu sayfanın içinde tutuluyor — bağlantıyı paylaştığın herkes aynı kayıtları görür ve yazma yetkisi verdiklerin değiştirebilir."
+        : "Bu kopya yalnızca bu cihazda saklanıyor. Ekiple ortak kullanmak için yayımlanmış bağlantıyı aç.") + '</p></div>';
+}
+
+/* ═══════════ paneller ═══════════ */
+function sheetView(){
+  if (!nav.sheet) return "";
+  var s = nav.sheet, inner = "";
+  if (s.type === "day") inner = sheetDay(s);
+  else if (s.type === "item") inner = sheetItem(s);
+  else if (s.type === "itemForm") inner = sheetItemForm(s);
+  else if (s.type === "eventForm") inner = sheetEventForm(s);
+  else if (s.type === "taskForm") inner = sheetTaskForm(s);
+  else if (s.type === "userForm") inner = sheetUserForm(s);
+  if (!inner) return "";
+  return '<div class="scrim" data-act="sheet-bg"><div class="sheet" data-stop="1">' + inner + '</div></div>';
+}
+function shead(title, sub){
+  return '<div class="grab"></div><div class="shead"><div style="min-width:0">'
+    + (sub ? '<p class="sub">' + h(sub) + '</p>' : '')
+    + '<h2>' + h(title) + '</h2></div>'
+    + '<button class="link" data-act="sheet-close">Kapat</button></div>';
+}
+
+function sheetDay(s){
+  var list = sortBy(myEvents().filter(function(e){ return e.date === s.id; }), function(e){ return e.time || ""; });
+  return shead(longDate(s.id), list.length + " etkinlik")
+    + '<div class="sbody"><div class="card">' + list.map(eventRow).join("") + '</div></div>';
+}
+
+function sheetItem(s){
+  var i = itemById(s.id); if (!i) return "";
+  var out = outCount(i.id), av = availOf(i);
+  var cases = i.perCase > 0 ? Math.ceil(i.total / i.perCase) : 0;
+  var avCases = i.perCase > 0 ? Math.floor(av / i.perCase) : 0;
+  var where = S.events.filter(function(e){
+    return e.status === "out" && e.rider.some(function(r){ return r.itemId === i.id; }); });
+
+  var caseBoxes = "";
+  for (var c = 0; c < cases; c++)
+    caseBoxes += '<span class="cs' + (c < avCases ? "" : " out") + '">C' + (c+1) + '</span>';
+
+  return shead(i.name, i.cat)
+    + '<div class="sbody">'
+    + '<div class="blk"><div class="grid3">'
+    + '<div><div class="v num">' + i.total + '</div><div class="l">Toplam</div></div>'
+    + '<div><div class="v num" style="color:' + (av > 0 ? "var(--g)" : "var(--r)") + '">' + av + '</div><div class="l">Müsait</div></div>'
+    + '<div><div class="v num" style="color:var(--o)">' + out + '</div><div class="l">Sahada</div></div></div>'
+    + (i.faults ? '<div style="margin-top:12px;padding:8px 11px;background:var(--rd);border-radius:9px;font-size:13px;color:var(--r)">⚠ '
+        + i.faults + ' adet arızalı</div>' : '')
+    + '</div>'
+    + (where.length ? '<div class="blk"><h3>Nerede</h3>' + where.map(function(e){
+        return '<div class="kv"><span class="k">' + h(e.name) + '</span><span class="num">'
+          + shortDate(e.date) + '</span></div>'; }).join("") + '</div>' : '')
+    + (cases ? '<div class="blk"><h3>Case · ' + i.perCase + ' adet/case</h3><div class="cases">' + caseBoxes + '</div>'
+        + '<p style="margin-top:10px;font-size:13px;color:var(--t3)"><b class="num" style="color:var(--y)">'
+        + avCases + '/' + cases + '</b> case müsait</p></div>' : '')
+    + (i.acc.length ? '<div class="blk"><h3>Aksesuarlar</h3>' + i.acc.map(function(a){
+        return '<div class="kv"><span class="k">' + h(a.name) + ' <small style="color:var(--t4)">'
+          + a.per + '×/ünite</small></span><span class="num">' + (a.per * av)
+          + '<small style="color:var(--t4)">/' + (a.per * i.total) + '</small></span></div>'; }).join("") + '</div>' : '')
+    + '<div class="blk"><h3>Notlar</h3>'
+    + (i.notes.length ? i.notes.map(function(n){
+        return '<p style="font-size:14px;color:var(--t2);margin-bottom:6px">' + h(n) + '</p>'; }).join("")
+      : '<p style="font-size:13px;color:var(--t4)">Henüz not yok</p>')
+    + (readOnly ? '' : '<div class="addrow"><input class="inp" id="itemnote" placeholder="Not ekle…" data-enter="item-note">'
+        + '<button data-act="item-note" aria-label="Not ekle">+</button></div>')
+    + '</div>'
+    + (readOnly ? '' : '<div class="blk"><h3>Arıza</h3>'
+        + '<div class="kv"><span class="k">Arızalı adet</span><span class="stepper">'
+        + '<button data-act="fault" data-k="-1" aria-label="Azalt">−</button>'
+        + '<span class="n num">' + i.faults + '</span>'
+        + '<button data-act="fault" data-k="1" aria-label="Artır">+</button></span></div></div>')
+    + (me.role === "patron" && !readOnly
+        ? '<div class="btnrow"><button class="btn gho" data-act="item-edit">Düzenle</button>'
+          + '<button class="btn dgho" data-act="item-del">Sil</button></div>' : '')
+    + '</div>';
+}
+
+function sheetItemForm(s){
+  var i = s.id ? itemById(s.id) : null;
+  var acc = s.acc || (i ? i.acc.slice() : []);
+  var curCat = fv("f-cat", i ? i.cat : (S.cats[0] || "Diğer"));
+  return shead(i ? "Ürünü düzenle" : "Yeni ürün", "Envanter")
+    + '<div class="sbody">'
+    + field("Ürün adı", '<input class="inp" id="f-name" value="' + h(fv("f-name", i ? i.name : "")) + '" placeholder="örn. Pixel LED">')
+    + field("Kategori", '<select class="inp" id="f-cat">' + S.cats.map(function(c){
+        return '<option' + (curCat === c ? " selected" : "") + '>' + h(c) + '</option>'; }).join("")
+        + '<option value="__new"' + (curCat === "__new" ? " selected" : "") + '>+ Yeni kategori…</option></select>'
+        + '<input class="inp" id="f-newcat" placeholder="Yeni kategori adı" value="' + h(fv("f-newcat", ""))
+        + '" style="margin-top:8px;display:' + (curCat === "__new" ? "block" : "none") + '">')
+    + '<div class="two">'
+    + field("Toplam adet", '<input class="inp num" id="f-total" type="number" inputmode="numeric" min="0" value="' + h(fv("f-total", i ? i.total : 1)) + '">')
+    + field("Case kapasitesi", '<input class="inp num" id="f-case" type="number" inputmode="numeric" min="1" value="' + h(fv("f-case", i ? i.perCase : 1)) + '">')
+    + '</div>'
+    + '<div><div style="display:flex;justify-content:space-between;align-items:center;margin-bottom:8px">'
+    + '<span style="font-size:12px;color:var(--t3);letter-spacing:.4px;text-transform:uppercase">Birlikte gelen aksesuarlar</span>'
+    + '<button class="link" style="font-size:13px" data-act="acc-add">+ Ekle</button></div>'
+    + (acc.length ? acc.map(function(a, ix){
+        return '<div style="display:flex;gap:8px;margin-bottom:8px;align-items:center">'
+          + '<input class="inp" data-acc="' + ix + '" value="' + h(a.name) + '" placeholder="örn. Data Kablo" style="flex:1;min-width:0">'
+          + '<span class="stepper"><button data-act="acc-per" data-k="-1" data-id="' + ix + '" aria-label="Azalt">−</button>'
+          + '<span class="n num">' + a.per + '</span>'
+          + '<button data-act="acc-per" data-k="1" data-id="' + ix + '" aria-label="Artır">+</button></span>'
+          + '<button data-act="acc-del" data-id="' + ix + '" style="color:var(--r);font-size:18px;padding:0 4px" aria-label="Sil">✕</button></div>';
+      }).join("") : '<p style="font-size:13px;color:var(--t4)">Her üniteyle giden kablo, adaptör vs.</p>')
+    + '</div>'
+    + '<p class="err" id="f-err" style="display:none"></p>'
+    + '<button class="btn pri" data-act="item-save">Kaydet</button>'
+    + '</div>';
+}
+
+function sheetEventForm(s){
+  var e = s.id ? eventById(s.id) : null;
+  var rider = s.rider || (e ? e.rider.slice() : []);
+  var crew = s.crew || (e ? e.crew.slice() : []);
+
+  function itemOptions(sel){
+    return '<option value="">— serbest metin —</option>' + S.inventory.map(function(i){
+      return '<option value="' + h(i.id) + '"' + (sel === i.id ? " selected" : "") + '>' + h(i.name) + '</option>';
+    }).join("");
+  }
+
+  return shead(e ? "Etkinliği düzenle" : "Yeni etkinlik", e ? longDate(e.date) : "Takvime ekle")
+    + '<div class="sbody">'
+    + field("Etkinlik adı", '<input class="inp" id="f-name" value="' + h(fv("f-name", e ? e.name : "")) + '" placeholder="örn. Neon Party">')
+    + field("Müşteri", '<input class="inp" id="f-client" value="' + h(fv("f-client", e ? e.client : "")) + '" placeholder="örn. Robinson">')
+    + field("Mekan", '<input class="inp" id="f-venue" value="' + h(fv("f-venue", e ? e.venue : "")) + '" placeholder="örn. Robinson Dalaman">')
+    + '<div class="two">'
+    + field("Tarih", '<input class="inp" id="f-date" type="date" value="' + h(fv("f-date", e ? e.date : todayKey())) + '">')
+    + field("Etkinlik saati", '<input class="inp" id="f-time" type="time" value="' + h(fv("f-time", e ? e.time : "")) + '">')
+    + '</div>'
+    + field("Buluşma saati", '<input class="inp" id="f-meet" type="time" value="' + h(fv("f-meet", e ? e.meetTime : "")) + '">')
+    + '<div><span style="display:block;font-size:12px;color:var(--t3);letter-spacing:.4px;text-transform:uppercase;margin:0 0 8px 4px">Ekip</span>'
+    + '<div class="chips">' + S.users.map(function(u){
+        return '<button class="chip' + (crew.indexOf(u.id) >= 0 ? " on" : "") + '" data-act="crew-tog" data-id="'
+          + h(u.id) + '">' + h(u.name) + '</button>'; }).join("") + '</div></div>'
+    + '<div><div style="display:flex;justify-content:space-between;align-items:center;margin-bottom:8px">'
+    + '<span style="font-size:12px;color:var(--t3);letter-spacing:.4px;text-transform:uppercase">Rider</span>'
+    + '<button class="link" style="font-size:13px" data-act="rider-add">+ Kalem</button></div>'
+    + (rider.length ? rider.map(function(r, ix){
+        var it = r.itemId ? itemById(r.itemId) : null;
+        var av = it ? availOf(it) : null;
+        return '<div style="display:flex;gap:8px;margin-bottom:8px;align-items:center">'
+          + '<select class="inp" data-rider-item="' + ix + '" style="flex:1;min-width:0">' + itemOptions(r.itemId) + '</select>'
+          + (r.itemId ? '' : '<input class="inp" data-rider-name="' + ix + '" value="' + h(r.name)
+              + '" placeholder="Kalem adı" style="flex:1;min-width:0">')
+          + '<input class="inp num" data-rider-qty="' + ix + '" type="number" inputmode="numeric" min="1" value="'
+          + h(r.qty) + '" style="width:72px;text-align:center;flex-shrink:0">'
+          + '<button data-act="rider-del" data-id="' + ix + '" style="color:var(--r);font-size:18px;padding:0 4px" aria-label="Sil">✕</button></div>'
+          + (av !== null && intOf(r.qty,0) > av
+              ? '<p class="err" style="margin:-4px 0 8px 4px">' + h(it.name) + ': stokta ' + av + ' müsait</p>' : '');
+      }).join("") : '<p style="font-size:13px;color:var(--t4)">Etkinlikte götürülecek ekipman listesi.</p>')
+    + '</div>'
+    + '<p class="err" id="f-err" style="display:none"></p>'
+    + '<button class="btn pri" data-act="event-save">Kaydet</button>'
+    + (e ? '<button class="btn dgho" data-act="event-del">Etkinliği sil</button>' : '')
+    + '</div>';
+}
+
+function sheetTaskForm(s){
+  var t = s.id ? taskById(s.id) : null;
+  return shead(t ? "Görevi düzenle" : "Yeni görev", "Görevler")
+    + '<div class="sbody">'
+    + field("Başlık", '<input class="inp" id="f-title" value="' + h(fv("f-title", t ? t.title : "")) + '" placeholder="örn. CO2 tüplerini doldurt">')
+    + field("Açıklama", '<input class="inp" id="f-desc" value="' + h(fv("f-desc", t ? t.desc : "")) + '" placeholder="opsiyonel">')
+    + '<div class="two">'
+    + field("Kime", '<select class="inp" id="f-assignee"><option value="">Herkes</option>'
+        + S.users.map(function(u){
+            return '<option value="' + h(u.id) + '"' + (t && t.assignee === u.id ? " selected" : "") + '>'
+              + h(u.name) + '</option>'; }).join("") + '</select>')
+    + field("Son tarih", '<input class="inp" id="f-due" type="date" value="' + h(t && t.due ? t.due : "") + '">')
+    + '</div>'
+    + '<p class="err" id="f-err" style="display:none"></p>'
+    + '<button class="btn pri" data-act="task-save">Kaydet</button>'
+    + (t && me.role === "patron" ? '<button class="btn dgho" data-act="task-del" data-id="' + h(t.id) + '">Görevi sil</button>' : '')
+    + '</div>';
+}
+
+function sheetUserForm(s){
+  var u = s.id ? userById(s.id) : null;
+  var onlyPatron = !!u && u.role === "patron"
+    && S.users.filter(function(x){ return x.role === "patron"; }).length === 1;
+  return shead(u ? u.name : "Kişi ekle", "Ekip")
+    + '<div class="sbody">'
+    + field("Ad", '<input class="inp" id="f-name" value="' + h(fv("f-name", u ? u.name : "")) + '" placeholder="örn. Ömer">')
+    + field("Rol", '<select class="inp" id="f-role"' + (onlyPatron ? " disabled" : "") + '>'
+        + '<option value="crew"' + (u && u.role === "crew" ? " selected" : "") + '>Ekip</option>'
+        + '<option value="patron"' + (u && u.role === "patron" ? " selected" : "") + '>Yönetici</option></select>'
+        + (onlyPatron ? '<p class="note" style="padding:6px 0 0">Tek yönetici olduğu için rol değiştirilemez.</p>' : ''))
+    + field("PIN (4 rakam)", '<input class="inp num" id="f-pin" inputmode="numeric" maxlength="4" value="'
+        + h(fv("f-pin", u ? u.pin : "")) + '" placeholder="0000">')
+    + '<p class="err" id="f-err" style="display:none"></p>'
+    + '<button class="btn pri" data-act="user-save">Kaydet</button>'
+    + (u && !onlyPatron ? '<button class="btn dgho" data-act="user-del">Kişiyi sil</button>' : '')
+    + '</div>';
+}
+
+function field(label, input){
+  return '<label class="field"><span>' + h(label) + '</span>' + input + '</label>';
+}
+
+/* Panel içindeki formlar yeniden çizilirken (ekip seçimi, rider satırı
+   ekleme…) kullanıcının yazdıkları kaybolmasın diye önce anlık görüntü
+   alınır, sonra render bu taslaktan okur. */
+function snapForm(){
+  if (!nav.sheet) return;
+  var f = nav.sheet.form || (nav.sheet.form = {});
+  var nodes = document.querySelectorAll('.sheet [id^="f-"]');
+  for (var i = 0; i < nodes.length; i++) f[nodes[i].id] = nodes[i].value;
+}
+function fv(id, fallback){
+  var f = nav.sheet && nav.sheet.form;
+  return (f && f[id] != null) ? f[id] : fallback;
+}
+
+/* ── onay kutusu (confirm() gömülü çerçevelerde engellenebiliyor) ── */
+function dialogView(){
+  if (!nav.ask) return "";
+  return '<div class="dialog" data-act="ask-no"><div class="dbox" data-stop="1"><p>' + h(nav.ask.text) + '</p>'
+    + '<div class="btnrow"><button class="btn sec" data-act="ask-no">Vazgeç</button>'
+    + '<button class="btn dan" data-act="ask-yes">' + h(nav.ask.ok || "Sil") + '</button></div></div></div>';
+}
+
+/* ═══════════ odak koruma ═══════════ */
+var focusWanted = null;
+function keepFocus(){
+  var a = document.activeElement;
+  focusWanted = (a && a.dataset && a.dataset.focus)
+    ? { k:a.dataset.focus, s:a.selectionStart, e:a.selectionEnd } : null;
+}
+function restoreFocus(){
+  if (!focusWanted) return;
+  var n = document.querySelector('[data-focus="' + focusWanted.k + '"]');
+  if (n){ n.focus(); try { n.setSelectionRange(focusWanted.s, focusWanted.e); } catch (e) {} }
+  focusWanted = null;
+}
+
+/* ═══════════ eylemler ═══════════ */
+function closeSheet(){ nav.sheet = null; render(); }
+function ask(text, ok, fn){ nav.ask = { text:text, ok:ok }; askFn = fn; render(); }
+function mutate(fn){ if (readOnly) return; fn(); save(); render(); }
+function val(id){ var n = el(id); return n ? n.value : ""; }
+function formErr(msg){ var n = el("f-err"); if (n){ n.textContent = msg; n.style.display = "block"; } }
+
+var ACTIONS = {
+  /* giriş */
+  pick: function(d){ pin.user = userById(d.id); pin.buf = ""; pin.err = false; render(); },
+  "pin-back": function(){ pin.user = null; pin.buf = ""; pin.err = false; render(); },
+  "pin-del": function(){ pin.buf = pin.buf.slice(0, -1); render(); },
+  "pin-key": function(d){
+    if (!pin.user || pin.buf.length >= 4) return;
+    pin.buf += d.k; render();
+    if (pin.buf.length === 4) setTimeout(submitPin, 130);
+  },
+
+  /* kabuk */
+  tab: function(d){ nav.tab = d.id; nav.eventId = null; nav.sheet = null; render(); },
+  logout: function(){
+    ask("Çıkış yapılsın mı?", "Çıkış", function(){
+      me = null; lsSet(LS_ME, null); nav = freshNav();
+      pin = { buf:"", err:false, user:null }; render();
+    });
+  },
+  "ask-no": function(){ nav.ask = null; askFn = null; render(); },
+  "ask-yes": function(){ var f = askFn; nav.ask = null; askFn = null; if (f) f(); else render(); },
+  "sheet-close": closeSheet,
+  "sheet-bg": closeSheet,
+
+  /* takvim */
+  "cal-shift": function(d){
+    var x = new Date(nav.calY, nav.calM + intOf(d.k,0), 1);
+    nav.calY = x.getFullYear(); nav.calM = x.getMonth(); render();
+  },
+  "cal-day": function(d){ nav.sheet = { type:"day", id:d.id }; render(); },
+  "ev-open": function(d){ nav.eventId = d.id; nav.sheet = null; render(); },
+  "ev-back": function(){ nav.eventId = null; render(); },
+
+  /* etkinlik */
+  "ev-tick": function(d){
+    var e = eventById(nav.eventId); if (!e) return;
+    mutate(function(){
+      var ix = e.checked.indexOf(d.id);
+      if (ix >= 0) e.checked.splice(ix, 1); else e.checked.push(d.id);
+    });
+  },
+  "ev-status": function(d){
+    var e = eventById(nav.eventId); if (!e) return;
+    mutate(function(){ e.status = d.k; });
+  },
+  "ev-note": function(){
+    var inp = el("notein"); if (!inp) return;
+    var txt = inp.value.trim(); if (!txt) return;
+    var e = eventById(nav.eventId); if (!e) return;
+    mutate(function(){ e.notes.push({ text:txt, by:me.name, at:new Date().toISOString() }); });
+  },
+
+  /* görevler */
+  "task-new": function(){ nav.sheet = { type:"taskForm" }; render(); },
+  "task-edit": function(d){ nav.sheet = { type:"taskForm", id:d.id }; render(); },
+  "task-toggle": function(d){
+    mutate(function(){
+      var t = taskById(d.id); if (!t) return;
+      t.done = !t.done;
+      t.doneBy = t.done ? me.id : null;
+      t.doneAt = t.done ? new Date().toISOString() : null;
+    });
+  },
+  "task-del": function(d){
+    var t = taskById(d.id); if (!t) return;
+    ask('"' + t.title + '" görevi silinsin mi?', "Sil", function(){
+      mutate(function(){
+        S.tasks = S.tasks.filter(function(x){ return x.id !== d.id; });
+        nav.sheet = null;
+      });
+    });
+  },
+  "task-save": function(){
+    var title = val("f-title").trim();
+    if (!title) return formErr("Başlık gerekli.");
+    var s = nav.sheet;
+    var patch = { title:title, desc:val("f-desc").trim(),
+                  assignee:val("f-assignee") || null, due:val("f-due") || null };
+    mutate(function(){
+      var t = s.id ? taskById(s.id) : null;
+      if (t){ t.title = patch.title; t.desc = patch.desc; t.assignee = patch.assignee; t.due = patch.due; }
+      else S.tasks.push({ id:uid("t"), title:patch.title, desc:patch.desc, assignee:patch.assignee,
+        due:patch.due, done:false, doneBy:null, doneAt:null, createdBy:me.id, createdAt:new Date().toISOString() });
+      nav.sheet = null;
+    });
+  },
+
+  /* envanter */
+  "inv-cat": function(d){ nav.cat = d.k; render(); },
+  "inv-clear": function(){ nav.q = ""; render(); },
+  "inv-open": function(d){ nav.sheet = { type:"item", id:d.id }; render(); },
+  "inv-new": function(){ nav.sheet = { type:"itemForm", acc:[] }; render(); },
+  "item-edit": function(){ nav.sheet = { type:"itemForm", id:nav.sheet.id }; render(); },
+  "item-note": function(){
+    var inp = el("itemnote"); if (!inp) return;
+    var t = inp.value.trim(); if (!t) return;
+    var i = itemById(nav.sheet.id); if (!i) return;
+    mutate(function(){ i.notes.push(t); });
+  },
+  fault: function(d){
+    var i = itemById(nav.sheet.id); if (!i) return;
+    mutate(function(){ i.faults = clamp(i.faults + intOf(d.k,0), 0, i.total); });
+  },
+  "item-del": function(){
+    var i = itemById(nav.sheet.id); if (!i) return;
+    var used = S.events.filter(function(e){
+      return e.status !== "done" && e.rider.some(function(r){ return r.itemId === i.id; }); });
+    ask(used.length
+        ? '"' + i.name + '" ' + used.length + ' aktif etkinliğin riderında. Yine de silinsin mi?'
+        : '"' + i.name + '" envanterden silinsin mi?', "Sil", function(){
+      mutate(function(){
+        S.inventory = S.inventory.filter(function(x){ return x.id !== i.id; });
+        S.events.forEach(function(e){
+          e.rider.forEach(function(r){ if (r.itemId === i.id) r.itemId = null; });
+        });
+        nav.sheet = null;
+      });
+    });
+  },
+  "acc-add": function(){
+    snapForm();
+    var s = nav.sheet; s.acc = readAcc();
+    s.acc.push({ id:uid("a"), name:"", per:1 }); render();
+  },
+  "acc-del": function(d){
+    snapForm();
+    var s = nav.sheet; s.acc = readAcc();
+    s.acc.splice(intOf(d.id,0), 1); render();
+  },
+  "acc-per": function(d){
+    snapForm();
+    var s = nav.sheet; s.acc = readAcc();
+    var a = s.acc[intOf(d.id,0)];
+    if (a) a.per = clamp(a.per + intOf(d.k,0), 1, 99);
+    render();
+  },
+  "item-save": function(){
+    var name = val("f-name").trim();
+    if (!name) return formErr("Ürün adı gerekli.");
+    var cat = val("f-cat");
+    if (cat === "__new"){
+      cat = val("f-newcat").trim();
+      if (!cat) return formErr("Yeni kategori adını yaz.");
+    }
+    var total = Math.max(0, intOf(val("f-total"), 0));
+    var per = Math.max(1, intOf(val("f-case"), 1));
+    var acc = readAcc().filter(function(a){ return a.name.trim(); })
+      .map(function(a){ return { id:a.id, name:a.name.trim(), per:a.per }; });
+    var s = nav.sheet;
+    mutate(function(){
+      if (S.cats.indexOf(cat) < 0) S.cats.push(cat);
+      var i = s.id ? itemById(s.id) : null;
+      if (i){
+        i.name = name; i.cat = cat; i.total = total; i.perCase = per; i.acc = acc;
+        i.faults = clamp(i.faults, 0, total);
+      } else {
+        S.inventory.unshift({ id:uid("i"), name:name, cat:cat, total:total, perCase:per,
+          faults:0, notes:[], acc:acc });
+      }
+      nav.sheet = null;
+    });
+  },
+
+  /* etkinlik yönetimi */
+  "ev-new": function(){ nav.sheet = { type:"eventForm", rider:[], crew:[] }; render(); },
+  "ev-edit": function(d){ nav.sheet = { type:"eventForm", id:d.id }; render(); },
+  "crew-tog": function(d){
+    snapForm();
+    var s = nav.sheet, f = readEventForm();
+    s.crew = f.crew; s.rider = f.rider;
+    var ix = s.crew.indexOf(d.id);
+    if (ix >= 0) s.crew.splice(ix, 1); else s.crew.push(d.id);
+    render();
+  },
+  "rider-add": function(){
+    snapForm();
+    var s = nav.sheet, f = readEventForm();
+    s.crew = f.crew; s.rider = f.rider;
+    s.rider.push({ id:uid("r"), itemId:"", name:"", qty:1, u:"adet" });
+    render();
+  },
+  "rider-del": function(d){
+    snapForm();
+    var s = nav.sheet, f = readEventForm();
+    s.crew = f.crew; s.rider = f.rider;
+    s.rider.splice(intOf(d.id,0), 1); render();
+  },
+  "event-save": function(){
+    var name = val("f-name").trim();
+    if (!name) return formErr("Etkinlik adı gerekli.");
+    var date = val("f-date");
+    if (!date) return formErr("Tarih gerekli.");
+    var f = readEventForm();
+    var rider = f.rider.map(function(r){
+      var it = r.itemId ? itemById(r.itemId) : null;
+      return { id:r.id, itemId:r.itemId || null,
+               name: it ? it.name : String(r.name || "").trim(),
+               qty: Math.max(1, intOf(r.qty,1)), u:"adet" };
+    }).filter(function(r){ return r.name; });
+    var s = nav.sheet;
+    mutate(function(){
+      var e = s.id ? eventById(s.id) : null;
+      if (e){
+        e.name = name; e.client = val("f-client").trim(); e.venue = val("f-venue").trim();
+        e.date = date; e.time = val("f-time"); e.meetTime = val("f-meet");
+        e.crew = f.crew; e.rider = rider;
+        var ids = rider.map(function(r){ return r.id; });
+        e.checked = e.checked.filter(function(c){ return ids.indexOf(c) >= 0; });
+      } else {
+        S.events.push({ id:uid("e"), name:name, client:val("f-client").trim(), venue:val("f-venue").trim(),
+          date:date, time:val("f-time"), meetTime:val("f-meet"), crew:f.crew, rider:rider,
+          status:"plan", checked:[], notes:[] });
+      }
+      nav.sheet = null;
+    });
+  },
+  "event-del": function(){
+    var e = eventById(nav.sheet.id); if (!e) return;
+    ask('"' + e.name + '" etkinliği silinsin mi?', "Sil", function(){
+      mutate(function(){
+        S.events = S.events.filter(function(x){ return x.id !== e.id; });
+        if (nav.eventId === e.id) nav.eventId = null;
+        nav.sheet = null;
+      });
+    });
+  },
+
+  /* ekip yönetimi */
+  "user-new": function(){ nav.sheet = { type:"userForm" }; render(); },
+  "user-edit": function(d){ nav.sheet = { type:"userForm", id:d.id }; render(); },
+  "user-save": function(){
+    var name = val("f-name").trim();
+    if (!name) return formErr("Ad gerekli.");
+    var pinv = val("f-pin").trim();
+    if (!/^[0-9]{4}$/.test(pinv)) return formErr("PIN 4 rakam olmalı.");
+    var s = nav.sheet;
+    var clash = S.users.some(function(u){ return u.pin === pinv && u.id !== s.id; });
+    if (clash) return formErr("Bu PIN başka birinde kullanılıyor.");
+    var role = val("f-role") || "crew";
+    mutate(function(){
+      var u = s.id ? userById(s.id) : null;
+      if (u){
+        var only = u.role === "patron"
+          && S.users.filter(function(x){ return x.role === "patron"; }).length === 1;
+        u.name = name; u.pin = pinv; u.role = only ? "patron" : role;
+        if (me && me.id === u.id){ me = { id:u.id, name:u.name, role:u.role }; lsSet(LS_ME, me); }
+      } else {
+        S.users.push({ id:uid("u"), name:name, pin:pinv, role:role });
+      }
+      nav.sheet = null;
+    });
+  },
+  "user-del": function(){
+    var u = userById(nav.sheet.id); if (!u) return;
+    ask(u.name + " ekipten çıkarılsın mı? Atandığı etkinliklerden de düşer.", "Çıkar", function(){
+      mutate(function(){
+        S.users = S.users.filter(function(x){ return x.id !== u.id; });
+        S.events.forEach(function(e){ e.crew = e.crew.filter(function(c){ return c !== u.id; }); });
+        S.tasks.forEach(function(t){ if (t.assignee === u.id) t.assignee = null; });
+        nav.sheet = null;
+        if (me && me.id === u.id){ me = null; lsSet(LS_ME, null); }
+      });
+    });
+  },
+
+  /* veri */
+  demo: function(){
+    var has = S.events.some(function(e){ return e.demo; });
+    if (has) mutate(function(){ S.events = S.events.filter(function(e){ return !e.demo; }); });
+    else mutate(function(){ S.events = S.events.concat(demoEvents(S.users, S.inventory)); });
+  },
+  reset: function(){
+    ask("Tüm etkinlikler, görevler ve envanter başa dönsün mü? Bu geri alınamaz.", "Sıfırla", function(){
+      var fresh = seed();
+      mutate(function(){
+        S.events = fresh.events; S.tasks = fresh.tasks;
+        S.inventory = fresh.inventory; S.cats = fresh.cats;
+        nav = freshNav();
+      });
+    });
+  }
+};
+
+/* ── form okuma (yeniden çizimde girilenler kaybolmasın) ── */
+function readAcc(){
+  var s = nav.sheet;
+  var base = s.acc || (s.id && itemById(s.id) ? itemById(s.id).acc.slice() : []);
+  return base.map(function(a, ix){
+    var n = document.querySelector('[data-acc="' + ix + '"]');
+    return { id:a.id, name: n ? n.value : a.name, per:a.per };
+  });
+}
+function readEventForm(){
+  var s = nav.sheet;
+  var e = s.id ? eventById(s.id) : null;
+  var crew = s.crew || (e ? e.crew.slice() : []);
+  var base = s.rider || (e ? e.rider.slice() : []);
+  var rider = base.map(function(r, ix){
+    var sel = document.querySelector('[data-rider-item="' + ix + '"]');
+    var nm  = document.querySelector('[data-rider-name="' + ix + '"]');
+    var qt  = document.querySelector('[data-rider-qty="' + ix + '"]');
+    return { id:r.id, itemId: sel ? sel.value : r.itemId,
+             name: nm ? nm.value : r.name, qty: qt ? qt.value : r.qty, u:"adet" };
+  });
+  return { crew:crew.slice(), rider:rider };
+}
+
+function submitPin(){
+  var u = pin.user;
+  if (u && pin.buf === u.pin){
+    me = { id:u.id, name:u.name, role:u.role };
+    lsSet(LS_ME, me);
+    pin = { buf:"", err:false, user:null };
+    nav = freshNav();
+    render();
+  } else {
+    pin.err = true; pin.buf = ""; render();
+    setTimeout(function(){ pin.err = false; render(); }, 450);
+  }
+}
+
+/* ═══════════ olaylar ═══════════ */
+document.addEventListener("click", function(ev){
+  var t = ev.target.closest ? ev.target.closest("[data-act]") : null;
+  if (!t) return;
+  /* Arka plan yalnızca doğrudan kendisine tıklanınca kapanır;
+     panelin içine yapılan tıklamalar buraya düşmez. */
+  if ((t.classList.contains("scrim") || t.classList.contains("dialog")) && ev.target !== t) return;
+  var fn = ACTIONS[t.dataset.act];
+  if (fn){ ev.preventDefault(); fn(t.dataset, ev); }
+});
+
+document.addEventListener("input", function(ev){
+  var t = ev.target;
+  if (!t.dataset || !t.dataset.input) return;
+  keepFocus();
+  nav[t.dataset.input] = t.value;
+  render();
+});
+
+document.addEventListener("keydown", function(ev){
+  var t = ev.target;
+  if (ev.key === "Enter" && t.dataset && t.dataset.enter){
+    ev.preventDefault();
+    var fn = ACTIONS[t.dataset.enter];
+    if (fn) fn(t.dataset, ev);
+    return;
+  }
+  if (ev.key === "Escape" && nav && (nav.sheet || nav.ask)){
+    if (nav.ask){ nav.ask = null; askFn = null; } else nav.sheet = null;
+    render();
+    return;
+  }
+  if (!me && pin.user){
+    if (/^[0-9]$/.test(ev.key)) ACTIONS["pin-key"]({ k:ev.key });
+    else if (ev.key === "Backspace") ACTIONS["pin-del"]({});
+  }
+});
+
+document.addEventListener("change", function(ev){
+  var t = ev.target;
+  if (t.id === "f-cat"){
+    snapForm();
+    var n = el("f-newcat");
+    if (n) n.style.display = (t.value === "__new") ? "block" : "none";
+    return;
+  }
+  if (t.dataset && t.dataset.riderItem != null && nav.sheet && nav.sheet.type === "eventForm"){
+    snapForm();
+    var s = nav.sheet, f = readEventForm();
+    s.crew = f.crew; s.rider = f.rider;
+    render();
+  }
+});
+
+/* ═══════════ açılış ═══════════ */
+function freshNav(){
+  var n = new Date();
+  return { tab:"cal", eventId:null, sheet:null, ask:null, q:"", cat:"Tümü",
+           calY:n.getFullYear(), calM:n.getMonth() };
+}
+
+function boot(){
+  root = el("root");
+  S = loadState();
+  nav = freshNav();
+  try {
+    var saved = safeParse(sessionStorage.getItem(SS_NAV), null);
+    if (saved){
+      nav.tab = saved.tab || nav.tab;
+      nav.eventId = saved.eventId || null;
+      nav.sheet = saved.sheet || null;
+      nav.q = saved.q || ""; nav.cat = saved.cat || "Tümü";
+      if (typeof saved.calY === "number") nav.calY = saved.calY;
+      if (typeof saved.calM === "number") nav.calM = saved.calM;
+    }
+  } catch (e) {}
+
+  /* Yayım sırasında kaçmış değişiklik var mı? */
+  var pendingRaw = ssGet(SS_PEND), replay = false;
+  if (pendingRaw){
+    if (pendingRaw === JSON.stringify(S)) ssDel(SS_PEND);   /* zaten yayımlanmış */
+    else {
+      var pj = safeParse(pendingRaw, null);
+      if (pj && pj.users){ S = migrate(pj); replay = true; }
+      else ssDel(SS_PEND);
+    }
+  }
+
+  var savedMe = lsGet(LS_ME, null);
+  if (savedMe && savedMe.id){
+    var u = userById(savedMe.id);
+    if (u) me = { id:u.id, name:u.name, role:u.role };
+  }
+  if (me && me.role !== "patron" && nav.tab === "adm") nav.tab = "cal";
+  render();
+
+  if (window.claude && typeof window.claude.use === "function"){
+    window.claude.use("artifact").then(function(a){
+      api = a || null;
+      if (!api) return;
+      render();                   /* "veri ortak" bilgisi görünsün */
+      if (replay) save();         /* kaçan değişikliği yayımla */
+    }).catch(function(){ api = null; });
+  }
+}
+
+if (document.readyState === "loading") document.addEventListener("DOMContentLoaded", boot);
+else boot();
+
+})();
 </script>
-</body>
-</html>
