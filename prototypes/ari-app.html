@@ -269,7 +269,7 @@ const Sheet = ({ title, subtitle, meta, onClose, children, maxHeight = "90dvh", 
     style={{ position:"fixed", inset:0, background:"rgba(0,0,0,0.7)", backdropFilter:"blur(8px)", WebkitBackdropFilter:"blur(8px)", zIndex:200, display:"flex", flexDirection:"column", justifyContent:"flex-end" }}
     onClick={dismissOnBackdrop ? onClose : undefined}>
     <div onClick={e => e.stopPropagation()}
-      style={{ background:T.bg1, borderRadius:"20px 20px 0 0", padding:"0 0 env(safe-area-inset-bottom,24px)", maxHeight, overflowY:"auto", animation:"sheetUp .22s ease" }}>
+      style={{ background:T.bg1, borderRadius:"20px 20px 0 0", padding:"0 0 calc(16px + env(safe-area-inset-bottom, 0px))", maxHeight, overflowY:"auto", animation:"sheetUp .22s ease" }}>
       <div style={{ display:"flex", justifyContent:"center", padding:"12px 0 4px" }}>
         <div style={{ width:36, height:4, borderRadius:2, background:T.bg3 }}/>
       </div>
@@ -283,6 +283,22 @@ const Sheet = ({ title, subtitle, meta, onClose, children, maxHeight = "90dvh", 
           style={{ background:"none", border:"none", color:T.Y, fontSize:15, cursor:"pointer", fontFamily:SF, marginTop:4, flexShrink:0 }}>Kapat</button>
       </div>
       {children}
+    </div>
+  </div>
+);
+
+const ConfirmDialog = ({ text, confirmLabel = "Sil", onConfirm, onCancel }) => (
+  <div data-noswipe="1" onClick={onCancel}
+    style={{ position:"fixed", inset:0, background:"rgba(0,0,0,0.65)", backdropFilter:"blur(6px)", WebkitBackdropFilter:"blur(6px)", zIndex:300, display:"flex", alignItems:"center", justifyContent:"center", padding:24 }}>
+    <div onClick={e => e.stopPropagation()}
+      style={{ background:T.bg1, borderRadius:16, padding:"22px 20px 16px", width:"100%", maxWidth:300, fontFamily:SF }}>
+      <p style={{ margin:"0 0 18px", fontSize:16, color:T.L1, lineHeight:1.4, textAlign:"center" }}>{text}</p>
+      <div style={{ display:"flex", gap:8 }}>
+        <button onClick={onCancel}
+          style={{ flex:1, background:T.bg2, border:"none", borderRadius:10, padding:"12px 0", fontSize:15, color:T.L1, cursor:"pointer", fontFamily:SF }}>Vazgeç</button>
+        <button onClick={onConfirm}
+          style={{ flex:1, background:T.R, border:"none", borderRadius:10, padding:"12px 0", fontSize:15, fontWeight:600, color:"#fff", cursor:"pointer", fontFamily:SF }}>{confirmLabel}</button>
+      </div>
     </div>
   </div>
 );
@@ -409,10 +425,10 @@ function CrewLogin({ onLogin, onPatron }) {
         </div>
       )}
 
-      <button onClick={onPatron}
-        style={{ position:"absolute", bottom:"max(28px,env(safe-area-inset-bottom,20px))", background:"none", border:"none", color:T.L3, fontSize:12, cursor:"pointer", letterSpacing:0.5, fontFamily:SF }}>
+      {!picked && <button onClick={onPatron}
+        style={{ position:"absolute", bottom:"calc(24px + env(safe-area-inset-bottom, 0px))", background:"none", border:"none", color:T.L3, fontSize:12, cursor:"pointer", letterSpacing:0.5, fontFamily:SF }}>
         Yönetici Girişi
-      </button>
+      </button>}
     </div>
   );
 }
@@ -430,7 +446,7 @@ function PatronLogin({ onLogin, onBack }) {
   return (
     <div style={{ minHeight:"100dvh", background:"#050505", display:"flex", flexDirection:"column", alignItems:"center", justifyContent:"center", padding:"64px 24px", fontFamily:SF, position:"relative" }}>
       <button onClick={onBack}
-        style={{ position:"absolute", top:"max(20px,env(safe-area-inset-top,20px))", left:20, background:"none", border:"none", color:T.Y, fontSize:15, cursor:"pointer", fontFamily:SF }}>‹ Geri</button>
+        style={{ position:"absolute", top:"calc(16px + env(safe-area-inset-top, 0px))", left:20, background:"none", border:"none", color:T.Y, fontSize:15, cursor:"pointer", fontFamily:SF }}>‹ Geri</button>
 
       <div style={{ marginBottom:48, textAlign:"center" }}>
         <div style={{ width:52, height:52, border:`1px solid ${T.sep2}`, borderRadius:14, display:"flex", alignItems:"center", justifyContent:"center", margin:"0 auto 16px", fontSize:22 }}>⬡</div>
@@ -940,6 +956,7 @@ function ProductDetail({ item, user, onClose, onUpdate, onDelete }) {
   const [noteInput, setNoteInput] = useState("");
   const [amount, setAmount] = useState("1");
   const [mode, setMode] = useState(null); // "add" | "deduct"
+  const [askDelete, setAskDelete] = useState(false);
 
   const available = Math.max(0, item.total - item.out);
   const cases = Math.ceil(item.total / item.perCase) || 0;
@@ -1066,7 +1083,7 @@ function ProductDetail({ item, user, onClose, onUpdate, onDelete }) {
                       style={{ background:"none", border:"none", color:T.R, fontSize:18, cursor:"pointer" }}>+</button>
                   </div>
                 </div>
-                <button onClick={() => { if (confirm(`"${item.name}" envanterden silinsin mi?`)) { onDelete(item.id); } }}
+                <button onClick={() => setAskDelete(true)}
                   style={{ ...outlineBtn, flex:"none", width:"100%" }}>Ürünü Sil</button>
               </div>
             ) : (
@@ -1085,6 +1102,12 @@ function ProductDetail({ item, user, onClose, onUpdate, onDelete }) {
           </div>
         )}
       </div>
+
+      {askDelete && (
+        <ConfirmDialog text={`"${item.name}" envanterden silinsin mi?`}
+          onConfirm={() => { setAskDelete(false); onDelete(item.id); }}
+          onCancel={() => setAskDelete(false)}/>
+      )}
     </Sheet>
   );
 }
@@ -1286,6 +1309,7 @@ function App() {
   const [tab, setTab] = useState("cal");
   const [eventId, setEventId] = useState(null);
   const [evState, setEvState] = usePersisted("eventState", {});
+  const [askLogout, setAskLogout] = useState(false);
 
   const touch = useRef(null);
   const dragRef = useRef(null);
@@ -1329,14 +1353,25 @@ function App() {
   const swipeEnd = e => {
     const t = touch.current;
     touch.current = null;
-    if (dragRef.current) {
-      dragRef.current.style.transition = "transform .2s ease";
-      dragRef.current.style.transform = "translateX(0)";
-      setTimeout(() => { if (dragRef.current) dragRef.current.style.transition = ""; }, 220);
-    }
     if (!t || t.axis !== "x") return;
 
-    const dx = e.changedTouches[0].clientX - t.x;
+    /* Sürükleme izini tamamen sil. Geride kalan bir transform, bu kutuyu
+       position:fixed için "containing block" yapıyor; alttan açılan
+       paneller ve toast ekrana değil bu kutuya sabitleniyordu. */
+    const el = dragRef.current;
+    if (el) {
+      el.style.transition = "transform .2s ease";
+      el.style.transform = "translateX(0)";
+      setTimeout(() => {
+        if (dragRef.current !== el) return;
+        el.style.transition = "";
+        el.style.transform = "";
+      }, 220);
+    }
+
+    const ct = e.changedTouches && e.changedTouches[0];
+    if (!ct) return;
+    const dx = ct.clientX - t.x;
     if (Math.abs(dx) <= 42) return;
     const idx = tabs.findIndex(x => x.id === tab);
     if (dx < 0 && idx < tabs.length - 1) setTab(tabs[idx + 1].id);
@@ -1344,7 +1379,7 @@ function App() {
   };
 
   const logout = () => {
-    if (!confirm("Çıkış yapılsın mı?")) return;
+    setAskLogout(false);
     setUser(null); setPatron(false); setTab("cal"); setEventId(null);
   };
 
@@ -1366,7 +1401,7 @@ function App() {
           <span style={{ fontSize:13, color:T.L2, fontFamily:SF }}>
             {user.name}{user.role === "patron" && <span style={{ color:T.Y }}> · yönetici</span>}
           </span>
-          <button onClick={logout} aria-label="Çıkış"
+          <button onClick={() => setAskLogout(true)} aria-label="Çıkış"
             style={{ background:T.bg2, border:"none", color:T.L3, borderRadius:6, width:28, height:28, fontSize:13, cursor:"pointer", display:"flex", alignItems:"center", justifyContent:"center" }}>
             ⏻
           </button>
@@ -1393,7 +1428,7 @@ function App() {
 
       {/* Sekme çubuğu */}
       {!event && (
-        <div style={{ position:"fixed", bottom:0, left:"50%", transform:"translateX(-50%)", width:"100%", maxWidth:430, background:"rgba(0,0,0,0.85)", backdropFilter:"blur(24px)", WebkitBackdropFilter:"blur(24px)", borderTop:`1px solid ${T.sep}`, display:"flex", paddingBottom:"env(safe-area-inset-bottom,16px)", zIndex:90 }}>
+        <div style={{ position:"fixed", bottom:0, left:"50%", transform:"translateX(-50%)", width:"100%", maxWidth:430, background:"rgba(0,0,0,0.85)", backdropFilter:"blur(24px)", WebkitBackdropFilter:"blur(24px)", borderTop:`1px solid ${T.sep}`, display:"flex", paddingBottom:"calc(8px + env(safe-area-inset-bottom, 0px))", zIndex:90 }}>
           {tabs.map(t => {
             const active = tab === t.id;
             return (
@@ -1405,6 +1440,11 @@ function App() {
             );
           })}
         </div>
+      )}
+
+      {askLogout && (
+        <ConfirmDialog text="Çıkış yapılsın mı?" confirmLabel="Çıkış"
+          onConfirm={logout} onCancel={() => setAskLogout(false)}/>
       )}
     </div>
   );
