@@ -1,8 +1,8 @@
 #!/usr/bin/env python3
 """Tek bir logo dosyasindan uygulamanin tum ikonlarini uretir.
 
-    python3 scripts/make-icons.py brand/logo-source.jpg          # siyah cizgi / beyaz zemin
-    python3 scripts/make-icons.py brand/logo-source.jpg --dark    # beyaz cizgi / siyah zemin
+    python3 scripts/make-icons.py brand/logo-source.jpg           # beyaz cizgi / siyah zemin
+    python3 scripts/make-icons.py brand/logo-source.jpg --light    # siyah cizgi / beyaz zemin
 
 Uretilenler (public/icons/ altina):
     icon-192.png            ana ekran kisayolu
@@ -16,17 +16,15 @@ Neden script: alti ayri boyut ve iki ayri zemin var. Elle yapinca biri hep
 unutuluyor, kisayol ikonu eski logoda kaliyor ve haftalarca fark edilmiyor.
 """
 import sys, os
-from PIL import Image, ImageDraw, ImageFont
+from PIL import Image
 
 ROOT = os.path.dirname(os.path.dirname(os.path.abspath(__file__)))
 OUT = os.path.join(ROOT, "public", "icons")
-FONT = os.path.join(ROOT, "public", "fonts", "Coolvetica-Heavy-Compressed.otf")
 
 INK_DARK = (26, 26, 26)      # acik zeminde cizgi rengi
 INK_LIGHT = (240, 237, 232)  # koyu zeminde cizgi rengi
 BG_LIGHT = (255, 255, 255)
 BG_DARK = (12, 12, 12)
-GOLD = (200, 151, 62)
 
 
 def load_logo(path):
@@ -64,32 +62,23 @@ def square(logo, size, bg, ink, pad_ratio):
 
 
 def make_og(logo):
-    """Link onizleme karti — her zaman marka siyahi zeminde."""
+    """Link onizleme karti: siyah zemin, ortada beyaz bisiklet. Yazi yok."""
     W, H = 1200, 630
     card = Image.new("RGB", (W, H), BG_DARK)
     art = tint(logo, INK_LIGHT)
-    box = 340
+    box = int(H * 0.62)
     w, h = art.size
     s = min(box / w, box / h)
     art = art.resize((int(w * s), int(h * s)), Image.LANCZOS)
-    card.paste(art, (120, (H - art.height) // 2), art)
-
-    d = ImageDraw.Draw(card)
-    try:
-        f1, f2 = ImageFont.truetype(FONT, 104), ImageFont.truetype(FONT, 38)
-    except OSError:
-        f1 = f2 = ImageFont.load_default()
-    x = 120 + art.width + 70
-    d.text((x, H // 2 - 96), "NOT IN PARIS", font=f1, fill=INK_LIGHT)
-    d.text((x, H // 2 + 26), "FETHIYE", font=f2, fill=GOLD)
+    card.paste(art, ((W - art.width) // 2, (H - art.height) // 2), art)
     return card
 
 
 def main():
     args = [a for a in sys.argv[1:] if not a.startswith("--")]
-    dark = "--dark" in sys.argv
+    dark = "--light" not in sys.argv
     if not args:
-        sys.exit("kullanim: python3 scripts/make-icons.py <logo> [--dark]")
+        sys.exit("kullanim: python3 scripts/make-icons.py <logo> [--light]")
     logo = load_logo(args[0])
     bg, ink = (BG_DARK, INK_LIGHT) if dark else (BG_LIGHT, INK_DARK)
     os.makedirs(OUT, exist_ok=True)
