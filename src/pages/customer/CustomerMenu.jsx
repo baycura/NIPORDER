@@ -511,9 +511,12 @@ export default function CustomerMenu() {
     if (!customer) return;
     setProfileOpen(true); setProfileStats(null);
     try {
-      const [{ data: cust }, { data: ords }] = await Promise.all([
+      const [{ data: cust }, { data: ords }, { data: openOrds }] = await Promise.all([
         supabase.from("customers").select("name, email, avatar_url, points, outstanding_balance, created_at").eq("id", customer.id).maybeSingle(),
         supabase.from("orders").select("id, total, created_at").eq("customer_id", customer.id).in("status", ["paid", "completed", "served", "closed", "debt"]).order("created_at", { ascending: false }).limit(200),
+        // Acik hesap: kapatilmamis siparisler. Uye bunu gorsun ki kasada
+        // "benim siparisim su" diyebilsin — kapanmayan siparis puan da kazandirmaz.
+        supabase.from("orders").select("id, total, status, created_at").eq("customer_id", customer.id).in("status", ["open", "sent", "preparing", "ready"]).order("created_at", { ascending: false }).limit(20),
       ]);
       const paid = ords || [];
       const totalSpent = paid.reduce((s, o) => s + Number(o.total || 0), 0);
@@ -524,9 +527,9 @@ export default function CustomerMenu() {
         (its || []).forEach(i => { cnt[i.product_name] = (cnt[i.product_name] || 0) + Number(i.quantity || 1); });
         top = Object.entries(cnt).sort((a, b) => b[1] - a[1]).slice(0, 3);
       }
-      setProfileStats({ cust: cust || customer, orders: paid.length, totalSpent, top, last: paid[0]?.created_at || null });
+      setProfileStats({ cust: cust || customer, orders: paid.length, totalSpent, top, last: paid[0]?.created_at || null, open: openOrds || [] });
     } catch {
-      setProfileStats({ cust: customer, orders: 0, totalSpent: 0, top: [], last: null });
+      setProfileStats({ cust: customer, orders: 0, totalSpent: 0, top: [], last: null, open: [] });
     }
   };
   // Uyeye ozel fiyatlar: { product_id: sabit fiyat (TL) }
@@ -1771,6 +1774,29 @@ export default function CustomerMenu() {
               <div style={{textAlign:"center",color:"#888",padding:20,fontSize:13}}>...</div>
             ) : (
               <>
+                {(profileStats.open?.length > 0 || Number(profileStats.cust?.outstanding_balance || 0) > 0) && (
+                  <div style={{background:"#FFF8E8",border:"1px solid #EAD9AE",borderRadius:14,padding:"12px 14px",marginBottom:14}}>
+                    {profileStats.open?.length > 0 && (<>
+                      <div style={{fontSize:12,fontWeight:800,color:"#7a5c1e",marginBottom:8}}>
+                        🧾 {L("Açık hesabın","Open tab","Открытый счёт")} — ₺{Math.round(profileStats.open.reduce((t,o)=>t+Number(o.total||0),0))}
+                      </div>
+                      {profileStats.open.map(o => (
+                        <div key={o.id} style={{display:"flex",justifyContent:"space-between",fontSize:12,color:"#6b5a2e",padding:"3px 0"}}>
+                          <span>{new Date(o.created_at).toLocaleDateString(dateLocale,{day:"numeric",month:"short"})} · {new Date(o.created_at).toLocaleTimeString("tr-TR",{hour:"2-digit",minute:"2-digit"})}</span>
+                          <span style={{fontWeight:700}}>₺{Math.round(Number(o.total||0))}</span>
+                        </div>
+                      ))}
+                      <div style={{fontSize:11,color:"#9a8148",marginTop:6,lineHeight:1.5}}>
+                        {L("Kasada ödenince kapanır ve puanların işlenir.","Closes when paid at the counter — that's when your points land.","Закрывается при оплате на кассе — тогда начислятся баллы.")}
+                      </div>
+                    </>)}
+                    {Number(profileStats.cust?.outstanding_balance || 0) > 0 && (
+                      <div style={{fontSize:12,fontWeight:700,color:"#a04040",marginTop:profileStats.open?.length?8:0}}>
+                        📝 {L("Borç","Balance due","Долг")}: ₺{Math.round(Number(profileStats.cust.outstanding_balance))}
+                      </div>
+                    )}
+                  </div>
+                )}
                 <div style={{display:"grid",gridTemplateColumns:"1fr 1fr 1fr",gap:8,marginBottom:14}}>
                   <div style={{background:"#f7f7f7",borderRadius:12,padding:"12px 8px",textAlign:"center"}}>
                     <div style={{fontSize:20,fontWeight:800}}>{profileStats.orders}</div>
@@ -1844,11 +1870,6 @@ export default function CustomerMenu() {
                   )}
                 </div>
 
-                {Number(profileStats.cust?.outstanding_balance || 0) > 0 && (
-                  <div style={{marginBottom:14,padding:"10px 14px",background:"#FFF3E0",border:"1px solid #FFCC80",borderRadius:10,fontSize:13,color:"#E65100",fontWeight:700}}>
-                    {L("Açık bakiye","Outstanding balance","Задолженность")}: ₺{Number(profileStats.cust.outstanding_balance)}
-                  </div>
-                )}
               </>
             )}
 
