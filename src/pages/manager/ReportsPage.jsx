@@ -1,6 +1,7 @@
 import { useEffect, useState } from "react";
 import { supabase } from "../../lib/supabase.js";
 import { useAuth } from "../../contexts/AuthContext.jsx";
+import { businessDayStart, businessDayKey, BUSINESS_HOURS } from "../../lib/businessDay.js";
 
 const cv = "-apple-system,BlinkMacSystemFont,'Segoe UI',Roboto,sans-serif";
 const hv = "'Bebas Neue','Barlow Condensed','Coolvetica Condensed',sans-serif";
@@ -27,7 +28,8 @@ export default function ReportsPage() {
   async function loadData() {
     setLoading(true);
     const now = new Date();
-    const dayStart = (offset) => new Date(now.getFullYear(), now.getMonth(), now.getDate() - offset);
+    // Isletme gunu 03:00'te biter — gece satislari onceki gune yazilir
+    const dayStart = (offset) => businessDayStart(now, offset);
     const todayStart = dayStart(0);
     // 14 gunluk pencereyi TEK sorguda cekiyoruz: gunun ozeti de, gunluk grafik de
     // ayni veriden hesaplaniyor — ucuncu bir sorgu ve tutarsizlik riski yok.
@@ -40,11 +42,7 @@ export default function ReportsPage() {
     const paid = ['paid','completed','served','closed'];
     const all = rows || [];
     const isPaid = (o) => paid.includes(o.status);
-    // Yerel gun anahtari (YYYY-MM-DD) — UTC'ye cevirirsek gece yarisi kayar
-    const dayKey = (d) => {
-      const x = new Date(d);
-      return `${x.getFullYear()}-${String(x.getMonth()+1).padStart(2,"0")}-${String(x.getDate()).padStart(2,"0")}`;
-    };
+    const dayKey = businessDayKey; // isletme gunu anahtari (03:00 siniri)
     // NIP Kitchen envanteri: ciroya girer ama bize kalmaz, ay sonu mutfaga odenir
     const kitchenOf = (o) => (o.order_items||[])
       .filter(oi => oi.products?.kitchen_consignment)
@@ -70,7 +68,8 @@ export default function ReportsPage() {
     }));
     const topProducts = Object.entries(pCount).sort((a,b) => b[1]-a[1]).slice(0,5);
 
-    const hourly = Array.from({length:16}, (_,i) => ({ hour: 8+i, total: 0 }));
+    // Saat sirasi isletme gunu gibi: 08..23, sonra 00..02 (gece kuyrugu)
+    const hourly = BUSINESS_HOURS.map(h => ({ hour: h, total: 0 }));
     todayPaid.forEach(o => {
       const slot = hourly.find(x => x.hour === new Date(o.created_at).getHours());
       if (slot) slot.total += Number(o.total||0);
@@ -125,7 +124,7 @@ export default function ReportsPage() {
       ) : (
         <>
           <div style={{ background: "#000", color: "#fff", padding: 24, borderRadius: 12, marginBottom: 12 }}>
-            <div style={{ fontSize: 12, opacity: 0.6, letterSpacing: 1 }}>💰 BUGÜN CİRO</div>
+            <div style={{ fontSize: 12, opacity: 0.6, letterSpacing: 1 }}>💰 BUGÜN CİRO · gün 03:00'te biter</div>
             <div style={{ fontSize: 52, fontWeight: 900, fontFamily: hv, lineHeight: 1, marginTop: 4 }}>
               ₺{data.today.toFixed(2)}
             </div>
