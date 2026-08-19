@@ -33,7 +33,7 @@ export default function PaymentPage() {
   const load = async () => {
     setLoading(true);
     const [{data: ords}, {data: tabs}, {data: custs}] = await Promise.all([
-      supabase.from("orders").select("id, table_id, customer_name, customer_id, total, status, created_at, origin_store_id, stores:origin_store_id(slug, name)").in("origin_store_id", staffUser?.store_ids?.length ? staffUser.store_ids : ["00000000-0000-0000-0000-000000000000"]).in("status", ["open","sent","preparing","ready"]).order("created_at", { ascending: false }),
+      supabase.from("orders").select("id, table_id, customer_name, customer_id, use_points, total, status, created_at, origin_store_id, stores:origin_store_id(slug, name)").in("origin_store_id", staffUser?.store_ids?.length ? staffUser.store_ids : ["00000000-0000-0000-0000-000000000000"]).in("status", ["open","sent","preparing","ready"]).order("created_at", { ascending: false }),
       supabase.from("cafe_tables").select("id, name").in("store_id", staffUser?.store_ids?.length ? staffUser.store_ids : ["00000000-0000-0000-0000-000000000000"]),
       supabase.from("customers").select("id, name, outstanding_balance").order("name"),
     ]);
@@ -58,10 +58,22 @@ export default function PaymentPage() {
     setOrders(prev => prev.filter(x => x.id !== o.id));
   };
 
+  const [memberPts, setMemberPts] = useState(null); // {points, name} — modal acilinca cekilir
+  const [usePoints, setUsePoints] = useState(false);
   const openPay = (o) => {
     setModal(o); setMethod("cash"); setAmount(String(o.total || 0));
     setCustomerId(null); setCustomerSearch("");
+    setUsePoints(!!o.use_points); setMemberPts(null);
+    // Uyeye bagli siparis: cuzdan bakiyesi gosterilir, kasiyer puanla kapatabilir
+    if (o.customer_id) {
+      supabase.from("customers").select("name, points").eq("id", o.customer_id).maybeSingle()
+        .then(({ data }) => setMemberPts(data ? { name: data.name, points: Number(data.points || 0) } : null));
+    }
   };
+
+  // Puan onizlemesi: dusum sunucuda (tetikleyici) yapilir, bu yalnizca kasiyerin
+  // musteriden isteyecegi NAKIT tutari gosterir.
+  const ptsCover = (o) => Math.min(Number(memberPts?.points || 0), Math.floor(Number(o?.total || 0)));
 
   // Siparis ekranindaki "Odeme Al" butonundan gelindi: ?order=<id> ile modali direkt ac
   const [searchParams] = useSearchParams();
@@ -73,10 +85,17 @@ export default function PaymentPage() {
     if (o) { autoOpened.current = true; openPay(o); }
   }, [orders]);
 
+  useEffect(() => {
+    if (!modal) return;
+    const kalan = usePoints ? Math.max(0, Number(modal.total || 0) - ptsCover(modal)) : Number(modal.total || 0);
+    setAmount(String(kalan));
+  }, [usePoints, memberPts]);
+
   const completePayment = async () => {
     if (busy) return;
     const amt = Number(amount);
-    if (!amt || amt <= 0) { alert("Gecerli tutar gir"); return; }
+    // Puan tum tutari karsiliyorsa nakit 0 olabilir
+    if ((!amt || amt <= 0) && !(usePoints && ptsCover(modal) >= Number(modal.total || 0))) { alert("Gecerli tutar gir"); return; }
 
     if (method === "debt") {
       if (!customerId) { alert("Borc icin musteri sec"); return; }
@@ -85,7 +104,7 @@ export default function PaymentPage() {
       const newBalance = Number(cust?.outstanding_balance || 0) + amt;
       const [custRes, ordRes] = await Promise.all([
         supabase.from("customers").update({ outstanding_balance: newBalance }).eq("id", customerId).select("id"),
-        supabase.from("orders").update({ status: "paid", paid_at: new Date().toISOString(), customer_id: customerId }).eq("id", modal.id),
+        supabase.from("orders").update({ status: "paid", paid_at: new Date().toISOString(), customer_id: customerId, use_points: false }).eq("id", modal.id),
       ]);
       // Bakiye yazilamazsa borc kaybolur — sessiz gecilmemeli
       if (custRes.error || !custRes.data?.length) {
@@ -106,11 +125,12 @@ export default function PaymentPage() {
       alert("Borc kaydedildi: ₺" + amt + " (Kalan: ₺" + newBalance + ")");
     } else {
       setBusy(true);
-      const { error: payErr } = await supabase.from("payments").insert({
+      // Puan tum tutari karsiladiysa nakit 0 — bos odeme kaydi atilmaz
+      const { error: payErr } = amt > 0 ? await supabase.from("payments").insert({
         order_id: modal.id, amount: amt, method,
         store_id: modal.origin_store_id || staffUser?.store_ids?.[0],
-      });
-      const { error } = await supabase.from("orders").update({ status: "paid", paid_at: new Date().toISOString() }).eq("id", modal.id);
+      }) : { error: null };
+      const { error } = await supabase.from("orders").update({ status: "paid", paid_at: new Date().toISOString(), use_points: !!(usePoints && modal.customer_id) }).eq("id", modal.id);
       setBusy(false);
       if (error) { alert("Hata: " + error.message); return; }
       if (payErr) alert("Uyari: odeme kaydi yazilamadi — " + payErr.message);
@@ -180,6 +200,21 @@ export default function PaymentPage() {
               ))}
             </div>
 
+            {modal.customer_id && memberPts && memberPts.points > 0 && method !== "debt" && (
+              <button onClick={() => setUsePoints(!usePoints)}
+                style={{width:"100%",marginBottom:12,padding:"12px 14px",display:"flex",justifyContent:"space-between",alignItems:"center",
+                        background:usePoints?"#000":"#1E1A0E",color:usePoints?"#FFD700":"#C8973E",
+                        border:"1px solid "+(usePoints?"#FFD700":"#4A3A1A"),borderRadius:10,fontSize:13,fontWeight:800,cursor:"pointer",fontFamily:"inherit"}}>
+                <span>{usePoints ? "✓ " : ""}🪙 Puanla öde — {memberPts.name}</span>
+                <span>{memberPts.points} puan</span>
+              </button>
+            )}
+            {modal.customer_id && usePoints && memberPts && (
+              <div style={{marginBottom:12,padding:"10px 12px",background:"#0C0C0C",border:"1px solid #2A2A2A",borderRadius:10,fontSize:12,color:"#aaa",display:"flex",justifyContent:"space-between"}}>
+                <span>🪙 Puan: −₺{ptsCover(modal)}</span>
+                <span style={{color:"#3ECF8E",fontWeight:800}}>Nakit/kart: ₺{Math.max(0, Number(modal.total||0) - ptsCover(modal))}</span>
+              </div>
+            )}
             <div style={{marginBottom:12}}>
               <div style={{fontSize:10,color:"#888",letterSpacing:"1.5px",fontWeight:700,marginBottom:5}}>TUTAR (₺)</div>
               <input type="number" value={amount} onChange={e=>setAmount(e.target.value)} style={{width:"100%",padding:"14px 16px",background:"#0C0C0C",border:"1px solid #2A2A2A",borderRadius:10,color:"#F0EDE8",fontSize:20,fontWeight:700,outline:"none",fontFamily:"inherit"}}/>

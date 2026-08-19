@@ -46,13 +46,13 @@ const rideLink = (r) =>
 const FIND_BIKE_URL = "https://notinparis.me/pages/find-a-bike";
 const INSTAGRAM_URL = "https://instagram.com/notinparis.me";
 const TIERS = [
-  // Kazanc: 20 TL = 1 puan (harcamanin %5'i) — DB'deki fn_award_member_points
-  // ile birlikte degisir, ikisi ayni kurali anlatmali.
-  // Esikler harcama hedefiyle kuruldu: 10.000 / 30.000 / 80.000 TL.
-  { key: "yeniyuz",   min: 0,    icon: "☕", tr: "Yeni Yüz",  en: "New Face", ru: "Новичок" },
-  { key: "mahalleli", min: 500,  icon: "🚲", tr: "Mahalleli", en: "Local",    ru: "Свой в районе" },
-  { key: "mudavim",   min: 1500, icon: "⭐", tr: "Müdavim",   en: "Regular",  ru: "Завсегдатай" },
-  { key: "aileden",   min: 4000, icon: "🗼", tr: "Aileden",   en: "Family",   ru: "Родной" },
+  // Kazanc: 20 TL = 1 puan (%5); 1 puan = 1 TL olarak kasada harcanir (cuzdan).
+  // Seviye PUANDAN DEGIL toplam harcamadan gelir — puanini harcayan musteri
+  // seviye kaybetmesin. DB'deki fn_award_member_points ayni kurali uygular.
+  { key: "yeniyuz",   min: 0,     icon: "☕", tr: "Yeni Yüz",  en: "New Face", ru: "Новичок" },
+  { key: "mahalleli", min: 10000, icon: "🚲", tr: "Mahalleli", en: "Local",    ru: "Свой в районе" },
+  { key: "mudavim",   min: 30000, icon: "⭐", tr: "Müdavim",   en: "Regular",  ru: "Завсегдатай" },
+  { key: "aileden",   min: 80000, icon: "🗼", tr: "Aileden",   en: "Family",   ru: "Родной" },
 ];
 
 const GOOGLE_RATE_URL = "https://share.google/AA07eYRVqpAoNFL8P";
@@ -72,6 +72,10 @@ const T = {
     partyMode: "PARTİ MODU",
     category_empty: "Bu kategoride ürün yok",
     all_group: "Tümü",
+    pay_with_points: "Puanlarımla öde",
+    points_applied: "Puan karşılığı",
+    to_pay_at_register: "Kasada ödenecek",
+    points_note: "Kesin tutar ödeme anında bakiyene göre hesaplanır.",
     pf_title: "Birkaç bilgi kaldı",
     pf_sub: "Siparişin hazır olduğunda sana ulaşabilmemiz için adını ve telefonunu alalım.",
     pf_first: "Adın", pf_last: "Soyadın", pf_phone: "Telefon numaran", pf_country: "Ülke kodu",
@@ -134,6 +138,10 @@ const T = {
     partyMode: "PARTY MODE",
     category_empty: "No products in this category",
     all_group: "All",
+    pay_with_points: "Pay with my points",
+    points_applied: "Points applied",
+    to_pay_at_register: "To pay at the counter",
+    points_note: "The final amount is settled against your balance at payment.",
     pf_title: "One last thing",
     pf_sub: "We need your name and phone so we can reach you when your order is ready.",
     pf_first: "First name", pf_last: "Last name", pf_phone: "Phone number", pf_country: "Country code",
@@ -196,6 +204,10 @@ const T = {
     partyMode: "PARTY MODE",
     category_empty: "В этой категории пока нет позиций",
     all_group: "Все",
+    pay_with_points: "Оплатить баллами",
+    points_applied: "Баллами",
+    to_pay_at_register: "К оплате на кассе",
+    points_note: "Точная сумма рассчитывается по балансу в момент оплаты.",
     pf_title: "Осталось немного",
     pf_sub: "Укажите имя и телефон, чтобы мы могли сообщить, когда заказ будет готов.",
     pf_first: "Имя", pf_last: "Фамилия", pf_phone: "Номер телефона", pf_country: "Код страны",
@@ -507,6 +519,11 @@ export default function CustomerMenu() {
       window.location.assign(RESERVATION_URL);
     } finally { resvBusy.current = false; }
   };
+
+  // Cuzdan: sepette "puanla ode" istegi. Miktara sunucu karar verir (bakiye
+  // odeme aninda degisebilir); buradaki rakam yalnizca onizlemedir.
+  const [usePoints, setUsePoints] = useState(false);
+  const walletBalance = Number(customer?.points || 0);
 
   const [profileOpen, setProfileOpen] = useState(false);
   const [profileStats, setProfileStats] = useState(null);
@@ -1086,6 +1103,7 @@ export default function CustomerMenu() {
         customer_id: customer?.id || null,
         subtotal: totalVal, total: totalVal, status: "open",
         note: orderNote.trim() || null,
+        use_points: !!(usePoints && customer),
         origin_store_id: currentStoreId,
       });
       if (ordErr) throw ordErr;
@@ -1809,14 +1827,15 @@ export default function CustomerMenu() {
                     <div style={{fontSize:20,fontWeight:800}}>₺{Math.round(profileStats.totalSpent)}</div>
                     <div style={{fontSize:10,color:"#888",fontWeight:700}}>{L("HARCAMA","SPENT","ПОТРАЧЕНО")}</div>
                   </div>
-                  <div style={{background:"#f7f7f7",borderRadius:12,padding:"12px 8px",textAlign:"center"}}>
-                    <div style={{fontSize:20,fontWeight:800}}>{Number(profileStats.cust?.points || 0)}</div>
-                    <div style={{fontSize:10,color:"#888",fontWeight:700}}>{L("PUAN","POINTS","БАЛЛЫ")}</div>
+                  <div style={{background:"#111",color:"#FFD700",borderRadius:12,padding:"12px 8px",textAlign:"center"}}>
+                    <div style={{fontSize:20,fontWeight:800}}>🪙 {Number(profileStats.cust?.points || 0)}</div>
+                    <div style={{fontSize:10,color:"#bfa14a",fontWeight:700}}>{L("PUAN = ₺" + Number(profileStats.cust?.points || 0),"PTS = ₺" + Number(profileStats.cust?.points || 0),"= ₺" + Number(profileStats.cust?.points || 0))}</div>
                   </div>
                 </div>
 
                 {(() => {
-                  const pts = Number(profileStats.cust?.points || 0);
+                  // Seviye toplam harcamadan; cuzdan (puan) ayri gosterilir
+                  const pts = Number(profileStats.cust?.total_spent || 0);
                   const cur = [...TIERS].reverse().find(t => pts >= t.min) || TIERS[0];
                   const next = TIERS.find(t => t.min > pts);
                   const pct = next ? Math.min(100, Math.round(((pts - cur.min) / (next.min - cur.min)) * 100)) : 100;
@@ -1824,16 +1843,16 @@ export default function CustomerMenu() {
                     <div style={{background:"#111",color:"#fff",borderRadius:14,padding:"14px 16px",marginBottom:14}}>
                       <div style={{display:"flex",alignItems:"center",justifyContent:"space-between",marginBottom:next?8:0}}>
                         <span style={{fontSize:15,fontWeight:800}}>{cur.icon} {L(cur.tr, cur.en, cur.ru)}</span>
-                        <span style={{fontSize:11,color:"#bbb"}}>{pts} {L("puan","points","баллов")}</span>
+                        <span style={{fontSize:11,color:"#bbb"}}>₺{Math.round(pts).toLocaleString("tr-TR")}</span>
                       </div>
                       {next && (<>
                         <div style={{height:6,background:"#333",borderRadius:4,overflow:"hidden"}}>
                           <div style={{width:pct+"%",height:"100%",background:"#E0AB4A"}}/>
                         </div>
                         <div style={{fontSize:11,color:"#bbb",marginTop:6}}>
-                          {L(next.min - pts + " puan sonra " + next.icon + " " + next.tr,
-                             (next.min - pts) + " points to " + next.icon + " " + next.en,
-                             "ещё " + (next.min - pts) + " до " + next.icon + " " + next.ru)}
+                          {L("₺" + Math.round(next.min - pts).toLocaleString("tr-TR") + " sonra " + next.icon + " " + next.tr,
+                             "₺" + Math.round(next.min - pts).toLocaleString("tr-TR") + " to " + next.icon + " " + next.en,
+                             "ещё ₺" + Math.round(next.min - pts).toLocaleString("tr-TR") + " до " + next.icon + " " + next.ru)}
                         </div>
                       </>)}
                     </div>
@@ -1973,10 +1992,33 @@ export default function CustomerMenu() {
               <div style={{fontSize:11,color:"#333",letterSpacing:"1px",fontWeight:700,marginBottom:6}}>{t.order_note_label}</div>
               <textarea value={orderNote} onChange={e=>setOrderNote(e.target.value)} placeholder={t.order_note_placeholder} rows={2} style={{width:"100%",padding:"12px 14px",background:"#f7f7f7",border:"1px solid #eee",borderRadius:10,fontSize:14,outline:"none",fontFamily:"inherit",resize:"vertical"}}/>
             </div>
+            {customer && walletBalance > 0 && (
+              <button onClick={() => setUsePoints(!usePoints)}
+                style={{width:"100%",marginTop:14,padding:"12px 14px",display:"flex",justifyContent:"space-between",alignItems:"center",
+                        background:usePoints?"#111":"#FFF8E8",color:usePoints?"#FFD700":"#7a5c1e",
+                        border:"1px solid "+(usePoints?"#111":"#EAD9AE"),borderRadius:12,fontSize:13,fontWeight:800,cursor:"pointer",fontFamily:"inherit"}}>
+                <span>{usePoints ? "✓ " : ""}🪙 {t.pay_with_points}</span>
+                <span>{walletBalance} {L("puan","pts","б.")} = ₺{walletBalance}</span>
+              </button>
+            )}
             <div style={{display:"flex",justifyContent:"space-between",alignItems:"center",marginTop:16,padding:"14px 0",borderTop:"2px solid #000"}}>
               <div style={{fontSize:13,color:"#333",letterSpacing:"1px",fontWeight:700}}>{t.total}</div>
               <div style={{fontSize:22,fontWeight:800}}>₺{cartTotal}</div>
             </div>
+            {customer && usePoints && walletBalance > 0 && (() => {
+              const kullanilacak = Math.min(walletBalance, cartTotal);
+              return (
+                <div style={{display:"flex",flexDirection:"column",gap:4,marginTop:-8,marginBottom:4,fontSize:13}}>
+                  <div style={{display:"flex",justifyContent:"space-between",color:"#a3781f",fontWeight:700}}>
+                    <span>🪙 {t.points_applied}</span><span>−₺{kullanilacak}</span>
+                  </div>
+                  <div style={{display:"flex",justifyContent:"space-between",fontWeight:800}}>
+                    <span>{t.to_pay_at_register}</span><span>₺{cartTotal - kullanilacak}</span>
+                  </div>
+                  <div style={{fontSize:11,color:"#999"}}>{t.points_note}</div>
+                </div>
+              );
+            })()}
             {(() => {
               // Isim yazilmadan siparis butonu calismaz (masasiz / ortak masa)
               const nameOk = (table && !table.shared) || !!(customerName.trim() || customer?.name);
