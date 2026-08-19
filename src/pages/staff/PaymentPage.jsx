@@ -33,7 +33,7 @@ export default function PaymentPage() {
   const load = async () => {
     setLoading(true);
     const [{data: ords}, {data: tabs}, {data: custs}] = await Promise.all([
-      supabase.from("orders").select("id, table_id, customer_name, total, status, created_at, origin_store_id, stores:origin_store_id(slug, name)").in("origin_store_id", staffUser?.store_ids?.length ? staffUser.store_ids : ["00000000-0000-0000-0000-000000000000"]).in("status", ["open","sent","preparing","ready"]).order("created_at", { ascending: false }),
+      supabase.from("orders").select("id, table_id, customer_name, customer_id, total, status, created_at, origin_store_id, stores:origin_store_id(slug, name)").in("origin_store_id", staffUser?.store_ids?.length ? staffUser.store_ids : ["00000000-0000-0000-0000-000000000000"]).in("status", ["open","sent","preparing","ready"]).order("created_at", { ascending: false }),
       supabase.from("cafe_tables").select("id, name").in("store_id", staffUser?.store_ids?.length ? staffUser.store_ids : ["00000000-0000-0000-0000-000000000000"]),
       supabase.from("customers").select("id, name, outstanding_balance").order("name"),
     ]);
@@ -51,7 +51,8 @@ export default function PaymentPage() {
   // diye iptal ediyoruz. Silmiyoruz — kalemler ve saat kaydi duruyor.
   const cancelOrder = async (o) => {
     const nerede = o.table_id ? (tables[o.table_id] || "Masa") : (o.customer_name || "Misafir");
-    if (!confirm(`"${nerede}" hesabı iptal edilsin mi?\n₺${o.total || 0} · ${saatFarki(o.created_at)}\n\nCiroya YAZILMAZ. Ödeme alındıysa bunun yerine "Tahsil Et" kullan.`)) return;
+    const uyeNotu = o.customer_id ? "\n⭐ Bu sipariş bir ÜYEYE bağlı — iptal edilirse puan kazanamaz." : "";
+    if (!confirm(`"${nerede}" hesabı iptal edilsin mi?\n₺${o.total || 0} · ${saatFarki(o.created_at)}${uyeNotu}\n\nCiroya YAZILMAZ. Ödeme alındıysa bunun yerine "Tahsil Et" kullan.`)) return;
     const { error } = await supabase.from("orders").update({ status: "cancelled" }).eq("id", o.id);
     if (error) { alert("İptal edilemedi: " + error.message); return; }
     setOrders(prev => prev.filter(x => x.id !== o.id));
@@ -145,7 +146,8 @@ export default function PaymentPage() {
         return (
           <div key={o.id} style={{background:"#1A1A1A",border:"1px solid "+(eski?"#4A3A1A":"#2A2A2A"),borderRadius:10,padding:14,marginBottom:8,display:"flex",alignItems:"center",gap:12}}>
             <div style={{flex:1,minWidth:0}}>
-              {storeBadge && <div style={{display:"inline-block",background:storeBadgeColor,color:"#000",padding:"2px 8px",borderRadius:6,fontSize:10,fontWeight:800,letterSpacing:"0.5px",marginBottom:4}}>{storeBadge}</div>}
+              {storeBadge && <div style={{display:"inline-block",background:storeBadgeColor,color:"#000",padding:"2px 8px",borderRadius:6,fontSize:10,fontWeight:800,letterSpacing:"0.5px",marginBottom:4,marginRight:4}}>{storeBadge}</div>}
+              {o.customer_id && <div style={{display:"inline-block",background:"#000",color:"#FFD700",padding:"2px 8px",borderRadius:6,fontSize:10,fontWeight:800,letterSpacing:"0.5px",marginBottom:4}}>⭐ ÜYE · puan kazanacak</div>}
               <div style={{fontSize:14,fontWeight:700,color:"#F0EDE8"}}>{where}</div>
               <div style={{fontSize:11,color: eski ? "#C8973E" : "#888",marginTop:2}}>
                 {new Date(o.created_at).toLocaleTimeString("tr-TR", {hour:"2-digit", minute:"2-digit"})}
