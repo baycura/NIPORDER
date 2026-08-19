@@ -481,6 +481,30 @@ export default function CustomerMenu() {
 
 
   // Uye profili karti (uye seridine tiklayinca acilir)
+  // Rezervasyona TEK girisle gec: oturum varsa RESERVE'deki kopru fonksiyonu
+  // (order-sso) tek kullanimlik giris linki uretir, oraya oturumla inilir.
+  // Oturum yoksa ya da kopru duserse duz link — sayfa asla kilitlenmez.
+  const resvBusy = useRef(false);
+  const openReservation = async (e) => {
+    if (e) e.preventDefault();
+    if (resvBusy.current) return;
+    resvBusy.current = true;
+    try {
+      const { data: { session } } = await supabase.auth.getSession();
+      const tok = session?.access_token;
+      if (!tok) { window.location.assign(RESERVATION_URL); return; }
+      const r = await fetch(RESERVE_URL + "/functions/v1/order-sso", {
+        method: "POST",
+        headers: { "Content-Type": "application/json", apikey: RESERVE_KEY, Authorization: "Bearer " + RESERVE_KEY },
+        body: JSON.stringify({ order_token: tok }),
+      });
+      const j = await r.json().catch(() => ({}));
+      window.location.assign(j?.url || RESERVATION_URL);
+    } catch (err) {
+      window.location.assign(RESERVATION_URL);
+    } finally { resvBusy.current = false; }
+  };
+
   const [profileOpen, setProfileOpen] = useState(false);
   const [profileStats, setProfileStats] = useState(null);
   const openProfile = async () => {
@@ -1359,7 +1383,7 @@ export default function CustomerMenu() {
       {custTab !== "menu" && (
         <div style={{padding:"14px 16px"}}>
           {custTab === "events" && (
-            <a href={RESERVATION_URL} target="_blank" rel="noreferrer" style={{display:"flex",justifyContent:"space-between",alignItems:"center",padding:"16px 18px",background:"#000",color:"#fff",borderRadius:14,textDecoration:"none",marginBottom:14}}>
+            <a href={RESERVATION_URL} onClick={openReservation} rel="noreferrer" style={{display:"flex",justifyContent:"space-between",alignItems:"center",padding:"16px 18px",background:"#000",color:"#fff",borderRadius:14,textDecoration:"none",marginBottom:14}}>
               <span style={{fontSize:14,fontWeight:800}}>🎟 {L("Rezervasyon yap","Make a reservation","Забронировать")}</span>
               <span style={{fontSize:16}}>→</span>
             </a>
@@ -1373,7 +1397,7 @@ export default function CustomerMenu() {
                 </div>
               )}
               {(feeds.events || []).map((ev, i) => (
-                <a key={i} href={RESERVATION_URL} target="_blank" rel="noreferrer" style={{display:"flex",alignItems:"center",gap:10,padding:"14px 2px",borderBottom:"1px solid #f0f0f0",textDecoration:"none",color:"#000"}}>
+                <a key={i} href={RESERVATION_URL} onClick={openReservation} rel="noreferrer" style={{display:"flex",alignItems:"center",gap:10,padding:"14px 2px",borderBottom:"1px solid #f0f0f0",textDecoration:"none",color:"#000"}}>
                   <div style={{flex:1,minWidth:0}}>
                     <div style={{fontSize:15,fontWeight:800,lineHeight:1.3}}>
                       {ev.name}
