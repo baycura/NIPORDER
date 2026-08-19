@@ -1,6 +1,7 @@
 -- Puan kurali degisti (sahip talimati, 19 Agu):
 --   Kazanc: 5 TL = 1 puan  ->  20 TL = 1 puan (harcamanin %5'i)
---   Esikler: 500/1500/4000 -> 5000/15000/40000
+--   Esikler: harcama hedefiyle — Mahalleli 10.000 TL, Mudavim 30.000 TL,
+--   Aileden 80.000 TL. %5 kazancla puan karsiligi: 500 / 1500 / 4000.
 -- Frontend'deki TIERS listesi (CustomerMenu.jsx) ayni kurali anlatir;
 -- biri degisirse digeri de degismeli.
 
@@ -20,9 +21,9 @@ begin
   where id = new.customer_id
   returning points into pts;
   new_tier := case
-    when pts >= 40000 then 'aileden'
-    when pts >= 15000 then 'mudavim'
-    when pts >= 5000 then 'mahalleli'
+    when pts >= 4000 then 'aileden'
+    when pts >= 1500 then 'mudavim'
+    when pts >= 500 then 'mahalleli'
     else 'yeniyuz' end;
   update public.customers set tier = new_tier
   where id = new.customer_id and coalesce(tier, '') is distinct from new_tier;
