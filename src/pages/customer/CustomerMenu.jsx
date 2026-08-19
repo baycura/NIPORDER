@@ -46,10 +46,12 @@ const rideLink = (r) =>
 const FIND_BIKE_URL = "https://notinparis.me/pages/find-a-bike";
 const INSTAGRAM_URL = "https://instagram.com/notinparis.me";
 const TIERS = [
-  { key: "yeniyuz",   min: 0,    icon: "☕", tr: "Yeni Yüz",  en: "New Face", ru: "Новичок" },
-  { key: "mahalleli", min: 500,  icon: "🚲", tr: "Mahalleli", en: "Local",    ru: "Свой в районе" },
-  { key: "mudavim",   min: 1500, icon: "⭐", tr: "Müdavim",   en: "Regular",  ru: "Завсегдатай" },
-  { key: "aileden",   min: 4000, icon: "🗼", tr: "Aileden",   en: "Family",   ru: "Родной" },
+  // Kazanc: 20 TL = 1 puan (harcamanin %5'i) — DB'deki fn_award_member_points
+  // ile birlikte degisir, ikisi ayni kurali anlatmali.
+  { key: "yeniyuz",   min: 0,     icon: "☕", tr: "Yeni Yüz",  en: "New Face", ru: "Новичок" },
+  { key: "mahalleli", min: 5000,  icon: "🚲", tr: "Mahalleli", en: "Local",    ru: "Свой в районе" },
+  { key: "mudavim",   min: 15000, icon: "⭐", tr: "Müdavim",   en: "Regular",  ru: "Завсегдатай" },
+  { key: "aileden",   min: 40000, icon: "🗼", tr: "Aileden",   en: "Family",   ru: "Родной" },
 ];
 
 const GOOGLE_RATE_URL = "https://share.google/AA07eYRVqpAoNFL8P";
