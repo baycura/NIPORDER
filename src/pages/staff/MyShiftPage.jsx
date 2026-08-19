@@ -1,17 +1,20 @@
 import{useState,useEffect}from"react";import{supabase}from"../../lib/supabase.js";import{useAuth}from"../../contexts/AuthContext.jsx";
+import{businessDayStart,businessDayKey}from"../../lib/businessDay.js";
 const cv="'Coolvetica','Bebas Neue',sans-serif";const cvc="'Coolvetica Condensed','Barlow Condensed',sans-serif";
 export default function MyShiftPage(){
   const{staffUser}=useAuth();const[orders,setOrders]=useState([]);const[shift,setShift]=useState(null);const[loading,setLoading]=useState(true);
-  useEffect(()=>{if(!staffUser?.id)return;const today=new Date().toISOString().split("T")[0];
-    Promise.all([supabase.from("orders").select("*,cafe_tables(name),order_items(*)").eq("staff_id",staffUser.id).eq("status","paid").gte("paid_at",today+"T00:00:00").order("paid_at",{ascending:false}),supabase.from("shifts").select("*").eq("staff_id",staffUser.id).eq("date",today).maybeSingle()])
+  useEffect(()=>{if(!staffUser?.id)return;
+    // Isletme gunu 03:00'te baslar: gece 01'de bakan garson dunun vardiyasini gorur
+    const bizDate=businessDayKey(new Date());const bizStart=businessDayStart().toISOString();
+    Promise.all([supabase.from("orders").select("*,cafe_tables(name),order_items(*)").eq("staff_id",staffUser.id).eq("status","paid").gte("paid_at",bizStart).order("paid_at",{ascending:false}),supabase.from("shifts").select("*").eq("staff_id",staffUser.id).eq("date",bizDate).maybeSingle()])
     .then(([{data:o},{data:s}])=>{setOrders(o||[]);setShift(s);setLoading(false);});
   },[staffUser]);
   const revenue=orders.reduce((s,o)=>s+(o.total||0),0);const orderCount=orders.length;const avg=orderCount>0?Math.round(revenue/orderCount):0;
   const checkedIn=shift?.checked_in_at?new Date(shift.checked_in_at).toLocaleTimeString("tr",{hour:"2-digit",minute:"2-digit"}):"—";
   const workedMins=shift?.checked_in_at?Math.floor((Date.now()-new Date(shift.checked_in_at))/60000):0;
   const workedStr=workedMins>0?`${Math.floor(workedMins/60)}s ${workedMins%60}dk`:"—";
-  const handleCheckIn=async()=>{const today=new Date().toISOString().split("T")[0];const{data,error}=await supabase.from("shifts").upsert({staff_id:staffUser.id,date:today,checked_in_at:new Date().toISOString(),status:"active",store_id:staffUser?.store_ids?.[0]},{onConflict:"staff_id,date"}).select().single();if(error){alert("Vardiyaya girilemedi: "+error.message);return;}setShift(data);};
-  const handleCheckOut=async()=>{if(!confirm("Vardiyadan çıkış yapılsın mı? (Bildirimler kesilir)"))return;const today=new Date().toISOString().split("T")[0];const{data}=await supabase.from("shifts").update({status:"done"}).eq("staff_id",staffUser.id).eq("date",today).select().single();setShift(data);};
+  const handleCheckIn=async()=>{const today=businessDayKey(new Date());const{data,error}=await supabase.from("shifts").upsert({staff_id:staffUser.id,date:today,checked_in_at:new Date().toISOString(),status:"active",store_id:staffUser?.store_ids?.[0]},{onConflict:"staff_id,date"}).select().single();if(error){alert("Vardiyaya girilemedi: "+error.message);return;}setShift(data);};
+  const handleCheckOut=async()=>{if(!confirm("Vardiyadan çıkış yapılsın mı? (Bildirimler kesilir)"))return;const today=businessDayKey(new Date());const{data}=await supabase.from("shifts").update({status:"done",checked_out_at:new Date().toISOString()}).eq("staff_id",staffUser.id).eq("date",today).select().single();setShift(data);};
   return(<div>
     <div style={{display:"flex",justifyContent:"space-between",alignItems:"center",marginBottom:24}}>
       <h1 style={{color:"#F0EDE8",fontFamily:cv,fontSize:28,letterSpacing:"-0.5px",margin:0}}>Vardiyam</h1>

@@ -73,7 +73,7 @@ Deno.serve(async (req) => {
   const action = url.searchParams.get("action");
 
   try {
-    if (["setup", "send", "notify", "daily_summary"].includes(action || "")) {
+    if (["setup", "send", "notify", "daily_summary", "shift_summary"].includes(action || "")) {
       const secret = await cfg("webhook_secret");
       if (!secret || url.searchParams.get("secret") !== secret) {
         return new Response("forbidden", { status: 403 });
@@ -122,13 +122,66 @@ Deno.serve(async (req) => {
       return new Response("bilinmeyen kind", { status: 400 });
     }
 
+    // --- Vardiya kapaninca: calisanin vardiya ozeti sahibe (DB trigger cagirir) ---
+    if (action === "shift_summary") {
+      const payload = await req.json().catch(() => ({}));
+      const shiftId: string = payload.shift_id;
+      if (!shiftId) return new Response("shift_id gerekli", { status: 400 });
+
+      const { data: sh } = await supabase
+        .from("shifts").select("id, staff_id, date, checked_in_at, checked_out_at")
+        .eq("id", shiftId).maybeSingle();
+      if (!sh) return new Response("vardiya yok", { status: 404 });
+
+      const { data: st } = await supabase
+        .from("staff").select("name, role").eq("id", (sh as any).staff_id).maybeSingle();
+      const kim = (st as any)?.name || "Çalışan";
+
+      const inAt = (sh as any).checked_in_at ? new Date((sh as any).checked_in_at) : null;
+      const outAt = (sh as any).checked_out_at ? new Date((sh as any).checked_out_at) : new Date();
+      if (!inAt) return Response.json({ ok: true, skipped: "giris saati yok" });
+
+      // Vardiya sirasinda ACILAN siparisler; odenmisler ciro, odenmemisler uyari
+      const { data: ords } = await supabase
+        .from("orders").select("id, total, status, created_at")
+        .eq("staff_id", (sh as any).staff_id)
+        .gte("created_at", inAt.toISOString())
+        .lte("created_at", outAt.toISOString());
+      const all = ords || [];
+      const paid = all.filter((o: any) => PAID.includes(o.status));
+      const open = all.filter((o: any) => !PAID.includes(o.status) && o.status !== "cancelled");
+      const ciro = paid.reduce((t: number, o: any) => t + Number(o.total || 0), 0);
+      const acik = open.reduce((t: number, o: any) => t + Number(o.total || 0), 0);
+
+      const saat = (d: Date) => d.toLocaleTimeString("tr-TR", { timeZone: "Europe/Istanbul", hour: "2-digit", minute: "2-digit" });
+      const dk = Math.max(0, Math.round((outAt.getTime() - inAt.getTime()) / 60000));
+      const sure = `${Math.floor(dk / 60)}s ${dk % 60}dk`;
+      const fmt = (n: number) => "₺" + Math.round(n).toLocaleString("tr-TR");
+
+      let text = `👤 Vardiya bitti — ${kim}\n` +
+        `🕐 ${saat(inAt)} – ${saat(outAt)} (${sure})\n` +
+        `💰 Ciro: ${fmt(ciro)} (${paid.length} sipariş` +
+        (paid.length ? `, ort ${fmt(ciro / paid.length)}` : "") + `)`;
+      if (open.length) text += `\n⚠️ Ödenmemiş ${open.length} sipariş: ${fmt(acik)}`;
+
+      const { data: owners } = await supabase
+        .from("staff").select("telegram_chat_id")
+        .eq("role", "admin").eq("is_active", true)
+        .not("telegram_chat_id", "is", null);
+      const n = await sendTo((owners || []).map((a: any) => a.telegram_chat_id), text);
+      return Response.json({ ok: true, sent: n, ciro });
+    }
+
     // --- Sabah 09:00 TR: dunun ozeti (admin'lere) ---
     if (action === "daily_summary") {
       const now = Date.now();
       const tr = new Date(now + TR_OFFSET_MS);
       const todayTrMidnightUtc = Date.UTC(tr.getUTCFullYear(), tr.getUTCMonth(), tr.getUTCDate()) - TR_OFFSET_MS;
-      const start = new Date(todayTrMidnightUtc - 86400000);
-      const end = new Date(todayTrMidnightUtc);
+      // Isletme gunu 03:00'te biter: "dun" = dun 03:00 -> bugun 03:00 (TR).
+      // Ozet 09:00 TR'de kosar, yani bugunku 03:00 hep geride kalmistir.
+      const DAY_END_MS = 3 * 3600 * 1000;
+      const start = new Date(todayTrMidnightUtc + DAY_END_MS - 86400000);
+      const end = new Date(todayTrMidnightUtc + DAY_END_MS);
       const dayLabel = start.toLocaleDateString("tr-TR", { timeZone: "Europe/Istanbul", day: "numeric", month: "long", weekday: "long" });
       const weekday = new Date(start.getTime() + TR_OFFSET_MS).getUTCDay(); // 0=Paz
       const isPartyDay = [3, 5, 6].includes(weekday); // Car, Cum, Cmt
