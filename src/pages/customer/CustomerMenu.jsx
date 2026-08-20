@@ -1226,10 +1226,14 @@ export default function CustomerMenu() {
     // Baslik marka yazi tipiyle: Coolvetica Heavy Compressed'te hem Turkce
     // hem Kiril harfler var (790 glif), yani uc dil de ayni yuzle yaziliyor.
     // Rusca kelimeler uzun oldugu icin punto bir tik dusuruluyor.
+    // Satir araligi Turkce'de acilir: "DEĞİL." satirindaki Ğ ve İ isaretleri
+    // 0.92'de ust satirin ("BİR MENÜ") harflerine giriyordu. Ingilizce ve
+    // Rusca basliklarda ust isaret yok, orada siki dizgi kaliyor.
     const headFont = {
       fontFamily: "'Coolvetica Heavy','Bebas Neue','Barlow Condensed',Impact,sans-serif",
       fontWeight: 400, fontSize: lang === "ru" ? 54 : 62,
-      lineHeight: 0.92, letterSpacing: "0.005em", textTransform: "uppercase",
+      lineHeight: lang === "tr" ? 1.14 : 0.92,
+      letterSpacing: "0.005em", textTransform: "uppercase",
     };
     return (
       <div className="nip-customer" style={{fontFamily:cv,background:"#fff",color:"#101214",minHeight:"100vh",display:"flex",flexDirection:"column",justifyContent:"space-between",padding:"34px 28px",maxWidth:520,margin:"0 auto"}}>
