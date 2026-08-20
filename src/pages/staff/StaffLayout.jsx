@@ -12,6 +12,7 @@ const STAFF_NAV = [
 
 const STAFF_NAV_EXTRA = [
   {to:"/stock",    icon:"📦", label:"Stok"},
+  {to:"/expenses", icon:"💸", label:"Giderler"},
   {to:"/invoices", icon:"🧾", label:"Faturalar"},
   {to:"/myshift",  icon:"📊", label:"Vardiyam"},
   {to:"/tasks",    icon:"📋", label:"Görevler"},
@@ -46,6 +47,7 @@ const ADMIN_NAV = [
 const VIEWER_NAV = [
   {to:"/reports",    icon:"📈", label:"Raporlar"},
   {to:"/settlement", icon:"🥙", label:"Mutfağa Ödenecek"},
+  {to:"/expenses",   icon:"💸", label:"Giderler"},
   {to:"/stock",      icon:"📦", label:"Stok"},
 ];
 
@@ -54,6 +56,7 @@ const PARTTIME_NAV = [
   {to:"/tables",  icon:"🪑", label:"Masalar"},
   {to:"/orders",  icon:"📋", label:"Sipariş"},
   {to:"/payment", icon:"💰", label:"Kasa"},
+  {to:"/expenses", icon:"💸", label:"Giderler"},
 ];
 
 const roleColor = {admin:"#FFD700", manager:"#C8973E", owner:"#C8973E", waiter:"#3ECF8E", kitchen:"#E07A3E", cashier:"#5A8FE0", viewer:"#B08FD8", parttime:"#6FB3C0"};
