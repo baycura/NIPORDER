@@ -85,6 +85,8 @@ const T = {
     pf_need_last: "Soyadını yazar mısın?",
     pf_need_phone: "Telefon numaranı kontrol eder misin?",
     pf_error: "Kaydedilemedi:",
+    pf_phone_taken: "Bu numara başka bir üyelik hesabında kayıtlı. Numaranı kontrol et ya da bize söyle, hallederiz.",
+    pf_phone_staff: "Bu numara mağazadaki eski bir hesapta kayıtlı. Personele söyle, iki hesabı birleştirsinler.",
     order_hours: "sipariş saatleri",
     order_between: "arası sipariş verilebilir",
     closed_now: "Şu an bu saatler dışındasın",
@@ -151,6 +153,8 @@ const T = {
     pf_need_last: "Please enter your last name.",
     pf_need_phone: "Please check your phone number.",
     pf_error: "Could not save:",
+    pf_phone_taken: "This number is already linked to another member account. Check the number or let us know and we will sort it out.",
+    pf_phone_staff: "This number belongs to an older record at the shop. Ask our staff to merge the two accounts.",
     order_hours: "ordering hours",
     order_between: "for ordering",
     closed_now: "Outside ordering hours right now",
@@ -217,6 +221,8 @@ const T = {
     pf_need_last: "Введите фамилию.",
     pf_need_phone: "Проверьте номер телефона.",
     pf_error: "Не удалось сохранить:",
+    pf_phone_taken: "Этот номер уже привязан к другому аккаунту. Проверьте номер или скажите нам — мы поможем.",
+    pf_phone_staff: "Этот номер записан на старый аккаунт в кофейне. Попросите персонал объединить аккаунты.",
     order_hours: "часы заказа",
     order_between: "приём заказов",
     closed_now: "Сейчас вне часов заказа",
@@ -488,9 +494,21 @@ export default function CustomerMenu() {
     if (!e164) { alert(t.pf_need_phone); return; }
     setPfBusy(true);
     const patch = { name: first + " " + last, phone: e164 };
-    const { error } = await supabase.from("customers").update(patch).eq("id", customer.id);
+    // Kayit sunucuda: numara mağazada elle acilmis bir kayitta duruyor olabilir
+    // (customers.phone UNIQUE). O kayit sahipsiz ve bossa hesaba katilir, degilse
+    // dokunulmaz. Dogrudan UPDATE atsaydik uye "duplicate key" hatasiyla kapida
+    // kalirdi — menuye hic giremiyordu.
+    const { data, error } = await supabase.rpc("save_member_profile", { p_name: patch.name, p_phone: e164 });
     setPfBusy(false);
     if (error) { alert(t.pf_error + " " + error.message); return; }
+    if (!data?.ok) {
+      const st = data?.status;
+      if (st === "phone_taken") alert(t.pf_phone_taken);
+      else if (st === "needs_staff") alert(t.pf_phone_staff);
+      else if (st === "invalid") alert(t.pf_need_phone);
+      else alert(t.pf_error + " " + (st || ""));
+      return;
+    }
     refreshCustomer(patch);
   };
 
