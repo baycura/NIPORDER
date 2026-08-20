@@ -1,0 +1,5 @@
+{
+  "buildCommand": "npm run build:ride",
+  "outputDirectory": "ride/dist",
+  "rewrites": [{ "source": "/(.*)", "destination": "/" }]
+}

@@ -5,7 +5,10 @@
   "scripts": {
     "dev": "vite --port 3000",
     "build": "vite build",
-    "preview": "vite preview"
+    "preview": "vite preview",
+    "dev:ride": "vite --config ride/vite.config.js",
+    "build:ride": "vite build --config ride/vite.config.js",
+    "preview:ride": "vite preview --config ride/vite.config.js"
   },
   "dependencies": {
     "@supabase/supabase-js": "^2.45.0",
