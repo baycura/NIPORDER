@@ -5,6 +5,7 @@ import { useAuth } from "../../contexts/AuthContext.jsx";
 import { happyHourPrices } from "../../lib/happyHour.js";
 import { optionMod } from "../../lib/productOptions.js";
 import { PHONE_CODES, toE164 } from "../../lib/phoneCodes.js";
+import { errorText } from "../../lib/errorText.js";
 
 const cv = "-apple-system,BlinkMacSystemFont,'Segoe UI',Roboto,sans-serif";
 
@@ -500,13 +501,14 @@ export default function CustomerMenu() {
     // kalirdi — menuye hic giremiyordu.
     const { data, error } = await supabase.rpc("save_member_profile", { p_name: patch.name, p_phone: e164 });
     setPfBusy(false);
-    if (error) { alert(t.pf_error + " " + error.message); return; }
+    if (error) { alert(t.pf_error + " " + errorText(error, lang)); return; }
     if (!data?.ok) {
       const st = data?.status;
       if (st === "phone_taken") alert(t.pf_phone_taken);
       else if (st === "needs_staff") alert(t.pf_phone_staff);
       else if (st === "invalid") alert(t.pf_need_phone);
-      else alert(t.pf_error + " " + (st || ""));
+      else if (st === "no_session" || st === "no_customer") alert(errorText({ code: "401" }, lang));
+      else alert(t.pf_error + " " + errorText(null, lang));
       return;
     }
     refreshCustomer(patch);
@@ -657,7 +659,8 @@ export default function CustomerMenu() {
     });
     setVoteBusy(null);
     if (error || data?.error) {
-      alert(L("Oy gönderilemedi: ", "Could not send vote: ", "Не удалось отправить голос: ") + (data?.error || error?.message || ""));
+      // data.error sunucunun kendi anlasilir metni; yoksa teknik hatayi cevir
+      alert(L("Oy gönderilemedi: ", "Could not send vote: ", "Не удалось отправить голос: ") + (data?.error || errorText(error, lang)));
       return;
     }
     setMyVotes(s => ({ ...s, [poll.id]: { option_id: optionId || null, free_text: freeText || null } }));
@@ -1063,10 +1066,12 @@ export default function CustomerMenu() {
     setPayBusy(true);
     try {
       const { data, error } = await supabase.functions.invoke("paytr?action=token", { body: { order_id: successOrderId } });
-      if (error) throw new Error(error.message || "Sunucu hatasi");
-      if (data?.error) throw new Error(data.error);
+      if (error) throw error;
+      // Fonksiyonun kendi metni zaten musteri diliyle yazilmis (ornegin
+      // "Puanların bu siparişi karşılıyor") — oldugu gibi gosterilir
+      if (data?.error) { alert(data.error); setPayBusy(false); return; }
       setPayToken(data.token);
-    } catch (e) { alert(L("Ödeme başlatılamadı: ", "Payment could not start: ", "Не удалось начать оплату: ") + (e?.message || e)); }
+    } catch (e) { alert(L("Ödeme başlatılamadı: ", "Payment could not start: ", "Не удалось начать оплату: ") + errorText(e, lang)); }
     setPayBusy(false);
   };
 
@@ -1142,7 +1147,7 @@ export default function CustomerMenu() {
       setOrderStage("pending");
       setBrowsing(false); setCustTab("menu");
       setCart([]); setOrderNote(""); setCheckoutOpen(false);
-    } catch (e) { alert(t.submit_failed + e.message); }
+    } catch (e) { alert(t.submit_failed + errorText(e, lang)); }
     setSubmitting(false);
   };
 
