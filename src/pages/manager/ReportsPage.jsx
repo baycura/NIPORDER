@@ -68,7 +68,7 @@ export default function ReportsPage() {
     // ayni veriden hesaplaniyor — ucuncu bir sorgu ve tutarsizlik riski yok.
     const { data: rows } = await supabase
       .from("orders")
-      .select("id,total,status,created_at,order_items(quantity,final_price,product_id,products(name,kitchen_consignment))")
+      .select("id,total,status,created_at,order_items(quantity,final_price,product_price,is_treat,product_id,products(name,kitchen_consignment))")
       .eq("origin_store_id", selectedStore)
       .gte("created_at", dayStart(13).toISOString());
 
@@ -77,9 +77,11 @@ export default function ReportsPage() {
     const isPaid = (o) => paid.includes(o.status);
     const dayKey = businessDayKey; // isletme gunu anahtari (03:00 siniri)
     // NIP Kitchen envanteri: ciroya girer ama bize kalmaz, ay sonu mutfaga odenir.
+    // IKRAMLI konsinye kalem hesaba 0 yazilir ama mutfaga yine gercek degeri
+    // (product_price) odenir — ikram bizim jestimiz, mutfagin kaybi degil.
     const kitchenOf = (o) => (o.order_items || [])
       .filter(oi => oi.products?.kitchen_consignment)
-      .reduce((t, oi) => t + Number(oi.final_price || 0) * Number(oi.quantity || 0), 0);
+      .reduce((t, oi) => t + Number((oi.is_treat ? oi.product_price : oi.final_price) || 0) * Number(oi.quantity || 0), 0);
 
     const todayKey = dayKey(todayStart);
     const yesterdayKey = dayKey(dayStart(1));
