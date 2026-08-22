@@ -33,6 +33,7 @@ import RetailPage from "./pages/manager/RetailPage.jsx";
 import FixedExpensesPage from "./pages/manager/FixedExpensesPage.jsx";
 import HubPage from "./pages/staff/HubPage.jsx";
 import TodayPage from "./pages/manager/TodayPage.jsx";
+import ShiftsOverviewPage from "./pages/manager/ShiftsOverviewPage.jsx";
 
 function PrivateRoute({ children, managerOnly = false, adminOnly = false, allowViewer = false, deny = [] }) {
   const { session, staffUser, isManager, isAdmin, isViewer, loading } = useAuth();
@@ -90,6 +91,7 @@ function AppRoutes() {
         <Route path="expenses"         element={<PrivateRoute><ExpensesPage /></PrivateRoute>} />
         <Route path="hub"              element={<PrivateRoute><HubPage /></PrivateRoute>} />
         <Route path="today"            element={<PrivateRoute managerOnly><TodayPage /></PrivateRoute>} />
+        <Route path="shifts"           element={<PrivateRoute adminOnly><ShiftsOverviewPage /></PrivateRoute>} />
       </Route>
       <Route path="*" element={<Navigate to="/" replace />} />
     </Routes>
