@@ -17,6 +17,7 @@ export const GRUPLAR = [
       { to: "/payment",  icon: "💰", label: "Kasa",      deny: ["viewer"] },
       { to: "/myshift",  icon: "⏱",  label: "Vardiyam",  deny: ["viewer", "parttime"] },
       { to: "/stock",    icon: "📦", label: "Stok",      deny: ["parttime"] },
+      { to: "/expenses", icon: "💸", label: "Giderler" },
       { to: "/invoices", icon: "🧾", label: "Faturalar", deny: ["viewer", "parttime"] },
       { to: "/tasks",    icon: "✅", label: "Görevler",  deny: ["viewer", "parttime"] },
     ],
@@ -67,6 +68,7 @@ const VIEWER_GRUP = [{
   items: [
     { to: "/reports",    icon: "📈", label: "Raporlar" },
     { to: "/settlement", icon: "🥙", label: "Mutfağa Ödenecek" },
+    { to: "/expenses",   icon: "💸", label: "Giderler" },
     { to: "/stock",      icon: "📦", label: "Stok" },
   ],
 }];
@@ -84,9 +86,10 @@ export function gorunurGruplar({ role, isManager, isAdmin, isViewer }) {
 export function altBar({ isManager, isAdmin, isViewer, isParttime }) {
   if (isViewer) return VIEWER_GRUP[0].items;
   if (isParttime) return [
-    { to: "/tables",  icon: "🪑", label: "Masalar" },
-    { to: "/orders",  icon: "📋", label: "Sipariş" },
-    { to: "/payment", icon: "💰", label: "Kasa" },
+    { to: "/tables",   icon: "🪑", label: "Masalar" },
+    { to: "/orders",   icon: "📋", label: "Sipariş" },
+    { to: "/payment",  icon: "💰", label: "Kasa" },
+    { to: "/expenses", icon: "💸", label: "Giderler" },
   ];
   if (isManager) return [
     { to: "/today",   icon: "🏠", label: "Bugün" },

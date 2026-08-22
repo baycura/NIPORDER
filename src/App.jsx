@@ -28,6 +28,7 @@ import PollsPage from "./pages/manager/PollsPage.jsx";
 import TablesMgmtPage from "./pages/manager/TablesMgmtPage.jsx";
 import RecipesMgmtPage from "./pages/manager/RecipesMgmtPage.jsx";
 import InvoicesPage from "./pages/manager/InvoicesPage.jsx";
+import ExpensesPage from "./pages/staff/ExpensesPage.jsx";
 import RetailPage from "./pages/manager/RetailPage.jsx";
 import FixedExpensesPage from "./pages/manager/FixedExpensesPage.jsx";
 import HubPage from "./pages/staff/HubPage.jsx";
@@ -86,6 +87,7 @@ function AppRoutes() {
         <Route path="fixed-expenses"   element={<PrivateRoute adminOnly><FixedExpensesPage /></PrivateRoute>} />
         <Route path="retail"           element={<PrivateRoute managerOnly><RetailPage /></PrivateRoute>} />
         <Route path="invoices"         element={<PrivateRoute deny={["viewer","parttime"]}><InvoicesPage /></PrivateRoute>} />
+        <Route path="expenses"         element={<PrivateRoute><ExpensesPage /></PrivateRoute>} />
         <Route path="hub"              element={<PrivateRoute><HubPage /></PrivateRoute>} />
         <Route path="today"            element={<PrivateRoute managerOnly><TodayPage /></PrivateRoute>} />
       </Route>
