@@ -2,7 +2,7 @@ import { useEffect, useState } from "react";
 import { useParams, useNavigate } from "react-router-dom";
 import { supabase } from "../../lib/supabase.js";
 import { happyHourPrices } from "../../lib/happyHour.js";
-import { optionsText } from "../../lib/productOptions.js";
+import { optionsText, optionMod } from "../../lib/productOptions.js";
 
 const cv = "-apple-system,BlinkMacSystemFont,'Segoe UI',Roboto,sans-serif";
 
@@ -15,6 +15,7 @@ export default function OrderDetailPage() {
   const [categories, setCategories] = useState([]);
   const [products, setProducts] = useState([]);
   const [takeawayMode, setTakeawayMode] = useState(false);
+  const [optModal, setOptModal] = useState(null); // {p, sel} — secenekli urun secimi
   const [customers, setCustomers] = useState([]);
   const [memberPrices, setMemberPrices] = useState({});
   const [tables, setTables] = useState({});
@@ -131,7 +132,13 @@ export default function OrderDetailPage() {
     }
   };
 
-  const addProduct = async (p) => {
+  const addProduct = async (p, selOpts = null) => {
+    // Secenekli urun (sarap kadeh/sise, doner malzemeleri...): musteri menusundeki
+    // gibi secim sart — yoksa sise sarap kadeh fiyatindan yazilirdi
+    if (!selOpts && p.has_options && p.options_config?.groups?.length) {
+      setOptModal({ p, sel: {} });
+      return;
+    }
     // Bedenli raf urunu: hangi beden satildi?
     let variantName = null;
     const vs = Array.isArray(p.variants) ? p.variants.filter(v => v?.name) : [];
@@ -156,6 +163,9 @@ export default function OrderDetailPage() {
     }
     // Happy hour saatindeyse taban fiyat indirimli fiyattir (menu ile ayni hesap)
     if (hhPrices[p.id] != null && Number(p.price) > 0) price = Number(hhPrices[p.id]);
+    // Secenek fiyat farki indirim yuzdesinden ONCE eklenir — musteri menusundeki
+    // calcPrice ile ayni sira, iki kanal ayni urune ayni fiyati yazsin
+    price += optionMod(p, selOpts);
     // Kampanya fiyati ile uye fiyati karsilastirilir; musteri DUSUK olani oder
     let fp = price * (100 - Number(p.instant_discount_pct || 0)) / 100;
     const mp = memberPriceFor(p);
@@ -177,6 +187,7 @@ export default function OrderDetailPage() {
       kitchen_destination_store_id: p.kitchen_destination_store_id || p.store_id || order?.origin_store_id,
       // "Paket" modu acikken eklenen icecekler gotur olarak isaretlenir
       is_takeaway: takeawayMode && canTakeaway(p),
+      selected_options: selOpts || null,
     };
     // Once ekranda goster (aninda tepki), sonra kaydet
     const tempId = "temp-" + Date.now();
@@ -408,6 +419,61 @@ export default function OrderDetailPage() {
           </>
         )}
       </div>
+
+      {optModal && (() => {
+        const gruplar = optModal.p.options_config?.groups || [];
+        const sec = (g, opt) => setOptModal(m => {
+          const sel = { ...m.sel };
+          if (g.multi) {
+            const cur = Array.isArray(sel[g.name]) ? sel[g.name] : [];
+            sel[g.name] = cur.includes(opt) ? cur.filter(x => x !== opt) : [...cur, opt];
+          } else sel[g.name] = sel[g.name] === opt ? undefined : opt;
+          return { ...m, sel };
+        });
+        const secili = (g, opt) => g.multi
+          ? (Array.isArray(optModal.sel[g.name]) && optModal.sel[g.name].includes(opt))
+          : optModal.sel[g.name] === opt;
+        const eksik = gruplar.some(g => g.required &&
+          (g.multi ? !(optModal.sel[g.name]?.length) : !optModal.sel[g.name]));
+        const toplam = (Number(hhPrices[optModal.p.id] ?? optModal.p.price) || 0) + optionMod(optModal.p, optModal.sel);
+        return (
+          <div onClick={() => setOptModal(null)} style={{position:"fixed",inset:0,background:"rgba(0,0,0,0.75)",display:"flex",alignItems:"flex-end",justifyContent:"center",zIndex:100}}>
+            <div onClick={e => e.stopPropagation()} style={{background:"#161616",border:"1px solid #2A2A2A",borderRadius:"16px 16px 0 0",padding:20,width:"100%",maxWidth:500,maxHeight:"80vh",overflowY:"auto"}}>
+              <div style={{fontSize:16,fontWeight:800,color:"#F0EDE8",marginBottom:4}}>{optModal.p.name}</div>
+              <div style={{fontSize:11,color:"#888",marginBottom:14}}>Seçenekleri işaretle{gruplar.some(g=>g.multi) ? " (çoklu seçim olabilir)" : ""}</div>
+              {gruplar.map(g => (
+                <div key={g.name} style={{marginBottom:14}}>
+                  <div style={{fontSize:10,letterSpacing:"1.5px",color:"#8A8580",fontWeight:700,marginBottom:6}}>
+                    {g.name.toLocaleUpperCase("tr-TR")}{g.required ? " *" : ""}
+                  </div>
+                  <div style={{display:"flex",flexWrap:"wrap",gap:6}}>
+                    {(g.options || []).map(opt => {
+                      const fark = Number(g.price_modifiers?.[opt]) || 0;
+                      return (
+                        <button key={opt} onClick={() => sec(g, opt)}
+                          style={{padding:"9px 13px",borderRadius:9,fontSize:13,fontWeight:700,cursor:"pointer",fontFamily:cv,
+                                  background: secili(g,opt) ? "#C8973E" : "#222",
+                                  color: secili(g,opt) ? "#000" : "#ccc",
+                                  border: "1px solid " + (secili(g,opt) ? "#C8973E" : "#333")}}>
+                          {opt}{fark ? ` +₺${fark}` : ""}
+                        </button>
+                      );
+                    })}
+                  </div>
+                </div>
+              ))}
+              <div style={{display:"flex",gap:8,marginTop:6}}>
+                <button onClick={() => setOptModal(null)} style={{flex:1,padding:"13px",background:"transparent",color:"#888",border:"1px solid #333",borderRadius:10,fontSize:14,fontWeight:700,cursor:"pointer",fontFamily:cv}}>Vazgeç</button>
+                <button disabled={eksik}
+                  onClick={() => { const m = optModal; setOptModal(null); addProduct(m.p, m.sel); }}
+                  style={{flex:2,padding:"13px",background:eksik?"#333":"#C8973E",color:eksik?"#777":"#000",border:"none",borderRadius:10,fontSize:14,fontWeight:800,cursor:eksik?"not-allowed":"pointer",fontFamily:cv}}>
+                  {eksik ? "Zorunlu seçim var" : `Ekle · ₺${Math.round(toplam)}`}
+                </button>
+              </div>
+            </div>
+          </div>
+        );
+      })()}
     </div>
   );
 }
