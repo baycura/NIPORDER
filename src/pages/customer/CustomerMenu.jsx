@@ -2056,16 +2056,16 @@ export default function CustomerMenu() {
 
             {!otpSent ? (
               <>
-                {!inAppBrowser && (
-                  <>
-                    <button onClick={signInWithGoogle} style={{width:"100%",padding:"14px",background:"#000",color:"#fff",border:"none",borderRadius:12,fontSize:14,fontWeight:800,cursor:"pointer",fontFamily:"inherit"}}>
-                      {t.login_google}
-                    </button>
-                    <div style={{display:"flex",alignItems:"center",gap:10,margin:"14px 0",color:"#bbb",fontSize:11,fontWeight:700}}>
-                      <div style={{flex:1,height:1,background:"#eee"}}/>{t.login_or}<div style={{flex:1,height:1,background:"#eee"}}/>
-                    </div>
-                  </>
-                )}
+                {/* Google HER ZAMAN gorunur ve ilk sirada. Ic tarayicida (Instagram/
+                    WhatsApp) Google'in kendisi OAuth'u reddettigi icin dokununca
+                    bozuk Google sayfasi yerine yol gosteren aciklama cikar. */}
+                <button onClick={() => inAppBrowser ? alert(t.login_inapp) : signInWithGoogle()}
+                  style={{width:"100%",padding:"14px",background:"#000",color:"#fff",border:"none",borderRadius:12,fontSize:14,fontWeight:800,cursor:"pointer",fontFamily:"inherit"}}>
+                  {t.login_google}
+                </button>
+                <div style={{display:"flex",alignItems:"center",gap:10,margin:"14px 0",color:"#bbb",fontSize:11,fontWeight:700}}>
+                  <div style={{flex:1,height:1,background:"#eee"}}/>{t.login_or}<div style={{flex:1,height:1,background:"#eee"}}/>
+                </div>
                 <input value={otpEmail} onChange={e=>setOtpEmail(e.target.value)} placeholder={t.login_email_ph}
                   type="email" inputMode="email" autoComplete="email"
                   style={{width:"100%",padding:"13px 14px",background:"#f7f7f7",border:"1px solid #eee",borderRadius:12,fontSize:15,outline:"none",fontFamily:"inherit",marginBottom:10}}/>
