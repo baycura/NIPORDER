@@ -30,6 +30,8 @@ import RecipesMgmtPage from "./pages/manager/RecipesMgmtPage.jsx";
 import InvoicesPage from "./pages/manager/InvoicesPage.jsx";
 import RetailPage from "./pages/manager/RetailPage.jsx";
 import FixedExpensesPage from "./pages/manager/FixedExpensesPage.jsx";
+import HubPage from "./pages/staff/HubPage.jsx";
+import TodayPage from "./pages/manager/TodayPage.jsx";
 
 function PrivateRoute({ children, managerOnly = false, adminOnly = false, allowViewer = false, deny = [] }) {
   const { session, staffUser, isManager, isAdmin, isViewer, loading } = useAuth();
@@ -47,8 +49,9 @@ function PrivateRoute({ children, managerOnly = false, adminOnly = false, allowV
 }
 
 function AppRoutes() {
-  const { session, staffUser, isKitchen, isCashier, isViewer } = useAuth();
-  const defaultRoute = isViewer ? "/reports" : isKitchen ? "/kitchen" : isCashier ? "/payment" : "/tables";
+  const { session, staffUser, isKitchen, isCashier, isViewer, isManager } = useAuth();
+  // Yonetici/sahip girince "Bugun"e duser; digerleri eski aliskanliginda
+  const defaultRoute = isViewer ? "/reports" : isManager ? "/today" : isKitchen ? "/kitchen" : isCashier ? "/payment" : "/tables";
   return (
     <Routes>
       <Route path="/login" element={session && staffUser ? (<Navigate to={defaultRoute} replace />) : (<LoginPage />)}/>
@@ -83,6 +86,8 @@ function AppRoutes() {
         <Route path="fixed-expenses"   element={<PrivateRoute adminOnly><FixedExpensesPage /></PrivateRoute>} />
         <Route path="retail"           element={<PrivateRoute managerOnly><RetailPage /></PrivateRoute>} />
         <Route path="invoices"         element={<PrivateRoute deny={["viewer","parttime"]}><InvoicesPage /></PrivateRoute>} />
+        <Route path="hub"              element={<PrivateRoute><HubPage /></PrivateRoute>} />
+        <Route path="today"            element={<PrivateRoute managerOnly><TodayPage /></PrivateRoute>} />
       </Route>
       <Route path="*" element={<Navigate to="/" replace />} />
     </Routes>
