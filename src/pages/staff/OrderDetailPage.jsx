@@ -3,12 +3,14 @@ import { useParams, useNavigate } from "react-router-dom";
 import { supabase } from "../../lib/supabase.js";
 import { happyHourPrices } from "../../lib/happyHour.js";
 import { optionsText, optionMod } from "../../lib/productOptions.js";
+import { useAuth } from "../../contexts/AuthContext.jsx";
 
 const cv = "-apple-system,BlinkMacSystemFont,'Segoe UI',Roboto,sans-serif";
 
 export default function OrderDetailPage() {
   const { orderId } = useParams();
   const navigate = useNavigate();
+  const { staffUser } = useAuth(); // ikramda "kim verdi" kaydi icin
 
   const [order, setOrder] = useState(null);
   const [items, setItems] = useState([]);
@@ -111,6 +113,20 @@ export default function OrderDetailPage() {
   }, [orderId]);
 
   // Toplami yerel listeden hesapla, siparise arka planda yaz (UI beklemez)
+  // Ikram: fiyat 0'a iner ama kalem/stok/mutfak izi durur. Geri alinirsa
+  // liste fiyatina doner (uye/kampanya indirimi vardiysa yeniden eklenerek
+  // degil — kasada fark edilip duzeltilebilir, nadir durum).
+  const toggleTreat = async (it) => {
+    const yeni = !it.is_treat;
+    const patch = yeni
+      ? { is_treat: true, final_price: 0, treated_by: staffUser?.id || null }
+      : { is_treat: false, final_price: Number(it.product_price) || 0, treated_by: null };
+    const next = items.map(i => i.id === it.id ? { ...i, ...patch } : i);
+    setItems(next); syncTotal(next);
+    const { error } = await supabase.from("order_items").update(patch).eq("id", it.id);
+    if (error) { alert("İkram işaretlenemedi: " + error.message); load(); }
+  };
+
   const syncTotal = (list) => {
     const sum = list.reduce((s,i) => s + (Number(i.final_price)||0) * (Number(i.quantity)||0), 0);
     setOrder(prev => prev ? { ...prev, subtotal: sum, total: sum } : prev);
@@ -338,9 +354,12 @@ export default function OrderDetailPage() {
                   {Number(it.final_price) < Number(it.product_price) && (
                     <span style={{color:"#666",textDecoration:"line-through",marginRight:5}}>₺{Math.round(Number(it.product_price))}</span>
                   )}
-                  <span style={{color:"#888"}}>₺{it.final_price} · </span>
+                  {it.is_treat
+                    ? <span style={{color:"#E8C36A",fontWeight:800}}>🎁 İKRAM · </span>
+                    : <span style={{color:"#888"}}>₺{it.final_price} · </span>}
                   <span style={{color:statusColor,fontWeight:700,letterSpacing:"1px"}}>{it.kitchen_status?.toUpperCase()}</span>
                 </div>
+                <div style={{display:"flex",gap:6,flexWrap:"wrap"}}>
                 {canTakeaway(prod) && (
                   <button onClick={() => toggleItemTakeaway(it)}
                     style={{marginTop:6,padding:"6px 12px",background:it.is_takeaway?"#C8973E":"transparent",color:it.is_takeaway?"#000":"#888",
@@ -348,6 +367,12 @@ export default function OrderDetailPage() {
                     {it.is_takeaway ? "✓ 🥤 Paket" : "🥤 Paket"}
                   </button>
                 )}
+                <button onClick={() => toggleTreat(it)}
+                  style={{marginTop:6,padding:"6px 12px",background:it.is_treat?"#E8C36A":"transparent",color:it.is_treat?"#000":"#888",
+                          border:"1px solid "+(it.is_treat?"#E8C36A":"#3A3A3A"),borderRadius:20,fontSize:11,fontWeight:700,cursor:"pointer",fontFamily:"inherit"}}>
+                  {it.is_treat ? "✓ 🎁 İkram" : "🎁 İkram"}
+                </button>
+                </div>
               </div>
               <div style={{display:"flex",alignItems:"center",gap:6,background:"#0C0C0C",borderRadius:20,padding:"3px 5px"}}>
                 <button onClick={() => changeQty(it.id, -1)} style={{width:40,height:40,background:"#2A2A2A",color:"#fff",border:"none",borderRadius:"50%",fontSize:20,cursor:"pointer",fontWeight:700}}>−</button>
