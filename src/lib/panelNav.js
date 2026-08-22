@@ -46,6 +46,7 @@ export const GRUPLAR = [
     ad: "PARA & PERSONEL", admin: true, sari: true,
     items: [
       { to: "/reports",        icon: "📈", label: "Raporlar" },
+      { to: "/shifts",         icon: "🕐", label: "Vardiyalar" },
       { to: "/settlement",     icon: "🥙", label: "Mutfağa Ödenecek" },
       { to: "/fixed-expenses", icon: "🔒", label: "Sabit Giderler" },
       { to: "/staff-mgmt",     icon: "👥", label: "Personel" },
