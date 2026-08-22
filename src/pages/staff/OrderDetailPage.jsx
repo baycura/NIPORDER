@@ -18,6 +18,8 @@ export default function OrderDetailPage() {
   const [products, setProducts] = useState([]);
   const [takeawayMode, setTakeawayMode] = useState(false);
   const [optModal, setOptModal] = useState(null); // {p, sel} — secenekli urun secimi
+  const [treatModal, setTreatModal] = useState(null); // ikramda "kim veriyor?" secimi
+  const [staffList, setStaffList] = useState([]);
   const [customers, setCustomers] = useState([]);
   const [memberPrices, setMemberPrices] = useState({});
   const [tables, setTables] = useState({});
@@ -33,13 +35,14 @@ export default function OrderDetailPage() {
   // siparis verisi hafif sorguyla tazelenir — her dokunusta tam yukleme YOK.
   const load = async () => {
     setLoading(true);
-    const [{data: o}, {data: its}, {data: cats}, {data: prods}, {data: tabs}, {data: custs}] = await Promise.all([
+    const [{data: o}, {data: its}, {data: cats}, {data: prods}, {data: tabs}, {data: custs}, {data: stf}] = await Promise.all([
       supabase.from("orders").select("*, stores:origin_store_id(slug, name)").eq("id", orderId).maybeSingle(),
       supabase.from("order_items").select("*").eq("order_id", orderId).order("created_at"),
       supabase.from("categories").select("*").eq("is_active", true).order("sort_order"),
       supabase.from("products").select("*").eq("is_available", true).order("sort_order"),
       supabase.from("cafe_tables").select("id, name"),
       supabase.from("customers").select("id, name, phone").order("name"),
+      supabase.from("staff").select("id, name, role").eq("is_active", true),
     ]);
     // Happy hour kurallari: kasada da ayni indirimli fiyat uygulanir
     const { data: hhRules } = await supabase.from("happy_hour_rules").select("*").eq("is_active", true);
@@ -49,6 +52,7 @@ export default function OrderDetailPage() {
     setCategories(cats || []);
     setProducts(prods || []);
     setCustomers(custs || []);
+    setStaffList(stf || []);
     const tMap = {}; (tabs||[]).forEach(t => { tMap[t.id] = t.name; });
     setTables(tMap);
     // Ilk sekme: bos ust kategori degil, icinde urun olan ilk kategori
@@ -116,15 +120,33 @@ export default function OrderDetailPage() {
   // Ikram: fiyat 0'a iner ama kalem/stok/mutfak izi durur. Geri alinirsa
   // liste fiyatina doner (uye/kampanya indirimi vardiysa yeniden eklenerek
   // degil — kasada fark edilip duzeltilebilir, nadir durum).
-  const toggleTreat = async (it) => {
-    const yeni = !it.is_treat;
-    const patch = yeni
-      ? { is_treat: true, final_price: 0, treated_by: staffUser?.id || null }
+  //
+  // "Kim veriyor?" sorusu sart: sahipler (admin) siparis girmiyor ama kendi
+  // misafirine ikram ediyor — cocuklar ikrami onlarin adina isaretleyebilsin.
+  const toggleTreat = (it) => {
+    if (it.is_treat) { applyTreat(it, null); return; } // geri alma tek dokunus
+    setTreatModal(it);
+  };
+  const applyTreat = async (it, verenId) => {
+    const patch = verenId
+      ? { is_treat: true, final_price: 0, treated_by: verenId }
       : { is_treat: false, final_price: Number(it.product_price) || 0, treated_by: null };
     const next = items.map(i => i.id === it.id ? { ...i, ...patch } : i);
     setItems(next); syncTotal(next);
     const { error } = await supabase.from("order_items").update(patch).eq("id", it.id);
     if (error) { alert("İkram işaretlenemedi: " + error.message); load(); }
+  };
+  // Secim listesi: islemi yapan + sahipler (admin). Ayni kisi iki kez cikmasin.
+  const treatVerenler = () => {
+    const liste = [];
+    if (staffUser) liste.push({ id: staffUser.id, ad: staffUser.name, ben: true });
+    staffList.filter(s => s.role === "admin" && s.id !== staffUser?.id)
+      .forEach(s => liste.push({ id: s.id, ad: s.name, ben: false }));
+    return liste;
+  };
+  const verenAdi = (id) => {
+    const s = staffList.find(x => x.id === id);
+    return s ? s.name.split(" ")[0] : "";
   };
 
   const syncTotal = (list) => {
@@ -355,7 +377,7 @@ export default function OrderDetailPage() {
                     <span style={{color:"#666",textDecoration:"line-through",marginRight:5}}>₺{Math.round(Number(it.product_price))}</span>
                   )}
                   {it.is_treat
-                    ? <span style={{color:"#E8C36A",fontWeight:800}}>🎁 İKRAM · </span>
+                    ? <span style={{color:"#E8C36A",fontWeight:800}}>🎁 İKRAM{verenAdi(it.treated_by) ? " — " + verenAdi(it.treated_by) : ""} · </span>
                     : <span style={{color:"#888"}}>₺{it.final_price} · </span>}
                   <span style={{color:statusColor,fontWeight:700,letterSpacing:"1px"}}>{it.kitchen_status?.toUpperCase()}</span>
                 </div>
@@ -444,6 +466,25 @@ export default function OrderDetailPage() {
           </>
         )}
       </div>
+
+      {treatModal && (
+        <div onClick={() => setTreatModal(null)} style={{position:"fixed",inset:0,background:"rgba(0,0,0,0.75)",display:"flex",alignItems:"flex-end",justifyContent:"center",zIndex:100}}>
+          <div onClick={e => e.stopPropagation()} style={{background:"#161616",border:"1px solid #2A2A2A",borderRadius:"16px 16px 0 0",padding:20,width:"100%",maxWidth:500}}>
+            <div style={{fontSize:16,fontWeight:800,color:"#F0EDE8",marginBottom:2}}>🎁 İkramı kim veriyor?</div>
+            <div style={{fontSize:11,color:"#888",marginBottom:14}}>{treatModal.product_name} · ₺{treatModal.final_price} hesaptan düşülecek</div>
+            {treatVerenler().map(v => (
+              <button key={v.id} onClick={() => { const it = treatModal; setTreatModal(null); applyTreat(it, v.id); }}
+                style={{width:"100%",padding:"13px 14px",marginBottom:7,display:"flex",alignItems:"center",gap:10,
+                        background: v.ben ? "#2A2210" : "#222", color: v.ben ? "#E8C36A" : "#ddd",
+                        border:"1px solid " + (v.ben ? "#E8C36A55" : "#333"), borderRadius:10,
+                        fontSize:14, fontWeight:700, cursor:"pointer", fontFamily:cv, textAlign:"left"}}>
+                {v.ben ? "👤 Ben — " + v.ad : "⭐ " + v.ad}
+              </button>
+            ))}
+            <button onClick={() => setTreatModal(null)} style={{width:"100%",padding:"12px",background:"transparent",color:"#888",border:"1px solid #333",borderRadius:10,fontSize:13,fontWeight:700,cursor:"pointer",fontFamily:cv,marginTop:4}}>Vazgeç</button>
+          </div>
+        </div>
+      )}
 
       {optModal && (() => {
         const gruplar = optModal.p.options_config?.groups || [];
