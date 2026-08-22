@@ -24,6 +24,11 @@ export default function MyShiftPage(){
           ? <button onClick={handleCheckOut} style={{padding:"10px 18px",background:"#E0554A",border:"none",color:"#fff",fontFamily:cv,fontSize:16,cursor:"pointer",borderRadius:8}}>VARDIYADAN ÇIK</button>
           : <button onClick={handleCheckIn} style={{padding:"10px 18px",background:"#3ECF8E",border:"none",color:"#000",fontFamily:cv,fontSize:16,cursor:"pointer",borderRadius:8}}>TEKRAR GİR</button>}
     </div>
+    {!shift?.checked_in_at && (
+      <div style={{background:"#1A1A1A",border:"1px solid #2A2A2A",borderRadius:10,padding:"9px 14px",marginBottom:16,color:"#8A8580",fontFamily:cv,fontSize:12}}>
+        Unutursan dert değil: bugünkü ilk siparişin ya da tahsilatınla vardiyan kendiliğinden açılır. Düğme, tam giriş saatini kaydetmek isteyenler için.
+      </div>
+    )}
     {staffUser?.telegram_chat_id
       ? <div style={{background:"#12241B",border:"1px solid #1F4A35",borderRadius:10,padding:"10px 14px",marginBottom:16,color:"#3ECF8E",fontFamily:cvc,fontSize:12,fontWeight:700,letterSpacing:"0.5px"}}>✈️ Telegram bildirimleri açık — vardiyadayken siparişler telefonuna gelir</div>
       : <a href={"https://t.me/BaycuraBot?start="+staffUser?.id} target="_blank" rel="noreferrer" style={{display:"block",background:"#1C2B3A",border:"1px solid #2E4A66",borderRadius:10,padding:"12px 14px",marginBottom:16,color:"#5FB0E8",fontFamily:cvc,fontSize:13,fontWeight:700,letterSpacing:"0.5px",textDecoration:"none",textAlign:"center"}}>✈️ Telegram bildirimlerini aç — sipariş geldiğinde telefonuna mesaj gelsin</a>}

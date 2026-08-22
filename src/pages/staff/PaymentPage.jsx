@@ -33,7 +33,7 @@ export default function PaymentPage() {
   const load = async () => {
     setLoading(true);
     const [{data: ords}, {data: tabs}, {data: custs}] = await Promise.all([
-      supabase.from("orders").select("id, table_id, customer_name, customer_id, use_points, total, status, created_at, origin_store_id, stores:origin_store_id(slug, name)").in("origin_store_id", staffUser?.store_ids?.length ? staffUser.store_ids : ["00000000-0000-0000-0000-000000000000"]).in("status", ["open","sent","preparing","ready"]).order("created_at", { ascending: false }),
+      supabase.from("orders").select("id, table_id, customer_name, customer_id, use_points, staff_id, total, status, created_at, origin_store_id, stores:origin_store_id(slug, name)").in("origin_store_id", staffUser?.store_ids?.length ? staffUser.store_ids : ["00000000-0000-0000-0000-000000000000"]).in("status", ["open","sent","preparing","ready"]).order("created_at", { ascending: false }),
       supabase.from("cafe_tables").select("id, name").in("store_id", staffUser?.store_ids?.length ? staffUser.store_ids : ["00000000-0000-0000-0000-000000000000"]),
       supabase.from("customers").select("id, name, outstanding_balance").order("name"),
     ]);
@@ -104,7 +104,8 @@ export default function PaymentPage() {
       const newBalance = Number(cust?.outstanding_balance || 0) + amt;
       const [custRes, ordRes] = await Promise.all([
         supabase.from("customers").update({ outstanding_balance: newBalance }).eq("id", customerId).select("id"),
-        supabase.from("orders").update({ status: "paid", paid_at: new Date().toISOString(), customer_id: customerId, use_points: false }).eq("id", modal.id),
+        supabase.from("orders").update({ status: "paid", paid_at: new Date().toISOString(), customer_id: customerId, use_points: false,
+          ...(modal.staff_id ? {} : { staff_id: staffUser?.id || null }) }).eq("id", modal.id),
       ]);
       // Bakiye yazilamazsa borc kaybolur — sessiz gecilmemeli
       if (custRes.error || !custRes.data?.length) {
@@ -125,12 +126,22 @@ export default function PaymentPage() {
       alert("Borc kaydedildi: ₺" + amt + " (Kalan: ₺" + newBalance + ")");
     } else {
       setBusy(true);
-      // Puan tum tutari karsiladiysa nakit 0 — bos odeme kaydi atilmaz
+      // Puan tum tutari karsiladiysa nakit 0 — bos odeme kaydi atilmaz.
+      // staff_id: tahsil eden — vardiya istatistigi ve otomatik vardiya
+      // acilisi (shift_auto_checkin tetikleyicisi) buna dayanir.
       const { error: payErr } = amt > 0 ? await supabase.from("payments").insert({
         order_id: modal.id, amount: amt, method,
         store_id: modal.origin_store_id || staffUser?.store_ids?.[0],
+        staff_id: staffUser?.id || null,
       }) : { error: null };
-      const { error } = await supabase.from("orders").update({ status: "paid", paid_at: new Date().toISOString(), use_points: !!(usePoints && modal.customer_id) }).eq("id", modal.id);
+      // QR ile musterinin actigi siparislerde staff_id bos kalir; tahsil eden
+      // damgalanir ki satis "personelsiz" kalmasin. Garsonun actigi siparis
+      // garsona kayitli kalir — kasiyer ezmez.
+      const { error } = await supabase.from("orders").update({
+        status: "paid", paid_at: new Date().toISOString(),
+        use_points: !!(usePoints && modal.customer_id),
+        ...(modal.staff_id ? {} : { staff_id: staffUser?.id || null }),
+      }).eq("id", modal.id);
       setBusy(false);
       if (error) { alert("Hata: " + error.message); return; }
       if (payErr) alert("Uyari: odeme kaydi yazilamadi — " + payErr.message);
