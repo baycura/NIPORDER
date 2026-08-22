@@ -88,6 +88,19 @@ const T = {
     pf_error: "Kaydedilemedi:",
     pf_phone_taken: "Bu numara başka bir üyelik hesabında kayıtlı. Numaranı kontrol et ya da bize söyle, hallederiz.",
     pf_phone_staff: "Bu numara mağazadaki eski bir hesapta kayıtlı. Personele söyle, iki hesabı birleştirsinler.",
+    login_cta: "Üye ol / Giriş yap",
+    login_title: "Üyelik",
+    login_google: "Google ile devam et",
+    login_or: "ya da",
+    login_email_ph: "E-posta adresin",
+    login_send: "Kod Gönder",
+    login_sent: "Kodu e-postana gönderdik. Gelen kutusuna (ve spam'e) bak.",
+    login_code_ph: "6 haneli kod",
+    login_verify: "Giriş Yap",
+    login_link_hint: "Kod yerine e-postadaki bağlantıya dokunman da yeterli.",
+    login_inapp: "Instagram/WhatsApp içinden açtın — Google girişi bu tarayıcıda çalışmaz. E-posta ile gir ya da sayfayı Safari/Chrome'da aç.",
+    login_bad_email: "E-posta adresini kontrol eder misin?",
+    login_note: "Puan biriktir, üye fiyatlarından ve happy hour'dan yararlan.",
     order_hours: "sipariş saatleri",
     order_between: "arası sipariş verilebilir",
     closed_now: "Şu an bu saatler dışındasın",
@@ -156,6 +169,19 @@ const T = {
     pf_error: "Could not save:",
     pf_phone_taken: "This number is already linked to another member account. Check the number or let us know and we will sort it out.",
     pf_phone_staff: "This number belongs to an older record at the shop. Ask our staff to merge the two accounts.",
+    login_cta: "Join / Sign in",
+    login_title: "Membership",
+    login_google: "Continue with Google",
+    login_or: "or",
+    login_email_ph: "Your email address",
+    login_send: "Send Code",
+    login_sent: "We sent a code to your email. Check your inbox (and spam).",
+    login_code_ph: "6-digit code",
+    login_verify: "Sign In",
+    login_link_hint: "Tapping the link in the email works too.",
+    login_inapp: "You opened this inside Instagram/WhatsApp — Google sign-in does not work here. Use email, or open the page in Safari/Chrome.",
+    login_bad_email: "Could you check your email address?",
+    login_note: "Collect points, get member prices and happy hour deals.",
     order_hours: "ordering hours",
     order_between: "for ordering",
     closed_now: "Outside ordering hours right now",
@@ -224,6 +250,19 @@ const T = {
     pf_error: "Не удалось сохранить:",
     pf_phone_taken: "Этот номер уже привязан к другому аккаунту. Проверьте номер или скажите нам — мы поможем.",
     pf_phone_staff: "Этот номер записан на старый аккаунт в кофейне. Попросите персонал объединить аккаунты.",
+    login_cta: "Вступить / Войти",
+    login_title: "Клуб",
+    login_google: "Продолжить с Google",
+    login_or: "или",
+    login_email_ph: "Ваш e-mail",
+    login_send: "Отправить код",
+    login_sent: "Мы отправили код на почту. Проверьте входящие (и спам).",
+    login_code_ph: "6-значный код",
+    login_verify: "Войти",
+    login_link_hint: "Можно также нажать на ссылку в письме.",
+    login_inapp: "Страница открыта внутри Instagram/WhatsApp — вход через Google здесь не работает. Войдите по e-mail или откройте в Safari/Chrome.",
+    login_bad_email: "Проверьте адрес почты, пожалуйста.",
+    login_note: "Копите баллы, получайте цены для участников и happy hour.",
     order_hours: "часы заказа",
     order_between: "приём заказов",
     closed_now: "Сейчас вне часов заказа",
@@ -538,6 +577,41 @@ export default function CustomerMenu() {
     } catch (err) {
       window.location.assign(RESERVATION_URL);
     } finally { resvBusy.current = false; }
+  };
+
+  // E-POSTA ILE GIRIS: Google'in "hesabini dogrula" ekranlari musteriyi
+  // kaciriyordu. Tek kullanimlik kod ile sifresiz uye olunur; hesap yoksa
+  // Supabase kendisi acar, ad+telefon zaten profil ekraninda tamamlanir.
+  // Instagram/WhatsApp ic tarayicisinda Google calismaz — orada e-posta esastir.
+  const [loginSheet, setLoginSheet] = useState(false);
+  const [otpEmail, setOtpEmail] = useState("");
+  const [otpCode, setOtpCode] = useState("");
+  const [otpSent, setOtpSent] = useState(false);
+  const [otpBusy, setOtpBusy] = useState(false);
+  const inAppBrowser = typeof navigator !== "undefined" && /Instagram|FBAN|FBAV|FB_IAB|WhatsApp|Line\//i.test(navigator.userAgent);
+
+  const sendOtp = async () => {
+    const email = otpEmail.trim().toLowerCase();
+    if (!/^[^\s@]+@[^\s@]+\.[^\s@]{2,}$/.test(email)) { alert(t.login_bad_email); return; }
+    setOtpBusy(true);
+    const { error } = await supabase.auth.signInWithOtp({
+      email, options: { shouldCreateUser: true, emailRedirectTo: window.location.origin + "/menu" },
+    });
+    setOtpBusy(false);
+    if (error) { alert(errorText(error, lang)); return; }
+    setOtpSent(true);
+  };
+
+  const dogrulaOtp = async () => {
+    if (otpBusy) return;
+    const kod = otpCode.trim();
+    if (kod.length < 6) { alert(t.login_code_ph); return; }
+    setOtpBusy(true);
+    const { error } = await supabase.auth.verifyOtp({ email: otpEmail.trim().toLowerCase(), token: kod, type: "email" });
+    setOtpBusy(false);
+    if (error) { alert(errorText(error, lang)); return; }
+    // Oturum degisikligini AuthContext yakalar; profil eksikse tamamlama ekrani gelir
+    setLoginSheet(false); setOtpSent(false); setOtpCode("");
   };
 
   // Cuzdan: sepette "puanla ode" istegi. Miktara sunucu karar verir (bakiye
@@ -1423,8 +1497,8 @@ export default function CustomerMenu() {
         ) : (
           <>
             <span style={{fontSize:12,color:"#7a5c1e"}}>⭐ {L("Üye misin?","Member?","Участник клуба?")}</span>
-            <button onClick={signInWithGoogle} style={{padding:"6px 12px",background:"#000",color:"#fff",border:"none",borderRadius:10,fontSize:11,fontWeight:700,cursor:"pointer",whiteSpace:"nowrap"}}>
-              {L("Google ile giriş yap","Sign in with Google","Войти через Google")}
+            <button onClick={() => setLoginSheet(true)} style={{padding:"6px 12px",background:"#000",color:"#fff",border:"none",borderRadius:10,fontSize:11,fontWeight:700,cursor:"pointer",whiteSpace:"nowrap"}}>
+              {t.login_cta}
             </button>
           </>
         )}
@@ -1964,6 +2038,56 @@ export default function CustomerMenu() {
               <button onClick={() => setOptModal(null)} style={{flex:1,padding:"14px",background:"#fff",color:"#666",border:"1px solid #ddd",borderRadius:12,fontSize:14,fontWeight:700,cursor:"pointer"}}>{t.cancel}</button>
               <button onClick={confirmOptions} style={{flex:2,padding:"14px",background:"#000",color:"#fff",border:"none",borderRadius:12,fontSize:14,fontWeight:800,cursor:"pointer"}}>{t.add_to_cart}</button>
             </div>
+          </div>
+        </div>
+      )}
+
+      {loginSheet && (
+        <div onClick={() => setLoginSheet(false)} style={{position:"fixed",inset:0,background:"rgba(0,0,0,0.5)",display:"flex",alignItems:"flex-end",justifyContent:"center",zIndex:120}}>
+          <div onClick={e=>e.stopPropagation()} style={{background:"#fff",borderRadius:"18px 18px 0 0",padding:"22px 20px 30px",width:"100%",maxWidth:520}}>
+            <div style={{fontSize:18,fontWeight:800,marginBottom:4}}>{t.login_title}</div>
+            <div style={{fontSize:12.5,color:"#888",marginBottom:16}}>{t.login_note}</div>
+
+            {inAppBrowser && (
+              <div style={{background:"#FFF6E5",border:"1px solid #EAD9AE",borderRadius:12,padding:"10px 13px",fontSize:12.5,color:"#7a5c1e",marginBottom:14}}>
+                {t.login_inapp}
+              </div>
+            )}
+
+            {!otpSent ? (
+              <>
+                {!inAppBrowser && (
+                  <>
+                    <button onClick={signInWithGoogle} style={{width:"100%",padding:"14px",background:"#000",color:"#fff",border:"none",borderRadius:12,fontSize:14,fontWeight:800,cursor:"pointer",fontFamily:"inherit"}}>
+                      {t.login_google}
+                    </button>
+                    <div style={{display:"flex",alignItems:"center",gap:10,margin:"14px 0",color:"#bbb",fontSize:11,fontWeight:700}}>
+                      <div style={{flex:1,height:1,background:"#eee"}}/>{t.login_or}<div style={{flex:1,height:1,background:"#eee"}}/>
+                    </div>
+                  </>
+                )}
+                <input value={otpEmail} onChange={e=>setOtpEmail(e.target.value)} placeholder={t.login_email_ph}
+                  type="email" inputMode="email" autoComplete="email"
+                  style={{width:"100%",padding:"13px 14px",background:"#f7f7f7",border:"1px solid #eee",borderRadius:12,fontSize:15,outline:"none",fontFamily:"inherit",marginBottom:10}}/>
+                <button onClick={sendOtp} disabled={otpBusy}
+                  style={{width:"100%",padding:"14px",background:otpBusy?"#999":"#C8973E",color:"#000",border:"none",borderRadius:12,fontSize:14,fontWeight:800,cursor:otpBusy?"default":"pointer",fontFamily:"inherit"}}>
+                  {otpBusy ? "..." : t.login_send}
+                </button>
+              </>
+            ) : (
+              <>
+                <div style={{fontSize:13,color:"#333",marginBottom:12}}>📧 {t.login_sent}</div>
+                <input value={otpCode} onChange={e=>setOtpCode(e.target.value.replace(/\D/g,"").slice(0,6))} placeholder={t.login_code_ph}
+                  inputMode="numeric" autoComplete="one-time-code"
+                  style={{width:"100%",padding:"13px 14px",background:"#f7f7f7",border:"1px solid #eee",borderRadius:12,fontSize:20,letterSpacing:"0.3em",textAlign:"center",outline:"none",fontFamily:"inherit",marginBottom:10}}/>
+                <button onClick={dogrulaOtp} disabled={otpBusy}
+                  style={{width:"100%",padding:"14px",background:otpBusy?"#999":"#C8973E",color:"#000",border:"none",borderRadius:12,fontSize:14,fontWeight:800,cursor:otpBusy?"default":"pointer",fontFamily:"inherit"}}>
+                  {otpBusy ? "..." : t.login_verify}
+                </button>
+                <div style={{fontSize:11.5,color:"#999",marginTop:10,textAlign:"center"}}>{t.login_link_hint}</div>
+                <button onClick={()=>{setOtpSent(false);setOtpCode("");}} style={{width:"100%",marginTop:8,background:"none",border:"none",color:"#bbb",fontSize:12,cursor:"pointer",fontFamily:"inherit"}}>←</button>
+              </>
+            )}
           </div>
         </div>
       )}
