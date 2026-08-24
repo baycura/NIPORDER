@@ -269,7 +269,7 @@ export default function MenuMgmtPage() {
       {/* Categories row */}
       <div style={{display:"flex",gap:6,overflowX:"auto",marginBottom:12,paddingBottom:4}}>
         {orderedCats.map(c => (
-          <button key={c.id} onClick={() => setSelectedCat(c.id)} style={{flexShrink:0,padding:"8px 12px",border:"1px solid "+(selectedCat===c.id?"#C8973E":"#333"),borderRadius:14,fontSize:12,fontWeight:700,background:selectedCat===c.id?"rgba(200,151,62,0.2)":"#1A1A1A",color:selectedCat===c.id?"#C8973E":"#aaa",cursor:"pointer",whiteSpace:"nowrap",opacity:c.is_active===false?0.5:1}}>
+          <button key={c.id} onClick={() => setSelectedCat(c.id)} style={{flexShrink:0,padding:"8px 12px",border:"1px solid "+(selectedCat===c.id?"#FFFFFF":"#333"),borderRadius:14,fontSize:12,fontWeight:700,background:selectedCat===c.id?"rgba(255,255,255,0.2)":"#1A1A1A",color:selectedCat===c.id?"#FFFFFF":"#aaa",cursor:"pointer",whiteSpace:"nowrap",opacity:c.is_active===false?0.5:1}}>
             {c.parent_id && <span style={{color:"#666",marginRight:4}}>└</span>}
             {c.icon && <span style={{marginRight:4}}>{c.icon}</span>}{c.name}
           </button>
@@ -287,13 +287,13 @@ export default function MenuMgmtPage() {
             </div>
             <div style={{display:"flex",gap:6}}>
               <button onClick={()=>openEditCat(cat)} style={{padding:"5px 9px",background:"#222",color:"#aaa",border:"1px solid #333",borderRadius:6,fontSize:10,cursor:"pointer"}}>Düzenle</button>
-              <button onClick={()=>delCat(cat)} style={{padding:"5px 9px",background:"transparent",color:"#FF6666",border:"1px solid #553333",borderRadius:6,fontSize:10,cursor:"pointer"}}>Sil</button>
+              <button onClick={()=>delCat(cat)} style={{padding:"5px 9px",background:"transparent",color:"#C87A6A",border:"1px solid #2A2A2A",borderRadius:6,fontSize:10,cursor:"pointer"}}>Sil</button>
             </div>
           </div>
         );
       })()}
 
-      <button onClick={openNewProd} style={{padding:"10px 16px",background:"#C8973E",color:"#000",border:"none",borderRadius:10,fontSize:13,fontWeight:800,cursor:"pointer",marginBottom:14}}>+ Yeni Ürün</button>
+      <button onClick={openNewProd} style={{padding:"10px 16px",background:"#FFFFFF",color:"#000",border:"none",borderRadius:10,fontSize:13,fontWeight:800,cursor:"pointer",marginBottom:14}}>+ Yeni Ürün</button>
 
       {visibleProducts.length === 0 && <div style={{textAlign:"center",padding:30,color:"#666",fontSize:12}}>Bu kategoride urun yok</div>}
 
@@ -307,7 +307,7 @@ export default function MenuMgmtPage() {
           onDragEnd={() => { setDragSrc(null); setDragOver(null); }}
           style={{
             background: dragOver === idx && dragSrc !== idx ? "#2A2A2A" : "#1A1A1A",
-            border: dragOver === idx && dragSrc !== idx ? "2px dashed #C8973E" : "1px solid #2A2A2A",
+            border: dragOver === idx && dragSrc !== idx ? "2px dashed #FFFFFF" : "1px solid #2A2A2A",
             borderRadius: 10,
             padding: 12,
             marginBottom: 8,
@@ -328,18 +328,18 @@ export default function MenuMgmtPage() {
                 <button onClick={()=>moveProduct(p,"down")} style={{background:"#333",color:"#fff",border:"none",borderRadius:4,padding:"2px 8px",fontSize:11,cursor:"pointer",lineHeight:1}}>▼</button>
               </div>
               <div style={{fontSize:14,fontWeight:700,color:"#F0EDE8"}}>{p.name}</div>
-                {p.sold_out_today && <span style={{fontSize:9,padding:"2px 6px",background:"#552222",color:"#FFB0B0",borderRadius:6,fontWeight:700}}>TUKENDI</span>}
-                {p.show_in_party_menu && <span style={{fontSize:9,padding:"2px 6px",background:"#3D2D5C",color:"#D0B0FF",borderRadius:6,fontWeight:700}}>PARTI</span>}
-                {p.has_options && <span style={{fontSize:9,padding:"2px 6px",background:"#2D3D5C",color:"#B0D0FF",borderRadius:6,fontWeight:700}}>SEÇENEKLI</span>}
-                {p.kitchen_consignment && <span style={{fontSize:9,padding:"2px 6px",background:"#1F3D2A",color:"#9FE3B4",borderRadius:6,fontWeight:700}}>MUTFAK</span>}
-                {p.instant_discount_pct > 0 && <span style={{fontSize:9,padding:"2px 6px",background:"#3D2D18",color:"#FFD088",borderRadius:6,fontWeight:700}}>-%{p.instant_discount_pct}</span>}
+                {p.sold_out_today && <span style={{fontSize:9,padding:"2px 6px",background:"#2A2A2A",color:"#C87A6A",borderRadius:6,fontWeight:700}}>TUKENDI</span>}
+                {p.show_in_party_menu && <span style={{fontSize:9,padding:"2px 6px",background:"#2A2A2A",color:"#F0EDE8",borderRadius:6,fontWeight:700}}>PARTI</span>}
+                {p.has_options && <span style={{fontSize:9,padding:"2px 6px",background:"#2A2A2A",color:"#F0EDE8",borderRadius:6,fontWeight:700}}>SEÇENEKLI</span>}
+                {p.kitchen_consignment && <span style={{fontSize:9,padding:"2px 6px",background:"#2A2A2A",color:"#F0EDE8",borderRadius:6,fontWeight:700}}>MUTFAK</span>}
+                {p.instant_discount_pct > 0 && <span style={{fontSize:9,padding:"2px 6px",background:"#2A2A2A",color:"#F0EDE8",borderRadius:6,fontWeight:700}}>-%{p.instant_discount_pct}</span>}
               </div>
               {p.description && <div style={{fontSize:11,color:"#888",marginTop:3}}>{p.description}</div>}
-              <div style={{fontSize:13,color:"#C8973E",fontWeight:700,marginTop:4}}>₺{p.price}</div>
+              <div style={{fontSize:13,color:"#FFFFFF",fontWeight:700,marginTop:4}}>₺{p.price}</div>
             </div>
             <div style={{display:"flex",flexDirection:"column",gap:4}}>
               <button onClick={()=>openEditProd(p)} style={{padding:"5px 9px",background:"#222",color:"#aaa",border:"1px solid #333",borderRadius:6,fontSize:10,cursor:"pointer"}}>Düzenle</button>
-              <button onClick={()=>delProd(p)} style={{padding:"5px 9px",background:"transparent",color:"#FF6666",border:"1px solid #553333",borderRadius:6,fontSize:10,cursor:"pointer"}}>Sil</button>
+              <button onClick={()=>delProd(p)} style={{padding:"5px 9px",background:"transparent",color:"#C87A6A",border:"1px solid #2A2A2A",borderRadius:6,fontSize:10,cursor:"pointer"}}>Sil</button>
             </div>
           </div>
         </div>
@@ -390,7 +390,7 @@ export default function MenuMgmtPage() {
           )}
           {catForm.show_in_shop && (
             <div style={{background:"#161616",border:"1px solid #2A2A2A",borderRadius:10,padding:12,marginBottom:12}}>
-              <div style={{fontSize:10,color:"#C8973E",letterSpacing:"1.5px",fontWeight:700,marginBottom:8}}>🛍 MARKA KUTUSU (Shop sekmesinde görünür)</div>
+              <div style={{fontSize:10,color:"#8A8580",letterSpacing:"1.5px",fontWeight:700,marginBottom:8}}>🛍 MARKA KUTUSU (Shop sekmesinde görünür)</div>
               <div style={{fontSize:10,color:"#888",letterSpacing:"1px",fontWeight:700,marginBottom:4}}>KATEGORİ ETİKETİ (Seramik, Takı, Doğal Bakım...)</div>
               <div style={{display:"flex",gap:6,marginBottom:10}}>
                 <input value={catForm.shop_tag||""} onChange={e=>setCatForm({...catForm,shop_tag:e.target.value})} placeholder="TR" style={{flex:1,padding:"8px 10px",background:"#0C0C0C",border:"1px solid #2A2A2A",borderRadius:8,color:"#F0EDE8",fontSize:13,outline:"none"}}/>
@@ -440,7 +440,7 @@ export default function MenuMgmtPage() {
                 {[{k:"TRY",l:"₺"},{k:"EUR",l:"€"}].map(c => (
                   <button key={c.k} type="button" onClick={()=>setProdForm({...prodForm,currency:c.k})}
                     style={{padding:"6px 12px",border:"none",borderRadius:6,fontSize:14,fontWeight:800,cursor:"pointer",
-                            background:(prodForm.currency||"TRY")===c.k?"#C8973E":"transparent",
+                            background:(prodForm.currency||"TRY")===c.k?"#FFFFFF":"transparent",
                             color:(prodForm.currency||"TRY")===c.k?"#000":"#888"}}>{c.l}</button>
                 ))}
               </div>
@@ -462,7 +462,7 @@ export default function MenuMgmtPage() {
 
           {/* HAPPY HOUR */}
         <div style={{background:"#0C0C0C",border:"1px solid #222",borderRadius:10,padding:12,marginBottom:10}}>
-          <label style={{display:"flex",alignItems:"center",gap:8,cursor:"pointer",fontSize:14,fontWeight:600,color:"#f2ece1"}}>
+          <label style={{display:"flex",alignItems:"center",gap:8,cursor:"pointer",fontSize:14,fontWeight:600,color:"#F0EDE8"}}>
             <input type="checkbox" checked={!!prodForm.hh_enabled} onChange={e=>setProdForm({...prodForm,hh_enabled:e.target.checked})}/>
             🎉 Happy Hour
           </label>
@@ -473,7 +473,7 @@ export default function MenuMgmtPage() {
             </div>
             <div style={{fontSize:11,color:"#888",fontWeight:600,marginBottom:6}}>GÜNLER</div>
             <div style={{display:"flex",gap:6,marginBottom:10,flexWrap:"wrap"}}>
-              {["Pzt","Sal","Çar","Per","Cum","Cmt","Paz"].map((d,i)=>{const dn=(i+1)%7;const days=Array.isArray(prodForm.hh_days)?prodForm.hh_days:[0,1,2,3,4,5,6];const on=days.includes(dn);return(<button key={d} type="button" onClick={()=>{const nd=on?days.filter(x=>x!==dn):[...days,dn];setProdForm({...prodForm,hh_days:nd});}} style={{padding:"6px 11px",borderRadius:8,fontSize:13,fontWeight:600,border:"1px solid "+(on?"#C8973E":"#333"),background:on?"#C8973E":"#1a1a1a",color:on?"#000":"#888",cursor:"pointer"}}>{d}</button>);})}
+              {["Pzt","Sal","Çar","Per","Cum","Cmt","Paz"].map((d,i)=>{const dn=(i+1)%7;const days=Array.isArray(prodForm.hh_days)?prodForm.hh_days:[0,1,2,3,4,5,6];const on=days.includes(dn);return(<button key={d} type="button" onClick={()=>{const nd=on?days.filter(x=>x!==dn):[...days,dn];setProdForm({...prodForm,hh_days:nd});}} style={{padding:"6px 11px",borderRadius:8,fontSize:13,fontWeight:600,border:"1px solid "+(on?"#FFFFFF":"#333"),background:on?"#FFFFFF":"#1a1a1a",color:on?"#000":"#888",cursor:"pointer"}}>{d}</button>);})}
             </div>
             <div style={{fontSize:11,color:"#888",fontWeight:600,marginBottom:4}}>HAPPY HOUR FİYATI (₺)</div>
             <input type="number" step="0.01" value={prodForm.hh_price??""} onChange={e=>setProdForm({...prodForm,hh_price:e.target.value})} placeholder="örn: 200" style={{width:"100%",padding:8,background:"#1a1a1a",border:"1px solid #333",borderRadius:8,color:"#fff",boxSizing:"border-box"}}/>
@@ -481,7 +481,7 @@ export default function MenuMgmtPage() {
         </div>
 
         {/* OPTIONS SYSTEM */}
-          <div style={{background:"#0C0C0C",border:"1px solid "+(prodForm.has_options?"#C8973E":"#2A2A2A"),borderRadius:10,padding:12,marginBottom:12}}>
+          <div style={{background:"#0C0C0C",border:"1px solid "+(prodForm.has_options?"#FFFFFF":"#2A2A2A"),borderRadius:10,padding:12,marginBottom:12}}>
             <label style={{display:"flex",alignItems:"center",gap:8,cursor:"pointer",marginBottom:prodForm.has_options?10:0}}>
               <input type="checkbox" checked={!!prodForm.has_options} onChange={e=>setProdForm({...prodForm,has_options:e.target.checked, options_config: e.target.checked ? (prodForm.options_config||{groups:[]}) : {groups:[]}})}/>
               <span style={{fontSize:13,color:"#F0EDE8",fontWeight:700}}>Seçenekli ürün (beden/renk vb)</span>
@@ -490,7 +490,7 @@ export default function MenuMgmtPage() {
             {prodForm.has_options && (
               <div style={{marginTop:4}}>
                 <div style={{display:"flex",gap:6,marginBottom:10,flexWrap:"wrap"}}>
-                  <button onClick={applyBedenPreset} style={{padding:"6px 10px",background:"#3D2D18",color:"#FFD088",border:"1px solid #C8973E",borderRadius:6,fontSize:10,cursor:"pointer",fontWeight:700}}>+ Beden şablonu</button>
+                  <button onClick={applyBedenPreset} style={{padding:"6px 10px",background:"#2A2A2A",color:"#F0EDE8",border:"1px solid #FFFFFF",borderRadius:6,fontSize:10,cursor:"pointer",fontWeight:700}}>+ Beden şablonu</button>
                   <button onClick={addGroup} style={{padding:"6px 10px",background:"#222",color:"#aaa",border:"1px solid #444",borderRadius:6,fontSize:10,cursor:"pointer",fontWeight:700}}>+ Yeni grup</button>
                 </div>
 
@@ -498,7 +498,7 @@ export default function MenuMgmtPage() {
                   <div key={gIdx} style={{background:"#161616",border:"1px solid #333",borderRadius:8,padding:10,marginBottom:8}}>
                     <div style={{display:"flex",gap:6,marginBottom:8}}>
                       <input value={g.name||""} onChange={e=>updateGroup(gIdx,"name",e.target.value)} placeholder="Grup adi (ör: Beden, Renk)" style={{...inputS,flex:1,padding:"8px 10px",fontSize:13}}/>
-                      <button onClick={()=>removeGroup(gIdx)} style={{padding:"8px 10px",background:"transparent",color:"#FF6666",border:"1px solid #553333",borderRadius:6,fontSize:11,cursor:"pointer"}}>Sil</button>
+                      <button onClick={()=>removeGroup(gIdx)} style={{padding:"8px 10px",background:"transparent",color:"#C87A6A",border:"1px solid #2A2A2A",borderRadius:6,fontSize:11,cursor:"pointer"}}>Sil</button>
                     </div>
                     <label style={{display:"flex",alignItems:"center",gap:6,marginBottom:8,cursor:"pointer"}}>
                       <input type="checkbox" checked={!!g.required} onChange={e=>updateGroup(gIdx,"required",e.target.checked)}/>
@@ -509,7 +509,7 @@ export default function MenuMgmtPage() {
                       {(g.options||[]).map((opt, oIdx) => (
                         <div key={oIdx} style={{display:"flex",alignItems:"center",gap:4,padding:"4px 8px",background:"#2A2A2A",borderRadius:6,fontSize:11,color:"#F0EDE8"}}>
                           <span>{opt}</span>
-                          <button onClick={()=>removeOption(gIdx,oIdx)} style={{background:"none",border:"none",color:"#FF6666",fontSize:13,cursor:"pointer",padding:0,lineHeight:1}}>×</button>
+                          <button onClick={()=>removeOption(gIdx,oIdx)} style={{background:"none",border:"none",color:"#C87A6A",fontSize:13,cursor:"pointer",padding:0,lineHeight:1}}>×</button>
                         </div>
                       ))}
                     </div>
@@ -531,17 +531,17 @@ export default function MenuMgmtPage() {
           <div style={{marginBottom:10}}>
             <label style={{display:"block",fontSize:11,color:"#888",marginBottom:4,fontWeight:600,letterSpacing:0.5}}>🏪 HANGİ MENÜDE GÖRÜNSÜN? (birden fazla seçilebilir)</label>
             <div style={{display:"flex",gap:6}}>
-              {[{id:PARIS_STORE_ID,label:"🗼 Not In Paris"},{id:DONER_STORE_ID,label:"🥙 Döner"}].map(s => { const sel = [prodForm.store_id,...(prodForm.additional_store_ids||[])].filter(Boolean).includes(s.id); return (<button key={s.id} type="button" onClick={()=>{const cur=[prodForm.store_id,...(prodForm.additional_store_ids||[])].filter(Boolean);const next=cur.includes(s.id)?cur.filter(x=>x!==s.id):[...cur,s.id];setProdForm({...prodForm,store_id:next[0]||"",additional_store_ids:next.slice(1)});}} style={{flex:1,padding:"8px",background:sel?"#C8973E":"#222",color:sel?"#000":"#888",border:"1px solid "+(sel?"#C8973E":"#333"),borderRadius:6,fontSize:13,fontWeight:700,cursor:"pointer"}}>{sel?"✓ ":""}{s.label}</button>); })}
+              {[{id:PARIS_STORE_ID,label:"🗼 Not In Paris"},{id:DONER_STORE_ID,label:"🥙 Döner"}].map(s => { const sel = [prodForm.store_id,...(prodForm.additional_store_ids||[])].filter(Boolean).includes(s.id); return (<button key={s.id} type="button" onClick={()=>{const cur=[prodForm.store_id,...(prodForm.additional_store_ids||[])].filter(Boolean);const next=cur.includes(s.id)?cur.filter(x=>x!==s.id):[...cur,s.id];setProdForm({...prodForm,store_id:next[0]||"",additional_store_ids:next.slice(1)});}} style={{flex:1,padding:"8px",background:sel?"#FFFFFF":"#222",color:sel?"#000":"#888",border:"1px solid "+(sel?"#FFFFFF":"#333"),borderRadius:6,fontSize:13,fontWeight:700,cursor:"pointer"}}>{sel?"✓ ":""}{s.label}</button>); })}
             </div>
           </div>
 
           <div style={{marginBottom:10}}>
             <label style={{display:"block",fontSize:11,color:"#888",marginBottom:4,fontWeight:600,letterSpacing:0.5}}>🍽️ BU ÜRÜNÜ KİM YAPIYOR? (mutfak)</label>
             <div style={{display:"flex",gap:6}}>
-              {[{id:PARIS_STORE_ID,label:"🗼 Kendi Mutfağımız"},{id:DONER_STORE_ID,label:"🥙 Döner Mutfağı"}].map(s => { const sel = prodForm.kitchen_destination_store_id === s.id; return (<button key={s.id} type="button" onClick={()=>setProdForm({...prodForm,kitchen_destination_store_id:s.id})} style={{flex:1,padding:"8px",background:sel?"#E07A3E":"#222",color:sel?"#000":"#888",border:"1px solid "+(sel?"#E07A3E":"#333"),borderRadius:6,fontSize:13,fontWeight:700,cursor:"pointer"}}>{sel?"✓ ":""}{s.label}</button>); })}
+              {[{id:PARIS_STORE_ID,label:"🗼 Kendi Mutfağımız"},{id:DONER_STORE_ID,label:"🥙 Döner Mutfağı"}].map(s => { const sel = prodForm.kitchen_destination_store_id === s.id; return (<button key={s.id} type="button" onClick={()=>setProdForm({...prodForm,kitchen_destination_store_id:s.id})} style={{flex:1,padding:"8px",background:sel?"#FFFFFF":"#222",color:sel?"#000":"#888",border:"1px solid "+(sel?"#FFFFFF":"#333"),borderRadius:6,fontSize:13,fontWeight:700,cursor:"pointer"}}>{sel?"✓ ":""}{s.label}</button>); })}
             </div>
             {prodForm.kitchen_destination_store_id === DONER_STORE_ID && (
-              <div style={{marginTop:6,fontSize:11,color:"#E0A060",background:"rgba(224,122,62,0.1)",border:"1px solid #4A3320",borderRadius:6,padding:"6px 8px",lineHeight:1.4}}>
+              <div style={{marginTop:6,fontSize:11,color:"#8A8580",background:"rgba(224,122,62,0.1)",border:"1px solid #2A2A2A",borderRadius:6,padding:"6px 8px",lineHeight:1.4}}>
                 ℹ️ Bu bir <b>mutfak ürünü</b>. NIP'te satılan cirosu <b>ay sonu mutfağa ödenecek</b> listesine eklenir (Mahsuplaşma sayfası).
               </div>
             )}
@@ -595,14 +595,14 @@ function OptionInput({onAdd}) {
   return (
     <div style={{display:"flex",gap:6}}>
       <input value={val} onChange={e=>setVal(e.target.value)} onKeyDown={e=>{ if (e.key==="Enter") { e.preventDefault(); submit(); }}} placeholder="Seçenek ekle (örn: S, M, L) + Enter" style={{flex:1,padding:"6px 10px",background:"#0C0C0C",border:"1px solid #2A2A2A",borderRadius:6,color:"#F0EDE8",fontSize:12,outline:"none",fontFamily:"inherit"}}/>
-      <button onClick={submit} style={{padding:"6px 12px",background:"#C8973E",color:"#000",border:"none",borderRadius:6,fontSize:11,fontWeight:700,cursor:"pointer"}}>Ekle</button>
+      <button onClick={submit} style={{padding:"6px 12px",background:"#FFFFFF",color:"#000",border:"none",borderRadius:6,fontSize:11,fontWeight:700,cursor:"pointer"}}>Ekle</button>
     </div>
   );
 }
 
 const inputS = {width:"100%",padding:"10px 12px",background:"#0C0C0C",border:"1px solid #2A2A2A",borderRadius:8,color:"#F0EDE8",fontSize:14,outline:"none",fontFamily:"inherit"};
 const cancelBtn = {flex:1,padding:"12px",background:"transparent",color:"#888",border:"1px solid #333",borderRadius:10,fontSize:14,fontWeight:700,cursor:"pointer"};
-const saveBtn = {flex:2,padding:"12px",background:"#C8973E",color:"#000",border:"none",borderRadius:10,fontSize:14,fontWeight:800,cursor:"pointer"};
+const saveBtn = {flex:2,padding:"12px",background:"#FFFFFF",color:"#000",border:"none",borderRadius:10,fontSize:14,fontWeight:800,cursor:"pointer"};
 
 function Field({label, children}) {
   return (<div style={{marginBottom:12}}>

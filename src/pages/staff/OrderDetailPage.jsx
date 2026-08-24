@@ -310,15 +310,15 @@ export default function OrderDetailPage() {
   return (
     <div style={{fontFamily:cv,color:"#F0EDE8",paddingBottom:100}}>
       <div style={{display:"flex",justifyContent:"space-between",alignItems:"center",marginBottom:10,flexWrap:"wrap",gap:8}}>
-        <button onClick={() => navigate(-1)} style={{background:"none",border:"none",color:"#C8973E",fontSize:13,cursor:"pointer",padding:0}}>← Geri</button>
+        <button onClick={() => navigate(-1)} style={{background:"none",border:"none",color:"#FFFFFF",fontSize:13,cursor:"pointer",padding:0}}>← Geri</button>
         {order.status !== "cancelled" && order.status !== "paid" && (
-          <button onClick={cancelOrder} style={{background:"none",border:"1px solid #553333",color:"#FF6666",fontSize:11,borderRadius:6,padding:"5px 10px",cursor:"pointer"}}>İptal Et</button>
+          <button onClick={cancelOrder} style={{background:"none",border:"1px solid #2A2A2A",color:"#C87A6A",fontSize:11,borderRadius:6,padding:"5px 10px",cursor:"pointer"}}>İptal Et</button>
         )}
       </div>
 
       <div style={{marginBottom:14}}>
         <div style={{display:"flex",alignItems:"center",gap:8,flexWrap:"wrap"}}>
-          {order.stores?.slug && <span style={{display:"inline-block",background:order.stores.slug==="doner"?"#C8973E":"#3ECF8E",color:"#000",padding:"3px 10px",borderRadius:6,fontSize:10,fontWeight:800,letterSpacing:"0.5px"}}>{order.stores.slug==="doner"?"🥙 DÖNER":"🗼 PARIS"}</span>}
+          {order.stores?.slug && <span style={{display:"inline-block",background:order.stores.slug==="doner"?"#FFFFFF":"#222222",color:order.stores.slug==="doner"?"#000":"#F0EDE8",padding:"3px 10px",borderRadius:6,fontSize:10,fontWeight:800,letterSpacing:"0.5px"}}>{order.stores.slug==="doner"?"🥙 DÖNER":"🗼 PARIS"}</span>}
           {where ? (
             <div style={{display:"flex",alignItems:"center",gap:8,flexWrap:"wrap"}}>
               <div style={{fontSize:24,fontWeight:800}}>{where}</div>
@@ -336,12 +336,12 @@ export default function OrderDetailPage() {
       </div>
 
       {/* Uye bagla: bagli uyenin ozel fiyatlari eklenen urunlere otomatik uygulanir */}
-      <div style={{marginBottom:14,background:order?.customer_id?"#1E1A10":"#161616",border:"1px solid "+(order?.customer_id?"#C8973E55":"#2A2A2A"),borderRadius:10,padding:10}}>
-        <div style={{fontSize:10,color:order?.customer_id?"#FFD27A":"#888",letterSpacing:"1.5px",fontWeight:700,marginBottom:6}}>
+      <div style={{marginBottom:14,background:"#161616",border:"1px solid "+(order?.customer_id?"#FFFFFF":"#2A2A2A"),borderRadius:10,padding:10}}>
+        <div style={{fontSize:10,color:order?.customer_id?"#FFFFFF":"#888",letterSpacing:"1.5px",fontWeight:700,marginBottom:6}}>
           {order?.customer_id ? "👤 ÜYE HESABI BAĞLI" : "👤 ÜYE HESABI"}
         </div>
         <select value={order?.customer_id || ""} onChange={e => linkCustomer(e.target.value || null)}
-          style={{width:"100%",padding:"10px 12px",background:"#0C0C0C",border:"1px solid "+(order?.customer_id?"#C8973E":"#2A2A2A"),borderRadius:8,color:"#F0EDE8",fontSize:14,outline:"none",fontFamily:"inherit"}}>
+          style={{width:"100%",padding:"10px 12px",background:"#0C0C0C",border:"1px solid "+(order?.customer_id?"#FFFFFF":"#2A2A2A"),borderRadius:8,color:"#F0EDE8",fontSize:14,outline:"none",fontFamily:"inherit"}}>
           <option value="">— Üye değil (misafir) —</option>
           {customers.map(c => (<option key={c.id} value={c.id}>{c.name}{c.phone ? " · " + c.phone : ""}</option>))}
         </select>
@@ -363,35 +363,35 @@ export default function OrderDetailPage() {
         {items.map(it => {
           const opts = optionsText(it.selected_options);
           const prod = products.find(p => p.id === it.product_id);
-          const statusColor = it.kitchen_status === "ready" ? "#3ECF8E"
-                            : it.kitchen_status === "preparing" ? "#E07A3E"
-                            : it.kitchen_status === "served" ? "#5A8FE0" : "#888";
+          const statusColor = it.kitchen_status === "ready" ? "#FFFFFF"
+                            : it.kitchen_status === "preparing" ? "#FFFFFF"
+                            : it.kitchen_status === "served" ? "#8A8580" : "#888";
           return (
             <div key={it.id} style={{background:"#1A1A1A",border:"1px solid #2A2A2A",borderRadius:10,padding:12,marginBottom:8,display:"flex",alignItems:"center",gap:10}}>
               <div style={{flex:1,minWidth:0}}>
                 <div style={{fontSize:14,fontWeight:700}}>{it.product_name}</div>
-                {opts && <div style={{fontSize:11,color:"#C8973E",marginTop:2,fontWeight:600}}>{opts}</div>}
+                {opts && <div style={{fontSize:11,color:"#FFFFFF",marginTop:2,fontWeight:600}}>{opts}</div>}
                 {it.notes && <div style={{fontSize:11,color:"#aaa",fontStyle:"italic",marginTop:2}}>Not: {it.notes}</div>}
                 <div style={{fontSize:11,marginTop:4}}>
                   {Number(it.final_price) < Number(it.product_price) && (
                     <span style={{color:"#666",textDecoration:"line-through",marginRight:5}}>₺{Math.round(Number(it.product_price))}</span>
                   )}
                   {it.is_treat
-                    ? <span style={{color:"#E8C36A",fontWeight:800}}>🎁 İKRAM{verenAdi(it.treated_by) ? " — " + verenAdi(it.treated_by) : ""} · </span>
+                    ? <span style={{color:"#F0EDE8",fontWeight:800}}>🎁 İKRAM{verenAdi(it.treated_by) ? " — " + verenAdi(it.treated_by) : ""} · </span>
                     : <span style={{color:"#888"}}>₺{it.final_price} · </span>}
                   <span style={{color:statusColor,fontWeight:700,letterSpacing:"1px"}}>{it.kitchen_status?.toUpperCase()}</span>
                 </div>
                 <div style={{display:"flex",gap:6,flexWrap:"wrap"}}>
                 {canTakeaway(prod) && (
                   <button onClick={() => toggleItemTakeaway(it)}
-                    style={{marginTop:6,padding:"6px 12px",background:it.is_takeaway?"#C8973E":"transparent",color:it.is_takeaway?"#000":"#888",
-                            border:"1px solid "+(it.is_takeaway?"#C8973E":"#3A3A3A"),borderRadius:20,fontSize:11,fontWeight:700,cursor:"pointer",fontFamily:"inherit"}}>
+                    style={{marginTop:6,padding:"6px 12px",background:it.is_takeaway?"#FFFFFF":"transparent",color:it.is_takeaway?"#000":"#888",
+                            border:"1px solid "+(it.is_takeaway?"#FFFFFF":"#3A3A3A"),borderRadius:20,fontSize:11,fontWeight:700,cursor:"pointer",fontFamily:"inherit"}}>
                     {it.is_takeaway ? "✓ 🥤 Paket" : "🥤 Paket"}
                   </button>
                 )}
                 <button onClick={() => toggleTreat(it)}
-                  style={{marginTop:6,padding:"6px 12px",background:it.is_treat?"#E8C36A":"transparent",color:it.is_treat?"#000":"#888",
-                          border:"1px solid "+(it.is_treat?"#E8C36A":"#3A3A3A"),borderRadius:20,fontSize:11,fontWeight:700,cursor:"pointer",fontFamily:"inherit"}}>
+                  style={{marginTop:6,padding:"6px 12px",background:it.is_treat?"#F0EDE8":"transparent",color:it.is_treat?"#000":"#888",
+                          border:"1px solid "+(it.is_treat?"#F0EDE8":"#3A3A3A"),borderRadius:20,fontSize:11,fontWeight:700,cursor:"pointer",fontFamily:"inherit"}}>
                   {it.is_treat ? "✓ 🎁 İkram" : "🎁 İkram"}
                 </button>
                 </div>
@@ -408,7 +408,7 @@ export default function OrderDetailPage() {
 
       {items.length > 0 && order.status !== "paid" && order.status !== "cancelled" && (
         <div style={{position:"fixed",bottom:14,left:14,right:14,zIndex:40}}>
-          <button onClick={goToPayment} style={{width:"100%",padding:"14px",background:allReady?"#3ECF8E":"#C8973E",color:"#000",border:"none",borderRadius:12,fontSize:14,fontWeight:800,cursor:"pointer",boxShadow:"0 4px 16px rgba(0,0,0,0.4)"}}>
+          <button onClick={goToPayment} style={{width:"100%",padding:"14px",background:allReady?"#FFFFFF":"#2A2A2A",color:allReady?"#000":"#F0EDE8",border:"none",borderRadius:12,fontSize:14,fontWeight:800,cursor:"pointer",boxShadow:"0 4px 16px rgba(0,0,0,0.4)"}}>
             {allReady ? "✓ Servis tamamlandı · " : ""}💰 Ödeme Al · ₺{order.total || 0}
           </button>
         </div>
@@ -421,13 +421,13 @@ export default function OrderDetailPage() {
         {menuOpen && (
           <>
             <button onClick={() => setTakeawayMode(!takeawayMode)}
-              style={{width:"100%",marginTop:10,padding:"12px",background:takeawayMode?"#C8973E":"#1A1A1A",color:takeawayMode?"#000":"#999",
-                      border:"1px solid "+(takeawayMode?"#C8973E":"#333"),borderRadius:10,fontSize:13,fontWeight:800,cursor:"pointer",fontFamily:"inherit"}}>
+              style={{width:"100%",marginTop:10,padding:"12px",background:takeawayMode?"#FFFFFF":"#1A1A1A",color:takeawayMode?"#000":"#999",
+                      border:"1px solid "+(takeawayMode?"#FFFFFF":"#333"),borderRadius:10,fontSize:13,fontWeight:800,cursor:"pointer",fontFamily:"inherit"}}>
               {takeawayMode ? "✓ 🥤 PAKET MODU AÇIK — eklenen içecekler götür" : "🥤 Paket (take away)"}
             </button>
             <div style={{position:"relative",marginTop:10}}>
               <input value={prodSearch} onChange={e=>setProdSearch(e.target.value)} placeholder="🔍 Ürün ara (tüm kategorilerde) — örn: latte, efes, şapka"
-                style={{width:"100%",padding:"12px 40px 12px 14px",background:"#0C0C0C",border:"1px solid "+(q?"#C8973E":"#2A2A2A"),borderRadius:10,color:"#F0EDE8",fontSize:14,outline:"none",fontFamily:"inherit"}}/>
+                style={{width:"100%",padding:"12px 40px 12px 14px",background:"#0C0C0C",border:"1px solid "+(q?"#FFFFFF":"#2A2A2A"),borderRadius:10,color:"#F0EDE8",fontSize:14,outline:"none",fontFamily:"inherit"}}/>
               {q && (
                 <button onClick={() => setProdSearch("")} style={{position:"absolute",right:8,top:"50%",transform:"translateY(-50%)",width:28,height:28,background:"#2A2A2A",color:"#aaa",border:"none",borderRadius:8,fontSize:14,cursor:"pointer",lineHeight:1}}>×</button>
               )}
@@ -435,7 +435,7 @@ export default function OrderDetailPage() {
             {!q && (
             <div style={{display:"flex",gap:5,overflowX:"auto",marginTop:10,paddingBottom:4}}>
               {catChips.map(c => (
-                <button key={c.id} onClick={() => setSelectedCat(c.id)} style={{flexShrink:0,padding:"6px 10px",border:"1px solid "+(selectedCat===c.id?"#C8973E":"#333"),borderRadius:12,fontSize:10,fontWeight:700,background:selectedCat===c.id?"rgba(200,151,62,0.2)":"#1A1A1A",color:selectedCat===c.id?"#C8973E":"#aaa",cursor:"pointer",whiteSpace:"nowrap",letterSpacing:"0.5px"}}>
+                <button key={c.id} onClick={() => setSelectedCat(c.id)} style={{flexShrink:0,padding:"6px 10px",border:"1px solid "+(selectedCat===c.id?"#FFFFFF":"#333"),borderRadius:12,fontSize:10,fontWeight:700,background:selectedCat===c.id?"rgba(255,255,255,0.2)":"#1A1A1A",color:selectedCat===c.id?"#FFFFFF":"#aaa",cursor:"pointer",whiteSpace:"nowrap",letterSpacing:"0.5px"}}>
                   {c.icon}{c.name?.toUpperCase()}
                 </button>
               ))}
@@ -448,18 +448,18 @@ export default function OrderDetailPage() {
                   <div>
                     <div style={{fontSize:15,fontWeight:700}}>{p.name}{p.brand && <span style={{color:"#888",fontWeight:600}}> · {p.brand}</span>}</div>
                     {q && <div style={{fontSize:10,color:"#777",marginTop:1,letterSpacing:"0.5px"}}>{catNameOf(p)}</div>}
-                    {p.track_stock && <div style={{fontSize:11,color:Number(p.retail_stock)>0?"#6FB3C0":"#c66",marginTop:2,fontWeight:600}}>Stok: {p.retail_stock||0} adet{Array.isArray(p.variants)&&p.variants.length?" · "+p.variants.filter(v=>Number(v.stock)>0).map(v=>v.name).join("/"):""}</div>}
-                    <div style={{fontSize:13,color:"#C8973E",fontWeight:700,marginTop:2}}>
+                    {p.track_stock && <div style={{fontSize:11,color:Number(p.retail_stock)>0?"#8A8580":"#C87A6A",marginTop:2,fontWeight:600}}>Stok: {p.retail_stock||0} adet{Array.isArray(p.variants)&&p.variants.length?" · "+p.variants.filter(v=>Number(v.stock)>0).map(v=>v.name).join("/"):""}</div>}
+                    <div style={{fontSize:13,color:"#FFFFFF",fontWeight:700,marginTop:2}}>
                       {hhPrices[p.id] != null && Number(p.price) > 0 ? (
                         <>
                           <span style={{color:"#666",textDecoration:"line-through",fontWeight:600,marginRight:6}}>₺{Math.round(Number(p.price))}</span>
                           <span>₺{Math.round(Number(hhPrices[p.id]))}</span>
-                          <span style={{marginLeft:6,fontSize:9,padding:"2px 6px",background:"#C8973E",color:"#000",borderRadius:5,letterSpacing:"0.5px"}}>HAPPY HOUR</span>
+                          <span style={{marginLeft:6,fontSize:9,padding:"2px 6px",background:"#FFFFFF",color:"#000",borderRadius:5,letterSpacing:"0.5px"}}>HAPPY HOUR</span>
                         </>
                       ) : (Number(p.price) > 0 ? "₺" + p.price : "Serbest tutar")}
                     </div>
                   </div>
-                  <button onClick={() => addProduct(p)} style={{width:46,height:46,background:"#C8973E",color:"#000",border:"none",borderRadius:"50%",fontSize:24,fontWeight:800,cursor:"pointer",flexShrink:0,display:"flex",alignItems:"center",justifyContent:"center",lineHeight:1}}>+</button>
+                  <button onClick={() => addProduct(p)} style={{width:46,height:46,background:"#FFFFFF",color:"#000",border:"none",borderRadius:"50%",fontSize:24,fontWeight:800,cursor:"pointer",flexShrink:0,display:"flex",alignItems:"center",justifyContent:"center",lineHeight:1}}>+</button>
                 </div>
               ))}
             </div>
@@ -475,7 +475,7 @@ export default function OrderDetailPage() {
             {treatVerenler().map(v => (
               <button key={v.id} onClick={() => { const it = treatModal; setTreatModal(null); applyTreat(it, v.id); }}
                 style={{width:"100%",padding:"13px 14px",marginBottom:7,display:"flex",alignItems:"center",gap:10,
-                        background: v.ben ? "#2A2210" : "#222", color: v.ben ? "#E8C36A" : "#ddd",
+                        background: v.ben ? "#161616" : "#222", color: v.ben ? "#F0EDE8" : "#ddd",
                         border:"1px solid " + (v.ben ? "#E8C36A55" : "#333"), borderRadius:10,
                         fontSize:14, fontWeight:700, cursor:"pointer", fontFamily:cv, textAlign:"left"}}>
                 {v.ben ? "👤 Ben — " + v.ad : "⭐ " + v.ad}
@@ -518,9 +518,9 @@ export default function OrderDetailPage() {
                       return (
                         <button key={opt} onClick={() => sec(g, opt)}
                           style={{padding:"9px 13px",borderRadius:9,fontSize:13,fontWeight:700,cursor:"pointer",fontFamily:cv,
-                                  background: secili(g,opt) ? "#C8973E" : "#222",
+                                  background: secili(g,opt) ? "#FFFFFF" : "#222",
                                   color: secili(g,opt) ? "#000" : "#ccc",
-                                  border: "1px solid " + (secili(g,opt) ? "#C8973E" : "#333")}}>
+                                  border: "1px solid " + (secili(g,opt) ? "#FFFFFF" : "#333")}}>
                           {opt}{fark ? ` +₺${fark}` : ""}
                         </button>
                       );
@@ -532,7 +532,7 @@ export default function OrderDetailPage() {
                 <button onClick={() => setOptModal(null)} style={{flex:1,padding:"13px",background:"transparent",color:"#888",border:"1px solid #333",borderRadius:10,fontSize:14,fontWeight:700,cursor:"pointer",fontFamily:cv}}>Vazgeç</button>
                 <button disabled={eksik}
                   onClick={() => { const m = optModal; setOptModal(null); addProduct(m.p, m.sel); }}
-                  style={{flex:2,padding:"13px",background:eksik?"#333":"#C8973E",color:eksik?"#777":"#000",border:"none",borderRadius:10,fontSize:14,fontWeight:800,cursor:eksik?"not-allowed":"pointer",fontFamily:cv}}>
+                  style={{flex:2,padding:"13px",background:eksik?"#333":"#FFFFFF",color:eksik?"#777":"#000",border:"none",borderRadius:10,fontSize:14,fontWeight:800,cursor:eksik?"not-allowed":"pointer",fontFamily:cv}}>
                   {eksik ? "Zorunlu seçim var" : `Ekle · ₺${Math.round(toplam)}`}
                 </button>
               </div>

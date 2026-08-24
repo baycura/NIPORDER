@@ -38,6 +38,46 @@ async function hmacB64(data: string, key: string): Promise<string> {
   return b64(new Uint8Array(sig));
 }
 
+// Basarisiz odemeyi sahibe duyurur. Bugune kadar hata YALNIZCA console.error'a
+// yaziliyordu ve kimse bakmiyordu: 8-10 Agustos arasi 15 denemenin 15'i dustu,
+// bir musteri tek basina 12 kez denedi, sonra siparisi iptal edildi — kimsenin
+// haberi olmadi. Hepsi acilistan ~32 dk sonra dustu, yani PayTR reddetmiyor;
+// odeme sayfasi aciliyor ve tamamlanmiyor (timeout_limit 30 dk).
+//
+// Ust uste 3 basarisizlikta uyarir ve saatte en fazla bir mesaj gonderir —
+// tek tek kart reddi icin telefon otturmasin.
+async function basarisizUyar(merchantOid: string, sebep: string) {
+  try {
+    const { data: son } = await supabase
+      .from("paytr_payments").select("status").order("created_at", { ascending: false }).limit(3);
+    if ((son || []).filter((p: { status: string }) => p.status === "failed").length < 3) return;
+
+    const simdi = Date.now();
+    const sonUyari = Number((await cfg("paytr_last_alert_ms")) || 0);
+    if (simdi - sonUyari < 3600_000) return;
+
+    const fnUrl = await cfg("fn_url");
+    const secret = await cfg("webhook_secret");
+    if (!fnUrl || !secret) return;
+
+    const metin = `⚠️ Online ödeme çalışmıyor\nSon 3 deneme de başarısız (${merchantOid.slice(-8)})` +
+      (sebep ? `\nSebep: ${sebep}` : "\nÖdeme sayfası açılıyor ama tamamlanmıyor.") +
+      `\n\nKapatmak için: Ayarlar → Online ödeme`;
+
+    const { data: owners } = await supabase
+      .from("staff").select("telegram_chat_id")
+      .eq("role", "admin").eq("is_active", true).not("telegram_chat_id", "is", null);
+    for (const o of owners || []) {
+      await fetch(`${fnUrl}?action=send&secret=${encodeURIComponent(secret)}` +
+        `&to=${encodeURIComponent((o as { telegram_chat_id: string }).telegram_chat_id)}` +
+        `&text=${encodeURIComponent(metin)}`).catch(() => {});
+    }
+    await supabase.from("bot_config").upsert({ key: "paytr_last_alert_ms", value: String(simdi) });
+  } catch (e) {
+    console.error("paytr uyari gonderilemedi", e);
+  }
+}
+
 Deno.serve(async (req: Request) => {
   if (req.method === "OPTIONS") return new Response("ok", { headers: CORS });
   const url = new URL(req.url);
@@ -206,6 +246,7 @@ Deno.serve(async (req: Request) => {
         await supabase.from("paytr_payments").update({ status: "success", processed_at: new Date().toISOString() }).eq("merchant_oid", merchantOid);
       } else {
         await supabase.from("paytr_payments").update({ status: "failed", processed_at: new Date().toISOString() }).eq("merchant_oid", merchantOid);
+        await basarisizUyar(merchantOid, String(form.get("failed_reason_msg") || form.get("failed_reason_code") || ""));
       }
       return new Response("OK");
     }

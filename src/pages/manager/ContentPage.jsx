@@ -136,12 +136,12 @@ export default function ContentPage() {
 
       <div style={{display:"flex",gap:6,marginBottom:8}}>
         {KINDS.map(k => (
-          <button key={k.key} onClick={() => setKind(k.key)} style={{flex:1,padding:"10px",border:"none",borderRadius:10,fontSize:12,fontWeight:700,background:kind===k.key?"#C8973E":"#222",color:kind===k.key?"#000":"#888",cursor:"pointer"}}>{k.label}</button>
+          <button key={k.key} onClick={() => setKind(k.key)} style={{flex:1,padding:"10px",border:"none",borderRadius:10,fontSize:12,fontWeight:700,background:kind===k.key?"#FFFFFF":"#222",color:kind===k.key?"#000":"#888",cursor:"pointer"}}>{k.label}</button>
         ))}
       </div>
       <div style={{fontSize:11,color:"#888",marginBottom:14}}>{kindInfo?.hint}</div>
 
-      <button onClick={openNew} style={{padding:"10px 16px",background:"#C8973E",color:"#000",border:"none",borderRadius:10,fontSize:13,fontWeight:800,cursor:"pointer",marginBottom:14}}>+ Yeni İçerik</button>
+      <button onClick={openNew} style={{padding:"10px 16px",background:"#FFFFFF",color:"#000",border:"none",borderRadius:10,fontSize:13,fontWeight:800,cursor:"pointer",marginBottom:14}}>+ Yeni İçerik</button>
 
       {filtered.length === 0 && <div style={{textAlign:"center",padding:30,color:"#666",fontSize:12}}>Henüz içerik yok</div>}
 
@@ -155,8 +155,8 @@ export default function ContentPage() {
           </div>
           <div style={{display:"flex",flexDirection:"column",gap:4,flexShrink:0}}>
             <button onClick={() => openEdit(p)} style={{padding:"5px 9px",background:"#222",color:"#aaa",border:"1px solid #333",borderRadius:6,fontSize:10,cursor:"pointer",fontWeight:700}}>Düzenle</button>
-            <button onClick={() => toggleActive(p)} style={{padding:"5px 9px",background:p.is_active===false?"#553355":"transparent",color:p.is_active===false?"#FFB0FF":"#888",border:"1px solid #333",borderRadius:6,fontSize:10,cursor:"pointer"}}>{p.is_active===false?"Pasif":"Aktif"}</button>
-            <button onClick={() => del(p)} style={{padding:"5px 9px",background:"transparent",color:"#FF6666",border:"1px solid #553333",borderRadius:6,fontSize:10,cursor:"pointer"}}>Sil</button>
+            <button onClick={() => toggleActive(p)} style={{padding:"5px 9px",background:p.is_active===false?"#2A2A2A":"transparent",color:p.is_active===false?"#F0EDE8":"#888",border:"1px solid #333",borderRadius:6,fontSize:10,cursor:"pointer"}}>{p.is_active===false?"Pasif":"Aktif"}</button>
+            <button onClick={() => del(p)} style={{padding:"5px 9px",background:"transparent",color:"#C87A6A",border:"1px solid #2A2A2A",borderRadius:6,fontSize:10,cursor:"pointer"}}>Sil</button>
           </div>
         </div>
       ))}
@@ -168,12 +168,12 @@ export default function ContentPage() {
 
             <div style={{display:"flex",gap:6,marginBottom:12}}>
               {KINDS.map(k => (
-                <button key={k.key} onClick={() => setForm({...form, kind:k.key})} style={{flex:1,padding:"9px",border:"none",borderRadius:8,fontSize:11,fontWeight:700,background:form.kind===k.key?"#C8973E":"#222",color:form.kind===k.key?"#000":"#888",cursor:"pointer"}}>{k.label}</button>
+                <button key={k.key} onClick={() => setForm({...form, kind:k.key})} style={{flex:1,padding:"9px",border:"none",borderRadius:8,fontSize:11,fontWeight:700,background:form.kind===k.key?"#FFFFFF":"#222",color:form.kind===k.key?"#000":"#888",cursor:"pointer"}}>{k.label}</button>
               ))}
             </div>
 
-            <div style={{background:"#161616",border:"1px solid #2A2A3A",borderRadius:12,padding:12,marginBottom:14}}>
-              <div style={{fontSize:10,color:"#B8C6F0",letterSpacing:"1.5px",fontWeight:700,marginBottom:8}}>🤖 AI İLE YAZ (üç dilde birden)</div>
+            <div style={{background:"#161616",border:"1px solid #2A2A2A",borderRadius:12,padding:12,marginBottom:14}}>
+              <div style={{fontSize:10,color:"#F0EDE8",letterSpacing:"1.5px",fontWeight:700,marginBottom:8}}>🤖 AI İLE YAZ (üç dilde birden)</div>
               <textarea value={aiBrief} onChange={e=>setAiBrief(e.target.value)} rows={2}
                 placeholder={form.kind==="urun"
                   ? "örn: bisikletçi arkadaşlarla tasarladığımız tişört, sırtında Fethiye rotası var"
@@ -181,15 +181,15 @@ export default function ContentPage() {
                 style={{...inputS, resize:"vertical"}}/>
               {(form.images||[]).length > 0 && (
                 <label style={{display:"flex",alignItems:"center",gap:8,margin:"8px 0",cursor:"pointer",fontSize:12,color:"#aaa"}}>
-                  <input type="checkbox" checked={useImage} onChange={e=>setUseImage(e.target.checked)} style={{width:16,height:16,accentColor:"#C8973E"}}/>
+                  <input type="checkbox" checked={useImage} onChange={e=>setUseImage(e.target.checked)} style={{width:16,height:16,accentColor:"#FFFFFF"}}/>
                   📷 Yüklediğim fotoğrafa bakarak yazsın
                 </label>
               )}
-              <button onClick={runAiWrite} disabled={aiBusy} style={{width:"100%",marginTop:6,padding:"11px",background:aiBusy?"#555":"#2A2A3A",color:"#B8C6F0",border:"1px solid #3A3A5A",borderRadius:10,fontSize:13,fontWeight:800,cursor:aiBusy?"wait":"pointer"}}>
+              <button onClick={runAiWrite} disabled={aiBusy} style={{width:"100%",marginTop:6,padding:"11px",background:aiBusy?"#555":"#2A2A2A",color:"#F0EDE8",border:"1px solid #2A2A2A",borderRadius:10,fontSize:13,fontWeight:800,cursor:aiBusy?"wait":"pointer"}}>
                 {aiBusy ? "AI yazıyor..." : "🤖 Metni oluştur (TR + EN + RU)"}
               </button>
               {aiTip && (
-                <div style={{marginTop:10,padding:"10px 12px",background:"#12181A",border:"1px solid #1E3A42",borderRadius:8,fontSize:12,color:"#9CC",lineHeight:1.5}}>
+                <div style={{marginTop:10,padding:"10px 12px",background:"#12181A",border:"1px solid #2A2A2A",borderRadius:8,fontSize:12,color:"#F0EDE8",lineHeight:1.5}}>
                   📸 <b>Fotoğraf önerisi:</b> {aiTip}
                 </div>
               )}
@@ -225,7 +225,7 @@ export default function ContentPage() {
                   {form.images.map((u, i) => (
                     <div key={i} style={{position:"relative",flexShrink:0}}>
                       <img src={u} alt="" style={{width:84,height:84,borderRadius:8,objectFit:"cover"}}/>
-                      <button onClick={() => removePhoto(i)} style={{position:"absolute",top:-6,right:-6,width:22,height:22,borderRadius:"50%",background:"#c44",color:"#fff",border:"none",fontSize:12,cursor:"pointer",lineHeight:1}}>×</button>
+                      <button onClick={() => removePhoto(i)} style={{position:"absolute",top:-6,right:-6,width:22,height:22,borderRadius:"50%",background:"#2A2A2A",color:"#fff",border:"none",fontSize:12,cursor:"pointer",lineHeight:1}}>×</button>
                     </div>
                   ))}
                 </div>
@@ -235,13 +235,13 @@ export default function ContentPage() {
             <div style={{display:"flex",gap:10,alignItems:"center",marginBottom:14}}>
               <Field label="SIRA (küçük üstte)"><input type="number" value={form.sort_order??0} onChange={e=>setForm({...form,sort_order:e.target.value})} style={{...inputS,width:100}}/></Field>
               <label style={{display:"flex",alignItems:"center",gap:8,fontSize:12,color:"#ddd",cursor:"pointer",marginTop:8}}>
-                <input type="checkbox" checked={form.is_active!==false} onChange={e=>setForm({...form,is_active:e.target.checked})} style={{accentColor:"#C8973E"}}/> Aktif (menüde görünür)
+                <input type="checkbox" checked={form.is_active!==false} onChange={e=>setForm({...form,is_active:e.target.checked})} style={{accentColor:"#FFFFFF"}}/> Aktif (menüde görünür)
               </label>
             </div>
 
             <div style={{display:"flex",gap:8}}>
               <button onClick={() => setModal(null)} style={{flex:1,padding:"12px",background:"transparent",color:"#888",border:"1px solid #333",borderRadius:10,fontSize:14,fontWeight:700,cursor:"pointer"}}>İptal</button>
-              <button onClick={save} disabled={busy} style={{flex:2,padding:"12px",background:"#C8973E",color:"#000",border:"none",borderRadius:10,fontSize:14,fontWeight:800,cursor:"pointer",opacity:busy?0.6:1}}>{busy?"Kaydediliyor...":"Kaydet"}</button>
+              <button onClick={save} disabled={busy} style={{flex:2,padding:"12px",background:"#FFFFFF",color:"#000",border:"none",borderRadius:10,fontSize:14,fontWeight:800,cursor:"pointer",opacity:busy?0.6:1}}>{busy?"Kaydediliyor...":"Kaydet"}</button>
             </div>
           </div>
         </div>

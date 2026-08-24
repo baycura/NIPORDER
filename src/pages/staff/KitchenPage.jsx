@@ -196,9 +196,9 @@ export default function KitchenPage() {
   return (
     <div style={{fontFamily:cv,color:"#F0EDE8",position:"relative",minHeight:"80vh"}}>
       {flash && (
-        <div style={{position:"fixed",top:0,left:0,right:0,padding:"18px 20px",background:"#ff4444",color:"#fff",fontSize:20,fontWeight:900,textAlign:"center",letterSpacing:"2px",zIndex:200,animation:"flash 0.2s ease-in-out 6"}}>
+        <div style={{position:"fixed",top:0,left:0,right:0,padding:"18px 20px",background:"#C87A6A",color:"#fff",fontSize:20,fontWeight:900,textAlign:"center",letterSpacing:"2px",zIndex:200,animation:"flash 0.2s ease-in-out 6"}}>
           🔔 YENİ SİPARİŞ!
-          <style>{`@keyframes flash { 0%,100%{background:#ff4444} 50%{background:#ffaa00} }`}</style>
+          <style>{`@keyframes flash { 0%,100%{background:#C87A6A} 50%{background:#8A8580} }`}</style>
         </div>
       )}
 
@@ -208,25 +208,27 @@ export default function KitchenPage() {
           <div style={{fontSize:11,color:"#888",letterSpacing:"1px"}}>{tickets.length} AKTIF HESAP · {totalItems} URUN</div>
         </div>
         <div style={{display:"flex",gap:6}}>
-          <button onClick={() => { setSoundOn(!soundOn); unlockEverything(); }} style={{padding:"8px 12px",background:soundOn?"#3ECF8E":"#444",color:soundOn?"#000":"#aaa",border:"none",borderRadius:8,fontSize:11,fontWeight:700,cursor:"pointer",letterSpacing:"1px"}}>
+          <button onClick={() => { setSoundOn(!soundOn); unlockEverything(); }} style={{padding:"8px 12px",background:soundOn?"#FFFFFF":"#444",color:soundOn?"#000":"#aaa",border:"none",borderRadius:8,fontSize:11,fontWeight:700,cursor:"pointer",letterSpacing:"1px"}}>
             {soundOn ? "🔊 SES AÇIK" : "🔇 SES KAPALI"}
           </button>
           <button onClick={() => { unlockEverything(); playLoudDing(audioCtxRef); }} style={{padding:"8px 12px",background:"#222",color:"#aaa",border:"1px solid #444",borderRadius:8,fontSize:11,fontWeight:700,cursor:"pointer"}}>🔔 Test</button>
-          <button onClick={unlockEverything} style={{padding:"8px 12px",background:wakeLockOn?"#C8973E":"#444",color:wakeLockOn?"#000":"#aaa",border:"none",borderRadius:8,fontSize:11,fontWeight:700,cursor:"pointer",letterSpacing:"1px"}}>
+          <button onClick={unlockEverything} style={{padding:"8px 12px",background:wakeLockOn?"#FFFFFF":"#222222",color:wakeLockOn?"#000":"#8A8580",border:"none",borderRadius:8,fontSize:11,fontWeight:700,cursor:"pointer",letterSpacing:"1px"}}>
             {wakeLockOn ? "💡 EKRAN AÇIK" : "💤 Aktifleştir"}
           </button>
         </div>
       </div>
 
       {!unlocked && (
-        <div onClick={unlockEverything} style={{background:"#3D2D18",border:"1px solid #C8973E",color:"#FFD088",padding:"12px 16px",borderRadius:10,fontSize:13,marginBottom:14,cursor:"pointer",fontWeight:700}}>
+        <div onClick={unlockEverything} style={{background:"#161616",border:"1px solid #FFFFFF",color:"#F0EDE8",padding:"12px 16px",borderRadius:10,fontSize:13,marginBottom:14,cursor:"pointer",fontWeight:700}}>
           👆 Ses ve uyku engeli için buraya bir kez tıklayın (ZORUNLU)
         </div>
       )}
 
       {tickets.length === 0 && <div style={{textAlign:"center",padding:60,color:"#666",fontSize:14}}>Aktif sipariş yok</div>}
 
-      {tickets.map(t => {
+      {[...tickets].sort((a, b) =>
+        new Date(a.order.created_at) - new Date(b.order.created_at)
+      ).map(t => {
         const waitMin = Math.round((Date.now() - new Date(t.order.created_at).getTime()) / 60000);
         const urgent = waitMin >= 15;
         const allPending = t.items.every(it => it.kitchen_status === "pending");
@@ -235,38 +237,37 @@ export default function KitchenPage() {
         const anyPreparing = t.items.some(it => it.kitchen_status === "preparing");
         const stage = allReady ? "ready" : (anyPending ? "pending" : "preparing");
 
-        const cardBg = stage === "ready" ? "#0A2A18" : (stage === "preparing" ? "#2A1F0A" : "#1A1A1A");
-        const cardBorder = urgent ? "#ff3333" : (stage === "ready" ? "#3ECF8E" : (stage === "preparing" ? "#E07A3E" : "#2A2A2A"));
+        const cardBg = stage === "ready" ? "#161616" : "#1A1A1A";
+        const cardBorder = urgent ? "#FFFFFF" : "#2A2A2A";
 
         return (
           <div key={t.order.id} style={{background:cardBg,border:"2px solid "+cardBorder,borderRadius:14,padding:14,marginBottom:12}}>
             <div style={{display:"flex",justifyContent:"space-between",alignItems:"center",marginBottom:10}}>
               <div style={{flex:1,minWidth:0}}>
-                {t.storeSlug && <div style={{display:"inline-block",background:t.storeSlug==="doner"?"#C8973E":"#3ECF8E",color:"#000",padding:"2px 8px",borderRadius:6,fontSize:10,fontWeight:800,letterSpacing:"0.5px",marginBottom:4}}>{t.storeSlug==="doner"?"🥙 DÖNER":"🗼 PARIS"}</div>}
+                {t.storeSlug && <div style={{display:"inline-block",background:t.storeSlug==="doner"?"#FFFFFF":"#222222",color:t.storeSlug==="doner"?"#000":"#F0EDE8",padding:"2px 8px",borderRadius:6,fontSize:10,fontWeight:800,letterSpacing:"0.5px",marginBottom:4}}>{t.storeSlug==="doner"?"🥙 DÖNER":"🗼 PARIS"}</div>}
                 <div style={{fontSize:16,fontWeight:800}}>{t.where}</div>
               </div>
-              <div style={{fontSize:13,color:urgent?"#ff6666":"#C8973E",fontWeight:800}}>{waitMin} dk</div>
+              <div style={{fontSize:13,color:urgent?"#FFFFFF":"#8A8580",fontWeight:800}}>{waitMin} dk{urgent ? " ⚠" : ""}</div>
             </div>
 
             {t.order.note && (
-              <div style={{background:"#3D2D18",border:"1px solid #C8973E",borderRadius:8,padding:"8px 12px",marginBottom:10,fontSize:12,color:"#FFD088"}}>
+              <div style={{background:"#161616",border:"1px solid #FFFFFF",borderRadius:8,padding:"8px 12px",marginBottom:10,fontSize:12,color:"#F0EDE8"}}>
                 📝 <strong>Not:</strong> {t.order.note}
               </div>
             )}
 
             {t.items.map(it => {
               const opts = optionsText(it.selected_options);
-              const itemColor = it.kitchen_status === "ready" ? "#3ECF8E"
-                              : it.kitchen_status === "preparing" ? "#E07A3E"
-                              : "#F0EDE8";
+              // Biten kalem geri cekilir; bekleyen ve hazirlanan one cikar.
+              const itemColor = it.kitchen_status === "ready" ? "#8A8580" : "#F0EDE8";
               return (
                 <div key={it.id} style={{padding:"8px 0",borderTop:"1px solid #2A2A2A"}}>
                   <div style={{fontSize:15,fontWeight:700,color:itemColor}}>
                     {it.quantity}× {it.product_name}
-                    {it.is_takeaway && <span style={{marginLeft:8,padding:"2px 8px",background:"#C8973E",color:"#000",borderRadius:10,fontSize:11,fontWeight:800,letterSpacing:"0.5px"}}>🥤 PAKET</span>}
-                    {it.kitchen_status === "ready" && <span style={{marginLeft:8,fontSize:11,color:"#3ECF8E"}}>✓</span>}
+                    {it.is_takeaway && <span style={{marginLeft:8,padding:"2px 8px",background:"#FFFFFF",color:"#000",borderRadius:10,fontSize:11,fontWeight:800,letterSpacing:"0.5px"}}>🥤 PAKET</span>}
+                    {it.kitchen_status === "ready" && <span style={{marginLeft:8,fontSize:11,color:"#FFFFFF"}}>✓</span>}
                   </div>
-                  {opts && <div style={{fontSize:12,color:"#C8973E",marginTop:2,fontWeight:600}}>{opts}</div>}
+                  {opts && <div style={{fontSize:12,color:"#8A8580",marginTop:2,fontWeight:600}}>{opts}</div>}
                   {it.notes && <div style={{fontSize:12,color:"#aaa",fontStyle:"italic",marginTop:2}}>Not: {it.notes}</div>}
                 </div>
               );
@@ -274,17 +275,17 @@ export default function KitchenPage() {
 
             <div style={{marginTop:12,display:"flex",gap:6}}>
               {anyPending && (
-                <button onClick={() => startPreparingAll(t.order.id)} style={{flex:1,padding:"14px",background:"#E07A3E",color:"#000",border:"none",borderRadius:10,fontSize:14,fontWeight:800,cursor:"pointer",letterSpacing:"0.5px"}}>
+                <button onClick={() => startPreparingAll(t.order.id)} style={{flex:1,padding:"14px",background:"#FFFFFF",color:"#000",border:"none",borderRadius:10,fontSize:14,fontWeight:800,cursor:"pointer",letterSpacing:"0.5px"}}>
                   🔥 Hazırlamaya başla
                 </button>
               )}
               {!anyPending && !allReady && (
-                <button onClick={() => markAllReady(t.order.id)} style={{flex:1,padding:"14px",background:"#3ECF8E",color:"#000",border:"none",borderRadius:10,fontSize:14,fontWeight:800,cursor:"pointer",letterSpacing:"0.5px"}}>
+                <button onClick={() => markAllReady(t.order.id)} style={{flex:1,padding:"14px",background:"#FFFFFF",color:"#000",border:"none",borderRadius:10,fontSize:14,fontWeight:800,cursor:"pointer",letterSpacing:"0.5px"}}>
                   ✓ Hepsi Hazır
                 </button>
               )}
               {allReady && (
-                <button onClick={() => markServedAndClose(t.order.id)} style={{flex:1,padding:"14px",background:"#5A8FE0",color:"#000",border:"none",borderRadius:10,fontSize:14,fontWeight:800,cursor:"pointer",letterSpacing:"0.5px"}}>
+                <button onClick={() => markServedAndClose(t.order.id)} style={{flex:1,padding:"14px",background:"#FFFFFF",color:"#000",border:"none",borderRadius:10,fontSize:14,fontWeight:800,cursor:"pointer",letterSpacing:"0.5px"}}>
                   ✓ Servis Edildi → Kapat
                 </button>
               )}

@@ -18,10 +18,12 @@
   --nip-muted:       #8A8A86;
   --nip-divider:     #E5E3DC;
   --nip-cream:       #EFEAE0;
-  --nip-accent:      #C8973E;   /* keep existing mustard */
-  --nip-accent-ink:  #2A2200;
-  --nip-danger:      #C83E3E;
-  --nip-success:     #2F7D4F;
+  /* Palet siyah-beyaz. Vurgu artik bir renk degil, ZITLIK: acik yuzeyde
+     siyah, koyu yuzeyde beyaz. Yikici islem tek istisna (soluk kiremit). */
+  --nip-accent:      #0A0A0A;
+  --nip-accent-ink:  #FFFFFF;
+  --nip-danger:      #C87A6A;
+  --nip-success:     #0A0A0A;
   --nip-overlay:     rgba(10,10,10,0.55);
 
   /* ------- Typography ------- */

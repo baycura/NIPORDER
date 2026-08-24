@@ -5,11 +5,14 @@
 //   setup&secret=  -> webhook'u bu fonksiyona kaydeder (bir kez)
 //   send&secret=&to=&text= -> manuel/test mesaj
 //   notify&secret= -> DB trigger'lari cagirir (yeni siparis / hazir)
+//   shift_summary&secret= -> vardiya kapaninca calisanin ozeti sahibe (DB trigger)
 //   daily_summary&secret= -> sabah 09:00 TR sahip ozeti (pg_cron cagirir)
 //
 // Hedefleme kurali: bildirim SADECE "su an vardiyasi aktif" (shifts.status='active'),
 // is_active=true VE Telegram'a bagli (staff.telegram_chat_id dolu) personele gider.
 // Izinli/mesai disi kimse rahatsiz edilmez. Sabah ozeti: admin + viewer (aile) bagli olanlara.
+// YEDEK: hedeflerin hicbirine ulasilamazsa bildirim sahiplere duser ve her deneme
+// tg_notify_log'a yazilir (kime, kac kisiye) — "bildirim gelmedi" bakilabilir olsun.
 
 import { createClient } from "jsr:@supabase/supabase-js@2";
 
@@ -39,10 +42,21 @@ async function tg(method: string, body: Record<string, unknown>) {
   return await res.json();
 }
 
+// Donen sayi DENENEN degil GERCEKLESEN alici sayisidir; tg_notify_log buna
+// guveniyor. Tek bir alicinin hatasi (bot engellenmis, sohbet silinmis) digerlerini
+// de dusurmesin diye hatalar alici basina yutuluyor.
 async function sendTo(chatIds: string[], text: string) {
   const unique = [...new Set(chatIds.filter(Boolean))];
-  await Promise.all(unique.map((id) => tg("sendMessage", { chat_id: id, text })));
-  return unique.length;
+  const sonuc = await Promise.all(unique.map(async (id) => {
+    try {
+      const r = await tg("sendMessage", { chat_id: id, text });
+      return !!(r as { ok?: boolean })?.ok;
+    } catch (e) {
+      console.error("telegram gonderilemedi", id, e);
+      return false;
+    }
+  }));
+  return sonuc.filter(Boolean).length;
 }
 
 // Su an vardiyasi aktif + Telegram bagli personel
@@ -54,6 +68,28 @@ async function activeStaff() {
     .from("staff").select("id, name, role, telegram_chat_id")
     .in("id", ids).eq("is_active", true).not("telegram_chat_id", "is", null);
   return staff || [];
+}
+
+// Vardiyada Telegram'a bagli kimse yoksa bildirim bugune kadar KIMSEYE
+// gitmiyordu: liste bos donuyor, fonksiyon sessizce 0 deyip geciyordu.
+// Son 15 QR siparisinin 6'sinda o gune ait hic vardiya kaydi yoktu ve
+// o alti siparisin altisi da iptale dustu. Artik sahiplere dusuyor.
+async function ownerChats() {
+  const { data } = await supabase
+    .from("staff").select("telegram_chat_id")
+    .eq("role", "admin").eq("is_active", true).not("telegram_chat_id", "is", null);
+  return (data || []).map((a: { telegram_chat_id: string }) => a.telegram_chat_id);
+}
+
+// Her bildirim denemesi kaydedilir. Log yazilamazsa bildirim akisi durmasin.
+async function logNotify(orderId: string, event: string, sent: number, target: string, detail?: string) {
+  if (!orderId) return;
+  try {
+    await supabase.from("tg_notify_log")
+      .insert({ order_id: orderId, event, sent_count: sent, target, detail: detail ?? null });
+  } catch (e) {
+    console.error("tg_notify_log yazilamadi", e);
+  }
 }
 
 async function orderLabel(orderId: string) {
@@ -106,8 +142,16 @@ Deno.serve(async (req) => {
         // Yeni siparis -> vardiyadaki mutfak personeli; mutfakci yoksa herkese
         const kitchen = staff.filter((s: any) => s.role === "kitchen");
         const targets = (kitchen.length ? kitchen : staff).map((s: any) => s.telegram_chat_id);
-        const n = await sendTo(targets, `🆕 Yeni sipariş — ${label}\n${itemsText(items)}`);
-        return Response.json({ ok: true, sent: n });
+        let n = await sendTo(targets, `🆕 Yeni sipariş — ${label}\n${itemsText(items)}`);
+        let hedef = kitchen.length ? "mutfak" : "vardiya";
+        // Kimseye ulasmadiysa siparis sahipsiz kalmasin.
+        if (n === 0) {
+          n = await sendTo(await ownerChats(),
+            `⚠️ VARDİYADA KİMSE YOK — yeni sipariş\n${label}\n${itemsText(items)}`);
+          hedef = n ? "sahip_yedek" : "kimse";
+        }
+        await logNotify(payload.order_id, kind, n, hedef);
+        return Response.json({ ok: true, sent: n, target: hedef });
       }
 
       if (kind === "items_ready") {
@@ -115,8 +159,15 @@ Deno.serve(async (req) => {
         const opener = staff.find((s: any) => s.id === (order as any)?.staff_id);
         const waiters = staff.filter((s: any) => ["waiter", "cashier"].includes(s.role));
         const targets = (opener ? [opener] : (waiters.length ? waiters : staff)).map((s: any) => s.telegram_chat_id);
-        const n = await sendTo(targets, `✅ Hazır — ${label}\n${itemsText(items)}\nServis edilebilir.`);
-        return Response.json({ ok: true, sent: n });
+        let n = await sendTo(targets, `✅ Hazır — ${label}\n${itemsText(items)}\nServis edilebilir.`);
+        let hedef = opener ? "garson" : "vardiya";
+        if (n === 0) {
+          n = await sendTo(await ownerChats(),
+            `⚠️ VARDİYADA KİMSE YOK — sipariş hazır, servis eden yok\n${label}\n${itemsText(items)}`);
+          hedef = n ? "sahip_yedek" : "kimse";
+        }
+        await logNotify(payload.order_id, kind, n, hedef);
+        return Response.json({ ok: true, sent: n, target: hedef });
       }
 
       return new Response("bilinmeyen kind", { status: 400 });

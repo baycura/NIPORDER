@@ -95,7 +95,7 @@ export default function SettingsPage() {
             {DAYS.map(([n, label]) => {
               const on = partyDays.includes(n);
               return (
-                <button key={n} onClick={()=>toggleDay(n)} style={{flex:1,padding:"10px 0",background:on?"#C8973E":"#0C0C0C",color:on?"#000":"#777",border:"1px solid "+(on?"#C8973E":"#2A2A2A"),borderRadius:8,fontSize:12,fontWeight:800,cursor:"pointer",fontFamily:"inherit"}}>
+                <button key={n} onClick={()=>toggleDay(n)} style={{flex:1,padding:"10px 0",background:on?"#FFFFFF":"#0C0C0C",color:on?"#000":"#777",border:"1px solid "+(on?"#FFFFFF":"#2A2A2A"),borderRadius:8,fontSize:12,fontWeight:800,cursor:"pointer",fontFamily:"inherit"}}>
                   {label}
                 </button>
               );
@@ -107,7 +107,7 @@ export default function SettingsPage() {
           <Field label="BITIS" style={{flex:1}}><input type="time" value={partyUntil} onChange={e=>setKey("party_mode_until", e.target.value)} style={inputS}/></Field>
         </div>
         <div style={{fontSize:11,color:"#888",marginTop:6,lineHeight:1.6}}>
-          Şu anki ayar: <b style={{color:"#C8973E"}}>{partyDays.length ? partyDays.map(n=>DAYS.find(d=>d[0]===n)?.[1]).join(", ") : "gün seçilmedi"}</b> günleri {partyFrom}–{partyUntil}.
+          Şu anki ayar: <b style={{color:"#FFFFFF"}}>{partyDays.length ? partyDays.map(n=>DAYS.find(d=>d[0]===n)?.[1]).join(", ") : "gün seçilmedi"}</b> günleri {partyFrom}–{partyUntil}.
           <br/>Gece yarısını aşan saatlerde parti, <b>başladığı güne</b> sayılır: Cuma 23:00 ve Cumartesi 02:00 aynı partidir.
         </div>
       </Section>
@@ -136,11 +136,11 @@ export default function SettingsPage() {
           </Field>
         </div>
         <button onClick={syncEurRate} disabled={eurBusy}
-          style={{width:"100%",padding:"11px",background:eurBusy?"#555":"#2A2A3A",color:"#B8C6F0",border:"1px solid #3A3A5A",borderRadius:8,fontSize:12,fontWeight:800,cursor:eurBusy?"wait":"pointer",margin:"4px 0 8px"}}>
+          style={{width:"100%",padding:"11px",background:eurBusy?"#555":"#2A2A2A",color:"#F0EDE8",border:"1px solid #2A2A2A",borderRadius:8,fontSize:12,fontWeight:800,cursor:eurBusy?"wait":"pointer",margin:"4px 0 8px"}}>
           {eurBusy ? "Kur cekiliyor..." : "🔄 Kuru simdi guncelle"}
         </button>
         {settings.eur_rate_note ? (
-          <div style={{padding:"10px 12px",background:"#2A1F12",border:"1px solid #5A4020",borderRadius:8,fontSize:12,color:"#FFC98A",lineHeight:1.5,marginBottom:6}}>
+          <div style={{padding:"10px 12px",background:"#161616",border:"1px solid #2A2A2A",borderRadius:8,fontSize:12,color:"#F0EDE8",lineHeight:1.5,marginBottom:6}}>
             ⚠ {settings.eur_rate_note}
           </div>
         ) : null}
@@ -159,7 +159,7 @@ export default function SettingsPage() {
         <Field label="DUYURU (TURKCE)">
           <input value={settings.announcement_tr || ""} onChange={e=>setKey("announcement_tr", e.target.value)} placeholder="Orn: Pazar gunleri fici bira 150 TL! 🍺" style={inputS}/>
         </Field>
-        <button onClick={translateAnnouncement} disabled={trBusy} style={{width:"100%",padding:"10px",background:trBusy?"#555":"#2A2A3A",color:"#B8C6F0",border:"1px solid #3A3A5A",borderRadius:8,fontSize:12,fontWeight:800,cursor:trBusy?"wait":"pointer",margin:"4px 0 8px"}}>
+        <button onClick={translateAnnouncement} disabled={trBusy} style={{width:"100%",padding:"10px",background:trBusy?"#555":"#2A2A2A",color:"#F0EDE8",border:"1px solid #2A2A2A",borderRadius:8,fontSize:12,fontWeight:800,cursor:trBusy?"wait":"pointer",margin:"4px 0 8px"}}>
           {trBusy ? "AI çeviriyor..." : "🤖 EN + RU otomatik çevir (AI)"}
         </button>
         <div style={{display:"flex",gap:8}}>
@@ -188,7 +188,7 @@ export default function SettingsPage() {
       </Section>
 
       {/* Save button */}
-      <button onClick={save} disabled={busy} style={{width:"100%",padding:"14px",background:"#C8973E",color:"#000",border:"none",borderRadius:12,fontSize:15,fontWeight:800,cursor:"pointer",marginTop:16,opacity:busy?0.6:1}}>{busy?"Kaydediliyor...":(saved?"✓ Kaydedildi":"Ayarlari Kaydet")}</button>
+      <button onClick={save} disabled={busy} style={{width:"100%",padding:"14px",background:"#FFFFFF",color:"#000",border:"none",borderRadius:12,fontSize:15,fontWeight:800,cursor:"pointer",marginTop:16,opacity:busy?0.6:1}}>{busy?"Kaydediliyor...":(saved?"✓ Kaydedildi":"Ayarlari Kaydet")}</button>
     </div>
   );
 }
@@ -204,7 +204,7 @@ function Field({label, children, style={}}) {
 
 function Toggle({checked, onChange, label}) {
   return (<label style={{display:"flex",alignItems:"center",gap:10,marginBottom:14,cursor:"pointer",userSelect:"none"}}>
-    <div style={{position:"relative",width:42,height:24,borderRadius:12,background:checked?"#C8973E":"#333",transition:"0.2s"}}>
+    <div style={{position:"relative",width:42,height:24,borderRadius:12,background:checked?"#FFFFFF":"#333",transition:"0.2s"}}>
       <div style={{position:"absolute",top:3,left:checked?21:3,width:18,height:18,borderRadius:"50%",background:"#fff",transition:"0.2s"}}/>
     </div>
     <input type="checkbox" checked={checked} onChange={e=>onChange(e.target.checked)} style={{display:"none"}}/>

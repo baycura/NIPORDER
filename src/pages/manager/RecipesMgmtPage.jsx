@@ -235,27 +235,27 @@ export default function RecipesMgmtPage() {
 
     return (
       <div style={{ fontFamily: cv, color: "#F0EDE8", paddingBottom: 40 }}>
-        <button onClick={() => { setSelectedProduct(null); setIngSearch(""); }} style={{ background: "none", border: "none", color: "#C8973E", fontSize: 13, cursor: "pointer", padding: 0, marginBottom: 10, fontWeight: 600 }}>← Tüm ürünler</button>
+        <button onClick={() => { setSelectedProduct(null); setIngSearch(""); }} style={{ background: "none", border: "none", color: "#FFFFFF", fontSize: 13, cursor: "pointer", padding: 0, marginBottom: 10, fontWeight: 600 }}>← Tüm ürünler</button>
 
-        <div style={{ background: "#1A1A1A", border: "1px solid #C8973E", borderRadius: 12, padding: 14, marginBottom: 14 }}>
+        <div style={{ background: "#1A1A1A", border: "1px solid #FFFFFF", borderRadius: 12, padding: 14, marginBottom: 14 }}>
           <div style={{ fontSize: 18, fontWeight: 800 }}>{selectedProduct.name}</div>
           <div style={{ display: "flex", gap: 8, marginTop: 10, flexWrap: "wrap" }}>
             <Stat label="SATIŞ" value={"₺" + price} color="#F0EDE8" />
-            <Stat label="MALİYET" value={"₺" + cost.toFixed(2)} color="#FFB0B0" />
-            <Stat label="KÂR" value={"₺" + profit.toFixed(2)} color="#3ECF8E" />
-            <Stat label="MARJ" value={"%" + margin} color={margin >= 70 ? "#3ECF8E" : margin >= 50 ? "#E0AB4A" : "#FF8888"} />
+            <Stat label="MALİYET" value={"₺" + cost.toFixed(2)} color="#C87A6A" />
+            <Stat label="KÂR" value={"₺" + profit.toFixed(2)} color="#FFFFFF" />
+            <Stat label="MARJ" value={"%" + margin} color={margin >= 70 ? "#FFFFFF" : margin >= 50 ? "#FFFFFF" : "#C87A6A"} />
           </div>
           {partyExtra > 0 && (
             <div style={{ fontSize: 11, color: "#888", marginTop: 10, lineHeight: 1.6 }}>
-              Yukarıdaki rakamlar <b style={{ color: "#C8973E" }}>parti gecesine</b> göre (en yüksek maliyet).
+              Yukarıdaki rakamlar <b style={{ color: "#FFFFFF" }}>parti gecesine</b> göre (en yüksek maliyet).
               Normal günlerde maliyet <b style={{ color: "#F0EDE8" }}>₺{normalCost.toFixed(2)}</b>,
-              kâr <b style={{ color: "#3ECF8E" }}>₺{(price - normalCost).toFixed(2)}</b>.
+              kâr <b style={{ color: "#FFFFFF" }}>₺{(price - normalCost).toFixed(2)}</b>.
             </div>
           )}
           {selectedProduct.takeaway_cup && (
             <div style={{ fontSize: 11, color: "#888", marginTop: 8, lineHeight: 1.6, paddingTop: 8, borderTop: "1px solid #2A2A2A" }}>
               🥤 Take away seçilirse otomatik eklenir:{" "}
-              <b style={{ color: "#C8973E" }}>
+              <b style={{ color: "#FFFFFF" }}>
                 {selectedProduct.takeaway_cup === "hot" ? "karton bardak" : "pet bardak"}
                 {selectedProduct.takeaway_straw ? " + pipet" : ""}
               </b>
@@ -265,32 +265,32 @@ export default function RecipesMgmtPage() {
         </div>
 
         {/* AI ile reçete kur */}
-        <div style={{ background: "#161616", border: "1px solid #2A2A3A", borderRadius: 12, padding: 12, marginBottom: 12 }}>
-          <div style={{ fontSize: 10, color: "#B8C6F0", letterSpacing: "1.5px", fontWeight: 700, marginBottom: 8 }}>🤖 REÇETEYİ YAZ, AI KURSUN</div>
+        <div style={{ background: "#161616", border: "1px solid #2A2A2A", borderRadius: 12, padding: 12, marginBottom: 12 }}>
+          <div style={{ fontSize: 10, color: "#F0EDE8", letterSpacing: "1.5px", fontWeight: 700, marginBottom: 8 }}>🤖 REÇETEYİ YAZ, AI KURSUN</div>
           <textarea
             value={aiText} onChange={e => setAiText(e.target.value)} rows={2}
             placeholder={"örn: 3cl gin, 3cl campari, 3cl kırmızı vermut, buz, portakal kabuğu"}
             style={{ width: "100%", padding: "12px 14px", background: "#0C0C0C", border: "1px solid #2A2A2A", borderRadius: 10, color: "#F0EDE8", fontSize: 15, outline: "none", fontFamily: "inherit", resize: "vertical" }}
           />
-          <button onClick={runAi} disabled={aiBusy || !aiText.trim()} style={{ width: "100%", marginTop: 8, padding: "11px", background: aiBusy ? "#555" : "#2A2A3A", color: "#B8C6F0", border: "1px solid #3A3A5A", borderRadius: 10, fontSize: 13, fontWeight: 800, cursor: aiBusy ? "wait" : "pointer" }}>
+          <button onClick={runAi} disabled={aiBusy || !aiText.trim()} style={{ width: "100%", marginTop: 8, padding: "11px", background: aiBusy ? "#555" : "#2A2A2A", color: "#F0EDE8", border: "1px solid #2A2A2A", borderRadius: 10, fontSize: 13, fontWeight: 800, cursor: aiBusy ? "wait" : "pointer" }}>
             {aiBusy ? "AI okuyor..." : "🤖 Malzemeleri çıkar"}
           </button>
           {aiPreview && (
-            <div style={{ marginTop: 10, background: "#0C0C0C", border: "1px solid #2A2A3A", borderRadius: 10, padding: 10 }}>
+            <div style={{ marginTop: 10, background: "#0C0C0C", border: "1px solid #2A2A2A", borderRadius: 10, padding: 10 }}>
               {aiPreview.map((l, i) => {
                 const ing = ingredients.find(x => x.id === l.ingredient_id);
                 return (
                   <div key={i} style={{ display: "flex", justifyContent: "space-between", padding: "6px 0", borderBottom: "1px solid #1A1A1A", fontSize: 13 }}>
                     <span style={{ fontWeight: 600 }}>
-                      {ing ? ing.name : <span style={{ color: "#8FD8E8" }}>＋ {l.new_name} <span style={{ color: "#666" }}>(yeni)</span></span>}
+                      {ing ? ing.name : <span style={{ color: "#F0EDE8" }}>＋ {l.new_name} <span style={{ color: "#666" }}>(yeni)</span></span>}
                     </span>
-                    <span style={{ color: "#C8973E", fontWeight: 700 }}>{l.qty} {ing?.unit || l.new_unit}</span>
+                    <span style={{ color: "#FFFFFF", fontWeight: 700 }}>{l.qty} {ing?.unit || l.new_unit}</span>
                   </div>
                 );
               })}
               <div style={{ display: "flex", gap: 8, marginTop: 10 }}>
                 <button onClick={() => setAiPreview(null)} style={{ flex: 1, padding: "10px", background: "transparent", color: "#888", border: "1px solid #333", borderRadius: 8, fontSize: 12, fontWeight: 700, cursor: "pointer" }}>Vazgeç</button>
-                <button onClick={applyAi} disabled={aiBusy} style={{ flex: 2, padding: "10px", background: "#C8973E", color: "#000", border: "none", borderRadius: 8, fontSize: 12, fontWeight: 800, cursor: "pointer" }}>{aiBusy ? "..." : "Reçeteye ekle"}</button>
+                <button onClick={applyAi} disabled={aiBusy} style={{ flex: 2, padding: "10px", background: "#FFFFFF", color: "#000", border: "none", borderRadius: 8, fontSize: 12, fontWeight: 800, cursor: "pointer" }}>{aiBusy ? "..." : "Reçeteye ekle"}</button>
               </div>
             </div>
           )}
@@ -299,7 +299,7 @@ export default function RecipesMgmtPage() {
         {/* Başka üründen kopyala */}
         {products.filter(p => p.id !== selectedProduct.id && productRecipes(p.id).length > 0).length > 0 && (
           <div style={{ background: "#161616", border: "1px solid #2A2A2A", borderRadius: 12, padding: 12, marginBottom: 12 }}>
-            <div style={{ fontSize: 10, color: "#C8973E", letterSpacing: "1.5px", fontWeight: 700, marginBottom: 8 }}>📋 BAŞKA ÜRÜNDEN KOPYALA</div>
+            <div style={{ fontSize: 10, color: "#8A8580", letterSpacing: "1.5px", fontWeight: 700, marginBottom: 8 }}>📋 BAŞKA ÜRÜNDEN KOPYALA</div>
             <div style={{ display: "flex", gap: 8 }}>
               <select value={copyFrom} onChange={e => setCopyFrom(e.target.value)} style={{ flex: 1, padding: "10px 12px", background: "#0C0C0C", border: "1px solid #2A2A2A", borderRadius: 8, color: "#F0EDE8", fontSize: 14, outline: "none", fontFamily: "inherit" }}>
                 <option value="">- Ürün seç -</option>
@@ -307,7 +307,7 @@ export default function RecipesMgmtPage() {
                   <option key={p.id} value={p.id}>{p.name} ({productRecipes(p.id).length} malzeme)</option>
                 ))}
               </select>
-              <button onClick={() => copyRecipe(copyFrom)} disabled={!copyFrom || busy} style={{ padding: "10px 16px", background: copyFrom ? "#C8973E" : "#222", color: copyFrom ? "#000" : "#666", border: "none", borderRadius: 8, fontSize: 13, fontWeight: 800, cursor: copyFrom ? "pointer" : "default" }}>Kopyala</button>
+              <button onClick={() => copyRecipe(copyFrom)} disabled={!copyFrom || busy} style={{ padding: "10px 16px", background: copyFrom ? "#FFFFFF" : "#222", color: copyFrom ? "#000" : "#666", border: "none", borderRadius: 8, fontSize: 13, fontWeight: 800, cursor: copyFrom ? "pointer" : "default" }}>Kopyala</button>
             </div>
             <div style={{ fontSize: 10, color: "#666", marginTop: 6 }}>Benzer ürünlerde (highball'lar, kahveler) tek tıkla aynı reçeteyi al, sonra farklı malzemeyi değiştir.</div>
           </div>
@@ -315,7 +315,7 @@ export default function RecipesMgmtPage() {
 
         {/* Malzeme ara & ekle */}
         <div style={{ background: "#161616", border: "1px solid #2A2A2A", borderRadius: 12, padding: 12, marginBottom: 12 }}>
-          <div style={{ fontSize: 10, color: "#C8973E", letterSpacing: "1.5px", fontWeight: 700, marginBottom: 8 }}>🔎 MALZEME EKLE</div>
+          <div style={{ fontSize: 10, color: "#8A8580", letterSpacing: "1.5px", fontWeight: 700, marginBottom: 8 }}>🔎 MALZEME EKLE</div>
           <input
             value={ingSearch}
             onChange={e => setIngSearch(e.target.value)}
@@ -330,7 +330,7 @@ export default function RecipesMgmtPage() {
                 </button>
               ))}
               {searchResults.length === 0 && (
-                <button onClick={() => createIngredient(ingSearch)} disabled={busy} style={{ padding: "10px 12px", background: "#1E3A42", color: "#8FD8E8", border: "1px dashed #3E7A8A", borderRadius: 10, fontSize: 13, fontWeight: 700, cursor: "pointer" }}>
+                <button onClick={() => createIngredient(ingSearch)} disabled={busy} style={{ padding: "10px 12px", background: "#2A2A2A", color: "#F0EDE8", border: "1px dashed #8A8580", borderRadius: 10, fontSize: 13, fontWeight: 700, cursor: "pointer" }}>
                   ＋ "{ingSearch.trim()}" adında yeni malzeme oluştur
                 </button>
               )}
@@ -340,14 +340,14 @@ export default function RecipesMgmtPage() {
 
         {/* Sarf malzemeler — tek dokunuş */}
         {consumables.length > 0 && (
-          <div style={{ background: "#12181A", border: "1px solid #1E3A42", borderRadius: 12, padding: 12, marginBottom: 12 }}>
-            <div style={{ fontSize: 10, color: "#8FD8E8", letterSpacing: "1.5px", fontWeight: 700, marginBottom: 8 }}>🧊 SARF MALZEMELER</div>
+          <div style={{ background: "#12181A", border: "1px solid #2A2A2A", borderRadius: 12, padding: 12, marginBottom: 12 }}>
+            <div style={{ fontSize: 10, color: "#F0EDE8", letterSpacing: "1.5px", fontWeight: 700, marginBottom: 8 }}>🧊 SARF MALZEMELER</div>
             <div style={{ display: "flex", flexWrap: "wrap", gap: 8 }}>
               {consumables.map(ing => {
                 const on = !!rows.find(r => r.ingredient_id === ing.id);
                 return (
-                  <button key={ing.id} onClick={() => toggleConsumable(ing)} style={{ display: "flex", alignItems: "center", gap: 7, padding: "10px 12px", background: on ? "#1E3A42" : "#161616", color: on ? "#8FD8E8" : "#888", border: "1px solid " + (on ? "#3E7A8A" : "#2A2A2A"), borderRadius: 10, fontSize: 12, fontWeight: 700, cursor: "pointer" }}>
-                    <span style={{ width: 16, height: 16, borderRadius: 4, border: "2px solid " + (on ? "#8FD8E8" : "#555"), background: on ? "#8FD8E8" : "transparent", color: "#12181A", fontSize: 12, lineHeight: "12px", display: "flex", alignItems: "center", justifyContent: "center", fontWeight: 900 }}>{on ? "✓" : ""}</span>
+                  <button key={ing.id} onClick={() => toggleConsumable(ing)} style={{ display: "flex", alignItems: "center", gap: 7, padding: "10px 12px", background: on ? "#2A2A2A" : "#161616", color: on ? "#F0EDE8" : "#888", border: "1px solid " + (on ? "#8A8580" : "#2A2A2A"), borderRadius: 10, fontSize: 12, fontWeight: 700, cursor: "pointer" }}>
+                    <span style={{ width: 16, height: 16, borderRadius: 4, border: "2px solid " + (on ? "#F0EDE8" : "#555"), background: on ? "#F0EDE8" : "transparent", color: "#12181A", fontSize: 12, lineHeight: "12px", display: "flex", alignItems: "center", justifyContent: "center", fontWeight: 900 }}>{on ? "✓" : ""}</span>
                     {ing.name}
                   </button>
                 );
@@ -371,12 +371,12 @@ export default function RecipesMgmtPage() {
               <div style={{ display: "flex", alignItems: "center", justifyContent: "space-between", gap: 10, marginBottom: 8 }}>
                 <div style={{ flex: 1, minWidth: 0 }}>
                   <div style={{ fontSize: 14, fontWeight: 700 }}>{ing.name}</div>
-                  <div style={{ fontSize: 11, color: c > 0 ? "#C8973E" : "#775544", marginTop: 2, fontWeight: 600 }}>
+                  <div style={{ fontSize: 11, color: c > 0 ? "#FFFFFF" : "#2A2A2A", marginTop: 2, fontWeight: 600 }}>
                     {c > 0 ? "₺" + c.toFixed(2) : "⚠ maliyet girilmemiş"}
-                    {Number(ing.waste_pct) > 0 && <span style={{ color: "#FFD088" }}> · +%{ing.waste_pct} fire</span>}
+                    {Number(ing.waste_pct) > 0 && <span style={{ color: "#F0EDE8" }}> · +%{ing.waste_pct} fire</span>}
                   </div>
                 </div>
-                <button onClick={() => removeRecipe(r)} style={{ padding: "8px 12px", background: "transparent", color: "#FF6666", border: "1px solid #553333", borderRadius: 8, fontSize: 11, cursor: "pointer", flexShrink: 0 }}>Sil</button>
+                <button onClick={() => removeRecipe(r)} style={{ padding: "8px 12px", background: "transparent", color: "#C87A6A", border: "1px solid #2A2A2A", borderRadius: 8, fontSize: 11, cursor: "pointer", flexShrink: 0 }}>Sil</button>
               </div>
               <div style={{ display: "flex", alignItems: "center", gap: 8 }}>
                 <button onClick={() => setQty(r, Number(r.qty_per_unit) - step)} style={qtyBtn}>−</button>
@@ -389,15 +389,15 @@ export default function RecipesMgmtPage() {
               {presets.length > 0 && (
                 <div style={{ display: "flex", gap: 6, flexWrap: "wrap", marginTop: 8 }}>
                   {presets.map(([lbl, val]) => (
-                    <button key={lbl} onClick={() => setQty(r, val)} style={{ padding: "6px 10px", background: Number(r.qty_per_unit) === val ? "#C8973E" : "#222", color: Number(r.qty_per_unit) === val ? "#000" : "#999", border: "1px solid " + (Number(r.qty_per_unit) === val ? "#C8973E" : "#333"), borderRadius: 8, fontSize: 11, fontWeight: 700, cursor: "pointer" }}>{lbl}</button>
+                    <button key={lbl} onClick={() => setQty(r, val)} style={{ padding: "6px 10px", background: Number(r.qty_per_unit) === val ? "#FFFFFF" : "#222", color: Number(r.qty_per_unit) === val ? "#000" : "#999", border: "1px solid " + (Number(r.qty_per_unit) === val ? "#FFFFFF" : "#333"), borderRadius: 8, fontSize: 11, fontWeight: 700, cursor: "pointer" }}>{lbl}</button>
                   ))}
                 </div>
               )}
               {ing.is_consumable && (
                 <label style={{ display: "flex", alignItems: "center", gap: 8, marginTop: 10, paddingTop: 10, borderTop: "1px solid #262626", cursor: "pointer", userSelect: "none" }}>
                   <input type="checkbox" checked={!!r.party_only} onChange={e => setPartyOnly(r, e.target.checked)}
-                    style={{ width: 18, height: 18, accentColor: "#C8973E", cursor: "pointer" }} />
-                  <span style={{ fontSize: 12, color: r.party_only ? "#C8973E" : "#888", fontWeight: r.party_only ? 700 : 500 }}>
+                    style={{ width: 18, height: 18, accentColor: "#FFFFFF", cursor: "pointer" }} />
+                  <span style={{ fontSize: 12, color: r.party_only ? "#FFFFFF" : "#888", fontWeight: r.party_only ? 700 : 500 }}>
                     🎉 Sadece parti gecesi kullanılır
                   </span>
                 </label>
@@ -431,13 +431,13 @@ export default function RecipesMgmtPage() {
 
       <div style={{ display: "flex", gap: 6, marginBottom: 12, flexWrap: "wrap" }}>
         {[["all", "TÜMÜ"], ["missing", "REÇETESİ YOK (" + noRecipe + ")"], ["done", "REÇETELİ"]].map(([k, l]) => (
-          <button key={k} onClick={() => setListFilter(k)} style={{ padding: "8px 14px", border: "none", borderRadius: 16, fontSize: 11, fontWeight: 700, letterSpacing: "0.5px", background: listFilter === k ? "#C8973E" : "#222", color: listFilter === k ? "#000" : "#888", cursor: "pointer" }}>{l}</button>
+          <button key={k} onClick={() => setListFilter(k)} style={{ padding: "8px 14px", border: "none", borderRadius: 16, fontSize: 11, fontWeight: 700, letterSpacing: "0.5px", background: listFilter === k ? "#FFFFFF" : "#222", color: listFilter === k ? "#000" : "#888", cursor: "pointer" }}>{l}</button>
         ))}
       </div>
 
       {consumables.length > 0 && (
-        <details style={{ background: "#12181A", border: "1px solid #1E3A42", borderRadius: 12, padding: 12, marginBottom: 12 }}>
-          <summary style={{ fontSize: 11, color: "#8FD8E8", letterSpacing: "1.5px", fontWeight: 700, cursor: "pointer" }}>🧊 TOPLU SARF EKLE (buz → tüm kokteyller gibi)</summary>
+        <details style={{ background: "#12181A", border: "1px solid #2A2A2A", borderRadius: 12, padding: 12, marginBottom: 12 }}>
+          <summary style={{ fontSize: 11, color: "#F0EDE8", letterSpacing: "1.5px", fontWeight: 700, cursor: "pointer" }}>🧊 TOPLU SARF EKLE (buz → tüm kokteyller gibi)</summary>
           <div style={{ display: "flex", gap: 8, marginTop: 10, flexWrap: "wrap" }}>
             <select id="bulk-ing" style={{ flex: "1 1 130px", padding: "10px", background: "#0C0C0C", border: "1px solid #2A2A2A", borderRadius: 8, color: "#F0EDE8", fontSize: 13, fontFamily: "inherit" }}>
               {consumables.map(i => (<option key={i.id} value={i.id}>{i.name}</option>))}
@@ -447,7 +447,7 @@ export default function RecipesMgmtPage() {
                 .map(([id, name]) => (<option key={id} value={id}>{name}</option>))}
             </select>
             <button onClick={() => bulkAddConsumable(document.getElementById("bulk-ing").value, document.getElementById("bulk-cat").value)}
-              disabled={busy} style={{ padding: "10px 16px", background: "#C8973E", color: "#000", border: "none", borderRadius: 8, fontSize: 13, fontWeight: 800, cursor: "pointer" }}>Uygula</button>
+              disabled={busy} style={{ padding: "10px 16px", background: "#FFFFFF", color: "#000", border: "none", borderRadius: 8, fontSize: 13, fontWeight: 800, cursor: "pointer" }}>Uygula</button>
           </div>
         </details>
       )}
@@ -463,11 +463,11 @@ export default function RecipesMgmtPage() {
               <div style={{ fontSize: 14, fontWeight: 700 }}>{p.name}</div>
               <div style={{ fontSize: 11, color: "#888", marginTop: 2 }}>
                 {p.categories?.name && <span style={{ marginRight: 8 }}>{p.categories.name}</span>}
-                {n > 0 ? <span style={{ color: "#3ECF8E" }}>{n} malzeme</span> : <span style={{ color: "#775544" }}>reçete yok</span>}
+                {n > 0 ? <span style={{ color: "#FFFFFF" }}>{n} malzeme</span> : <span style={{ color: "#2A2A2A" }}>reçete yok</span>}
               </div>
             </div>
             <div style={{ textAlign: "right", flexShrink: 0 }}>
-              <div style={{ fontSize: 13, fontWeight: 700, color: "#C8973E" }}>₺{p.price}</div>
+              <div style={{ fontSize: 13, fontWeight: 700, color: "#FFFFFF" }}>₺{p.price}</div>
               {cost > 0 && <div style={{ fontSize: 10, color: "#888", marginTop: 2 }}>maliyet ₺{cost.toFixed(2)}{margin !== null ? " · %" + margin : ""}</div>}
             </div>
           </div>

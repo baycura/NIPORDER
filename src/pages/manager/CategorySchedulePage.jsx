@@ -101,7 +101,7 @@ export default function CategorySchedulePage() {
           <h1 style={{ fontSize: 24, fontWeight: 800, margin: 0 }}>⏰ Kategori Saatleri</h1>
           <div style={{ fontSize: 12, color: "#888", marginTop: 4 }}>Seçilen saat aralığında işaretli kategori ve ürünler müşteri menüsünden otomatik gizlenir (örn. gece mutfak kapalı).</div>
         </div>
-        <button onClick={() => setShowAdd(true)} style={{ padding: "12px 20px", background: "#C8973E", color: "#000", border: "none", fontWeight: 800, fontSize: 13, cursor: "pointer", borderRadius: 8 }}>+ YENİ KURAL</button>
+        <button onClick={() => setShowAdd(true)} style={{ padding: "12px 20px", background: "#FFFFFF", color: "#000", border: "none", fontWeight: 800, fontSize: 13, cursor: "pointer", borderRadius: 8 }}>+ YENİ KURAL</button>
       </div>
 
       {rules.length === 0 && <div style={{ color: "#888", marginTop: 32, textAlign: "center" }}>Henüz kural yok. Yukarıdan yeni kural ekleyin.</div>}
@@ -117,13 +117,13 @@ export default function CategorySchedulePage() {
                 <div style={{ color: "#888", fontSize: 13, marginTop: 4 }}>
                   {r.start_time?.slice(0, 5)} - {r.end_time?.slice(0, 5)} | {r.days_of_week?.map(d => DAYS.find(x => x.idx === d)?.label).join(", ")}
                 </div>
-                <div style={{ color: "#C8973E", fontSize: 13, marginTop: 4 }}>
+                <div style={{ color: "#FFFFFF", fontSize: 13, marginTop: 4 }}>
                   Bu saatlerde gizlenir: {catCount > 0 && (catCount + " kategori")}{catCount > 0 && prodCount > 0 && " + "}{prodCount > 0 && (prodCount + " ürün")}
                 </div>
               </div>
               <div style={{ display: "flex", gap: 8 }}>
-                <button onClick={() => toggle(r.id, !r.is_active)} style={{ padding: "8px 16px", background: r.is_active ? "#22c55e" : "#444", color: "#fff", border: "none", borderRadius: 6, fontWeight: 700, fontSize: 12, cursor: "pointer" }}>{r.is_active ? "AKTİF" : "PASİF"}</button>
-                <button onClick={() => remove(r.id)} style={{ padding: "8px 16px", background: "#ef4444", color: "#fff", border: "none", borderRadius: 6, fontWeight: 700, fontSize: 12, cursor: "pointer" }}>SİL</button>
+                <button onClick={() => toggle(r.id, !r.is_active)} style={{ padding: "8px 16px", background: r.is_active ? "#8A8580" : "#444", color: "#fff", border: "none", borderRadius: 6, fontWeight: 700, fontSize: 12, cursor: "pointer" }}>{r.is_active ? "AKTİF" : "PASİF"}</button>
+                <button onClick={() => remove(r.id)} style={{ padding: "8px 16px", background: "#2A2A2A", color: "#fff", border: "none", borderRadius: 6, fontWeight: 700, fontSize: 12, cursor: "pointer" }}>SİL</button>
               </div>
             </div>
           </div>
@@ -149,14 +149,14 @@ export default function CategorySchedulePage() {
             <label style={{ display: "block", color: "#aaa", fontSize: 12, marginBottom: 4 }}>GÜNLER</label>
             <div style={{ display: "flex", gap: 6, marginBottom: 16, flexWrap: "wrap" }}>
               {DAYS.map(d => (
-                <button key={d.idx} onClick={() => toggleDay(d.idx)} style={{ padding: "8px 12px", background: form.days_of_week.includes(d.idx) ? "#C8973E" : "#222", color: form.days_of_week.includes(d.idx) ? "#000" : "#aaa", border: "none", borderRadius: 6, fontWeight: 700, fontSize: 12, cursor: "pointer", minWidth: 50 }}>{d.label}</button>
+                <button key={d.idx} onClick={() => toggleDay(d.idx)} style={{ padding: "8px 12px", background: form.days_of_week.includes(d.idx) ? "#FFFFFF" : "#222", color: form.days_of_week.includes(d.idx) ? "#000" : "#aaa", border: "none", borderRadius: 6, fontWeight: 700, fontSize: 12, cursor: "pointer", minWidth: 50 }}>{d.label}</button>
               ))}
             </div>
             <label style={{ display: "block", color: "#aaa", fontSize: 12, marginBottom: 8 }}>GİZLENECEK KATEGORİLER</label>
             <div style={{ background: "#000", padding: 12, borderRadius: 6, border: "1px solid #333", maxHeight: 150, overflowY: "auto", marginBottom: 12 }}>
               {categories.map(c => (
                 <label key={c.id} style={{ display: "flex", alignItems: "center", gap: 8, padding: "4px 0", cursor: "pointer", fontSize: 14 }}>
-                  <input type="checkbox" checked={!!form.category_overrides[c.id]} onChange={() => toggleCategory(c.id)} style={{ accentColor: "#C8973E" }} />
+                  <input type="checkbox" checked={!!form.category_overrides[c.id]} onChange={() => toggleCategory(c.id)} style={{ accentColor: "#FFFFFF" }} />
                   <span style={{ color: "#fff" }}>{c.name}</span>
                 </label>
               ))}
@@ -166,7 +166,7 @@ export default function CategorySchedulePage() {
             <div style={{ background: "#000", padding: 12, borderRadius: 6, border: "1px solid #333", maxHeight: 200, overflowY: "auto", marginBottom: 16 }}>
               {products.map(p => (
                 <label key={p.id} style={{ display: "flex", alignItems: "center", gap: 8, padding: "4px 0", cursor: "pointer", fontSize: 14 }}>
-                  <input type="checkbox" checked={!!form.product_overrides[p.id]} onChange={() => toggleProduct(p.id)} style={{ accentColor: "#C8973E" }} />
+                  <input type="checkbox" checked={!!form.product_overrides[p.id]} onChange={() => toggleProduct(p.id)} style={{ accentColor: "#FFFFFF" }} />
                   <span style={{ color: "#fff" }}>{p.name}</span>
                 </label>
               ))}
@@ -174,7 +174,7 @@ export default function CategorySchedulePage() {
             </div>
             <div style={{ display: "flex", gap: 8, justifyContent: "flex-end" }}>
               <button onClick={() => setShowAdd(false)} style={{ padding: "10px 20px", background: "#333", color: "#fff", border: "none", borderRadius: 6, fontWeight: 700, fontSize: 12, cursor: "pointer" }}>İPTAL</button>
-              <button onClick={save} style={{ padding: "10px 20px", background: "#C8973E", color: "#000", border: "none", borderRadius: 6, fontWeight: 700, fontSize: 12, cursor: "pointer" }}>KAYDET</button>
+              <button onClick={save} style={{ padding: "10px 20px", background: "#FFFFFF", color: "#000", border: "none", borderRadius: 6, fontWeight: 700, fontSize: 12, cursor: "pointer" }}>KAYDET</button>
             </div>
           </div>
         </div>

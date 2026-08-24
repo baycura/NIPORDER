@@ -60,9 +60,9 @@ export default function SettlementPage() {
         {[{ k: "month", l: "🗓️ Aylık" }, { k: "week", l: "📅 Haftalık" }].map(p => (
           <button key={p.k} onClick={() => setPeriod(p.k)} style={{
             padding: "10px 20px", borderRadius: 8, cursor: "pointer",
-            background: period === p.k ? "#C8973E" : "#222",
+            background: period === p.k ? "#FFFFFF" : "#222",
             color: period === p.k ? "#000" : "#888",
-            border: "1px solid " + (period === p.k ? "#C8973E" : "#333"),
+            border: "1px solid " + (period === p.k ? "#FFFFFF" : "#333"),
             fontWeight: 700, fontSize: 13
           }}>{p.l}</button>
         ))}
@@ -93,15 +93,15 @@ export default function SettlementPage() {
 
         return (
           <div key={ps} style={{ marginBottom: 14, padding: 16, background: "#1A1A1A", borderRadius: 12, border: "1px solid #2A2A2A" }}>
-            <h3 style={{ fontSize: 15, marginBottom: 14, color: "#C8973E", fontWeight: 700, textTransform: "capitalize" }}>
+            <h3 style={{ fontSize: 15, marginBottom: 14, color: "#FFFFFF", fontWeight: 700, textTransform: "capitalize" }}>
               📅 {dateLabel(ps)}
             </h3>
 
-            <div style={{ padding: 16, background: "#2A1F1A", borderRadius: 10, border: "1px solid #4A3A2A", marginBottom: receivable > 0.01 ? 10 : 0 }}>
-              <div style={{ fontSize: 11, color: "#A87A4F", marginBottom: 6, letterSpacing: 0.5, fontWeight: 600 }}>
+            <div style={{ padding: 16, background: "#161616", borderRadius: 10, border: "1px solid #2A2A2A", marginBottom: receivable > 0.01 ? 10 : 0 }}>
+              <div style={{ fontSize: 11, color: "#8A8580", marginBottom: 6, letterSpacing: 0.5, fontWeight: 600 }}>
                 MUTFAĞA ÖDENECEK CİRO
               </div>
-              <div style={{ fontSize: 34, fontWeight: 900, color: "#FF9F40", lineHeight: 1, fontFamily: hv }}>
+              <div style={{ fontSize: 34, fontWeight: 900, color: "#8A8580", lineHeight: 1, fontFamily: hv }}>
                 ₺{fmt(payable)}
               </div>
               <div style={{ fontSize: 11, color: "#666", marginTop: 6 }}>{payableOrders} sipariş · mutfak ürünleri</div>
@@ -109,20 +109,20 @@ export default function SettlementPage() {
 
             {receivable > 0.01 && (
               <>
-                <div style={{ padding: 12, background: "#1A2A2F", borderRadius: 8, border: "1px solid #2A4A5A", marginBottom: 10 }}>
-                  <div style={{ fontSize: 10, color: "#4FA8C8", marginBottom: 4, letterSpacing: 0.5, fontWeight: 600 }}>
+                <div style={{ padding: 12, background: "#161616", borderRadius: 8, border: "1px solid #2A2A2A", marginBottom: 10 }}>
+                  <div style={{ fontSize: 10, color: "#8A8580", marginBottom: 4, letterSpacing: 0.5, fontWeight: 600 }}>
                     MUTFAK BİZE BORÇLU (bizim yaptığımız)
                   </div>
-                  <div style={{ fontSize: 18, fontWeight: 800, color: "#40C8E0" }}>₺{fmt(receivable)}</div>
+                  <div style={{ fontSize: 18, fontWeight: 800, color: "#8A8580" }}>₺{fmt(receivable)}</div>
                 </div>
                 <div style={{ padding: 12, background: "#0A0A0A", borderRadius: 8, textAlign: "center" }}>
                   <div style={{ fontSize: 11, color: "#888", marginBottom: 4, letterSpacing: 0.5 }}>⚖️ NET</div>
                   {Math.abs(net) < 0.01 ? (
                     <div style={{ fontSize: 14, color: "#888" }}>Eşit — ödeme gerekmez</div>
                   ) : net > 0 ? (
-                    <div style={{ fontSize: 16, color: "#FF9F40", fontWeight: 800 }}>Mutfağa <strong>₺{fmt(net)}</strong> ödenecek</div>
+                    <div style={{ fontSize: 16, color: "#8A8580", fontWeight: 800 }}>Mutfağa <strong>₺{fmt(net)}</strong> ödenecek</div>
                   ) : (
-                    <div style={{ fontSize: 16, color: "#40C8E0", fontWeight: 800 }}>Mutfak bize <strong>₺{fmt(Math.abs(net))}</strong> borçlu</div>
+                    <div style={{ fontSize: 16, color: "#8A8580", fontWeight: 800 }}>Mutfak bize <strong>₺{fmt(Math.abs(net))}</strong> borçlu</div>
                   )}
                 </div>
               </>

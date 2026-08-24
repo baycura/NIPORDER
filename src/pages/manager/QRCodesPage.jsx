@@ -69,15 +69,15 @@ export default function QRCodesPage() {
           <h1 style={{ fontSize: 32, fontFamily: cvc, letterSpacing: "2px", margin: 0 }}>QR KODLAR</h1>
           <div style={{ color: "#888", fontSize: 13, marginTop: 4 }}>Masalara koymak için yazdır veya indir</div>
         </div>
-        <button onClick={() => printOne("both")} style={{ padding: "12px 20px", background: "#C8973E", color: "#000", border: "none", fontFamily: cvc, fontSize: 14, letterSpacing: "1px", cursor: "pointer", borderRadius: 8 }}>HER İKİSİNİ YAZDIR</button>
+        <button onClick={() => printOne("both")} style={{ padding: "12px 20px", background: "#FFFFFF", color: "#000", border: "none", fontFamily: cvc, fontSize: 14, letterSpacing: "1px", cursor: "pointer", borderRadius: 8 }}>HER İKİSİNİ YAZDIR</button>
       </div>
 
       <div className={"qr-print"} style={{ display: "flex", gap: 24, flexWrap: "wrap", alignItems: "stretch" }}>
         {(printMode === null || printMode === "paris" || printMode === "both") && (
-          <Card title="PARIS" subtitle="Ön / Front" url={PARIS_URL} color="#C8973E" />
+          <Card title="PARIS" subtitle="Ön / Front" url={PARIS_URL} color="#FFFFFF" />
         )}
         {(printMode === null || printMode === "doner" || printMode === "both") && (
-          <Card title="BERLİN" subtitle="Arka / Back" url={DONER_URL} color="#E0644A" />
+          <Card title="BERLİN" subtitle="Arka / Back" url={DONER_URL} color="#C87A6A" />
         )}
       </div>
 
