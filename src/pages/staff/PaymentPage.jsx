@@ -100,11 +100,20 @@ export default function PaymentPage() {
     if (o) { autoOpened.current = true; openPay(o); }
   }, [orders]);
 
+  // Puan anahtari acilip kapandiginda odenecek tutar yeniden hesaplanir.
   useEffect(() => {
     if (!modal) return;
     const kalan = usePoints ? Math.max(0, Number(modal.total || 0) - ptsCover(modal)) : Number(modal.total || 0);
     setAmount(String(kalan));
-  }, [usePoints, memberPts]);
+  }, [usePoints]);
+
+  // Bakiye modal acildiktan sonra gelirse ya da kasada uye secilirse tutar
+  // YALNIZCA puan kullaniliyorken guncellenir. Aksi halde kasiyerin elle
+  // yazdigi tutar, uye secildigi anda sessizce siparis toplamina donerdi.
+  useEffect(() => {
+    if (!modal || !usePoints) return;
+    setAmount(String(Math.max(0, Number(modal.total || 0) - ptsCover(modal))));
+  }, [memberPts]);
 
   const completePayment = async () => {
     if (busy) return;
