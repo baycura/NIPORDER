@@ -86,9 +86,9 @@ export default function ShiftsOverviewPage() {
           <button key={o} onClick={() => setGunOffset(o)}
             style={{ padding: "8px 14px", borderRadius: 20, whiteSpace: "nowrap", cursor: "pointer", fontFamily: cv,
                      fontSize: 12, fontWeight: 700,
-                     background: gunOffset === o ? "#C8973E" : "#1A1A1A",
+                     background: gunOffset === o ? "#FFFFFF" : "#1A1A1A",
                      color: gunOffset === o ? "#000" : "#999",
-                     border: "1px solid " + (gunOffset === o ? "#C8973E" : "#2A2A2A") }}>
+                     border: "1px solid " + (gunOffset === o ? "#FFFFFF" : "#2A2A2A") }}>
             {gunAdi(o)}
           </button>
         ))}
@@ -121,9 +121,9 @@ export default function ShiftsOverviewPage() {
               <div style={{ fontSize: 15, fontWeight: 800, flex: 1 }}>{k.ad}</div>
               {k.vardiya
                 ? (k.vardiya.status === "active"
-                    ? <span style={{ fontSize: 10, fontWeight: 800, color: "#3ECF8E", background: "#0E1F17", border: "1px solid #1F4A35", padding: "3px 9px", borderRadius: 14 }}>VARDİYADA</span>
+                    ? <span style={{ fontSize: 10, fontWeight: 800, color: "#FFFFFF", background: "#161616", border: "1px solid #2A2A2A", padding: "3px 9px", borderRadius: 14 }}>VARDİYADA</span>
                     : <span style={{ fontSize: 10, fontWeight: 800, color: "#999", background: "#1E1E1E", border: "1px solid #333", padding: "3px 9px", borderRadius: 14 }}>BİTTİ</span>)
-                : <span style={{ fontSize: 10, fontWeight: 800, color: "#C8973E", background: "#20180C", border: "1px solid #4A3A1A", padding: "3px 9px", borderRadius: 14 }}>VARDİYA KAYDI YOK</span>}
+                : <span style={{ fontSize: 10, fontWeight: 800, color: "#FFFFFF", background: "#161616", border: "1px solid #2A2A2A", padding: "3px 9px", borderRadius: 14 }}>VARDİYA KAYDI YOK</span>}
             </div>
             <div style={{ display: "flex", gap: 16, marginTop: 8, fontSize: 12.5, color: "#B8B3AC", flexWrap: "wrap" }}>
               {k.vardiya && <span>🕐 {saat(k.vardiya.checked_in_at)} → {saat(k.vardiya.checked_out_at)} ({sure(k.vardiya)})</span>}

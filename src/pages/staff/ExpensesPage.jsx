@@ -6,7 +6,7 @@ const cv = "-apple-system,BlinkMacSystemFont,'Segoe UI',Roboto,sans-serif";
 const hv = "'Bebas Neue','Barlow Condensed','Coolvetica Condensed',sans-serif";
 const C = {
   card: "#161616", cardLine: "#262626", ink: "#F0EDE8", muted: "#8A8A86",
-  faint: "#5A5A56", accent: "#C8973E", green: "#3ECF8E", red: "#E06666",
+  faint: "#5A5A56", accent: "#FFFFFF", green: "#FFFFFF", red: "#C87A6A",
 };
 
 const CATS = [

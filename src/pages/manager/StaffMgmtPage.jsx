@@ -12,7 +12,7 @@ const ROLES_BASE = [
   { key: "viewer",   label: "Gozlemci (sadece goruntuleme)" },
 ];
 
-const roleColor = { admin:"#FFD700", manager:"#C8973E", owner:"#C8973E", waiter:"#3ECF8E", kitchen:"#E07A3E", cashier:"#5A8FE0", viewer:"#B08FD8", parttime:"#6FB3C0" };
+const roleColor = { admin:"#FFFFFF", manager:"#FFFFFF", owner:"#FFFFFF", waiter:"#FFFFFF", kitchen:"#FFFFFF", cashier:"#8A8580", viewer:"#8A8580", parttime:"#8A8580" };
 
 export default function StaffMgmtPage() {
   const { isAdmin } = useAuth();
@@ -125,7 +125,7 @@ export default function StaffMgmtPage() {
       <div style={{fontSize:24,fontWeight:800,marginBottom:4}}>Personel Yonetimi</div>
       <div style={{fontSize:11,color:"#888",letterSpacing:"1px",marginBottom:18}}>{staff.length} PERSONEL</div>
 
-      <button onClick={openNew} style={{padding:"10px 16px",background:"#C8973E",color:"#000",border:"none",borderRadius:10,fontSize:13,fontWeight:800,cursor:"pointer",marginBottom:16}}>+ Yeni Personel</button>
+      <button onClick={openNew} style={{padding:"10px 16px",background:"#FFFFFF",color:"#000",border:"none",borderRadius:10,fontSize:13,fontWeight:800,cursor:"pointer",marginBottom:16}}>+ Yeni Personel</button>
 
       <div>
         {staff.map(s => {
@@ -137,16 +137,16 @@ export default function StaffMgmtPage() {
                 <div style={{width:44,height:44,borderRadius:"50%",background:color+"33",color,display:"flex",alignItems:"center",justifyContent:"center",fontSize:18,fontWeight:800,flexShrink:0}}>{s.name?.[0]||"?"}</div>
                 <div style={{flex:1,minWidth:0}}>
                   <div style={{fontSize:15,fontWeight:700,color:"#F0EDE8"}}>{s.name}</div>
-                  <div style={{fontSize:11,color,letterSpacing:"1px",marginTop:2,fontWeight:600}}>{displayRole?.toUpperCase()}{s.role === "admin" && <span style={{color:"#FFD700",marginLeft:6}}>★</span>}</div>
+                  <div style={{fontSize:11,color,letterSpacing:"1px",marginTop:2,fontWeight:600}}>{displayRole?.toUpperCase()}{s.role === "admin" && <span style={{color:"#FFFFFF",marginLeft:6}}>★</span>}</div>
                   {s.email && <div style={{fontSize:11,color:"#888",marginTop:3}}>{s.email}</div>}
                   {s.phone && <div style={{fontSize:11,color:"#888"}}>{s.phone}</div>}
                   {s.last_login && <div style={{fontSize:10,color:"#666",marginTop:3}}>Son giris: {new Date(s.last_login).toLocaleDateString("tr-TR")}</div>}
                 </div>
                 <div style={{display:"flex",flexDirection:"column",gap:4,flexShrink:0}}>
                   <button onClick={() => openEdit(s)} style={{padding:"5px 9px",background:"#222",color:"#aaa",border:"1px solid #333",borderRadius:6,fontSize:10,cursor:"pointer",fontWeight:700}}>Duzenle</button>
-                  {s.email && <button onClick={() => { setPwModal(s); setNewPassword(""); }} style={{padding:"5px 9px",background:"rgba(200,151,62,0.15)",color:"#C8973E",border:"1px solid #C8973E",borderRadius:6,fontSize:10,cursor:"pointer",fontWeight:700}}>Sifre</button>}
-                  <button onClick={() => toggleActive(s)} style={{padding:"5px 9px",background:s.is_active===false?"#553355":"transparent",color:s.is_active===false?"#FFB0FF":"#888",border:"1px solid #333",borderRadius:6,fontSize:10,cursor:"pointer"}}>{s.is_active===false?"Pasif":"Aktif"}</button>
-                  <button onClick={() => deleteStaff(s)} style={{padding:"5px 9px",background:"transparent",color:"#FF6666",border:"1px solid #553333",borderRadius:6,fontSize:10,cursor:"pointer"}}>Sil</button>
+                  {s.email && <button onClick={() => { setPwModal(s); setNewPassword(""); }} style={{padding:"5px 9px",background:"rgba(255,255,255,0.15)",color:"#FFFFFF",border:"1px solid #FFFFFF",borderRadius:6,fontSize:10,cursor:"pointer",fontWeight:700}}>Sifre</button>}
+                  <button onClick={() => toggleActive(s)} style={{padding:"5px 9px",background:s.is_active===false?"#2A2A2A":"transparent",color:s.is_active===false?"#F0EDE8":"#888",border:"1px solid #333",borderRadius:6,fontSize:10,cursor:"pointer"}}>{s.is_active===false?"Pasif":"Aktif"}</button>
+                  <button onClick={() => deleteStaff(s)} style={{padding:"5px 9px",background:"transparent",color:"#C87A6A",border:"1px solid #2A2A2A",borderRadius:6,fontSize:10,cursor:"pointer"}}>Sil</button>
                 </div>
               </div>
             </div>
@@ -166,7 +166,7 @@ export default function StaffMgmtPage() {
           <Field label="GERCEK YETKI">
             <div style={{display:"flex",gap:6,flexWrap:"wrap"}}>
               {ROLES.map(r => (
-                <button key={r.key} onClick={()=>setForm({...form,role:r.key})} style={{flex:"1 1 calc(50% - 6px)",minWidth:120,padding:"10px",background:form.role===r.key?(r.key==="admin"?"#FFD700":"#C8973E"):"#222",color:form.role===r.key?"#000":"#888",border:"1px solid "+(form.role===r.key?(r.key==="admin"?"#FFD700":"#C8973E"):"#333"),borderRadius:8,fontSize:11,fontWeight:700,cursor:"pointer"}}>{r.label}</button>
+                <button key={r.key} onClick={()=>setForm({...form,role:r.key})} style={{flex:"1 1 calc(50% - 6px)",minWidth:120,padding:"10px",background:form.role===r.key?"#FFFFFF":"#222",color:form.role===r.key?"#000":"#888",border:"1px solid "+(form.role===r.key?"#FFFFFF":"#333"),borderRadius:8,fontSize:11,fontWeight:700,cursor:"pointer"}}>{r.label}</button>
               ))}
             </div>
           </Field>
@@ -176,7 +176,7 @@ export default function StaffMgmtPage() {
               {[{id:"c3c6e0c7-1821-4edd-993d-ad960cfbc452",label:"Paris"},{id:"c39da530-7f73-4f69-a752-029bf03790b1",label:"Berlin"}].map(st => {
                 const sel = (form.store_ids||[]).includes(st.id);
                 return (
-                  <button key={st.id} type="button" onClick={()=>setForm({...form,store_ids:sel?(form.store_ids||[]).filter(id=>id!==st.id):[...(form.store_ids||[]),st.id]})} style={{flex:"1 1 calc(50% - 6px)",minWidth:120,padding:"10px",background:sel?"#C8973E":"#222",color:sel?"#000":"#888",border:"1px solid "+(sel?"#C8973E":"#333"),borderRadius:8,fontSize:13,fontWeight:700,cursor:"pointer"}}>{sel?"✓ ":""}{st.label}</button>
+                  <button key={st.id} type="button" onClick={()=>setForm({...form,store_ids:sel?(form.store_ids||[]).filter(id=>id!==st.id):[...(form.store_ids||[]),st.id]})} style={{flex:"1 1 calc(50% - 6px)",minWidth:120,padding:"10px",background:sel?"#FFFFFF":"#222",color:sel?"#000":"#888",border:"1px solid "+(sel?"#FFFFFF":"#333"),borderRadius:8,fontSize:13,fontWeight:700,cursor:"pointer"}}>{sel?"✓ ":""}{st.label}</button>
                 );
               })}
             </div>
@@ -191,7 +191,7 @@ export default function StaffMgmtPage() {
 
       {pwModal && (
         <Modal onClose={() => setPwModal(null)} title={"Sifre Sifirla: " + pwModal.name}>
-          <div style={{background:"rgba(200,151,62,0.1)",border:"1px solid rgba(200,151,62,0.3)",borderRadius:8,padding:12,marginBottom:16,fontSize:12,color:"#ddd",lineHeight:1.5}}>
+          <div style={{background:"rgba(255,255,255,0.1)",border:"1px solid rgba(255,255,255,0.3)",borderRadius:8,padding:12,marginBottom:16,fontSize:12,color:"#ddd",lineHeight:1.5}}>
             Yeni bir sifre belirle. Kullanici bu sifreyle giris yapabilir.
           </div>
           <Field label="YENI SIFRE (en az 6 karakter)"><input autoFocus type="text" value={newPassword} onChange={e=>setNewPassword(e.target.value)} placeholder="orn: garson2026" style={inputS}/></Field>
@@ -207,7 +207,7 @@ export default function StaffMgmtPage() {
 
 const inputS = {width:"100%",padding:"10px 12px",background:"#0C0C0C",border:"1px solid #2A2A2A",borderRadius:8,color:"#F0EDE8",fontSize:14,outline:"none",fontFamily:"inherit"};
 const cancelBtn = {flex:1,padding:"12px",background:"transparent",color:"#888",border:"1px solid #333",borderRadius:10,fontSize:14,fontWeight:700,cursor:"pointer"};
-const saveBtn = {flex:2,padding:"12px",background:"#C8973E",color:"#000",border:"none",borderRadius:10,fontSize:14,fontWeight:800,cursor:"pointer"};
+const saveBtn = {flex:2,padding:"12px",background:"#FFFFFF",color:"#000",border:"none",borderRadius:10,fontSize:14,fontWeight:800,cursor:"pointer"};
 
 function Field({label, children}) {
   return (<div style={{marginBottom:12}}>

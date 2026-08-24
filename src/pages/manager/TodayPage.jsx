@@ -109,7 +109,7 @@ export default function TodayPage() {
             <div key={h} title={`${String(h).padStart(2, "0")}:00 — ₺${Math.round(veri.saatlik[h])}`}
                  style={{ flex: 1, borderRadius: "3px 3px 0 0", minHeight: 2,
                           height: `${Math.round(100 * veri.saatlik[h] / maxSaat)}%`,
-                          background: String(h) === String(enYogun?.[0]) && veri.saatlik[h] > 0 ? "#C8973E" : "#2E2E2E" }} />
+                          background: String(h) === String(enYogun?.[0]) && veri.saatlik[h] > 0 ? "#FFFFFF" : "#2E2E2E" }} />
           ))}
         </div>
         <div style={{ fontSize: 11, color: "#8A8580", marginTop: 5 }}>
@@ -133,8 +133,8 @@ export default function TodayPage() {
 
       {veri.unutulmus.length > 0 && (
         <div onClick={() => navigate("/payment")}
-             style={{ background: "#241A0E", border: "1px solid #4A3A1A", borderRadius: 13,
-                      padding: "11px 14px", fontSize: 13, color: "#E8C36A", cursor: "pointer",
+             style={{ background: "#161616", border: "1px solid #2A2A2A", borderRadius: 13,
+                      padding: "11px 14px", fontSize: 13, color: "#F0EDE8", cursor: "pointer",
                       display: "flex", alignItems: "center", gap: 8 }}>
           ⏳ {veri.unutulmus.length} hesap 12 saatten uzun süredir açık —{" "}
           {veri.unutulmus.slice(0, 2).map(o => `${o.cafe_tables?.name || o.customer_name || "Misafir"} ₺${Math.round(o.total)}`).join(", ")}

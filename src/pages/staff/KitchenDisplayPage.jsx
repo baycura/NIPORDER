@@ -112,14 +112,14 @@ export default function KitchenDisplayPage() {
   return (
     <div style={{fontFamily:cv,background:"#000",color:"#fff",minHeight:"100vh",padding:16}} onClick={unlock}>
       {flash && (
-        <div style={{position:"fixed",top:0,left:0,right:0,padding:"30px",background:"#ff3333",color:"#fff",fontSize:36,fontWeight:900,textAlign:"center",letterSpacing:"4px",zIndex:200}}>
+        <div style={{position:"fixed",top:0,left:0,right:0,padding:"30px",background:"#C87A6A",color:"#fff",fontSize:36,fontWeight:900,textAlign:"center",letterSpacing:"4px",zIndex:200}}>
           🔔 YENİ SİPARİŞ!
         </div>
       )}
 
       {!audioUnlocked && (
         <div style={{position:"fixed",inset:0,background:"rgba(0,0,0,0.95)",display:"flex",alignItems:"center",justifyContent:"center",zIndex:300,cursor:"pointer"}}>
-          <div style={{textAlign:"center",color:"#C8973E"}}>
+          <div style={{textAlign:"center",color:"#FFFFFF"}}>
             <div style={{fontSize:80,marginBottom:20}}>🔊</div>
             <div style={{fontSize:28,fontWeight:900}}>Mutfak Ekranı</div>
             <div style={{fontSize:16,color:"#888",marginTop:10}}>Ses ve uyku engeli için ekrana dokun</div>
@@ -142,24 +142,24 @@ export default function KitchenDisplayPage() {
           const waitMin = Math.round((Date.now() - new Date(t.order.created_at).getTime()) / 60000);
           const urgent = waitMin >= 15;
           return (
-            <div key={t.order.id} style={{background:urgent?"#3d0808":"#141414",border:"2px solid "+(urgent?"#ff3333":"#222"),borderRadius:12,padding:14}}>
+            <div key={t.order.id} style={{background:urgent?"#161616":"#141414",border:"2px solid "+(urgent?"#2A2A2A":"#222"),borderRadius:12,padding:14}}>
               <div style={{display:"flex",justifyContent:"space-between",alignItems:"center",marginBottom:10}}>
                 <div style={{flex:1,minWidth:0}}>
-                  {t.storeSlug && <div style={{display:"inline-block",background:t.storeSlug==="doner"?"#C8973E":"#3ECF8E",color:"#000",padding:"2px 8px",borderRadius:6,fontSize:10,fontWeight:800,letterSpacing:"0.5px",marginBottom:4}}>{t.storeSlug==="doner"?"🥙 DÖNER":"🗼 PARIS"}</div>}
+                  {t.storeSlug && <div style={{display:"inline-block",background:t.storeSlug==="doner"?"#FFFFFF":"#222222",color:t.storeSlug==="doner"?"#000":"#F0EDE8",padding:"2px 8px",borderRadius:6,fontSize:10,fontWeight:800,letterSpacing:"0.5px",marginBottom:4}}>{t.storeSlug==="doner"?"🥙 DÖNER":"🗼 PARIS"}</div>}
                   <div style={{fontSize:18,fontWeight:800}}>{t.where}</div>
                 </div>
-                <div style={{fontSize:20,fontWeight:900,color:urgent?"#ff6666":"#C8973E"}}>{waitMin}'</div>
+                <div style={{fontSize:20,fontWeight:900,color:urgent?"#C87A6A":"#FFFFFF"}}>{waitMin}'</div>
               </div>
               {t.items.map(it => {
                 const opts = optionsText(it.selected_options);
                 return (
                   <div key={it.id} style={{padding:"8px 0",borderTop:"1px solid #333"}}>
-                    <div style={{fontSize:16,fontWeight:700,color:it.kitchen_status==="ready"?"#3ECF8E":it.kitchen_status==="preparing"?"#E07A3E":"#fff"}}>
+                    <div style={{fontSize:16,fontWeight:700,color:it.kitchen_status==="ready"?"#FFFFFF":it.kitchen_status==="preparing"?"#FFFFFF":"#fff"}}>
                       {it.quantity}× {it.product_name}
-                      {it.is_takeaway && <span style={{marginLeft:8,padding:"3px 10px",background:"#C8973E",color:"#000",borderRadius:12,fontSize:12,fontWeight:800,letterSpacing:"0.5px"}}>🥤 PAKET</span>}
+                      {it.is_takeaway && <span style={{marginLeft:8,padding:"3px 10px",background:"#FFFFFF",color:"#000",borderRadius:12,fontSize:12,fontWeight:800,letterSpacing:"0.5px"}}>🥤 PAKET</span>}
                       <span style={{fontSize:10,marginLeft:8,letterSpacing:"1px",color:"#888"}}>{it.kitchen_status?.toUpperCase()}</span>
                     </div>
-                    {opts && <div style={{fontSize:13,color:"#C8973E",marginTop:2,fontWeight:600}}>{opts}</div>}
+                    {opts && <div style={{fontSize:13,color:"#FFFFFF",marginTop:2,fontWeight:600}}>{opts}</div>}
                     {it.notes && <div style={{fontSize:12,color:"#aaa",fontStyle:"italic",marginTop:2}}>Not: {it.notes}</div>}
                   </div>
                 );

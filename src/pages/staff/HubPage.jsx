@@ -62,7 +62,7 @@ export default function HubPage() {
         gruplar.map(g => (
           <div key={g.ad} style={{ marginBottom: 18 }}>
             <div style={{ fontSize: 10, letterSpacing: "2px", fontWeight: 800, marginBottom: 8,
-                          color: g.sari ? "#FFD700" : "#8A8580" }}>
+                          color: "#8A8580" }}>
               {g.ad}{g.sari ? " — SAHİP" : ""}
             </div>
             <div style={{ display: "grid", gridTemplateColumns: "1fr 1fr", gap: 8 }}>
@@ -74,9 +74,9 @@ export default function HubPage() {
 
       <div style={{ marginTop: 26, paddingTop: 16, borderTop: "1px solid #2A2A2A",
                     display: "flex", alignItems: "center", gap: 12 }}>
-        <div style={{ width: 38, height: 38, borderRadius: "50%", background: "#C8973E33",
+        <div style={{ width: 38, height: 38, borderRadius: "50%", background: "#222222",
                       display: "flex", alignItems: "center", justifyContent: "center",
-                      color: "#C8973E", fontWeight: 800, fontSize: 16 }}>
+                      color: "#FFFFFF", fontWeight: 800, fontSize: 16 }}>
           {staffUser?.name?.[0] || "?"}
         </div>
         <div style={{ flex: 1, minWidth: 0 }}>
@@ -85,8 +85,8 @@ export default function HubPage() {
         </div>
         <button
           onClick={async () => { await signOut(); navigate("/login"); }}
-          style={{ padding: "10px 16px", background: "transparent", color: "#a06060",
-                   border: "1px solid #553333", borderRadius: 10, fontSize: 13, fontWeight: 700,
+          style={{ padding: "10px 16px", background: "transparent", color: "#C87A6A",
+                   border: "1px solid #2A2A2A", borderRadius: 10, fontSize: 13, fontWeight: 700,
                    cursor: "pointer", fontFamily: cv }}>
           Çıkış yap
         </button>

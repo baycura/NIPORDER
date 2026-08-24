@@ -9,7 +9,7 @@ const hv = "'Bebas Neue','Barlow Condensed','Coolvetica Condensed',sans-serif";
 /* Dark palette — matches the staff app shell (#0C0C0C body) */
 const C = {
   card: "#161616", cardLine: "#262626", ink: "#F0EDE8", muted: "#8A8A86",
-  faint: "#5A5A56", accent: "#C8973E", up: "#7BC47F", down: "#E06666",
+  faint: "#5A5A56", accent: "#FFFFFF", up: "#8A8580", down: "#C87A6A",
 };
 
 const fmtTL = (n) => "₺" + Number(n || 0).toLocaleString("tr-TR", { maximumFractionDigits: 0 });
@@ -229,7 +229,7 @@ export default function ReportsPage() {
               {data.hourly.map(h => (
                 <div key={h.hour} style={{ flex: 1, textAlign: "center", display: "flex", flexDirection: "column", justifyContent: "flex-end", height: "100%" }}>
                   <div style={{
-                    background: h.hour === peak.hour && h.total > 0 ? C.accent : h.total > 0 ? "#8a6b2f" : "#222",
+                    background: h.hour === peak.hour && h.total > 0 ? C.accent : h.total > 0 ? "#8A8580" : "#222",
                     height: `${Math.max((h.total / maxHour) * 100, 2)}%`,
                     borderRadius: "3px 3px 0 0",
                   }} title={`${h.hour}:00 — ${fmtTL(h.total)}`} />
@@ -267,7 +267,7 @@ export default function ReportsPage() {
                 <div style={{ color: C.faint, fontSize: 13, padding: 12 }}>Bugün henüz satış yok</div>
               ) : data.topProducts.map((p, i) => (
                 <div key={p.name} style={{ position: "relative", padding: "9px 10px", marginBottom: 4, borderRadius: 6, overflow: "hidden" }}>
-                  <div style={{ position: "absolute", inset: 0, width: `${(p.rev / maxRev) * 100}%`, background: "rgba(200,151,62,0.10)", borderRadius: 6 }} />
+                  <div style={{ position: "absolute", inset: 0, width: `${(p.rev / maxRev) * 100}%`, background: "rgba(255,255,255,0.10)", borderRadius: 6 }} />
                   <div style={{ position: "relative", display: "flex", justifyContent: "space-between", alignItems: "center", gap: 8 }}>
                     <span style={{ fontSize: 14, overflow: "hidden", textOverflow: "ellipsis", whiteSpace: "nowrap" }}>
                       <b style={{ color: C.accent, marginRight: 8 }}>{i + 1}</b> {p.name}

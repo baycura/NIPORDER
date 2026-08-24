@@ -86,9 +86,9 @@ export default function TablesMgmtPage() {
       <div style={{fontSize:11,color:"#888",letterSpacing:"1px",marginBottom:18}}>{tables.length} MASA</div>
 
       <div style={{display:"flex",gap:8,marginBottom:18,flexWrap:"wrap"}}>
-        <button onClick={openNew} style={{padding:"10px 16px",background:"#C8973E",color:"#000",border:"none",borderRadius:10,fontSize:13,fontWeight:800,cursor:"pointer"}}>+ Yeni Masa</button>
+        <button onClick={openNew} style={{padding:"10px 16px",background:"#FFFFFF",color:"#000",border:"none",borderRadius:10,fontSize:13,fontWeight:800,cursor:"pointer"}}>+ Yeni Masa</button>
         {tables.length === 0 && (
-          <button onClick={addAllPresets} style={{padding:"10px 16px",background:"transparent",color:"#C8973E",border:"1px dashed #C8973E",borderRadius:10,fontSize:13,fontWeight:700,cursor:"pointer"}}>Hazir masalari ekle (7)</button>
+          <button onClick={addAllPresets} style={{padding:"10px 16px",background:"transparent",color:"#FFFFFF",border:"1px dashed #FFFFFF",borderRadius:10,fontSize:13,fontWeight:700,cursor:"pointer"}}>Hazir masalari ekle (7)</button>
         )}
       </div>
 
@@ -105,7 +105,7 @@ export default function TablesMgmtPage() {
             <div style={{fontSize:11,color:"#888",marginBottom:10}}>{t.capacity || 4} kisilik · sira {t.sort_order || 0}</div>
             <div style={{display:"flex",gap:4}}>
               <button onClick={() => openEdit(t)} style={{flex:1,padding:"6px",background:"#222",color:"#aaa",border:"1px solid #333",borderRadius:6,fontSize:11,cursor:"pointer"}}>Duzenle</button>
-              <button onClick={() => deleteTable(t)} style={{flex:1,padding:"6px",background:"transparent",color:"#FF6666",border:"1px solid #553333",borderRadius:6,fontSize:11,cursor:"pointer"}}>Sil</button>
+              <button onClick={() => deleteTable(t)} style={{flex:1,padding:"6px",background:"transparent",color:"#C87A6A",border:"1px solid #2A2A2A",borderRadius:6,fontSize:11,cursor:"pointer"}}>Sil</button>
             </div>
           </div>
         ))}
@@ -122,7 +122,7 @@ export default function TablesMgmtPage() {
             </div>
             <div style={{display:"flex",gap:8,marginTop:10}}>
               <button onClick={() => setModal(null)} style={{flex:1,padding:"12px",background:"transparent",color:"#888",border:"1px solid #333",borderRadius:10,fontSize:14,fontWeight:700,cursor:"pointer"}}>Iptal</button>
-              <button onClick={saveTable} style={{flex:2,padding:"12px",background:"#C8973E",color:"#000",border:"none",borderRadius:10,fontSize:14,fontWeight:800,cursor:"pointer"}}>Kaydet</button>
+              <button onClick={saveTable} style={{flex:2,padding:"12px",background:"#FFFFFF",color:"#000",border:"none",borderRadius:10,fontSize:14,fontWeight:800,cursor:"pointer"}}>Kaydet</button>
             </div>
           </div>
         </div>

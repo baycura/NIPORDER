@@ -4,7 +4,7 @@ import { useState, useEffect, useRef } from "react";
 import { useAuth } from "../../contexts/AuthContext.jsx";
 import { gorunurGruplar, altBar } from "../../lib/panelNav.js";
 
-const roleColor = {admin:"#FFD700", manager:"#C8973E", owner:"#C8973E", waiter:"#3ECF8E", kitchen:"#E07A3E", cashier:"#5A8FE0", viewer:"#B08FD8", parttime:"#6FB3C0"};
+const roleColor = {admin:"#FFFFFF", manager:"#FFFFFF", owner:"#FFFFFF", waiter:"#FFFFFF", kitchen:"#FFFFFF", cashier:"#8A8580", viewer:"#8A8580", parttime:"#8A8580"};
 const cv = "-apple-system,BlinkMacSystemFont,'Segoe UI',Roboto,sans-serif";
 
 // Duzen: mobilde 5 yuvali rol-bazli alt bar (cekmece yok — her sey MENU
@@ -52,7 +52,7 @@ export default function StaffLayout() {
   const sekmeler = altBar({ isManager, isAdmin, isViewer, isParttime });
   const gruplar = gorunurGruplar({ role: staffUser?.role, isManager, isAdmin, isViewer });
 
-  const linkStyle = (isActive) => ({display:"flex",alignItems:"center",gap:10,padding:"9px 12px",borderRadius:9,textDecoration:"none",background:isActive?"rgba(200,151,62,0.18)":"transparent",color:isActive?"#C8973E":"#aaa",fontFamily:cv,fontSize:13.5,fontWeight:isActive?700:500});
+  const linkStyle = (isActive) => ({display:"flex",alignItems:"center",gap:10,padding:"9px 12px",borderRadius:9,textDecoration:"none",background:isActive?"rgba(255,255,255,0.18)":"transparent",color:isActive?"#FFFFFF":"#aaa",fontFamily:cv,fontSize:13.5,fontWeight:isActive?700:500});
 
   const KenarLink = ({item}) => {
     if (item.external) {
@@ -68,7 +68,7 @@ export default function StaffLayout() {
   const Sidebar = () => (
     <div style={{width:240,background:"#161616",height:"100vh",display:"flex",flexDirection:"column",borderRight:"1px solid #2A2A2A",overflowY:"auto"}}>
       <div style={{padding:"18px 16px 14px",borderBottom:"1px solid #2A2A2A",display:"flex",alignItems:"center",gap:10}}>
-        <div style={{width:38,height:38,borderRadius:10,background:"#C8973E",display:"flex",alignItems:"center",justifyContent:"center",fontSize:20,color:"#000",fontWeight:900,fontFamily:cv}}>N</div>
+        <div style={{width:38,height:38,borderRadius:10,background:"#FFFFFF",display:"flex",alignItems:"center",justifyContent:"center",fontSize:20,color:"#000",fontWeight:900,fontFamily:cv}}>N</div>
         <div>
           <div style={{color:"#F0EDE8",fontSize:16,fontWeight:400,fontFamily:"'Coolvetica Heavy',"+cv,textTransform:"uppercase",letterSpacing:"0.005em"}}>Not in Paris</div>
           <div style={{color:"#888",fontSize:10,fontFamily:cv}}>{APP_HOST}</div>
@@ -88,7 +88,7 @@ export default function StaffLayout() {
                 style={{width:"100%",display:"flex",alignItems:"center",gap:8,padding:"9px 12px",borderRadius:9,
                         background:"#1B1B1B",border:"none",cursor:"pointer",fontFamily:cv,
                         fontSize:10.5,letterSpacing:"1.6px",fontWeight:800,
-                        color: g.sari ? "#FFD700" : "#B8B3AC"}}>
+                        color: g.sari ? "#8A8580" : "#B8B3AC"}}>
                 {g.ad}
                 <span style={{marginLeft:"auto",color:"#666",fontSize:10}}>{acik ? "▾" : "▸"}</span>
               </button>
@@ -125,7 +125,7 @@ export default function StaffLayout() {
   return (<div style={{background:"#0C0C0C",minHeight:"100vh",fontFamily:cv}} onTouchStart={onTouchStart} onTouchEnd={onTouchEnd}>
     <header style={{display:"flex",alignItems:"center",justifyContent:"space-between",padding:"10px 14px",background:"#161616",borderBottom:"1px solid #2A2A2A",position:"sticky",top:0,zIndex:40}}>
       <div style={{display:"flex",alignItems:"center",gap:8}}>
-        <div style={{width:30,height:30,borderRadius:8,background:"#C8973E",display:"flex",alignItems:"center",justifyContent:"center",fontSize:16,color:"#000",fontWeight:900}}>N</div>
+        <div style={{width:30,height:30,borderRadius:8,background:"#FFFFFF",display:"flex",alignItems:"center",justifyContent:"center",fontSize:16,color:"#000",fontWeight:900}}>N</div>
         <div style={{color:"#F0EDE8",fontSize:15,fontWeight:400,fontFamily:"'Coolvetica Heavy',"+cv,textTransform:"uppercase",letterSpacing:"0.005em"}}>Not in Paris</div>
       </div>
       <div onClick={avatarTikla} title={avatarTikla ? "Vardiyam" : undefined}
@@ -136,7 +136,7 @@ export default function StaffLayout() {
     <main style={{padding:"16px 14px",paddingBottom:84,minHeight:"calc(100vh - 56px)"}}><Outlet/></main>
     <nav style={{position:"fixed",bottom:0,left:0,right:0,background:"#161616",borderTop:"1px solid #2A2A2A",display:"flex",justifyContent:"space-around",padding:"8px 0 14px",zIndex:35,boxShadow:"0 -2px 12px rgba(0,0,0,0.5)"}}>
       {sekmeler.map(item => (
-        <NavLink key={item.to} to={item.to} style={({isActive}) => ({display:"flex",flexDirection:"column",alignItems:"center",gap:3,textDecoration:"none",color:isActive?"#C8973E":"#666",padding:"4px 8px",minWidth:48})}>
+        <NavLink key={item.to} to={item.to} style={({isActive}) => ({display:"flex",flexDirection:"column",alignItems:"center",gap:3,textDecoration:"none",color:isActive?"#FFFFFF":"#666",padding:"4px 8px",minWidth:48})}>
           <span style={{fontSize:22}}>{item.icon}</span>
           <span style={{fontSize:10,letterSpacing:"0.5px",fontWeight:600}}>{item.label.toLocaleUpperCase("tr-TR")}</span>
         </NavLink>

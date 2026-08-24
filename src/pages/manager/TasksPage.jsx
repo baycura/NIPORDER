@@ -94,7 +94,7 @@ export default function TasksPage() {
             <option value={DONER_STORE_UUID}>Berlin</option>
           </select>
           {isPatron && (
-            <button onClick={() => setModal(true)} style={{ padding: "8px 16px", background: "#C8973E", color: "#000", border: "none", borderRadius: 8, fontWeight: 700, cursor: "pointer", fontSize: 14 }}>+ Yeni Görev</button>
+            <button onClick={() => setModal(true)} style={{ padding: "8px 16px", background: "#FFFFFF", color: "#000", border: "none", borderRadius: 8, fontWeight: 700, cursor: "pointer", fontSize: 14 }}>+ Yeni Görev</button>
           )}
         </div>
       </div>
@@ -106,14 +106,14 @@ export default function TasksPage() {
             {active.length === 0 && <div style={{ color: "#666", fontSize: 14, fontStyle: "italic", padding: "12px 0" }}>Aktif görev yok</div>}
             {active.map(t => (
               <div key={t.id} style={{ background: "#1A1A1A", border: "1px solid #2A2A2A", borderRadius: 10, padding: 14, marginBottom: 8, display: "flex", alignItems: "flex-start", gap: 12 }}>
-                <input type="checkbox" checked={false} onChange={() => toggle(t)} style={{ width: 22, height: 22, cursor: "pointer", marginTop: 2, accentColor: "#C8973E" }} />
+                <input type="checkbox" checked={false} onChange={() => toggle(t)} style={{ width: 22, height: 22, cursor: "pointer", marginTop: 2, accentColor: "#FFFFFF" }} />
                 <div style={{ flex: 1, minWidth: 0 }}>
                   <div style={{ fontSize: 15, fontWeight: 600 }}>{t.title}</div>
                   {t.description && <div style={{ fontSize: 13, color: "#888", marginTop: 4 }}>{t.description}</div>}
                   {t.assigned_to && t.assigned_to.length > 0 && (
                     <div style={{ marginTop: 6, display: "flex", flexWrap: "wrap", gap: 4 }}>
                       {t.assigned_to.map(aid => (
-                        <span key={aid} style={{ fontSize: 11, background: "#C8973E22", color: "#C8973E", padding: "2px 8px", borderRadius: 10, fontWeight: 600 }}>👤 {staffMap[aid] || "?"}</span>
+                        <span key={aid} style={{ fontSize: 11, background: "#222222", color: "#F0EDE8", padding: "2px 8px", borderRadius: 10, fontWeight: 600 }}>👤 {staffMap[aid] || "?"}</span>
                       ))}
                     </div>
                   )}
@@ -130,12 +130,12 @@ export default function TasksPage() {
             {done.length === 0 && <div style={{ color: "#666", fontSize: 14, fontStyle: "italic", padding: "12px 0" }}>Henüz tamamlanan görev yok</div>}
             {done.map(t => (
               <div key={t.id} style={{ background: "#0F0F0F", border: "1px solid #1A1A1A", borderRadius: 10, padding: 14, marginBottom: 8, display: "flex", alignItems: "flex-start", gap: 12, opacity: 0.75 }}>
-                <input type="checkbox" checked={true} onChange={() => toggle(t)} style={{ width: 22, height: 22, cursor: "pointer", marginTop: 2, accentColor: "#C8973E" }} />
+                <input type="checkbox" checked={true} onChange={() => toggle(t)} style={{ width: 22, height: 22, cursor: "pointer", marginTop: 2, accentColor: "#FFFFFF" }} />
                 <div style={{ flex: 1, minWidth: 0 }}>
                   <div style={{ fontSize: 15, fontWeight: 600, textDecoration: "line-through", color: "#888" }}>{t.title}</div>
                   {t.description && <div style={{ fontSize: 13, color: "#666", marginTop: 4, textDecoration: "line-through" }}>{t.description}</div>}
                   {isPatron && t.done_by && (
-                    <div style={{ fontSize: 12, color: "#C8973E", marginTop: 6, fontWeight: 600 }}>
+                    <div style={{ fontSize: 12, color: "#FFFFFF", marginTop: 6, fontWeight: 600 }}>
                       ✓ {staffMap[t.done_by] || "Bilinmiyor"} · {formatDate(t.done_at)}
                     </div>
                   )}
@@ -163,7 +163,7 @@ export default function TasksPage() {
                 {staffList.map(s => {
                   const sel = form.assigned_to.includes(s.id);
                   return (
-                    <button key={s.id} type="button" onClick={() => setForm({ ...form, assigned_to: sel ? form.assigned_to.filter(id => id !== s.id) : [...form.assigned_to, s.id] })} style={{ padding: "6px 12px", background: sel ? "#C8973E" : "#0F0F0F", color: sel ? "#000" : "#888", border: "1px solid " + (sel ? "#C8973E" : "#333"), borderRadius: 16, cursor: "pointer", fontSize: 12, fontWeight: 600 }}>{sel ? "✓ " : ""}{s.name}</button>
+                    <button key={s.id} type="button" onClick={() => setForm({ ...form, assigned_to: sel ? form.assigned_to.filter(id => id !== s.id) : [...form.assigned_to, s.id] })} style={{ padding: "6px 12px", background: sel ? "#FFFFFF" : "#0F0F0F", color: sel ? "#000" : "#888", border: "1px solid " + (sel ? "#FFFFFF" : "#333"), borderRadius: 16, cursor: "pointer", fontSize: 12, fontWeight: 600 }}>{sel ? "✓ " : ""}{s.name}</button>
                   );
                 })}
               </div>
@@ -174,7 +174,7 @@ export default function TasksPage() {
             </div>
             <div style={{ display: "flex", gap: 8, justifyContent: "flex-end" }}>
               <button onClick={() => { setModal(false); setForm({ title: "", description: "", assigned_to: [] }); }} style={{ padding: "10px 18px", background: "transparent", color: "#888", border: "1px solid #444", borderRadius: 8, cursor: "pointer", fontSize: 14 }}>İptal</button>
-              <button onClick={addTask} style={{ padding: "10px 18px", background: "#C8973E", color: "#000", border: "none", borderRadius: 8, fontWeight: 700, cursor: "pointer", fontSize: 14 }}>Kaydet</button>
+              <button onClick={addTask} style={{ padding: "10px 18px", background: "#FFFFFF", color: "#000", border: "none", borderRadius: 8, fontWeight: 700, cursor: "pointer", fontSize: 14 }}>Kaydet</button>
             </div>
           </div>
         </div>

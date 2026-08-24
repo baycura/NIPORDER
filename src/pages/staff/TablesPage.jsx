@@ -84,13 +84,13 @@ export default function TablesPage() {
         <div style={{fontSize:12,color:"#888",marginTop:2}}>{occupiedCount}/{tables.length} dolu</div>
       </div>
 
-      <button onClick={() => setWalkinOpen(true)} style={{width:"100%",padding:"14px",background:"linear-gradient(135deg,#C8973E,#E0AB4A)",color:"#000",border:"none",borderRadius:12,fontSize:15,fontWeight:800,marginBottom:16,cursor:"pointer",boxShadow:"0 2px 8px rgba(200,151,62,0.3)"}}>
+      <button onClick={() => setWalkinOpen(true)} style={{width:"100%",padding:"14px",background:"#FFFFFF",color:"#000",border:"none",borderRadius:12,fontSize:15,fontWeight:800,marginBottom:16,cursor:"pointer",boxShadow:"0 2px 8px rgba(255,255,255,0.3)"}}>
         + Yeni Hesap (Isimle)
       </button>
 
       <div style={{display:"flex",gap:8,marginBottom:16,overflowX:"auto"}}>
         {[["all","TUMU"],["dis","DIŞ"],["cam","ÖN CAM"],["cowork","CO-WORK"]].map(([k,l]) => (
-          <button key={k} onClick={() => setFilter(k)} style={{padding:"8px 16px",border:"none",borderRadius:18,fontSize:11,fontWeight:700,letterSpacing:"1px",background:filter===k?"#C8973E":"#222",color:filter===k?"#000":"#888",cursor:"pointer",whiteSpace:"nowrap",flexShrink:0}}>{l}</button>
+          <button key={k} onClick={() => setFilter(k)} style={{padding:"8px 16px",border:"none",borderRadius:18,fontSize:11,fontWeight:700,letterSpacing:"1px",background:filter===k?"#FFFFFF":"#222",color:filter===k?"#000":"#888",cursor:"pointer",whiteSpace:"nowrap",flexShrink:0}}>{l}</button>
         ))}
       </div>
 
@@ -98,13 +98,13 @@ export default function TablesPage() {
         <div style={{marginBottom:18}}>
           <div style={{fontSize:11,color:"#888",letterSpacing:"1.5px",fontWeight:700,marginBottom:8}}>ACIK HESAPLAR</div>
           {orders.filter(o => !o.table_id).map(o => (
-            <div key={o.id} onClick={() => navigate("/orders/" + o.id)} style={{background:"#1A1A1A",border:"1px solid #C8973E",borderRadius:12,padding:14,marginBottom:8,cursor:"pointer",display:"flex",justifyContent:"space-between",alignItems:"center"}}>
+            <div key={o.id} onClick={() => navigate("/orders/" + o.id)} style={{background:"#1A1A1A",border:"1px solid #FFFFFF",borderRadius:12,padding:14,marginBottom:8,cursor:"pointer",display:"flex",justifyContent:"space-between",alignItems:"center"}}>
               <div>
-                {o.stores?.slug && <div style={{display:"inline-block",background:o.stores.slug==="doner"?"#C8973E":"#3ECF8E",color:"#000",padding:"2px 8px",borderRadius:6,fontSize:10,fontWeight:800,letterSpacing:"0.5px",marginBottom:4}}>{o.stores.slug==="doner"?"🥙 DÖNER":"🗼 PARIS"}</div>}
+                {o.stores?.slug && <div style={{display:"inline-block",background:o.stores.slug==="doner"?"#FFFFFF":"#222222",color:o.stores.slug==="doner"?"#000":"#F0EDE8",padding:"2px 8px",borderRadius:6,fontSize:10,fontWeight:800,letterSpacing:"0.5px",marginBottom:4}}>{o.stores.slug==="doner"?"🥙 DÖNER":"🗼 PARIS"}</div>}
                 <div style={{fontSize:15,fontWeight:700,color:"#F0EDE8"}}>👤 {o.customer_name}</div>
                 <div style={{fontSize:11,color:"#888",marginTop:2}}>Acik hesap · ₺{o.total || 0}</div>
               </div>
-              <div style={{color:"#C8973E",fontSize:18}}>→</div>
+              <div style={{color:"#FFFFFF",fontSize:18}}>→</div>
             </div>
           ))}
         </div>
@@ -116,21 +116,21 @@ export default function TablesPage() {
           const isOpen = ords.length > 0;
           const totalSum = ords.reduce((s,o) => s + Number(o.total||0), 0);
           return (
-            <div key={t.id} style={{background:"#1A1A1A",border:"1px solid "+(isOpen?"#C8973E":"#2A2A2A"),borderRadius:12,padding:12,position:"relative",gridColumn:t.shared?"1 / -1":"auto"}}>
+            <div key={t.id} style={{background:"#1A1A1A",border:"1px solid "+(isOpen?"#FFFFFF":"#2A2A2A"),borderRadius:12,padding:12,position:"relative",gridColumn:t.shared?"1 / -1":"auto"}}>
               <div style={{display:"flex",justifyContent:"space-between",alignItems:"flex-start",marginBottom:6}}>
-                <div style={{fontSize:15,fontWeight:700,color:"#F0EDE8"}}>{t.name}{t.shared && <span style={{marginLeft:6,fontSize:9,background:"#2A2A3A",color:"#8FA8E0",padding:"2px 6px",borderRadius:6,fontWeight:800,letterSpacing:"0.5px",verticalAlign:"middle"}}>ORTAK</span>}</div>
+                <div style={{fontSize:15,fontWeight:700,color:"#F0EDE8"}}>{t.name}{t.shared && <span style={{marginLeft:6,fontSize:9,background:"#2A2A2A",color:"#8A8580",padding:"2px 6px",borderRadius:6,fontWeight:800,letterSpacing:"0.5px",verticalAlign:"middle"}}>ORTAK</span>}</div>
                 <button onClick={(e) => {e.stopPropagation(); setEditTable(t); setEditName(t.name);}} style={{background:"none",border:"none",color:"#666",cursor:"pointer",padding:2,fontSize:13}} title="Duzenle">✏️</button>
               </div>
-              <div style={{fontSize:10,color:isOpen?"#C8973E":"#666",marginBottom:10}}>
+              <div style={{fontSize:10,color:isOpen?"#FFFFFF":"#666",marginBottom:10}}>
                 {isOpen ? (t.shared ? ords.length + " acik hesap · ₺" + totalSum : "DOLU · ₺" + totalSum) : t.capacity ? t.capacity + " kisilik" : "Bos"}
               </div>
               {t.shared && ords.map(o => (
                 <div key={o.id} onClick={() => navigate("/orders/" + o.id)} style={{display:"flex",justifyContent:"space-between",alignItems:"center",background:"#0C0C0C",border:"1px solid #2A2A2A",borderRadius:8,padding:"8px 10px",marginBottom:6,cursor:"pointer"}}>
                   <div style={{fontSize:12,fontWeight:700,color:"#F0EDE8"}}>👤 {o.customer_name || "İsimsiz"}</div>
-                  <div style={{fontSize:12,color:"#C8973E",fontWeight:800}}>₺{o.total || 0} →</div>
+                  <div style={{fontSize:12,color:"#FFFFFF",fontWeight:800}}>₺{o.total || 0} →</div>
                 </div>
               ))}
-              <button onClick={() => openOrderForTable(t)} style={{width:"100%",padding:"8px",background:!t.shared&&isOpen?"#C8973E":"transparent",color:!t.shared&&isOpen?"#000":"#C8973E",border:"1px solid #C8973E",borderRadius:8,fontSize:12,fontWeight:700,cursor:"pointer"}}>
+              <button onClick={() => openOrderForTable(t)} style={{width:"100%",padding:"8px",background:!t.shared&&isOpen?"#FFFFFF":"transparent",color:!t.shared&&isOpen?"#000":"#FFFFFF",border:"1px solid #FFFFFF",borderRadius:8,fontSize:12,fontWeight:700,cursor:"pointer"}}>
                 {t.shared ? "+ Yeni Hesap (kisi)" : isOpen ? "Hesabi Ac →" : "Siparis Ac +"}
               </button>
             </div>
@@ -145,10 +145,10 @@ export default function TablesPage() {
             <div style={{fontSize:12,color:"#888",marginBottom:18}}>Musterinin adini gir (orn: "Efekan", "Sari sapkali abi")</div>
             <input value={walkinName} onChange={e => setWalkinName(e.target.value)} autoFocus placeholder="Musteri adi..."
               onKeyDown={e => e.key === "Enter" && createWalkinOrder()}
-              style={{width:"100%",padding:"14px 16px",background:"#0C0C0C",border:"1px solid #C8973E",borderRadius:10,color:"#F0EDE8",fontSize:16,outline:"none",marginBottom:14}}/>
+              style={{width:"100%",padding:"14px 16px",background:"#0C0C0C",border:"1px solid #FFFFFF",borderRadius:10,color:"#F0EDE8",fontSize:16,outline:"none",marginBottom:14}}/>
             <div style={{display:"flex",gap:8}}>
               <button onClick={() => setWalkinOpen(false)} style={{flex:1,padding:"12px",background:"transparent",color:"#888",border:"1px solid #333",borderRadius:10,fontSize:14,fontWeight:700,cursor:"pointer"}}>Iptal</button>
-              <button onClick={createWalkinOrder} style={{flex:2,padding:"12px",background:"#C8973E",color:"#000",border:"none",borderRadius:10,fontSize:14,fontWeight:800,cursor:"pointer"}}>Hesap Ac</button>
+              <button onClick={createWalkinOrder} style={{flex:2,padding:"12px",background:"#FFFFFF",color:"#000",border:"none",borderRadius:10,fontSize:14,fontWeight:800,cursor:"pointer"}}>Hesap Ac</button>
             </div>
           </div>
         </div>
@@ -160,10 +160,10 @@ export default function TablesPage() {
             <div style={{fontSize:18,fontWeight:800,color:"#F0EDE8",marginBottom:14}}>Masayi Duzenle</div>
             <input value={editName} onChange={e => setEditName(e.target.value)} autoFocus
               onKeyDown={e => e.key === "Enter" && saveTableName()}
-              style={{width:"100%",padding:"14px 16px",background:"#0C0C0C",border:"1px solid #C8973E",borderRadius:10,color:"#F0EDE8",fontSize:16,outline:"none",marginBottom:14}}/>
+              style={{width:"100%",padding:"14px 16px",background:"#0C0C0C",border:"1px solid #FFFFFF",borderRadius:10,color:"#F0EDE8",fontSize:16,outline:"none",marginBottom:14}}/>
             <div style={{display:"flex",gap:8}}>
               <button onClick={() => setEditTable(null)} style={{flex:1,padding:"12px",background:"transparent",color:"#888",border:"1px solid #333",borderRadius:10,fontSize:14,fontWeight:700,cursor:"pointer"}}>Iptal</button>
-              <button onClick={saveTableName} style={{flex:2,padding:"12px",background:"#C8973E",color:"#000",border:"none",borderRadius:10,fontSize:14,fontWeight:800,cursor:"pointer"}}>Kaydet</button>
+              <button onClick={saveTableName} style={{flex:2,padding:"12px",background:"#FFFFFF",color:"#000",border:"none",borderRadius:10,fontSize:14,fontWeight:800,cursor:"pointer"}}>Kaydet</button>
             </div>
           </div>
         </div>

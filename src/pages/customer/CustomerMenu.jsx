@@ -1240,7 +1240,7 @@ export default function CustomerMenu() {
 
         <div>
           <div style={{fontSize:22,fontWeight:800,letterSpacing:"-0.01em"}}>{t.pf_title}</div>
-          <div style={{fontSize:14,color:"#5C636B",lineHeight:1.6,marginTop:8}}>{t.pf_sub}</div>
+          <div style={{fontSize:14,color:"#666666",lineHeight:1.6,marginTop:8}}>{t.pf_sub}</div>
 
           <div style={{marginTop:26,display:"flex",flexDirection:"column",gap:12}}>
             <input value={pf.first} onChange={e=>setPf({...pf,first:e.target.value})}
@@ -1267,7 +1267,7 @@ export default function CustomerMenu() {
 
         <div>
           <button onClick={savePf} disabled={pfBusy}
-            style={{width:"100%",padding:17,borderRadius:999,background:pfBusy?"#8B9198":"#101214",color:"#fff",border:"none",fontSize:15,fontWeight:700,cursor:pfBusy?"default":"pointer",fontFamily:"inherit"}}>
+            style={{width:"100%",padding:17,borderRadius:999,background:pfBusy?"#8A8A86":"#101214",color:"#fff",border:"none",fontSize:15,fontWeight:700,cursor:pfBusy?"default":"pointer",fontFamily:"inherit"}}>
             {pfBusy ? t.pf_saving : t.pf_save}
           </button>
           <button onClick={signOut}
@@ -1281,7 +1281,7 @@ export default function CustomerMenu() {
 
   if (!loading && showWelcome) {
     // Karsilama: beyaz zemin, kucuk siyah bisiklet, tek buyuk cumle.
-    // Vurgulanan kelime Fransiz bayragi mavisi (#0055A4) — "Not in Paris"
+    // Vurgulanan kelime Fransiz bayragi mavisi (#000000) — "Not in Paris"
     // adiyla oynayan tek seferlik bir saka, o yuzden altin degil.
     const W = {
       tr: { h: ["BU SADECE", "BİR MENÜ", "DEĞİL."],
@@ -1315,10 +1315,10 @@ export default function CustomerMenu() {
 
         <div>
           <div style={headFont}>
-            {W.h?.[0]}<br/>{W.h?.[1]}<br/><span style={{color:"#0055A4"}}>{W.h?.[2]}</span>
+            {W.h?.[0]}<br/>{W.h?.[1]}<br/><span style={{color:"#000000"}}>{W.h?.[2]}</span>
           </div>
-          <div style={{fontWeight:300,fontSize:15.5,lineHeight:1.62,color:"#2B3138",marginTop:24}}>{W.p1}</div>
-          <div style={{fontWeight:300,fontSize:14,lineHeight:1.62,color:"#6B7278",marginTop:14,paddingTop:14,borderTop:"1px solid #E9EBED"}}>{W.p2}</div>
+          <div style={{fontWeight:300,fontSize:15.5,lineHeight:1.62,color:"#2A2A2A",marginTop:24}}>{W.p1}</div>
+          <div style={{fontWeight:300,fontSize:14,lineHeight:1.62,color:"#6E6E6E",marginTop:14,paddingTop:14,borderTop:"1px solid #E9EBED"}}>{W.p2}</div>
         </div>
 
         <div>
@@ -1350,11 +1350,11 @@ export default function CustomerMenu() {
   }
 
   if (successOrderId && !browsing) {
-    const bg = orderStage === "ready" ? "#FFF8E1" : orderStage === "served" ? "#E8F5E9" : "#fff";
+    const bg = orderStage === "ready" ? "#FAF6EE" : orderStage === "served" ? "#F5F5F5" : "#fff";
     const isReady = orderStage === "ready";
     const isServed = orderStage === "served";
     const PayBlock = () => orderPaid ? (
-      <div style={{padding:"12px 18px",background:"#E8F5E9",border:"1px solid #A5D6A7",borderRadius:12,fontSize:14,fontWeight:800,color:"#2e7d32",marginBottom:14}}>
+      <div style={{padding:"12px 18px",background:"#F5F5F5",border:"1px solid #E5E5E5",borderRadius:12,fontSize:14,fontWeight:800,color:"#444444",marginBottom:14}}>
         {L("Ödendi ✅ Teşekkürler!","Paid ✅ Thank you!","Оплачено ✅ Спасибо!")}
       </div>
     ) : onlinePayEnabled ? (
@@ -1382,14 +1382,14 @@ export default function CustomerMenu() {
                 {table ? (table.name + " · ") : ""}{t.pick_from_cashier}
               </div>
               <PayBlock/>
-              <div><button onClick={() => { playDing(); vibrate(); }} style={{padding:"12px 24px",background:"#C8973E",color:"#000",border:"none",borderRadius:12,fontSize:13,fontWeight:800,cursor:"pointer"}}>{t.play_again}</button></div>
+              <div><button onClick={() => { playDing(); vibrate(); }} style={{padding:"12px 24px",background:"#000000",color:"#FFFFFF",border:"none",borderRadius:12,fontSize:13,fontWeight:800,cursor:"pointer"}}>{t.play_again}</button></div>
             </>
           ) : isServed ? (
             <>
               <div style={{fontSize:72,marginBottom:14}}>🙏</div>
               <div style={{fontSize:26,fontWeight:800,marginBottom:8}}>{t.enjoy}</div>
               <div style={{fontSize:14,color:"#555",marginBottom:24,lineHeight:1.5}}>{t.thanks}</div>
-              <button onClick={() => { setSuccessOrderId(null); setOrderStage("pending"); load(); }} style={{padding:"14px 28px",background:"#C8973E",color:"#000",border:"none",borderRadius:12,fontSize:14,fontWeight:800,cursor:"pointer"}}>{t.new_order}</button>
+              <button onClick={() => { setSuccessOrderId(null); setOrderStage("pending"); load(); }} style={{padding:"14px 28px",background:"#000000",color:"#FFFFFF",border:"none",borderRadius:12,fontSize:14,fontWeight:800,cursor:"pointer"}}>{t.new_order}</button>
             </>
           ) : (
             <>
@@ -1399,16 +1399,16 @@ export default function CustomerMenu() {
                 {table ? (table.name + L(": m", ": s", ": о")) : L("M", "S", "О")}{t.order_kitchen_msg}
               </div>
               <div style={{display:"inline-flex",alignItems:"center",gap:8,padding:"10px 16px",background:"#f6f6f6",borderRadius:24,marginBottom:24,fontSize:13,color:"#555"}}>
-                <span style={{width:10,height:10,borderRadius:"50%",background:"#C8973E",display:"inline-block"}}></span>
+                <span style={{width:10,height:10,borderRadius:"50%",background:"#000000",display:"inline-block"}}></span>
                 {t.preparing}
               </div>
               <div style={{marginBottom:10}}>
                 {notifState === "granted" ? (
-                  <div style={{padding:"10px 14px",background:"#E8F5E9",border:"1px solid #B2DFDB",borderRadius:10,fontSize:12,color:"#2e7d32"}}>{t.notif_granted}</div>
+                  <div style={{padding:"10px 14px",background:"#F5F5F5",border:"1px solid #E5E5E5",borderRadius:10,fontSize:12,color:"#444444"}}>{t.notif_granted}</div>
                 ) : notifState === "denied" ? (
-                  <div style={{padding:"10px 14px",background:"#FFF3E0",border:"1px solid #FFCC80",borderRadius:10,fontSize:11,color:"#E65100",lineHeight:1.5}}>{t.notif_denied}</div>
+                  <div style={{padding:"10px 14px",background:"#FAF6EE",border:"1px solid #EDE6D8",borderRadius:10,fontSize:11,color:"#5A5348",lineHeight:1.5}}>{t.notif_denied}</div>
                 ) : (
-                  <button onClick={askNotifPermissionSync} style={{padding:"10px 18px",background:"#C8973E",color:"#000",border:"none",borderRadius:10,fontSize:12,fontWeight:800,cursor:"pointer"}}>{t.notif_ask}</button>
+                  <button onClick={askNotifPermissionSync} style={{padding:"10px 18px",background:"#000000",color:"#FFFFFF",border:"none",borderRadius:10,fontSize:12,fontWeight:800,cursor:"pointer"}}>{t.notif_ask}</button>
                 )}
               </div>
               <PayBlock/>
@@ -1435,7 +1435,7 @@ export default function CustomerMenu() {
           const annOn = settings && (settings.announcement_enabled === true || settings.announcement_enabled === "true");
           const annText = !annOn ? "" : String((lang === "ru" ? (settings.announcement_ru || settings.announcement_tr) : lang === "en" ? (settings.announcement_en || settings.announcement_tr) : settings.announcement_tr) || "").trim();
           return annText ? (
-            <div style={{background:"#000",color:"#E0AB4A",padding:"7px 14px",fontSize:12,fontWeight:700,textAlign:"center",letterSpacing:"0.3px",lineHeight:1.4}}>
+            <div style={{background:"#000",color:"#FFFFFF",padding:"7px 14px",fontSize:12,fontWeight:700,textAlign:"center",letterSpacing:"0.3px",lineHeight:1.4}}>
               📢 {annText}
             </div>
           ) : null;
@@ -1446,11 +1446,11 @@ export default function CustomerMenu() {
             <div style={{fontSize:24,fontWeight:400,letterSpacing:"0.005em",fontFamily:"'Coolvetica Heavy','Coolvetica Condensed','Barlow Condensed',sans-serif",textTransform:"uppercase"}}>Not in Paris</div>
             <div style={{fontSize:10,color:"#888",letterSpacing:"2px",marginTop:2}}>
               {custTab !== "menu" ? (CUST_TABS.find(x=>x.key===custTab)?.[["en","ru"].includes(lang)?lang:"tr"] || "").toUpperCase() : (table ? table.name?.toUpperCase() : t.menu)}
-              {partyMode && custTab === "menu" && <span style={{marginLeft:6,color:"#C8973E",fontWeight:700}}>· {t.partyMode} 🎉</span>}
+              {partyMode && custTab === "menu" && <span style={{marginLeft:6,color:"#000000",fontWeight:700}}>· {t.partyMode} 🎉</span>}
             </div>
           </div>
           <div style={{display:"flex",alignItems:"center",gap:8}}>
-            {hh && custTab === "menu" && <div style={{background:"#C8973E",color:"#000",padding:"4px 10px",borderRadius:10,fontSize:10,fontWeight:800,letterSpacing:"0.5px"}}>{t.happy_hour} -%{hh.discount_pct}</div>}
+            {hh && custTab === "menu" && <div style={{background:"#000000",color:"#FFFFFF",padding:"4px 10px",borderRadius:10,fontSize:10,fontWeight:800,letterSpacing:"0.5px"}}>{t.happy_hour} -%{hh.discount_pct}</div>}
             <LangSwitcher/>
           </div>
         </div>
@@ -1487,7 +1487,7 @@ export default function CustomerMenu() {
       {custTab === "menu" && (
       <div style={{padding:"8px 16px",background:"#faf6ee",borderBottom:"1px solid #f0e8d8",display:"flex",alignItems:"center",justifyContent:"space-between",gap:8}}>
         {customer ? (
-          <button onClick={openProfile} style={{fontSize:12,color:"#7a5c1e",fontWeight:600,background:"none",border:"none",cursor:"pointer",padding:0,textAlign:"left",fontFamily:"inherit",display:"flex",alignItems:"center",gap:6,width:"100%",justifyContent:"space-between"}}>
+          <button onClick={openProfile} style={{fontSize:12,color:"#5A5348",fontWeight:600,background:"none",border:"none",cursor:"pointer",padding:0,textAlign:"left",fontFamily:"inherit",display:"flex",alignItems:"center",gap:6,width:"100%",justifyContent:"space-between"}}>
             <span>
               ⭐ {L("Merhaba","Hi","Привет")} {customer.name?.split(" ")[0] || ""}
               {Object.keys(memberDiscounts).length > 0 && <span> — {L("üye fiyatların aktif","member prices active","цены для участников активны")}</span>}
@@ -1496,7 +1496,7 @@ export default function CustomerMenu() {
           </button>
         ) : (
           <>
-            <span style={{fontSize:12,color:"#7a5c1e"}}>⭐ {L("Üye misin?","Member?","Участник клуба?")}</span>
+            <span style={{fontSize:12,color:"#5A5348"}}>⭐ {L("Üye misin?","Member?","Участник клуба?")}</span>
             <button onClick={() => setLoginSheet(true)} style={{padding:"6px 12px",background:"#000",color:"#fff",border:"none",borderRadius:10,fontSize:11,fontWeight:700,cursor:"pointer",whiteSpace:"nowrap"}}>
               {t.login_cta}
             </button>
@@ -1631,7 +1631,7 @@ export default function CustomerMenu() {
                       </div>
                     )}
                     {mine?.free_text && (
-                      <div style={{fontSize:12,color:"#1a7f37",fontWeight:700,marginTop:8}}>
+                      <div style={{fontSize:12,color:"#444444",fontWeight:700,marginTop:8}}>
                         ✓ {L("Cevabın alındı","Your answer is in","Ваш ответ принят")}: “{mine.free_text}”
                       </div>
                     )}
@@ -1719,7 +1719,7 @@ export default function CustomerMenu() {
                                 <button onClick={() => onProductTap(p)} style={{width:30,height:30,flexShrink:0,background:"#fff",color:"#000",border:"2px solid #000",borderRadius:7,fontSize:19,fontWeight:900,cursor:"pointer",display:"flex",alignItems:"center",justifyContent:"center",padding:0,lineHeight:1}}>+</button>
                               ))}
                             </div>
-                            {p.has_options && !soldOut && <div style={{fontSize:9,color:"#C8973E",fontWeight:700,letterSpacing:"0.4px"}}>{t.optional}</div>}
+                            {p.has_options && !soldOut && <div style={{fontSize:9,color:"#000000",fontWeight:700,letterSpacing:"0.4px"}}>{t.optional}</div>}
                           </div>
                         );
                       })}
@@ -1758,7 +1758,7 @@ export default function CustomerMenu() {
                     </div>
                     {postBody(p) && <div style={{fontSize:13,color:"#444",marginTop:6,lineHeight:1.6,whiteSpace:"pre-wrap"}}>{postBody(p)}</div>}
                     {custTab === "shop" ? (
-                      <div style={{display:"inline-block",marginTop:10,padding:"6px 12px",background:"#000",color:"#FFD700",borderRadius:10,fontSize:11,fontWeight:800}}>
+                      <div style={{display:"inline-block",marginTop:10,padding:"6px 12px",background:"#000",color:"#FFFFFF",borderRadius:10,fontSize:11,fontWeight:800}}>
                         💳 {L("Kasadan alabilirsin","Available at the counter","Можно купить на кассе")}
                       </div>
                     ) : (
@@ -1812,22 +1812,22 @@ export default function CustomerMenu() {
                 <div style={{fontSize:15,fontWeight:700,color:"#000",lineHeight:1.3}}>{pName(p)}</div>
                 {pDesc(p) && <div style={{fontSize:12,color:"#666",marginTop:3,lineHeight:1.4}}>{pDesc(p)}</div>}
                 {blocked && (
-                  <div style={{fontSize:11,color:"#C8973E",marginTop:3,fontWeight:600}}>
+                  <div style={{fontSize:11,color:"#000000",marginTop:3,fontWeight:600}}>
                     {blocked.window
                       ? `${hhmm(blocked.start)} – ${hhmm(blocked.end)} ${t.order_between}`
                       : `${hhmm(blocked.end)} – ${hhmm(blocked.start)} ${t.order_between}`}
                   </div>
                 )}
                 {p.show_prep_time && p.prep_time_minutes && <div style={{fontSize:12,color:"#888",marginTop:4,display:"flex",alignItems:"center",gap:4}}>⏱ <span>~{p.prep_time_minutes} {L("dk","min","мин")}</span></div>}
-                {soldOut && <div style={{fontSize:11,color:"#c44",marginTop:4,fontWeight:600}}>{p.unavailable_reason || t.sold_out}</div>}
-                {p.has_options && !soldOut && <div style={{fontSize:10,color:"#C8973E",marginTop:3,fontWeight:700,letterSpacing:"0.5px"}}>{t.optional}</div>}
+                {soldOut && <div style={{fontSize:11,color:"#A34A3A",marginTop:4,fontWeight:600}}>{p.unavailable_reason || t.sold_out}</div>}
+                {p.has_options && !soldOut && <div style={{fontSize:10,color:"#000000",marginTop:3,fontWeight:700,letterSpacing:"0.5px"}}>{t.optional}</div>}
                 <div style={{display:"flex",alignItems:"center",gap:10,marginTop:8}}>
                   {dis && <span style={{fontSize:12,color:"#999",textDecoration:"line-through"}}>₺{p.price}</span>}
-                  <span style={{fontSize:15,fontWeight:800,color:dis?"#C8973E":"#000"}}>₺{fp}</span>
+                  <span style={{fontSize:15,fontWeight:800,color:"#000"}}>₺{fp}</span>
                   {p.currency === "EUR" && p.price_eur != null && (
                     <span style={{fontSize:12,color:"#888",fontWeight:600}}>· €{Number(p.price_eur)}</span>
                   )}
-                  {memberPriceFor(p) != null && memberPriceFor(p) <= fp && <span style={{fontSize:9,padding:"2px 6px",background:"#000",color:"#FFD700",borderRadius:6,fontWeight:800,letterSpacing:"0.5px"}}>{L("SANA ÖZEL","YOUR PRICE","ВАША ЦЕНА")}</span>}
+                  {memberPriceFor(p) != null && memberPriceFor(p) <= fp && <span style={{fontSize:9,padding:"2px 6px",background:"#000",color:"#FFFFFF",borderRadius:6,fontWeight:800,letterSpacing:"0.5px"}}>{L("SANA ÖZEL","YOUR PRICE","ВАША ЦЕНА")}</span>}
                 </div>
               </div>
               {!soldOut && !isFaded && (
@@ -1861,7 +1861,7 @@ export default function CustomerMenu() {
       )}
 
       {susBarActive && (
-        <button onClick={() => setBrowsing(false)} style={{position:"fixed",bottom:76,left:14,right:14,zIndex:45,display:"flex",justifyContent:"space-between",alignItems:"center",padding:"12px 16px",background:"#C8973E",color:"#000",border:"none",borderRadius:12,fontSize:13,fontWeight:800,cursor:"pointer",boxShadow:"0 4px 16px rgba(0,0,0,0.25)"}}>
+        <button onClick={() => setBrowsing(false)} style={{position:"fixed",bottom:76,left:14,right:14,zIndex:45,display:"flex",justifyContent:"space-between",alignItems:"center",padding:"12px 16px",background:"#000000",color:"#FFFFFF",border:"none",borderRadius:12,fontSize:13,fontWeight:800,cursor:"pointer",boxShadow:"0 4px 16px rgba(0,0,0,0.25)"}}>
           <span>🍳 {L("Siparişin hazırlanıyor","Your order is being prepared","Ваш заказ готовится")}</span>
           <span>→</span>
         </button>
@@ -1883,13 +1883,13 @@ export default function CustomerMenu() {
               {(profileStats?.cust?.avatar_url || customer.avatar_url) ? (
                 <img src={profileStats?.cust?.avatar_url || customer.avatar_url} alt="" referrerPolicy="no-referrer" style={{width:48,height:48,borderRadius:"50%",objectFit:"cover"}}/>
               ) : (
-                <div style={{width:48,height:48,borderRadius:"50%",background:"#000",color:"#FFD700",display:"flex",alignItems:"center",justifyContent:"center",fontSize:20,fontWeight:800}}>{(customer.name || "?")[0]}</div>
+                <div style={{width:48,height:48,borderRadius:"50%",background:"#000",color:"#FFFFFF",display:"flex",alignItems:"center",justifyContent:"center",fontSize:20,fontWeight:800}}>{(customer.name || "?")[0]}</div>
               )}
               <div style={{flex:1,minWidth:0}}>
                 <div style={{fontSize:17,fontWeight:800}}>{profileStats?.cust?.name || customer.name}</div>
                 <div style={{fontSize:11,color:"#888",overflow:"hidden",textOverflow:"ellipsis"}}>{profileStats?.cust?.email || customer.email}</div>
               </div>
-              <span style={{fontSize:10,padding:"4px 10px",background:"#000",color:"#FFD700",borderRadius:10,fontWeight:800,letterSpacing:"0.5px"}}>⭐ {L("ÜYE","MEMBER","УЧАСТНИК")}</span>
+              <span style={{fontSize:10,padding:"4px 10px",background:"#000",color:"#FFFFFF",borderRadius:10,fontWeight:800,letterSpacing:"0.5px"}}>⭐ {L("ÜYE","MEMBER","УЧАСТНИК")}</span>
             </div>
 
             {!profileStats ? (
@@ -1897,23 +1897,23 @@ export default function CustomerMenu() {
             ) : (
               <>
                 {(profileStats.open?.length > 0 || Number(profileStats.cust?.outstanding_balance || 0) > 0) && (
-                  <div style={{background:"#FFF8E8",border:"1px solid #EAD9AE",borderRadius:14,padding:"12px 14px",marginBottom:14}}>
+                  <div style={{background:"#FAF6EE",border:"1px solid #EDE6D8",borderRadius:14,padding:"12px 14px",marginBottom:14}}>
                     {profileStats.open?.length > 0 && (<>
-                      <div style={{fontSize:12,fontWeight:800,color:"#7a5c1e",marginBottom:8}}>
+                      <div style={{fontSize:12,fontWeight:800,color:"#5A5348",marginBottom:8}}>
                         🧾 {L("Açık hesabın","Open tab","Открытый счёт")} — ₺{Math.round(profileStats.open.reduce((t,o)=>t+Number(o.total||0),0))}
                       </div>
                       {profileStats.open.map(o => (
-                        <div key={o.id} style={{display:"flex",justifyContent:"space-between",fontSize:12,color:"#6b5a2e",padding:"3px 0"}}>
+                        <div key={o.id} style={{display:"flex",justifyContent:"space-between",fontSize:12,color:"#5A5348",padding:"3px 0"}}>
                           <span>{new Date(o.created_at).toLocaleDateString(dateLocale,{day:"numeric",month:"short"})} · {new Date(o.created_at).toLocaleTimeString("tr-TR",{hour:"2-digit",minute:"2-digit"})}</span>
                           <span style={{fontWeight:700}}>₺{Math.round(Number(o.total||0))}</span>
                         </div>
                       ))}
-                      <div style={{fontSize:11,color:"#9a8148",marginTop:6,lineHeight:1.5}}>
+                      <div style={{fontSize:11,color:"#EDE6D8",marginTop:6,lineHeight:1.5}}>
                         {L("Kasada ödenince kapanır ve puanların işlenir.","Closes when paid at the counter — that's when your points land.","Закрывается при оплате на кассе — тогда начислятся баллы.")}
                       </div>
                     </>)}
                     {Number(profileStats.cust?.outstanding_balance || 0) > 0 && (
-                      <div style={{fontSize:12,fontWeight:700,color:"#a04040",marginTop:profileStats.open?.length?8:0}}>
+                      <div style={{fontSize:12,fontWeight:700,color:"#A34A3A",marginTop:profileStats.open?.length?8:0}}>
                         📝 {L("Borç","Balance due","Долг")}: ₺{Math.round(Number(profileStats.cust.outstanding_balance))}
                       </div>
                     )}
@@ -1928,9 +1928,9 @@ export default function CustomerMenu() {
                     <div style={{fontSize:20,fontWeight:800}}>₺{Math.round(profileStats.totalSpent)}</div>
                     <div style={{fontSize:10,color:"#888",fontWeight:700}}>{L("HARCAMA","SPENT","ПОТРАЧЕНО")}</div>
                   </div>
-                  <div style={{background:"#111",color:"#FFD700",borderRadius:12,padding:"12px 8px",textAlign:"center"}}>
+                  <div style={{background:"#111",color:"#FFFFFF",borderRadius:12,padding:"12px 8px",textAlign:"center"}}>
                     <div style={{fontSize:20,fontWeight:800}}>🪙 {Number(profileStats.cust?.points || 0)}</div>
-                    <div style={{fontSize:10,color:"#bfa14a",fontWeight:700}}>{L("PUAN = ₺" + Number(profileStats.cust?.points || 0),"PTS = ₺" + Number(profileStats.cust?.points || 0),"= ₺" + Number(profileStats.cust?.points || 0))}</div>
+                    <div style={{fontSize:10,color:"#EDE6D8",fontWeight:700}}>{L("PUAN = ₺" + Number(profileStats.cust?.points || 0),"PTS = ₺" + Number(profileStats.cust?.points || 0),"= ₺" + Number(profileStats.cust?.points || 0))}</div>
                   </div>
                 </div>
 
@@ -1948,7 +1948,7 @@ export default function CustomerMenu() {
                       </div>
                       {next && (<>
                         <div style={{height:6,background:"#333",borderRadius:4,overflow:"hidden"}}>
-                          <div style={{width:pct+"%",height:"100%",background:"#E0AB4A"}}/>
+                          <div style={{width:pct+"%",height:"100%",background:"#000000"}}/>
                         </div>
                         <div style={{fontSize:11,color:"#bbb",marginTop:6}}>
                           {L("₺" + Math.round(next.min - pts).toLocaleString("tr-TR") + " sonra " + next.icon + " " + next.tr,
@@ -1985,7 +1985,7 @@ export default function CustomerMenu() {
                           <span style={{fontWeight:600}}>{pName(p)}</span>
                           <span>
                             <span style={{color:"#999",textDecoration:"line-through",marginRight:8}}>₺{Math.round(Number(p.price))}</span>
-                            <span style={{color:"#1a7f37",fontWeight:800}}>₺{mp}</span>
+                            <span style={{color:"#444444",fontWeight:800}}>₺{mp}</span>
                           </span>
                         </div>
                       );
@@ -1998,7 +1998,7 @@ export default function CustomerMenu() {
 
             <div style={{display:"flex",gap:8,marginTop:6}}>
               <button onClick={() => setProfileOpen(false)} style={{flex:2,padding:"13px",background:"#000",color:"#fff",border:"none",borderRadius:12,fontSize:14,fontWeight:700,cursor:"pointer"}}>{L("Kapat","Close","Закрыть")}</button>
-              <button onClick={async () => { await signOut(); setProfileOpen(false); }} style={{flex:1,padding:"13px",background:"#fff",color:"#c44",border:"1px solid #eee",borderRadius:12,fontSize:13,fontWeight:700,cursor:"pointer"}}>{L("Çıkış","Sign out","Выйти")}</button>
+              <button onClick={async () => { await signOut(); setProfileOpen(false); }} style={{flex:1,padding:"13px",background:"#fff",color:"#A34A3A",border:"1px solid #eee",borderRadius:12,fontSize:13,fontWeight:700,cursor:"pointer"}}>{L("Çıkış","Sign out","Выйти")}</button>
             </div>
           </div>
         </div>
@@ -2012,7 +2012,7 @@ export default function CustomerMenu() {
             {(optModal.options_config?.groups || []).map(group => (
               <div key={group.name} style={{marginBottom:14}}>
                 <div style={{fontSize:11,color:"#333",letterSpacing:"1px",fontWeight:700,marginBottom:6}}>
-                  {optT(group.name)?.toUpperCase()}{group.required && <span style={{color:"#c44",marginLeft:4}}>*</span>}
+                  {optT(group.name)?.toUpperCase()}{group.required && <span style={{color:"#A34A3A",marginLeft:4}}>*</span>}
                   {group.multi && <span style={{color:"#999",fontWeight:600,marginLeft:6}}>· {t.multi_select}</span>}
                 </div>
                 <div style={{display:"flex",flexWrap:"wrap",gap:6}}>
@@ -2023,7 +2023,7 @@ export default function CustomerMenu() {
                     return (
                     <button key={opt} onClick={()=>setOptSelected(group.multi?{...optSelected,[group.name]:((optSelected[group.name]||[]).includes(opt)?(optSelected[group.name]||[]).filter(x=>x!==opt):[...(optSelected[group.name]||[]),opt])}:{...optSelected,[group.name]:opt})} style={{padding:"10px 14px",background:sel?"#000":"#f2f2f2",color:sel?"#fff":"#333",border:"none",borderRadius:10,fontSize:13,fontWeight:700,cursor:"pointer"}}>
                       {optT(opt)}
-                      {pm !== 0 && <span style={{fontSize:11,fontWeight:800,marginLeft:5,color:sel?"#E0AB4A":"#a3781f"}}>{pm > 0 ? "+" : "−"}₺{Math.abs(pm)}</span>}
+                      {pm !== 0 && <span style={{fontSize:11,fontWeight:800,marginLeft:5,color:sel?"#FFFFFF":"#666666"}}>{pm > 0 ? "+" : "−"}₺{Math.abs(pm)}</span>}
                     </button>
                     );
                   })}
@@ -2049,7 +2049,7 @@ export default function CustomerMenu() {
             <div style={{fontSize:12.5,color:"#888",marginBottom:16}}>{t.login_note}</div>
 
             {inAppBrowser && (
-              <div style={{background:"#FFF6E5",border:"1px solid #EAD9AE",borderRadius:12,padding:"10px 13px",fontSize:12.5,color:"#7a5c1e",marginBottom:14}}>
+              <div style={{background:"#FAF6EE",border:"1px solid #EDE6D8",borderRadius:12,padding:"10px 13px",fontSize:12.5,color:"#5A5348",marginBottom:14}}>
                 {t.login_inapp}
               </div>
             )}
@@ -2070,7 +2070,7 @@ export default function CustomerMenu() {
                   type="email" inputMode="email" autoComplete="email"
                   style={{width:"100%",padding:"13px 14px",background:"#f7f7f7",border:"1px solid #eee",borderRadius:12,fontSize:15,outline:"none",fontFamily:"inherit",marginBottom:10}}/>
                 <button onClick={sendOtp} disabled={otpBusy}
-                  style={{width:"100%",padding:"14px",background:otpBusy?"#999":"#C8973E",color:"#000",border:"none",borderRadius:12,fontSize:14,fontWeight:800,cursor:otpBusy?"default":"pointer",fontFamily:"inherit"}}>
+                  style={{width:"100%",padding:"14px",background:otpBusy?"#DDDDDD":"#000000",color:otpBusy?"#666666":"#FFFFFF",border:"none",borderRadius:12,fontSize:14,fontWeight:800,cursor:otpBusy?"default":"pointer",fontFamily:"inherit"}}>
                   {otpBusy ? "..." : t.login_send}
                 </button>
               </>
@@ -2081,7 +2081,7 @@ export default function CustomerMenu() {
                   inputMode="numeric" autoComplete="one-time-code"
                   style={{width:"100%",padding:"13px 14px",background:"#f7f7f7",border:"1px solid #eee",borderRadius:12,fontSize:20,letterSpacing:"0.3em",textAlign:"center",outline:"none",fontFamily:"inherit",marginBottom:10}}/>
                 <button onClick={dogrulaOtp} disabled={otpBusy}
-                  style={{width:"100%",padding:"14px",background:otpBusy?"#999":"#C8973E",color:"#000",border:"none",borderRadius:12,fontSize:14,fontWeight:800,cursor:otpBusy?"default":"pointer",fontFamily:"inherit"}}>
+                  style={{width:"100%",padding:"14px",background:otpBusy?"#DDDDDD":"#000000",color:otpBusy?"#666666":"#FFFFFF",border:"none",borderRadius:12,fontSize:14,fontWeight:800,cursor:otpBusy?"default":"pointer",fontFamily:"inherit"}}>
                   {otpBusy ? "..." : t.login_verify}
                 </button>
                 <div style={{fontSize:11.5,color:"#999",marginTop:10,textAlign:"center"}}>{t.login_link_hint}</div>
@@ -2110,7 +2110,7 @@ export default function CustomerMenu() {
               <div key={idx} style={{display:"flex",alignItems:"center",gap:10,padding:"12px 0",borderBottom:"1px solid #f0f0f0"}}>
                 <div style={{flex:1,minWidth:0}}>
                   <div style={{fontSize:14,fontWeight:700}}>{pName(c.product)}</div>
-                  {c.options && <div style={{fontSize:11,color:"#C8973E",marginTop:2,fontWeight:600}}>{Object.values(c.options).flat().map(optT).join(" · ")}</div>}
+                  {c.options && <div style={{fontSize:11,color:"#000000",marginTop:2,fontWeight:600}}>{Object.values(c.options).flat().map(optT).join(" · ")}</div>}
                   {c.note && <div style={{fontSize:11,color:"#666",fontStyle:"italic",marginTop:2}}>{c.note}</div>}
                   <div style={{fontSize:12,color:"#555",marginTop:3}}>
                     {calcPrice(c.product, c.options) < listPrice(c.product, c.options) && (
@@ -2146,8 +2146,8 @@ export default function CustomerMenu() {
             {customer && walletBalance > 0 && (
               <button onClick={() => setUsePoints(!usePoints)}
                 style={{width:"100%",marginTop:14,padding:"12px 14px",display:"flex",justifyContent:"space-between",alignItems:"center",
-                        background:usePoints?"#111":"#FFF8E8",color:usePoints?"#FFD700":"#7a5c1e",
-                        border:"1px solid "+(usePoints?"#111":"#EAD9AE"),borderRadius:12,fontSize:13,fontWeight:800,cursor:"pointer",fontFamily:"inherit"}}>
+                        background:usePoints?"#111":"#FAF6EE",color:usePoints?"#000000":"#5A5348",
+                        border:"1px solid "+(usePoints?"#111":"#EDE6D8"),borderRadius:12,fontSize:13,fontWeight:800,cursor:"pointer",fontFamily:"inherit"}}>
                 <span>{usePoints ? "✓ " : ""}🪙 {t.pay_with_points}</span>
                 <span>{walletBalance} {L("puan","pts","б.")} = ₺{walletBalance}</span>
               </button>
@@ -2160,7 +2160,7 @@ export default function CustomerMenu() {
               const kullanilacak = Math.min(walletBalance, cartTotal);
               return (
                 <div style={{display:"flex",flexDirection:"column",gap:4,marginTop:-8,marginBottom:4,fontSize:13}}>
-                  <div style={{display:"flex",justifyContent:"space-between",color:"#a3781f",fontWeight:700}}>
+                  <div style={{display:"flex",justifyContent:"space-between",color:"#5A5348",fontWeight:700}}>
                     <span>🪙 {t.points_applied}</span><span>−₺{kullanilacak}</span>
                   </div>
                   <div style={{display:"flex",justifyContent:"space-between",fontWeight:800}}>
@@ -2174,7 +2174,7 @@ export default function CustomerMenu() {
               // Isim yazilmadan siparis butonu calismaz (masasiz / ortak masa)
               const nameOk = (table && !table.shared) || !!(customerName.trim() || customer?.name);
               return (
-                <button onClick={submitOrder} disabled={submitting || !nameOk} style={{width:"100%",marginTop:14,padding:"16px",background:nameOk?"#C8973E":"#ddd",color:nameOk?"#000":"#999",border:"none",borderRadius:14,fontSize:15,fontWeight:800,cursor:nameOk?"pointer":"not-allowed",opacity:submitting?0.6:1}}>
+                <button onClick={submitOrder} disabled={submitting || !nameOk} style={{width:"100%",marginTop:14,padding:"16px",background:nameOk?"#000000":"#ddd",color:nameOk?"#FFFFFF":"#999",border:"none",borderRadius:14,fontSize:15,fontWeight:800,cursor:nameOk?"pointer":"not-allowed",opacity:submitting?0.6:1}}>
                   {submitting ? t.submitting : nameOk ? t.submit_order : t.please_enter_name}
                 </button>
               );

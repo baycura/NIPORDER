@@ -138,22 +138,22 @@ export default function RetailPage() {
     const vs = Array.isArray(p.variants) ? p.variants : [];
     const low = Number(p.retail_stock) <= 2;
     return (
-      <div style={{ background: "#161616", border: "1px solid " + (low ? "#553322" : "#2A2A2A"), borderRadius: 10, padding: 12, marginBottom: 8 }}>
+      <div style={{ background: "#161616", border: "1px solid " + (low ? "#2A2A2A" : "#2A2A2A"), borderRadius: 10, padding: 12, marginBottom: 8 }}>
         <div style={{ display: "flex", justifyContent: "space-between", alignItems: "flex-start", gap: 10 }}>
           <div style={{ flex: 1, minWidth: 0 }}>
             <div style={{ fontSize: 14, fontWeight: 700, color: "#F0EDE8" }}>
               {p.name}
               {p.is_available === false && <span style={{ marginLeft: 6, fontSize: 9, padding: "2px 6px", background: "#333", color: "#999", borderRadius: 6, fontWeight: 700 }}>PASİF</span>}
-              {low && <span style={{ marginLeft: 6, fontSize: 9, padding: "2px 6px", background: "#553322", color: "#FFCC99", borderRadius: 6, fontWeight: 700 }}>AZALAN</span>}
+              {low && <span style={{ marginLeft: 6, fontSize: 9, padding: "2px 6px", background: "#2A2A2A", color: "#F0EDE8", borderRadius: 6, fontWeight: 700 }}>AZALAN</span>}
             </div>
             <div style={{ fontSize: 12, color: "#888", marginTop: 3 }}>
-              {Number(p.price) > 0 ? <span style={{ color: "#C8973E", fontWeight: 700 }}>₺{p.price}</span> : <span>Serbest tutar</span>}
-              <span style={{ marginLeft: 10 }}>Stok: <b style={{ color: low ? "#FFCC99" : "#F0EDE8" }}>{p.retail_stock || 0}</b> adet</span>
+              {Number(p.price) > 0 ? <span style={{ color: "#FFFFFF", fontWeight: 700 }}>₺{p.price}</span> : <span>Serbest tutar</span>}
+              <span style={{ marginLeft: 10 }}>Stok: <b style={{ color: low ? "#F0EDE8" : "#F0EDE8" }}>{p.retail_stock || 0}</b> adet</span>
             </div>
             {vs.length > 0 && (
               <div style={{ display: "flex", flexWrap: "wrap", gap: 5, marginTop: 7 }}>
                 {vs.map(v => (
-                  <span key={v.name} style={{ fontSize: 11, padding: "4px 9px", background: Number(v.stock) > 0 ? "#22262E" : "#2A1A1A", color: Number(v.stock) > 0 ? "#AAB6CC" : "#886666", borderRadius: 8, fontWeight: 700 }}>
+                  <span key={v.name} style={{ fontSize: 11, padding: "4px 9px", background: Number(v.stock) > 0 ? "#22262E" : "#161616", color: Number(v.stock) > 0 ? "#8A8580" : "#8A8580", borderRadius: 8, fontWeight: 700 }}>
                     {v.name}: {v.stock}
                   </span>
                 ))}
@@ -162,7 +162,7 @@ export default function RetailPage() {
           </div>
           <div style={{ display: "flex", flexDirection: "column", gap: 4, flexShrink: 0 }}>
             <button onClick={() => openEditProduct(p)} style={{ padding: "6px 10px", background: "#222", color: "#aaa", border: "1px solid #333", borderRadius: 6, fontSize: 11, cursor: "pointer" }}>Düzenle</button>
-            <button onClick={() => delProduct(p)} style={{ padding: "6px 10px", background: "transparent", color: "#FF6666", border: "1px solid #553333", borderRadius: 6, fontSize: 11, cursor: "pointer" }}>Sil</button>
+            <button onClick={() => delProduct(p)} style={{ padding: "6px 10px", background: "transparent", color: "#C87A6A", border: "1px solid #2A2A2A", borderRadius: 6, fontSize: 11, cursor: "pointer" }}>Sil</button>
           </div>
         </div>
       </div>
@@ -177,19 +177,19 @@ export default function RetailPage() {
       </div>
 
       {stockValue > 0 && (
-        <div style={{ background: "linear-gradient(135deg,#C8973E22,#E0AB4A22)", border: "1px solid #C8973E", borderRadius: 12, padding: 14, marginBottom: 14 }}>
-          <div style={{ fontSize: 11, color: "#C8973E", letterSpacing: "1.5px", fontWeight: 700 }}>RAF STOK DEĞERİ (satış fiyatıyla)</div>
+        <div style={{ background: "#161616", border: "1px solid #FFFFFF", borderRadius: 12, padding: 14, marginBottom: 14 }}>
+          <div style={{ fontSize: 11, color: "#8A8580", letterSpacing: "1.5px", fontWeight: 700 }}>RAF STOK DEĞERİ (satış fiyatıyla)</div>
           <div style={{ fontSize: 22, color: "#F0EDE8", fontWeight: 800, marginTop: 2 }}>₺{Math.round(stockValue).toLocaleString("tr-TR")}</div>
         </div>
       )}
 
       <div style={{ display: "flex", gap: 8, marginBottom: 16, flexWrap: "wrap" }}>
-        <button onClick={openNewBrand} style={{ padding: "10px 16px", background: "#C8973E", color: "#000", border: "none", borderRadius: 10, fontSize: 13, fontWeight: 800, cursor: "pointer" }}>+ Yeni Marka</button>
-        <button onClick={() => openNewProduct("")} style={{ padding: "10px 16px", background: "transparent", color: "#C8973E", border: "1px solid #C8973E", borderRadius: 10, fontSize: 13, fontWeight: 800, cursor: "pointer" }}>+ Yeni Ürün</button>
+        <button onClick={openNewBrand} style={{ padding: "10px 16px", background: "#FFFFFF", color: "#000", border: "none", borderRadius: 10, fontSize: 13, fontWeight: 800, cursor: "pointer" }}>+ Yeni Marka</button>
+        <button onClick={() => openNewProduct("")} style={{ padding: "10px 16px", background: "transparent", color: "#FFFFFF", border: "1px solid #FFFFFF", borderRadius: 10, fontSize: 13, fontWeight: 800, cursor: "pointer" }}>+ Yeni Ürün</button>
       </div>
 
       {!category && (
-        <div style={{ background: "#2A1A1A", border: "1px solid #553333", borderRadius: 10, padding: 14, marginBottom: 14, fontSize: 12, color: "#FFB0B0", lineHeight: 1.6 }}>
+        <div style={{ background: "#161616", border: "1px solid #2A2A2A", borderRadius: 10, padding: 14, marginBottom: 14, fontSize: 12, color: "#C87A6A", lineHeight: 1.6 }}>
           "Yalnız kasada" işaretli bir kategori bulunamadı. Menü Yönetimi'nden bir kategori açıp "🛍 Yalnız kasada" kutusunu işaretleyin.
         </div>
       )}
@@ -211,14 +211,14 @@ export default function RetailPage() {
               </div>
               <div style={{ display: "flex", gap: 4, flexShrink: 0 }} onClick={e => e.stopPropagation()}>
                 <button onClick={() => openEditBrand(b)} style={{ padding: "6px 10px", background: "#222", color: "#aaa", border: "1px solid #333", borderRadius: 6, fontSize: 11, cursor: "pointer" }}>Düzenle</button>
-                <button onClick={() => delBrand(b)} style={{ padding: "6px 10px", background: "transparent", color: "#FF6666", border: "1px solid #553333", borderRadius: 6, fontSize: 11, cursor: "pointer" }}>Sil</button>
+                <button onClick={() => delBrand(b)} style={{ padding: "6px 10px", background: "transparent", color: "#C87A6A", border: "1px solid #2A2A2A", borderRadius: 6, fontSize: 11, cursor: "pointer" }}>Sil</button>
               </div>
             </div>
             {open && (
               <div style={{ padding: "0 12px 12px" }}>
                 {list.map(p => <ProductRow key={p.id} p={p} />)}
                 {list.length === 0 && <div style={{ color: "#666", fontSize: 12, padding: "6px 0 12px" }}>Bu markada ürün yok.</div>}
-                <button onClick={() => openNewProduct(b.id)} style={{ width: "100%", padding: "10px", background: "transparent", color: "#C8973E", border: "1px dashed #C8973E", borderRadius: 8, fontSize: 12, fontWeight: 700, cursor: "pointer" }}>+ {b.name} ürünü ekle</button>
+                <button onClick={() => openNewProduct(b.id)} style={{ width: "100%", padding: "10px", background: "transparent", color: "#FFFFFF", border: "1px dashed #FFFFFF", borderRadius: 8, fontSize: 12, fontWeight: 700, cursor: "pointer" }}>+ {b.name} ürünü ekle</button>
               </div>
             )}
           </div>
@@ -261,7 +261,7 @@ export default function RetailPage() {
           <Field label="BEDEN">
             <div style={{ display: "flex", gap: 6, flexWrap: "wrap" }}>
               {Object.keys(SIZE_SETS).map(k => (
-                <button key={k} onClick={() => setSizeSet(k)} style={{ padding: "8px 12px", background: form.sizeSet === k ? "#C8973E" : "#222", color: form.sizeSet === k ? "#000" : "#888", border: "1px solid " + (form.sizeSet === k ? "#C8973E" : "#333"), borderRadius: 8, fontSize: 12, fontWeight: 700, cursor: "pointer" }}>{k}</button>
+                <button key={k} onClick={() => setSizeSet(k)} style={{ padding: "8px 12px", background: form.sizeSet === k ? "#FFFFFF" : "#222", color: form.sizeSet === k ? "#000" : "#888", border: "1px solid " + (form.sizeSet === k ? "#FFFFFF" : "#333"), borderRadius: 8, fontSize: 12, fontWeight: 700, cursor: "pointer" }}>{k}</button>
               ))}
             </div>
           </Field>
@@ -271,7 +271,7 @@ export default function RetailPage() {
               <div style={{ display: "grid", gridTemplateColumns: "repeat(auto-fill,minmax(90px,1fr))", gap: 8 }}>
                 {(form.variants || []).map(v => (
                   <div key={v.name} style={{ background: "#0C0C0C", border: "1px solid #2A2A2A", borderRadius: 8, padding: 8 }}>
-                    <div style={{ fontSize: 11, color: "#C8973E", fontWeight: 800, marginBottom: 4, textAlign: "center" }}>{v.name}</div>
+                    <div style={{ fontSize: 11, color: "#FFFFFF", fontWeight: 800, marginBottom: 4, textAlign: "center" }}>{v.name}</div>
                     <input type="number" min="0" value={v.stock} onChange={e => setVariantStock(v.name, e.target.value)} style={{ ...inputS, padding: "6px", textAlign: "center" }} />
                   </div>
                 ))}
@@ -285,7 +285,7 @@ export default function RetailPage() {
           )}
 
           <label style={{ display: "flex", alignItems: "center", gap: 8, marginBottom: 12, cursor: "pointer" }}>
-            <input type="checkbox" checked={form.is_available !== false} onChange={e => setForm({ ...form, is_available: e.target.checked })} style={{ width: 18, height: 18, accentColor: "#C8973E" }} />
+            <input type="checkbox" checked={form.is_available !== false} onChange={e => setForm({ ...form, is_available: e.target.checked })} style={{ width: 18, height: 18, accentColor: "#FFFFFF" }} />
             <span style={{ fontSize: 13, color: "#F0EDE8" }}>Satışta (kasada listelensin)</span>
           </label>
 
@@ -301,7 +301,7 @@ export default function RetailPage() {
 
 const inputS = { width: "100%", padding: "10px 12px", background: "#0C0C0C", border: "1px solid #2A2A2A", borderRadius: 8, color: "#F0EDE8", fontSize: 14, outline: "none", fontFamily: "inherit" };
 const cancelBtn = { flex: 1, padding: "12px", background: "transparent", color: "#888", border: "1px solid #333", borderRadius: 10, fontSize: 14, fontWeight: 700, cursor: "pointer" };
-const saveBtn = { flex: 2, padding: "12px", background: "#C8973E", color: "#000", border: "none", borderRadius: 10, fontSize: 14, fontWeight: 800, cursor: "pointer" };
+const saveBtn = { flex: 2, padding: "12px", background: "#FFFFFF", color: "#000", border: "none", borderRadius: 10, fontSize: 14, fontWeight: 800, cursor: "pointer" };
 
 function Field({ label, children }) {
   return (<div style={{ marginBottom: 12 }}>

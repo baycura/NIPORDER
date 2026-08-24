@@ -6,13 +6,13 @@ import { useAuth } from "../../contexts/AuthContext.jsx";
 const cv = "-apple-system,BlinkMacSystemFont,'Segoe UI',Roboto,sans-serif";
 
 const STATUS_LABEL = {
-  open: { label:"Yeni", color:"#3ECF8E" },
-  sent: { label:"Mutfakta", color:"#E07A3E" },
-  preparing: { label:"Mutfakta", color:"#E07A3E" },
-  ready: { label:"Hazır", color:"#C8973E" },
+  open: { label:"Yeni", color:"#FFFFFF" },
+  sent: { label:"Mutfakta", color:"#FFFFFF" },
+  preparing: { label:"Mutfakta", color:"#FFFFFF" },
+  ready: { label:"Hazır", color:"#FFFFFF" },
   paid: { label:"Ödenmiş", color:"#888" },
-  cancelled: { label:"İptal", color:"#FF6666" },
-  debt: { label:"Borç", color:"#8B5CF6" },
+  cancelled: { label:"İptal", color:"#C87A6A" },
+  debt: { label:"Borç", color:"#8A8580" },
 };
 
 export default function OrdersPage() {
@@ -139,12 +139,12 @@ export default function OrdersPage() {
           <div style={{fontSize:24,fontWeight:800}}>Siparişler</div>
           <div style={{fontSize:11,color:"#888",letterSpacing:"1px"}}>{orders.length} SIPARIS</div>
         </div>
-        <button onClick={() => setNewModal(true)} style={{padding:"10px 16px",background:"#C8973E",color:"#000",border:"none",borderRadius:10,fontSize:13,fontWeight:800,cursor:"pointer"}}>+ Yeni Sipariş</button>
+        <button onClick={() => setNewModal(true)} style={{padding:"10px 16px",background:"#FFFFFF",color:"#000",border:"none",borderRadius:10,fontSize:13,fontWeight:800,cursor:"pointer"}}>+ Yeni Sipariş</button>
       </div>
 
       <div style={{display:"flex",gap:6,marginBottom:14,overflowX:"auto"}}>
         {[["active","AKTIF"],["paid","ODENMIS"],["all","HEPSI"]].map(([k,l]) => (
-          <button key={k} onClick={()=>setFilter(k)} style={{flexShrink:0,padding:"7px 12px",border:"none",borderRadius:16,fontSize:11,fontWeight:700,letterSpacing:"0.5px",background:filter===k?"#C8973E":"#222",color:filter===k?"#000":"#888",cursor:"pointer",whiteSpace:"nowrap"}}>{l}</button>
+          <button key={k} onClick={()=>setFilter(k)} style={{flexShrink:0,padding:"7px 12px",border:"none",borderRadius:16,fontSize:11,fontWeight:700,letterSpacing:"0.5px",background:filter===k?"#FFFFFF":"#222",color:filter===k?"#000":"#888",cursor:"pointer",whiteSpace:"nowrap"}}>{l}</button>
         ))}
       </div>
 
@@ -158,7 +158,7 @@ export default function OrdersPage() {
           <div key={o.id} onClick={() => navigate("/orders/" + o.id)} style={{background:"#1A1A1A",border:"1px solid #2A2A2A",borderRadius:10,padding:12,marginBottom:8,cursor:"pointer",display:"flex",alignItems:"center",gap:10}}>
             <div style={{flex:1,minWidth:0}}>
               <div style={{display:"flex",alignItems:"center",gap:8,flexWrap:"wrap"}}>
-                {o.stores?.slug && <span style={{display:"inline-block",background:o.stores.slug==="doner"?"#C8973E":"#3ECF8E",color:"#000",padding:"2px 8px",borderRadius:6,fontSize:9,fontWeight:800,letterSpacing:"0.5px"}}>{o.stores.slug==="doner"?"🥙 DÖNER":"🗼 PARIS"}</span>}
+                {o.stores?.slug && <span style={{display:"inline-block",background:o.stores.slug==="doner"?"#FFFFFF":"#222222",color:o.stores.slug==="doner"?"#000":"#F0EDE8",padding:"2px 8px",borderRadius:6,fontSize:9,fontWeight:800,letterSpacing:"0.5px"}}>{o.stores.slug==="doner"?"🥙 DÖNER":"🗼 PARIS"}</span>}
                 <div style={{fontSize:14,fontWeight:700,color:"#F0EDE8"}}>{where}</div>
                 <span style={{fontSize:9,padding:"2px 8px",background:st.color+"22",color:st.color,borderRadius:6,fontWeight:700,letterSpacing:"1px"}}>{st.label?.toUpperCase()}</span>
               </div>
@@ -168,17 +168,17 @@ export default function OrdersPage() {
               </div>
             </div>
             <div style={{textAlign:"right",display:"flex",flexDirection:"column",alignItems:"flex-end",gap:6}}>
-              <div style={{fontSize:16,fontWeight:800,color:"#C8973E"}}>₺{o.total || 0}</div>
+              <div style={{fontSize:16,fontWeight:800,color:"#FFFFFF"}}>₺{o.total || 0}</div>
               {(() => {
                 const s = itemStats[o.id];
                 if (!s || o.status === "paid" || o.status === "cancelled" || o.status === "debt") return null;
                 if (s.unready > 0) return (
-                  <button onClick={(e) => markReady(e, o.id)} style={{padding:"8px 14px",background:"#3ECF8E",color:"#000",border:"none",borderRadius:8,fontSize:12,fontWeight:800,cursor:"pointer",whiteSpace:"nowrap"}}>
+                  <button onClick={(e) => markReady(e, o.id)} style={{padding:"8px 14px",background:"#FFFFFF",color:"#000",border:"none",borderRadius:8,fontSize:12,fontWeight:800,cursor:"pointer",whiteSpace:"nowrap"}}>
                     🔔 Hazır ({s.unready})
                   </button>
                 );
                 if (s.ready > 0) return (
-                  <button onClick={(e) => markServed(e, o.id)} style={{padding:"8px 14px",background:"transparent",color:"#3ECF8E",border:"1px solid #3ECF8E",borderRadius:8,fontSize:12,fontWeight:700,cursor:"pointer",whiteSpace:"nowrap"}}>
+                  <button onClick={(e) => markServed(e, o.id)} style={{padding:"8px 14px",background:"transparent",color:"#FFFFFF",border:"1px solid #FFFFFF",borderRadius:8,fontSize:12,fontWeight:700,cursor:"pointer",whiteSpace:"nowrap"}}>
                     ✓ Teslim Edildi
                   </button>
                 );
@@ -194,8 +194,8 @@ export default function OrdersPage() {
           <div onClick={e=>e.stopPropagation()} style={{background:"#161616",border:"1px solid #2A2A2A",borderRadius:"16px 16px 0 0",padding:20,width:"100%",maxWidth:480}}>
             <div style={{fontSize:18,fontWeight:800,marginBottom:14}}>Yeni Sipariş Aç</div>
             <div style={{display:"flex",gap:6,marginBottom:14}}>
-              <button onClick={()=>setNewMode("table")} style={{flex:1,padding:"10px",background:newMode==="table"?"#C8973E":"#0C0C0C",color:newMode==="table"?"#000":"#aaa",border:"1px solid #333",borderRadius:10,fontSize:12,fontWeight:700,cursor:"pointer"}}>🪑 Masa</button>
-              <button onClick={()=>setNewMode("walkin")} style={{flex:1,padding:"10px",background:newMode==="walkin"?"#C8973E":"#0C0C0C",color:newMode==="walkin"?"#000":"#aaa",border:"1px solid #333",borderRadius:10,fontSize:12,fontWeight:700,cursor:"pointer"}}>👤 Misafir / Paket</button>
+              <button onClick={()=>setNewMode("table")} style={{flex:1,padding:"10px",background:newMode==="table"?"#FFFFFF":"#0C0C0C",color:newMode==="table"?"#000":"#aaa",border:"1px solid #333",borderRadius:10,fontSize:12,fontWeight:700,cursor:"pointer"}}>🪑 Masa</button>
+              <button onClick={()=>setNewMode("walkin")} style={{flex:1,padding:"10px",background:newMode==="walkin"?"#FFFFFF":"#0C0C0C",color:newMode==="walkin"?"#000":"#aaa",border:"1px solid #333",borderRadius:10,fontSize:12,fontWeight:700,cursor:"pointer"}}>👤 Misafir / Paket</button>
             </div>
             {newMode === "table" ? (
               <div>
@@ -205,7 +205,7 @@ export default function OrdersPage() {
                 ) : (
                   <div style={{display:"flex",flexWrap:"wrap",gap:6}}>
                     {tables.map(t => (
-                      <button key={t.id} onClick={()=>setNewTableId(t.id)} style={{padding:"10px 14px",background:newTableId===t.id?"#C8973E":"#0C0C0C",color:newTableId===t.id?"#000":"#aaa",border:"1px solid #333",borderRadius:10,fontSize:13,fontWeight:700,cursor:"pointer"}}>{t.name}</button>
+                      <button key={t.id} onClick={()=>setNewTableId(t.id)} style={{padding:"10px 14px",background:newTableId===t.id?"#FFFFFF":"#0C0C0C",color:newTableId===t.id?"#000":"#aaa",border:"1px solid #333",borderRadius:10,fontSize:13,fontWeight:700,cursor:"pointer"}}>{t.name}</button>
                     ))}
                   </div>
                 )}
@@ -218,7 +218,7 @@ export default function OrdersPage() {
             )}
             <div style={{display:"flex",gap:8,marginTop:16}}>
               <button onClick={()=>setNewModal(false)} style={{flex:1,padding:"12px",background:"transparent",color:"#888",border:"1px solid #333",borderRadius:10,fontSize:14,fontWeight:700,cursor:"pointer"}}>İptal</button>
-              <button onClick={createOrder} disabled={busy} style={{flex:2,padding:"12px",background:"#C8973E",color:"#000",border:"none",borderRadius:10,fontSize:14,fontWeight:800,cursor:"pointer",opacity:busy?0.6:1}}>{busy?"...":"Aç"}</button>
+              <button onClick={createOrder} disabled={busy} style={{flex:2,padding:"12px",background:"#FFFFFF",color:"#000",border:"none",borderRadius:10,fontSize:14,fontWeight:800,cursor:"pointer",opacity:busy?0.6:1}}>{busy?"...":"Aç"}</button>
             </div>
           </div>
         </div>
