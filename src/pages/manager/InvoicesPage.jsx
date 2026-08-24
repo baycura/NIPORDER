@@ -135,6 +135,7 @@ export default function InvoicesPage() {
         ...f,
         supplier_name: parsed.supplier_name || f.supplier_name,
         invoice_date: parsed.invoice_date || f.invoice_date,
+        invoice_no: parsed.invoice_no || f.invoice_no,
       }));
       const newLines = parsed.lines.map(l => {
         const match = matchIngredient(l.name);
@@ -249,12 +250,30 @@ export default function InvoicesPage() {
     if (busy) return;
     if (!form.supplier_name?.trim()) { alert("Tedarikci adi gerekli"); return; }
     if (lines.length === 0) { alert("En az bir kalem ekle"); return; }
+
+    // MUKERRER FATURA KONTROLU. Ayni fatura iki kez girilince hem gider iki kez
+    // sayiliyor hem de stok sisiyor; bir kez yasandi (ERBAK, 8 ve 17 Agustos).
+    // Engellemiyoruz, soruyoruz — bazen ayni numara elle duzeltilerek girilir.
+    const faturaNo = form.invoice_no?.trim() || "";
+    if (faturaNo) {
+      const { data: ayni } = await supabase.from("supplier_invoices")
+        .select("supplier_name, invoice_date, total_amount")
+        .eq("store_id", staffUser?.store_ids?.[0]).eq("invoice_no", faturaNo).limit(1);
+      const v = ayni?.[0];
+      if (v && !confirm(
+        `"${faturaNo}" numarali fatura zaten kayitli:\n` +
+        `${v.supplier_name} · ${v.invoice_date} · ₺${Math.round(Number(v.total_amount) || 0).toLocaleString("tr-TR")}\n\n` +
+        `Yine de kaydedilsin mi? (Gider ve stok iki kez sayilir.)`
+      )) return;
+    }
+
     setBusy(true);
 
     // Fatura fotografi SAKLANMAZ — yalnizca AI okuma icin kullanilir (depolama sismesin)
     const { data: inv, error: invErr } = await supabase.from("supplier_invoices").insert({
       supplier_name: form.supplier_name.trim(),
       invoice_date: form.invoice_date,
+      invoice_no: faturaNo || null,
       total_amount: linesTotal,
       notes: form.notes?.trim() || null,
       store_id: staffUser?.store_ids?.[0],
@@ -390,7 +409,10 @@ export default function InvoicesPage() {
           <div style={{display:"flex",justifyContent:"space-between",alignItems:"flex-start",gap:10}}>
             <div style={{flex:1}}>
               <div style={{fontSize:14,fontWeight:700,color:"#F0EDE8"}}>{inv.supplier_name}</div>
-              <div style={{fontSize:11,color:"#888",marginTop:2}}>{new Date(inv.invoice_date).toLocaleDateString("tr-TR")} · {inv.supplier_invoice_items?.length || 0} kalem</div>
+              <div style={{fontSize:11,color:"#888",marginTop:2}}>
+                {new Date(inv.invoice_date).toLocaleDateString("tr-TR")} · {inv.supplier_invoice_items?.length || 0} kalem
+                {inv.invoice_no ? " · No " + inv.invoice_no : ""}
+              </div>
               {inv.supplier_invoice_items?.length > 0 && (
                 <div style={{fontSize:11,color:"#666",marginTop:4}}>
                   {inv.supplier_invoice_items.map(it => (it.ingredients?.name || "?") + " " + it.qty + (it.ingredients?.unit||"")).join(" · ")}
@@ -410,6 +432,9 @@ export default function InvoicesPage() {
           <Field label="TEDARIKCI"><input value={form.supplier_name||""} onChange={e=>setForm({...form,supplier_name:e.target.value})} placeholder="orn: Anadolu Efes" style={inputS}/></Field>
           <div style={{display:"flex",gap:8}}>
             <Field label="TARIH"><input type="date" value={form.invoice_date||""} onChange={e=>setForm({...form,invoice_date:e.target.value})} style={inputS}/></Field>
+            {modal.mode !== "manual" && (
+              <Field label="FATURA NO"><input value={form.invoice_no||""} onChange={e=>setForm({...form,invoice_no:e.target.value})} placeholder="XML'den gelir" style={inputS}/></Field>
+            )}
           </div>
 
           {modal.mode !== "manual" && (
