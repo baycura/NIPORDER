@@ -4,6 +4,7 @@ import { supabase } from "../../lib/supabase.js";
 import { happyHourPrices } from "../../lib/happyHour.js";
 import { optionsText, optionMod } from "../../lib/productOptions.js";
 import { useAuth } from "../../contexts/AuthContext.jsx";
+import Ikon from "../../components/Ikon.jsx";
 
 const cv = "-apple-system,BlinkMacSystemFont,'Segoe UI',Roboto,sans-serif";
 
@@ -352,7 +353,7 @@ export default function OrderDetailPage() {
   return (
     <div style={{fontFamily:cv,color:"#F0EDE8",paddingBottom:100}}>
       <div style={{display:"flex",justifyContent:"space-between",alignItems:"center",marginBottom:10,flexWrap:"wrap",gap:8}}>
-        <button onClick={() => navigate(-1)} style={{background:"none",border:"none",color:"#FFFFFF",fontSize:13,cursor:"pointer",padding:0}}>← Geri</button>
+        <button onClick={() => navigate(-1)} style={{background:"none",border:"none",color:"#FFFFFF",fontSize:13,cursor:"pointer",padding:0,display:"inline-flex",alignItems:"center",gap:5}}><Ikon ad="oksol" boy={14}/>Geri</button>
         {order.status !== "cancelled" && order.status !== "paid" && (
           <button onClick={cancelOrder} style={{background:"none",border:"1px solid #2A2A2A",color:"#C87A6A",fontSize:11,borderRadius:6,padding:"5px 10px",cursor:"pointer"}}>İptal Et</button>
         )}
@@ -360,15 +361,15 @@ export default function OrderDetailPage() {
 
       <div style={{marginBottom:14}}>
         <div style={{display:"flex",alignItems:"center",gap:8,flexWrap:"wrap"}}>
-          {order.stores?.slug && <span style={{display:"inline-block",background:order.stores.slug==="doner"?"#FFFFFF":"#222222",color:order.stores.slug==="doner"?"#000":"#F0EDE8",padding:"3px 10px",borderRadius:6,fontSize:12,fontWeight:600,letterSpacing:"0.2px"}}>{order.stores.slug==="doner"?"🥙 DÖNER":"🗼 PARIS"}</span>}
+          {order.stores?.slug && <span style={{display:"inline-block",background:order.stores.slug==="doner"?"#FFFFFF":"#222222",color:order.stores.slug==="doner"?"#000":"#F0EDE8",padding:"3px 10px",borderRadius:6,fontSize:12,fontWeight:600,letterSpacing:"0.2px"}}>{order.stores.slug==="doner"?"DÖNER":"PARIS"}</span>}
           {where ? (
             <div style={{display:"flex",alignItems:"center",gap:8,flexWrap:"wrap"}}>
               <div style={{fontSize:24,fontWeight:800}}>{where}</div>
-              <input value={customerNameEdit} onChange={e=>setCustomerNameEdit(e.target.value)} onBlur={saveCustomerName} placeholder="👤 İsim" style={{background:"#1A1A1A",border:"1px solid #2A2A2A",color:"#F0EDE8",fontSize:14,fontWeight:700,padding:"6px 10px",borderRadius:8,outline:"none",fontFamily:"inherit",width:130}}/>
+              <input value={customerNameEdit} onChange={e=>setCustomerNameEdit(e.target.value)} onBlur={saveCustomerName} placeholder="İsim" style={{background:"#1A1A1A",border:"1px solid #2A2A2A",color:"#F0EDE8",fontSize:14,fontWeight:700,padding:"6px 10px",borderRadius:8,outline:"none",fontFamily:"inherit",width:130}}/>
             </div>
           ) : (
             <div style={{display:"flex",alignItems:"center",gap:6}}>
-              <span style={{fontSize:20}}>👤</span>
+              <Ikon ad="kisi" boy={20}/>
               <input value={customerNameEdit} onChange={e=>setCustomerNameEdit(e.target.value)} onBlur={saveCustomerName} placeholder="Müşteri adı" style={{background:"#1A1A1A",border:"1px solid #2A2A2A",color:"#F0EDE8",fontSize:22,fontWeight:800,padding:"4px 10px",borderRadius:8,outline:"none",fontFamily:"inherit",width:220}}/>
             </div>
           )}
@@ -380,7 +381,7 @@ export default function OrderDetailPage() {
       {/* Uye bagla: bagli uyenin ozel fiyatlari eklenen urunlere otomatik uygulanir */}
       <div style={{marginBottom:14,background:"#161616",border:"1px solid "+(order?.customer_id?"#FFFFFF":"#2A2A2A"),borderRadius:10,padding:10}}>
         <div style={{fontSize:12,color:order?.customer_id?"#FFFFFF":"#888",letterSpacing:"0.2px",fontWeight:600,marginBottom:6}}>
-          {order?.customer_id ? "👤 ÜYE HESABI BAĞLI" : "👤 ÜYE HESABI"}
+          <span style={{display:"inline-flex",alignItems:"center",gap:5}}><Ikon ad="kisi" boy={13}/>{order?.customer_id ? "ÜYE HESABI BAĞLI" : "ÜYE HESABI"}</span>
         </div>
         <select value={order?.customer_id || ""} onChange={e => linkCustomer(e.target.value || null)}
           style={{width:"100%",padding:"10px 12px",background:"#0C0C0C",border:"1px solid "+(order?.customer_id?"#FFFFFF":"#2A2A2A"),borderRadius:8,color:"#F0EDE8",fontSize:14,outline:"none",fontFamily:"inherit"}}>
@@ -419,7 +420,7 @@ export default function OrderDetailPage() {
                     <span style={{color:"#888888",textDecoration:"line-through",marginRight:5}}>₺{Math.round(Number(it.product_price))}</span>
                   )}
                   {it.is_treat
-                    ? <span style={{color:"#F0EDE8",fontWeight:800}}>🎁 İKRAM{verenAdi(it.treated_by) ? " — " + verenAdi(it.treated_by) : ""} · </span>
+                    ? <span style={{color:"#F0EDE8",fontWeight:800}}><Ikon ad="hediye" boy={13} style={{marginRight:4}}/>İKRAM{verenAdi(it.treated_by) ? " — " + verenAdi(it.treated_by) : ""} · </span>
                     : <span style={{color:"#888"}}>₺{it.final_price} · </span>}
                   <span style={{color:statusColor,fontWeight:700,letterSpacing:"1px"}}>{it.kitchen_status?.toUpperCase()}</span>
                 </div>
@@ -428,20 +429,20 @@ export default function OrderDetailPage() {
                   <button onClick={() => toggleItemTakeaway(it)}
                     style={{marginTop:6,padding:"6px 12px",background:it.is_takeaway?"#FFFFFF":"transparent",color:it.is_takeaway?"#000":"#888",
                             border:"1px solid "+(it.is_takeaway?"#FFFFFF":"#3A3A3A"),borderRadius:20,fontSize:11,fontWeight:700,cursor:"pointer",fontFamily:"inherit"}}>
-                    {it.is_takeaway ? "✓ 🥤 Paket" : "🥤 Paket"}
+                    {it.is_takeaway && <Ikon ad="onay" boy={12} style={{marginRight:4}}/>}<Ikon ad="bardak" boy={12} style={{marginRight:4}}/>Paket
                   </button>
                 )}
                 <button onClick={() => toggleTreat(it)}
                   style={{marginTop:6,padding:"6px 12px",background:it.is_treat?"#F0EDE8":"transparent",color:it.is_treat?"#000":"#888",
                           border:"1px solid "+(it.is_treat?"#F0EDE8":"#3A3A3A"),borderRadius:20,fontSize:11,fontWeight:700,cursor:"pointer",fontFamily:"inherit"}}>
-                  {it.is_treat ? "✓ 🎁 İkram" : "🎁 İkram"}
+                  {it.is_treat && <Ikon ad="onay" boy={12} style={{marginRight:4}}/>}<Ikon ad="hediye" boy={12} style={{marginRight:4}}/>İkram
                 </button>
                 </div>
               </div>
               <div style={{display:"flex",alignItems:"center",gap:6,background:"#0C0C0C",borderRadius:20,padding:"3px 5px"}}>
-                <button onClick={() => changeQty(it.id, -1)} style={{width:40,height:40,background:"#2A2A2A",color:"#fff",border:"none",borderRadius:"50%",fontSize:20,cursor:"pointer",fontWeight:700}}>−</button>
+                <button onClick={() => changeQty(it.id, -1)} style={{width:44,height:44,background:"#2A2A2A",color:"#fff",border:"none",borderRadius:"50%",fontSize:20,cursor:"pointer",fontWeight:700}}>−</button>
                 <div style={{minWidth:18,textAlign:"center",fontSize:13,fontWeight:800}}>{it.quantity}</div>
-                <button onClick={() => changeQty(it.id, +1)} style={{width:40,height:40,background:"#2A2A2A",color:"#fff",border:"none",borderRadius:"50%",fontSize:20,cursor:"pointer",fontWeight:700}}>+</button>
+                <button onClick={() => changeQty(it.id, +1)} style={{width:44,height:44,background:"#2A2A2A",color:"#fff",border:"none",borderRadius:"50%",fontSize:20,cursor:"pointer",fontWeight:700}}>+</button>
               </div>
             </div>
           );
@@ -467,27 +468,29 @@ export default function OrderDetailPage() {
       {items.length > 0 && order.status !== "paid" && order.status !== "cancelled" && (
         <div style={{position:"fixed",bottom:14,left:14,right:14,zIndex:40}}>
           <button onClick={goToPayment} style={{width:"100%",padding:"14px",background:allReady?"#FFFFFF":"#2A2A2A",color:allReady?"#000":"#F0EDE8",border:"none",borderRadius:12,fontSize:14,fontWeight:800,cursor:"pointer",boxShadow:"0 4px 16px rgba(0,0,0,0.4)"}}>
-            {allReady ? "✓ Servis tamamlandı · " : ""}💰 Ödeme Al · ₺{order.total || 0}
+            {allReady && <><Ikon ad="onay" boy={14} style={{marginRight:5}}/>Servis tamamlandı · </>}<Ikon ad="kasa" boy={15} style={{marginRight:6}}/>Ödeme Al · ₺{order.total || 0}
           </button>
         </div>
       )}
 
       <div style={{background:"#161616",border:"1px solid #2A2A2A",borderRadius:10,padding:10,marginBottom:10}}>
         <button onClick={() => setMenuOpen(!menuOpen)} style={{width:"100%",padding:"6px",background:"transparent",color:"#aaa",border:"none",fontSize:12,cursor:"pointer",fontWeight:700}}>
-          {menuOpen ? "Menüyü Gizle ↑" : "+ Ürün Ekle ↓"}
+          {menuOpen
+            ? <>Menüyü Gizle<Ikon ad="yukari" boy={13} style={{marginLeft:5}}/></>
+            : <>Ürün Ekle<Ikon ad="asagi" boy={13} style={{marginLeft:5}}/></>}
         </button>
         {menuOpen && (
           <>
             <button onClick={() => setTakeawayMode(!takeawayMode)}
               style={{width:"100%",marginTop:10,padding:"12px",background:takeawayMode?"#FFFFFF":"#1A1A1A",color:takeawayMode?"#000":"#999",
                       border:"1px solid "+(takeawayMode?"#FFFFFF":"#333"),borderRadius:10,fontSize:13,fontWeight:800,cursor:"pointer",fontFamily:"inherit"}}>
-              {takeawayMode ? "✓ 🥤 PAKET MODU AÇIK — eklenen içecekler götür" : "🥤 Paket (take away)"}
+              {takeawayMode && <Ikon ad="onay" boy={14} style={{marginRight:5}}/>}<Ikon ad="bardak" boy={14} style={{marginRight:5}}/>{takeawayMode ? "PAKET MODU AÇIK — eklenen içecekler götür" : "Paket (take away)"}
             </button>
             <div style={{position:"relative",marginTop:10}}>
-              <input value={prodSearch} onChange={e=>setProdSearch(e.target.value)} placeholder="🔍 Ürün ara (tüm kategorilerde) — örn: latte, efes, şapka"
+              <input value={prodSearch} onChange={e=>setProdSearch(e.target.value)} placeholder="Ürün ara (tüm kategorilerde) — örn: latte, efes, şapka"
                 style={{width:"100%",padding:"12px 40px 12px 14px",background:"#0C0C0C",border:"1px solid "+(q?"#FFFFFF":"#2A2A2A"),borderRadius:10,color:"#F0EDE8",fontSize:14,outline:"none",fontFamily:"inherit"}}/>
               {q && (
-                <button onClick={() => setProdSearch("")} style={{position:"absolute",right:8,top:"50%",transform:"translateY(-50%)",width:28,height:28,background:"#2A2A2A",color:"#aaa",border:"none",borderRadius:8,fontSize:14,cursor:"pointer",lineHeight:1}}>×</button>
+                <button onClick={() => setProdSearch("")} style={{position:"absolute",right:8,top:"50%",transform:"translateY(-50%)",width:44,height:44,background:"#2A2A2A",color:"#aaa",border:"none",borderRadius:8,fontSize:14,cursor:"pointer",lineHeight:1}}>×</button>
               )}
             </div>
             {!q && sikUrunler.length > 0 && (
@@ -542,7 +545,7 @@ export default function OrderDetailPage() {
       {treatModal && (
         <div onClick={() => setTreatModal(null)} style={{position:"fixed",inset:0,background:"rgba(0,0,0,0.75)",display:"flex",alignItems:"flex-end",justifyContent:"center",zIndex:100}}>
           <div onClick={e => e.stopPropagation()} style={{background:"#161616",border:"1px solid #2A2A2A",borderRadius:"16px 16px 0 0",padding:20,width:"100%",maxWidth:500}}>
-            <div style={{fontSize:16,fontWeight:800,color:"#F0EDE8",marginBottom:2}}>🎁 İkramı kim veriyor?</div>
+            <div style={{fontSize:16,fontWeight:800,color:"#F0EDE8",marginBottom:2}}><Ikon ad="hediye" boy={16} style={{marginRight:6}}/>İkramı kim veriyor?</div>
             <div style={{fontSize:11,color:"#888",marginBottom:14}}>{treatModal.product_name} · ₺{treatModal.final_price} hesaptan düşülecek</div>
             {treatVerenler().map(v => (
               <button key={v.id} onClick={() => { const it = treatModal; setTreatModal(null); applyTreat(it, v.id); }}
@@ -550,7 +553,7 @@ export default function OrderDetailPage() {
                         background: v.ben ? "#161616" : "#222", color: v.ben ? "#F0EDE8" : "#ddd",
                         border:"1px solid " + (v.ben ? "#E8C36A55" : "#333"), borderRadius:10,
                         fontSize:14, fontWeight:700, cursor:"pointer", fontFamily:cv, textAlign:"left"}}>
-                {v.ben ? "👤 Ben — " + v.ad : "⭐ " + v.ad}
+                <Ikon ad={v.ben ? "kisi" : "yildiz"} boy={14}/>{v.ben ? "Ben — " + v.ad : v.ad}
               </button>
             ))}
             <button onClick={() => setTreatModal(null)} style={{width:"100%",padding:"12px",background:"transparent",color:"#888",border:"1px solid #333",borderRadius:10,fontSize:13,fontWeight:700,cursor:"pointer",fontFamily:cv,marginTop:4}}>Vazgeç</button>

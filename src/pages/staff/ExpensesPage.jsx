@@ -1,6 +1,7 @@
 import { useEffect, useMemo, useState } from "react";
 import { supabase } from "../../lib/supabase.js";
 import { useAuth } from "../../contexts/AuthContext.jsx";
+import Ikon from "../../components/Ikon.jsx";
 
 const cv = "-apple-system,BlinkMacSystemFont,'Segoe UI',Roboto,sans-serif";
 const hv = "'Bebas Neue','Barlow Condensed','Coolvetica Condensed',sans-serif";
@@ -10,13 +11,13 @@ const C = {
 };
 
 const CATS = [
-  { key: "gida", label: "Gıda", emoji: "🥬" },
-  { key: "icecek", label: "İçecek", emoji: "🥤" },
-  { key: "alkol", label: "Alkol", emoji: "🍺" },
-  { key: "kahve", label: "Kahve & Çay", emoji: "☕" },
-  { key: "temizlik", label: "Temizlik", emoji: "🧽" },
-  { key: "ekipman", label: "Ekipman", emoji: "🔧" },
-  { key: "diger", label: "Diğer", emoji: "📦" },
+  { key: "gida", label: "Gıda", emoji: "yaprak" },
+  { key: "icecek", label: "İçecek", emoji: "bardak" },
+  { key: "alkol", label: "Alkol", emoji: "bira" },
+  { key: "kahve", label: "Kahve & Çay", emoji: "kahve" },
+  { key: "temizlik", label: "Temizlik", emoji: "temizlik" },
+  { key: "ekipman", label: "Ekipman", emoji: "alet" },
+  { key: "diger", label: "Diğer", emoji: "stok" },
 ];
 const catOf = (k) => CATS.find(c => c.key === k) || CATS[CATS.length - 1];
 
@@ -149,7 +150,7 @@ export default function ExpensesPage() {
         <div style={{ display: "flex", gap: 8, marginTop: 12, flexWrap: "wrap" }}>
           {stores.map(s => (
             <button key={s.id} onClick={() => setStoreId(s.id)} style={chip(storeId === s.id)}>
-              {s.slug === "paris" ? "🗼" : "🍩"} {s.name}
+              {s.name}
             </button>
           ))}
         </div>
@@ -171,7 +172,7 @@ export default function ExpensesPage() {
       <div style={{ display: "flex", gap: 6, marginTop: 12, overflowX: "auto", paddingBottom: 4 }}>
         <button onClick={() => setCat("all")} style={chip(cat === "all")}>Hepsi</button>
         {CATS.map(c => (
-          <button key={c.key} onClick={() => setCat(c.key)} style={chip(cat === c.key)}>{c.emoji} {c.label}</button>
+          <button key={c.key} onClick={() => setCat(c.key)} style={{...chip(cat === c.key), display:"inline-flex", alignItems:"center", gap:6}}><Ikon ad={c.emoji} boy={14}/>{c.label}</button>
         ))}
       </div>
 
@@ -179,7 +180,7 @@ export default function ExpensesPage() {
         <div style={{ padding: 60, textAlign: "center", color: C.muted }}>Yükleniyor…</div>
       ) : byDay.length === 0 ? (
         <div style={{ padding: "70px 20px", textAlign: "center", color: C.faint }}>
-          <div style={{ fontSize: 44, marginBottom: 10 }}>🧾</div>
+          <Ikon ad="fatura" boy={44} kalin={1.3} style={{ display:"block", margin:"0 auto 10px" }}/>
           Bu dönemde gider yok
         </div>
       ) : byDay.map(([day, items]) => (
@@ -192,16 +193,16 @@ export default function ExpensesPage() {
             const c = catOf(r.category);
             return (
               <div key={r.id} style={{ background: C.card, border: `1px solid ${C.cardLine}`, borderRadius: 10, padding: "11px 12px", marginBottom: 6, display: "flex", alignItems: "center", gap: 10 }}>
-                <span style={{ fontSize: 20 }}>{c.emoji}</span>
+                <Ikon ad={c.emoji} boy={19}/>
                 <div style={{ flex: 1, minWidth: 0 }}>
                   <div style={{ fontSize: 14, overflow: "hidden", textOverflow: "ellipsis", whiteSpace: "nowrap" }}>{r.description}</div>
                   <div style={{ fontSize: 11, color: C.faint }}>
-                    {c.label} · {r.staff?.name || "—"}{r.payment_method === "kart" ? " · 💳 kart" : ""}
+                    {c.label} · {r.staff?.name || "—"}{r.payment_method === "kart" ? " · kart" : ""}
                   </div>
                 </div>
                 <div style={{ fontWeight: 800, fontSize: 15, whiteSpace: "nowrap" }}>{fmtTL(r.amount)}</div>
                 {canDelete && (
-                  <button onClick={() => remove(r)} title="Sil" style={{ background: "none", border: "none", color: C.faint, cursor: "pointer", fontSize: 14, padding: 4 }}>✕</button>
+                  <button onClick={() => remove(r)} title="Sil" style={{ background: "none", border: "none", color: C.faint, cursor: "pointer", padding: 4, display: "flex" }}><Ikon ad="kapat" boy={14}/></button>
                 )}
               </div>
             );
@@ -224,7 +225,7 @@ export default function ExpensesPage() {
           <div style={{ position: "fixed", left: 0, right: 0, bottom: 0, background: "#111", borderTop: `1px solid ${C.cardLine}`, borderRadius: "16px 16px 0 0", padding: "18px 16px 26px", zIndex: 50, maxWidth: 700, margin: "0 auto" }}>
             <div style={{ display: "flex", justifyContent: "space-between", alignItems: "center", marginBottom: 14 }}>
               <b style={{ fontSize: 17 }}>Yeni Gider</b>
-              <button onClick={() => setSheet(false)} style={{ background: "none", border: "none", color: C.muted, fontSize: 18, cursor: "pointer" }}>✕</button>
+              <button onClick={() => setSheet(false)} style={{ background: "none", border: "none", color: C.muted, cursor: "pointer", display: "flex" }}><Ikon ad="kapat" boy={17}/></button>
             </div>
 
             <input
@@ -243,13 +244,13 @@ export default function ExpensesPage() {
 
             <div style={{ display: "flex", gap: 6, marginTop: 10, flexWrap: "wrap" }}>
               {CATS.map(c => (
-                <button key={c.key} onClick={() => setForm(f => ({ ...f, category: c.key }))} style={chip(form.category === c.key)}>{c.emoji} {c.label}</button>
+                <button key={c.key} onClick={() => setForm(f => ({ ...f, category: c.key }))} style={{...chip(form.category === c.key), display:"inline-flex", alignItems:"center", gap:6}}><Ikon ad={c.emoji} boy={14}/>{c.label}</button>
               ))}
             </div>
 
             <div style={{ display: "flex", gap: 8, marginTop: 12 }}>
-              {[["kasa", "💵 Kasadan"], ["kart", "💳 Kart"]].map(([k, l]) => (
-                <button key={k} onClick={() => setForm(f => ({ ...f, payment_method: k }))} style={{ ...chip(form.payment_method === k), flex: 1, textAlign: "center" }}>{l}</button>
+              {[["kasa", "nakit", "Kasadan"], ["kart", "kart", "Kart"]].map(([k, ik, l]) => (
+                <button key={k} onClick={() => setForm(f => ({ ...f, payment_method: k }))} style={{ ...chip(form.payment_method === k), flex: 1, display: "flex", alignItems: "center", justifyContent: "center", gap: 6 }}><Ikon ad={ik} boy={14}/>{l}</button>
               ))}
             </div>
 

@@ -1,6 +1,7 @@
 import { useEffect, useState } from "react";
 import { supabase } from "../../lib/supabase.js";
 import { useAuth } from "../../contexts/AuthContext.jsx";
+import Ikon from "../../components/Ikon.jsx";
 
 const cv = "-apple-system,BlinkMacSystemFont,'Segoe UI',Roboto,sans-serif";
 
@@ -137,7 +138,7 @@ export default function StaffMgmtPage() {
                 <div style={{width:44,height:44,borderRadius:"50%",background:color+"33",color,display:"flex",alignItems:"center",justifyContent:"center",fontSize:18,fontWeight:800,flexShrink:0}}>{s.name?.[0]||"?"}</div>
                 <div style={{flex:1,minWidth:0}}>
                   <div style={{fontSize:15,fontWeight:700,color:"#F0EDE8"}}>{s.name}</div>
-                  <div style={{fontSize:11,color,letterSpacing:"1px",marginTop:2,fontWeight:600}}>{displayRole?.toUpperCase()}{s.role === "admin" && <span style={{color:"#FFFFFF",marginLeft:6}}>★</span>}</div>
+                  <div style={{fontSize:11,color,letterSpacing:"1px",marginTop:2,fontWeight:600}}>{displayRole?.toUpperCase()}{s.role === "admin" && <Ikon ad="yildiz" boy={11} style={{color:"#FFFFFF",marginLeft:6}}/>}</div>
                   {s.email && <div style={{fontSize:11,color:"#888",marginTop:3}}>{s.email}</div>}
                   {s.phone && <div style={{fontSize:11,color:"#888"}}>{s.phone}</div>}
                   {s.last_login && <div style={{fontSize:10,color:"#888888",marginTop:3}}>Son giris: {new Date(s.last_login).toLocaleDateString("tr-TR")}</div>}

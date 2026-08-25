@@ -2,6 +2,7 @@ import { useEffect, useState, useRef } from "react";
 import { useNavigate, useSearchParams } from "react-router-dom";
 import { supabase } from "../../lib/supabase.js";
 import { useAuth } from "../../contexts/AuthContext.jsx";
+import Ikon from "../../components/Ikon.jsx";
 
 const cv = "-apple-system,BlinkMacSystemFont,'Segoe UI',Roboto,sans-serif";
 
@@ -52,7 +53,7 @@ export default function PaymentPage() {
   // diye iptal ediyoruz. Silmiyoruz — kalemler ve saat kaydi duruyor.
   const cancelOrder = async (o) => {
     const nerede = o.table_id ? (tables[o.table_id] || "Masa") : (o.customer_name || "Misafir");
-    const uyeNotu = o.customer_id ? "\n⭐ Bu sipariş bir ÜYEYE bağlı — iptal edilirse puan kazanamaz." : "";
+    const uyeNotu = o.customer_id ? "\n· Bu sipariş bir ÜYEYE bağlı — iptal edilirse puan kazanamaz." : "";
     if (!confirm(`"${nerede}" hesabı iptal edilsin mi?\n₺${o.total || 0} · ${saatFarki(o.created_at)}${uyeNotu}\n\nCiroya YAZILMAZ. Ödeme alındıysa bunun yerine "Tahsil Et" kullan.`)) return;
     const { error } = await supabase.from("orders").update({ status: "cancelled" }).eq("id", o.id);
     if (error) { alert("İptal edilemedi: " + error.message); return; }
@@ -177,7 +178,7 @@ export default function PaymentPage() {
         ? Math.floor((Number(modal.total || 0) - (usePoints ? ptsCover(modal) : 0)) / 20)
         : 0;
       alert((method === "cash" ? "Nakit tahsil edildi" : "Kart ile tahsil edildi")
-        + (uyeId ? "\n⭐ " + (memberPts?.name || "Üye") + " · +" + kazanilan + " puan" : ""));
+        + (uyeId ? "\n· " + (memberPts?.name || "Üye") + " · +" + kazanilan + " puan" : ""));
     }
     setModal(null); load();
   };
@@ -207,20 +208,20 @@ export default function PaymentPage() {
       {orders.length === 0 && <div style={{textAlign:"center",padding:40,color:"#888888",fontSize:13}}>Bekleyen hesap yok</div>}
 
       {orders.map(o => {
-        const where = o.table_id ? (tables[o.table_id] || "Masa") + (o.customer_name ? " · 👤 " + o.customer_name : "") : "👤 " + (o.customer_name || "Misafir");
+        const where = o.table_id ? (tables[o.table_id] || "Masa") + (o.customer_name ? " · " + o.customer_name : "") : (o.customer_name || "Misafir");
         const storeSlug = o.stores?.slug;
-        const storeBadge = storeSlug === "doner" ? "🥙 DÖNER" : storeSlug === "paris" ? "🗼 PARIS" : null;
+        const storeBadge = storeSlug === "doner" ? "DÖNER" : storeSlug === "paris" ? "PARIS" : null;
         const storeBadgeColor = storeSlug === "doner" ? "#FFFFFF" : "#222222";
         const eski = bayatMi(o.created_at);
         return (
           <div key={o.id} style={{background:"#1A1A1A",border:"1px solid "+(eski?"#FFFFFF":"#2A2A2A"),borderRadius:10,padding:14,marginBottom:8,display:"flex",alignItems:"center",gap:12}}>
             <div style={{flex:1,minWidth:0}}>
               {storeBadge && <div style={{display:"inline-block",background:storeBadgeColor,color:"#000",padding:"2px 8px",borderRadius:6,fontSize:12,fontWeight:600,letterSpacing:"0.2px",marginBottom:4,marginRight:4}}>{storeBadge}</div>}
-              {o.customer_id && <div style={{display:"inline-block",background:"#000",color:"#8A8580",padding:"2px 8px",borderRadius:6,fontSize:12,fontWeight:600,letterSpacing:"0.2px",marginBottom:4}}>⭐ ÜYE · puan kazanacak</div>}
+              {o.customer_id && <div style={{display:"inline-block",background:"#000",color:"#8A8580",padding:"2px 8px",borderRadius:6,fontSize:12,fontWeight:600,letterSpacing:"0.2px",marginBottom:4,display:"inline-flex",alignItems:"center",gap:4}}><Ikon ad="yildiz" boy={11}/>ÜYE · puan kazanacak</div>}
               <div style={{fontSize:14,fontWeight:700,color:"#F0EDE8"}}>{where}</div>
               <div style={{fontSize:11,color: eski ? "#FFFFFF" : "#888",marginTop:2}}>
                 {new Date(o.created_at).toLocaleTimeString("tr-TR", {hour:"2-digit", minute:"2-digit"})}
-                {eski && " · ⏳ " + saatFarki(o.created_at)}
+                {eski && <> · <Ikon ad="bekleme" boy={11} style={{margin:"0 3px"}}/>{saatFarki(o.created_at)}</>}
               </div>
             </div>
             <div style={{fontSize:16,fontWeight:800,color:"#F0EDE8"}}>₺{o.total || 0}</div>
@@ -238,8 +239,8 @@ export default function PaymentPage() {
             <div style={{fontSize:18,fontWeight:800,color:"#F0EDE8",marginBottom:16}}>Odeme Al</div>
 
             <div style={{background:"#0C0C0C",border:"1px solid #2A2A2A",borderRadius:10,padding:14,marginBottom:14}}>
-              {modal.stores?.slug && <div style={{display:"inline-block",background:modal.stores.slug==="doner"?"#FFFFFF":"#222222",color:modal.stores.slug==="doner"?"#000":"#F0EDE8",padding:"2px 8px",borderRadius:6,fontSize:12,fontWeight:600,letterSpacing:"0.2px",marginBottom:6}}>{modal.stores.slug==="doner"?"🥙 DÖNER":"🗼 PARIS"}</div>}
-              <div style={{fontSize:11,color:"#888",marginBottom:8}}>{modal.table_id ? (tables[modal.table_id] || "Masa") + (modal.customer_name ? " · 👤 " + modal.customer_name : "") : "👤 " + (modal.customer_name || "Misafir")}</div>
+              {modal.stores?.slug && <div style={{display:"inline-block",background:modal.stores.slug==="doner"?"#FFFFFF":"#222222",color:modal.stores.slug==="doner"?"#000":"#F0EDE8",padding:"2px 8px",borderRadius:6,fontSize:12,fontWeight:600,letterSpacing:"0.2px",marginBottom:6}}>{modal.stores.slug==="doner"?"DÖNER":"PARIS"}</div>}
+              <div style={{fontSize:11,color:"#888",marginBottom:8}}>{modal.table_id ? (tables[modal.table_id] || "Masa") + (modal.customer_name ? " · " + modal.customer_name : "") : (modal.customer_name || "Misafir")}</div>
               {/* Puan kullanilinca hesap toplami ile kasada alinacak tutar ayrisir;
                   kasiyerin bakmasi gereken KALAN, en buyuk rakam olmali. */}
               {usePoints && uyeId && ptsCover(modal) > 0 ? (
@@ -265,8 +266,8 @@ export default function PaymentPage() {
             </div>
 
             <div style={{display:"flex",gap:6,marginBottom:14}}>
-              {[["cash","💵 Nakit"],["card","💳 Kart"],["debt","📝 Borç"]].map(([k,l]) => (
-                <button key={k} onClick={()=>setMethod(k)} style={{flex:1,padding:"14px 10px",background:method===k?"#FFFFFF":"#222",color:method===k?"#000":"#888",border:"1px solid "+(method===k?"#FFFFFF":"#333"),borderRadius:10,fontSize:12,fontWeight:700,cursor:"pointer"}}>{l}</button>
+              {[["cash","nakit","Nakit"],["card","kart","Kart"],["debt","veresiye","Borç"]].map(([k,ik,l]) => (
+                <button key={k} onClick={()=>setMethod(k)} style={{flex:1,padding:"14px 10px",background:method===k?"#FFFFFF":"#222",color:method===k?"#000":"#888",border:"1px solid "+(method===k?"#FFFFFF":"#333"),borderRadius:10,fontSize:12,fontWeight:700,cursor:"pointer",display:"flex",alignItems:"center",justifyContent:"center",gap:6}}><Ikon ad={ik} boy={15}/>{l}</button>
               ))}
             </div>
 
@@ -276,7 +277,7 @@ export default function PaymentPage() {
                 borcta zorunlu, nakit/kartta istege bagli ve kapali baslar. */}
             {uyeKilitli ? (
               <div style={{marginBottom:12,padding:"11px 13px",background:"#0C0C0C",border:"1px solid #2A2A2A",borderRadius:10,display:"flex",alignItems:"center",justifyContent:"space-between",gap:10}}>
-                <span style={{fontSize:13,color:"#FFFFFF",fontWeight:700}}>⭐ {memberPts?.name || modal.customer_name || "Üye"}</span>
+                <span style={{fontSize:13,color:"#FFFFFF",fontWeight:700,display:"flex",alignItems:"center",gap:5}}><Ikon ad="yildiz" boy={13}/>{memberPts?.name || modal.customer_name || "Üye"}</span>
                 <span style={{fontSize:11,color:"#888"}}>siparişe bağlı</span>
               </div>
             ) : (method === "debt" || uyeAcik) ? (
@@ -305,12 +306,12 @@ export default function PaymentPage() {
               </div>
             ) : customerId ? (
               <div style={{marginBottom:12,padding:"11px 13px",background:"#0C0C0C",border:"1px solid #2A2A2A",borderRadius:10,display:"flex",alignItems:"center",justifyContent:"space-between",gap:10}}>
-                <span style={{fontSize:13,color:"#FFFFFF",fontWeight:700}}>⭐ {memberPts?.name || "Üye"}</span>
+                <span style={{fontSize:13,color:"#FFFFFF",fontWeight:700,display:"flex",alignItems:"center",gap:5}}><Ikon ad="yildiz" boy={13}/>{memberPts?.name || "Üye"}</span>
                 <button onClick={()=>secUye(customerId)} style={{padding:"5px 10px",background:"transparent",color:"#888",border:"1px solid #333",borderRadius:7,fontSize:11,fontWeight:700,cursor:"pointer",fontFamily:"inherit"}}>Kaldır</button>
               </div>
             ) : (
               <button onClick={()=>setUyeAcik(true)} style={{width:"100%",marginBottom:12,padding:"11px 13px",background:"transparent",color:"#888",border:"1px dashed #3A3A3A",borderRadius:10,fontSize:12,fontWeight:700,cursor:"pointer",fontFamily:"inherit"}}>
-                ⭐ Üye bağla — puan kazansın
+                <Ikon ad="yildiz" boy={13} style={{marginRight:5}}/>Üye bağla — puan kazansın
               </button>
             )}
 
@@ -319,13 +320,13 @@ export default function PaymentPage() {
                 style={{width:"100%",marginBottom:12,padding:"12px 14px",display:"flex",justifyContent:"space-between",alignItems:"center",
                         background:usePoints?"#000":"#161616",color:"#FFFFFF",
                         border:"1px solid "+(usePoints?"#FFFFFF":"#2A2A2A"),borderRadius:10,fontSize:13,fontWeight:800,cursor:"pointer",fontFamily:"inherit"}}>
-                <span>{usePoints ? "✓ " : ""}🪙 Puanla öde — {memberPts.name}</span>
+                <span>{usePoints && <Ikon ad="onay" boy={14} style={{marginRight:5}}/>}<Ikon ad="puan" boy={14} style={{marginRight:5}}/>Puanla öde — {memberPts.name}</span>
                 <span>{memberPts.points} puan</span>
               </button>
             )}
             {uyeId && usePoints && memberPts && (
               <div style={{marginBottom:12,padding:"10px 12px",background:"#0C0C0C",border:"1px solid #2A2A2A",borderRadius:10,fontSize:12,color:"#aaa",display:"flex",justifyContent:"space-between"}}>
-                <span>🪙 Puan: −₺{ptsCover(modal)}</span>
+                <span><Ikon ad="puan" boy={13} style={{marginRight:5}}/>Puan: −₺{ptsCover(modal)}</span>
                 <span style={{color:"#FFFFFF",fontWeight:800}}>Nakit/kart: ₺{Math.max(0, Number(modal.total||0) - ptsCover(modal))}</span>
               </div>
             )}

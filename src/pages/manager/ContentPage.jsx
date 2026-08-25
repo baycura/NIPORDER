@@ -1,12 +1,13 @@
 import { useEffect, useState } from "react";
 import { supabase } from "../../lib/supabase.js";
+import Ikon from "../../components/Ikon.jsx";
 
 const cv = "-apple-system,BlinkMacSystemFont,'Segoe UI',Roboto,sans-serif";
 
 // QR menudeki Shop (urun hikayeleri) ve Blog sekmelerinin icerigi buradan yonetilir.
 const KINDS = [
-  { key: "urun", label: "👕 Ürün Hikayeleri", hint: "Tişört/merch tanıtımı — satış linki yok, 'kasadan alabilirsin' notu gösterilir." },
-  { key: "blog", label: "📰 Blog / Haberler", hint: "Haberler, Fethiye tavsiyeleri — sipariş beklerken okunacak içerik." },
+  { key: "urun", label: "Ürün Hikayeleri", hint: "Tişört/merch tanıtımı — satış linki yok, 'kasadan alabilirsin' notu gösterilir." },
+  { key: "blog", label: "Blog / Haberler", hint: "Haberler, Fethiye tavsiyeleri — sipariş beklerken okunacak içerik." },
 ];
 
 export default function ContentPage() {
@@ -147,7 +148,7 @@ export default function ContentPage() {
 
       {filtered.map(p => (
         <div key={p.id} style={{background:"#1A1A1A",border:"1px solid #2A2A2A",borderRadius:10,padding:12,marginBottom:8,display:"flex",gap:12,alignItems:"center",opacity:p.is_active===false?0.5:1}}>
-          {(p.images?.[0]) ? <img src={p.images[0]} alt="" style={{width:54,height:54,borderRadius:8,objectFit:"cover",flexShrink:0}}/> : <div style={{width:54,height:54,borderRadius:8,background:"#333",display:"flex",alignItems:"center",justifyContent:"center",fontSize:20,flexShrink:0}}>{p.kind==="urun"?"👕":"📰"}</div>}
+          {(p.images?.[0]) ? <img src={p.images[0]} alt="" style={{width:54,height:54,borderRadius:8,objectFit:"cover",flexShrink:0}}/> : <div style={{width:54,height:54,borderRadius:8,background:"#333",display:"flex",alignItems:"center",justifyContent:"center",color:"#888888",flexShrink:0}}><Ikon ad={p.kind==="urun"?"merch":"blog"} boy={22}/></div>}
           <div style={{flex:1,minWidth:0}}>
             <div style={{fontSize:14,fontWeight:700,color:"#F0EDE8"}}>{p.title}</div>
             <div style={{fontSize:11,color:"#888",marginTop:2,overflow:"hidden",textOverflow:"ellipsis",whiteSpace:"nowrap"}}>{p.body || "—"}</div>
@@ -173,7 +174,7 @@ export default function ContentPage() {
             </div>
 
             <div style={{background:"#161616",border:"1px solid #2A2A2A",borderRadius:12,padding:12,marginBottom:14}}>
-              <div style={{fontSize:12,color:"#F0EDE8",letterSpacing:"0.2px",fontWeight:600,marginBottom:8}}>🤖 AI İLE YAZ (üç dilde birden)</div>
+              <div style={{fontSize:12,color:"#F0EDE8",letterSpacing:"0.2px",fontWeight:600,marginBottom:8,display:"flex",alignItems:"center",gap:6}}><Ikon ad="parlak" boy={13}/>AI İLE YAZ (üç dilde birden)</div>
               <textarea value={aiBrief} onChange={e=>setAiBrief(e.target.value)} rows={2}
                 placeholder={form.kind==="urun"
                   ? "örn: bisikletçi arkadaşlarla tasarladığımız tişört, sırtında Fethiye rotası var"
@@ -182,15 +183,15 @@ export default function ContentPage() {
               {(form.images||[]).length > 0 && (
                 <label style={{display:"flex",alignItems:"center",gap:8,margin:"8px 0",cursor:"pointer",fontSize:12,color:"#aaa"}}>
                   <input type="checkbox" checked={useImage} onChange={e=>setUseImage(e.target.checked)} style={{width:16,height:16,accentColor:"#FFFFFF"}}/>
-                  📷 Yüklediğim fotoğrafa bakarak yazsın
+                  <Ikon ad="kamera" boy={13} style={{marginRight:5}}/>Yüklediğim fotoğrafa bakarak yazsın
                 </label>
               )}
               <button onClick={runAiWrite} disabled={aiBusy} style={{width:"100%",marginTop:6,padding:"11px",background:aiBusy?"#555":"#2A2A2A",color:"#F0EDE8",border:"1px solid #2A2A2A",borderRadius:10,fontSize:13,fontWeight:800,cursor:aiBusy?"wait":"pointer"}}>
-                {aiBusy ? "AI yazıyor..." : "🤖 Metni oluştur (TR + EN + RU)"}
+                {aiBusy ? "AI yazıyor..." : <><Ikon ad="parlak" boy={14} style={{marginRight:6}}/>Metni oluştur (TR + EN + RU)</>}
               </button>
               {aiTip && (
                 <div style={{marginTop:10,padding:"10px 12px",background:"#12181A",border:"1px solid #2A2A2A",borderRadius:8,fontSize:12,color:"#F0EDE8",lineHeight:1.5}}>
-                  📸 <b>Fotoğraf önerisi:</b> {aiTip}
+                  <Ikon ad="kamera" boy={13} style={{marginRight:5}}/><b>Fotoğraf önerisi:</b> {aiTip}
                 </div>
               )}
               <div style={{fontSize:10,color:"#888888",marginTop:8,lineHeight:1.5}}>
@@ -202,18 +203,18 @@ export default function ContentPage() {
             <Field label={form.kind==="urun"?"HİKAYE / TANITIM (Türkçe)":"YAZI (Türkçe)"}><textarea value={form.body||""} onChange={e=>setForm({...form,body:e.target.value})} rows={5} style={{...inputS,resize:"vertical"}}/></Field>
 
             <div style={{background:"#141414",border:"1px solid #2A2A2A",borderRadius:10,padding:12,marginBottom:12}}>
-              <div style={{fontSize:12,color:"#888",letterSpacing:"0.2px",fontWeight:600,marginBottom:8}}>🇬🇧 ENGLISH (opsiyonel — boşsa Türkçe gösterilir)</div>
+              <div style={{fontSize:12,color:"#888",letterSpacing:"0.2px",fontWeight:600,marginBottom:8}}>ENGLISH (opsiyonel — boşsa Türkçe gösterilir)</div>
               <Field label="TITLE"><input value={form.title_en||""} onChange={e=>setForm({...form,title_en:e.target.value})} style={inputS}/></Field>
               <Field label="TEXT"><textarea value={form.body_en||""} onChange={e=>setForm({...form,body_en:e.target.value})} rows={4} style={{...inputS,resize:"vertical"}}/></Field>
             </div>
 
             <div style={{background:"#141414",border:"1px solid #2A2A2A",borderRadius:10,padding:12,marginBottom:12}}>
-              <div style={{fontSize:12,color:"#888",letterSpacing:"0.2px",fontWeight:600,marginBottom:8}}>🇷🇺 РУССКИЙ (opsiyonel — boşsa Türkçe gösterilir)</div>
+              <div style={{fontSize:12,color:"#888",letterSpacing:"0.2px",fontWeight:600,marginBottom:8}}>РУССКИЙ (opsiyonel — boşsa Türkçe gösterilir)</div>
               <Field label="ЗАГОЛОВОК"><input value={form.title_ru||""} onChange={e=>setForm({...form,title_ru:e.target.value})} style={inputS}/></Field>
               <Field label="ТЕКСТ"><textarea value={form.body_ru||""} onChange={e=>setForm({...form,body_ru:e.target.value})} rows={4} style={{...inputS,resize:"vertical"}}/></Field>
             </div>
 
-            <Field label="🔗 LİNK (opsiyonel — karta tıklayınca bu sayfa açılır)">
+            <Field label="LİNK (opsiyonel — karta tıklayınca bu sayfa açılır)">
               <input value={form.link_url||""} onChange={e=>setForm({...form,link_url:e.target.value})} placeholder="örn: https://notinparis.me/pages/cote-de-lycia" style={inputS}/>
             </Field>
 
@@ -225,7 +226,7 @@ export default function ContentPage() {
                   {form.images.map((u, i) => (
                     <div key={i} style={{position:"relative",flexShrink:0}}>
                       <img src={u} alt="" style={{width:84,height:84,borderRadius:8,objectFit:"cover"}}/>
-                      <button onClick={() => removePhoto(i)} style={{position:"absolute",top:-6,right:-6,width:22,height:22,borderRadius:"50%",background:"#2A2A2A",color:"#fff",border:"none",fontSize:12,cursor:"pointer",lineHeight:1}}>×</button>
+                      <button onClick={() => removePhoto(i)} style={{position:"absolute",top:-8,right:-8,width:32,height:32,borderRadius:"50%",background:"#2A2A2A",color:"#fff",border:"none",fontSize:12,cursor:"pointer",lineHeight:1}}>×</button>
                     </div>
                   ))}
                 </div>

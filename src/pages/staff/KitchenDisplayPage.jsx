@@ -2,6 +2,7 @@ import { useEffect, useRef, useState } from "react";
 import { supabase } from "../../lib/supabase.js";
 import { useAuth } from "../../contexts/AuthContext.jsx";
 import { optionsText } from "../../lib/productOptions.js";
+import Ikon from "../../components/Ikon.jsx";
 
 const cv = "-apple-system,BlinkMacSystemFont,'Segoe UI',Roboto,sans-serif";
 
@@ -113,14 +114,14 @@ export default function KitchenDisplayPage() {
     <div style={{fontFamily:cv,background:"#000",color:"#fff",minHeight:"100vh",padding:16}} onClick={unlock}>
       {flash && (
         <div style={{position:"fixed",top:0,left:0,right:0,padding:"30px",background:"#C87A6A",color:"#fff",fontSize:36,fontWeight:900,textAlign:"center",letterSpacing:"4px",zIndex:200}}>
-          🔔 YENİ SİPARİŞ!
+          <Ikon ad="zil" boy={26} style={{marginRight:12,verticalAlign:"-0.2em"}}/>YENİ SİPARİŞ!
         </div>
       )}
 
       {!audioUnlocked && (
         <div style={{position:"fixed",inset:0,background:"rgba(0,0,0,0.95)",display:"flex",alignItems:"center",justifyContent:"center",zIndex:300,cursor:"pointer"}}>
           <div style={{textAlign:"center",color:"#FFFFFF"}}>
-            <div style={{fontSize:80,marginBottom:20}}>🔊</div>
+            <Ikon ad="ses" boy={76} kalin={1.15} style={{display:"block",margin:"0 auto 20px"}}/>
             <div style={{fontSize:28,fontWeight:900}}>Mutfak Ekranı</div>
             <div style={{fontSize:16,color:"#888",marginTop:10}}>Ses ve uyku engeli için ekrana dokun</div>
           </div>
@@ -145,7 +146,7 @@ export default function KitchenDisplayPage() {
             <div key={t.order.id} style={{background:urgent?"#161616":"#141414",border:"2px solid "+(urgent?"#2A2A2A":"#222"),borderRadius:12,padding:14}}>
               <div style={{display:"flex",justifyContent:"space-between",alignItems:"center",marginBottom:10}}>
                 <div style={{flex:1,minWidth:0}}>
-                  {t.storeSlug && <div style={{display:"inline-block",background:t.storeSlug==="doner"?"#FFFFFF":"#222222",color:t.storeSlug==="doner"?"#000":"#F0EDE8",padding:"2px 8px",borderRadius:6,fontSize:12,fontWeight:600,letterSpacing:"0.2px",marginBottom:4}}>{t.storeSlug==="doner"?"🥙 DÖNER":"🗼 PARIS"}</div>}
+                  {t.storeSlug && <div style={{display:"inline-block",background:t.storeSlug==="doner"?"#FFFFFF":"#222222",color:t.storeSlug==="doner"?"#000":"#F0EDE8",padding:"2px 8px",borderRadius:6,fontSize:12,fontWeight:600,letterSpacing:"0.2px",marginBottom:4}}>{t.storeSlug==="doner"?"DÖNER":"PARIS"}</div>}
                   <div style={{fontSize:18,fontWeight:800}}>{t.where}</div>
                 </div>
                 <div style={{fontSize:20,fontWeight:900,color:urgent?"#C87A6A":"#FFFFFF"}}>{waitMin}'</div>
@@ -156,7 +157,7 @@ export default function KitchenDisplayPage() {
                   <div key={it.id} style={{padding:"8px 0",borderTop:"1px solid #333"}}>
                     <div style={{fontSize:16,fontWeight:700,color:it.kitchen_status==="ready"?"#FFFFFF":it.kitchen_status==="preparing"?"#FFFFFF":"#fff"}}>
                       {it.quantity}× {it.product_name}
-                      {it.is_takeaway && <span style={{marginLeft:8,padding:"3px 10px",background:"#FFFFFF",color:"#000",borderRadius:12,fontSize:12,fontWeight:800,letterSpacing:"0.5px"}}>🥤 PAKET</span>}
+                      {it.is_takeaway && <span style={{marginLeft:8,padding:"3px 10px",background:"#FFFFFF",color:"#000",borderRadius:12,fontSize:12,fontWeight:800,letterSpacing:"0.5px"}}><Ikon ad="bardak" boy={12} style={{marginRight:5}}/>PAKET</span>}
                       <span style={{fontSize:12,marginLeft:8,letterSpacing:"0.2px",color:"#888"}}>{it.kitchen_status?.toUpperCase()}</span>
                     </div>
                     {opts && <div style={{fontSize:13,color:"#FFFFFF",marginTop:2,fontWeight:600}}>{opts}</div>}

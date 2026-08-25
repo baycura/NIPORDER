@@ -3,6 +3,7 @@ import { APP_HOST } from "../../lib/appUrl.js";
 import { useState, useEffect, useRef } from "react";
 import { useAuth } from "../../contexts/AuthContext.jsx";
 import { gorunurGruplar, altBar } from "../../lib/panelNav.js";
+import Ikon from "../../components/Ikon.jsx";
 
 const roleColor = {admin:"#FFFFFF", manager:"#FFFFFF", owner:"#FFFFFF", waiter:"#FFFFFF", kitchen:"#FFFFFF", cashier:"#8A8580", viewer:"#8A8580", parttime:"#8A8580"};
 const cv = "-apple-system,BlinkMacSystemFont,'Segoe UI',Roboto,sans-serif";
@@ -57,11 +58,11 @@ export default function StaffLayout() {
   const KenarLink = ({item}) => {
     if (item.external) {
       return (<a href={item.to} target="_blank" rel="noreferrer" style={linkStyle(false)}>
-        <span style={{fontSize:16,width:20,textAlign:"center"}}>{item.icon}</span>{item.label} ↗
+        <Ikon ad={item.icon} boy={18}/>{item.label}<Ikon ad="disari" boy={13} style={{opacity:0.6}}/>
       </a>);
     }
     return (<NavLink to={item.to} style={({isActive}) => linkStyle(isActive)}>
-      <span style={{fontSize:16,width:20,textAlign:"center"}}>{item.icon}</span>{item.label}
+      <Ikon ad={item.icon} boy={18}/>{item.label}
     </NavLink>);
   };
 
@@ -77,7 +78,7 @@ export default function StaffLayout() {
       <nav style={{padding:"10px 8px",display:"flex",flexDirection:"column",gap:4,flex:1}}>
         {isManager && !isViewer && (
           <NavLink to="/today" style={({isActive}) => ({...linkStyle(isActive),fontWeight:800})}>
-            <span style={{fontSize:16,width:20,textAlign:"center"}}>🏠</span>Bugün
+            <Ikon ad="ev" boy={18}/>Bugün
           </NavLink>
         )}
         {gruplar.map(g => {
@@ -90,7 +91,7 @@ export default function StaffLayout() {
                         fontSize:12.5,letterSpacing:"0.2px",fontWeight:600,
                         color: g.sari ? "#8A8580" : "#B8B3AC"}}>
                 {g.ad}
-                <span style={{marginLeft:"auto",color:"#888888",fontSize:10}}>{acik ? "▾" : "▸"}</span>
+                <span style={{marginLeft:"auto",color:"#888888",display:"flex"}}><Ikon ad={acik ? "asagi" : "sag"} boy={13}/></span>
               </button>
               {acik && (
                 <div style={{display:"flex",flexDirection:"column",gap:1,padding:"4px 0 4px 6px"}}>
@@ -107,7 +108,7 @@ export default function StaffLayout() {
           <div style={{color:"#F0EDE8",fontSize:13,fontWeight:700,fontFamily:cv,whiteSpace:"nowrap",overflow:"hidden",textOverflow:"ellipsis"}}>{staffUser?.name}</div>
           <div style={{color,fontSize:12,letterSpacing:"0.2px",fontFamily:cv,fontWeight:600}}>{displayRole?.toUpperCase()}</div>
         </div>
-        <button onClick={async()=>{await signOut();navigate("/login");}} title="Çıkış" aria-label="Çıkış" style={{background:"none",border:"none",color:"#888888",fontSize:18,cursor:"pointer",padding:6}}>🚪</button>
+        <button onClick={async()=>{await signOut();navigate("/login");}} title="Çıkış" aria-label="Çıkış" style={{background:"none",border:"none",color:"#888888",cursor:"pointer",padding:6,display:"flex"}}><Ikon ad="cikis" boy={19}/></button>
       </div>
     </div>
   );
@@ -137,7 +138,7 @@ export default function StaffLayout() {
     <nav style={{position:"fixed",bottom:0,left:0,right:0,background:"#161616",borderTop:"1px solid #2A2A2A",display:"flex",justifyContent:"space-around",padding:"8px 0 14px",zIndex:35,boxShadow:"0 -2px 12px rgba(0,0,0,0.5)"}}>
       {sekmeler.map(item => (
         <NavLink key={item.to} to={item.to} style={({isActive}) => ({display:"flex",flexDirection:"column",alignItems:"center",gap:3,textDecoration:"none",color:isActive?"#FFFFFF":"#666",padding:"4px 8px",minWidth:48})}>
-          <span style={{fontSize:22}}>{item.icon}</span>
+          <Ikon ad={item.icon} boy={23}/>
           <span style={{fontSize:12,letterSpacing:"0.2px",fontWeight:600}}>{item.label.toLocaleUpperCase("tr-TR")}</span>
         </NavLink>
       ))}

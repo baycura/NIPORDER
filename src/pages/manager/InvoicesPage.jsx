@@ -2,6 +2,7 @@ import { useEffect, useState } from "react";
 import { parseUblInvoice } from "../../lib/ublInvoice.js";
 import { supabase } from "../../lib/supabase.js";
 import { useAuth } from "../../contexts/AuthContext.jsx";
+import Ikon from "../../components/Ikon.jsx";
 
 const cv = "-apple-system,BlinkMacSystemFont,'Segoe UI',Roboto,sans-serif";
 
@@ -202,7 +203,7 @@ export default function InvoicesPage() {
       if (newLines.length) {
         setLines(newLines);
         const matched = newLines.filter(l => !l.isNew).length;
-        alert("✅ " + newLines.length + " kalem okundu (" + matched + " mevcut hammaddeyle eslesti). Kontrol edip kaydet.");
+        alert(newLines.length + " kalem okundu (" + matched + " mevcut hammaddeyle eslesti). Kontrol edip kaydet.");
       } else {
         alert("Faturada kalem okunamadi — fotografi daha net cekip tekrar dene.");
       }
@@ -363,7 +364,7 @@ export default function InvoicesPage() {
     }
     setBusy(false); setModal(null); load();
     alert(anomalies.length
-      ? "Fatura kaydedildi. ⚠️ " + anomalies.length + " üründe anormal fiyat artışı (%" + PRICE_ALERT_PCT + "+) — sahibe Telegram uyarısı gönderildi."
+      ? "Fatura kaydedildi. " + anomalies.length + " üründe anormal fiyat artışı (%" + PRICE_ALERT_PCT + "+) — sahibe Telegram uyarısı gönderildi."
       : "Fatura kaydedildi! Stok guncellendi.");
   };
 
@@ -384,13 +385,13 @@ export default function InvoicesPage() {
 
       <div style={{display:"flex",gap:8,marginBottom:14,flexWrap:"wrap"}}>
         <button onClick={openNew} style={{padding:"10px 16px",background:"#FFFFFF",color:"#000",border:"none",borderRadius:10,fontSize:13,fontWeight:800,cursor:"pointer"}}>+ Yeni Fatura</button>
-        <button onClick={openManualStock} style={{padding:"10px 16px",background:"transparent",color:"#FFFFFF",border:"1px solid #FFFFFF",borderRadius:10,fontSize:13,fontWeight:800,cursor:"pointer"}}>📦 Manuel Stok Girişi</button>
+        <button onClick={openManualStock} style={{padding:"10px 16px",background:"transparent",color:"#FFFFFF",border:"1px solid #FFFFFF",borderRadius:10,fontSize:13,fontWeight:800,cursor:"pointer",display:"inline-flex",alignItems:"center",gap:7}}><Ikon ad="stok" boy={15}/>Manuel Stok Girişi</button>
       </div>
 
       {priceAlerts.length > 0 && (
         <div style={{background:"#161616",border:"1px solid #2A2A2A",borderRadius:10,padding:12,marginBottom:12}}>
           <div style={{display:"flex",justifyContent:"space-between",alignItems:"center",marginBottom:6}}>
-            <div style={{fontSize:13,fontWeight:800,color:"#C87A6A"}}>⚠️ Anormal fiyat artışı (%{PRICE_ALERT_PCT}+)</div>
+            <div style={{fontSize:13,fontWeight:800,color:"#C87A6A"}}><Ikon ad="uyari" boy={13} style={{marginRight:5}}/>Anormal fiyat artışı (%{PRICE_ALERT_PCT}+)</div>
             <button onClick={()=>setPriceAlerts([])} style={{background:"transparent",border:"none",color:"#C87A6A",fontSize:18,cursor:"pointer",lineHeight:1}}>×</button>
           </div>
           {priceAlerts.map((a,i)=>(
@@ -439,17 +440,17 @@ export default function InvoicesPage() {
 
           {modal.mode !== "manual" && (
           <div style={{marginBottom:10,background:"rgba(62,207,142,0.07)",border:"1px dashed #FFFFFF",borderRadius:10,padding:12}}>
-            <div style={{fontSize:12,color:"#8A8580",letterSpacing:"0.2px",fontWeight:600,marginBottom:5}}>📄 E-FATURA XML YÜKLE (ÖNERİLEN)</div>
+            <div style={{fontSize:12,color:"#8A8580",letterSpacing:"0.2px",fontWeight:600,marginBottom:5,display:"flex",alignItems:"center",gap:6}}><Ikon ad="belge" boy={13}/>E-FATURA XML YÜKLE (ÖNERİLEN)</div>
             <input type="file" accept=".xml,text/xml,application/xml" onChange={onXml} style={{...inputS, padding:"8px"}}/>
             {xmlInfo && (
               <div style={{marginTop:8,fontSize:11,color:"#F0EDE8",lineHeight:1.6}}>
-                ✅ {xmlInfo.adet} kalem okundu ({xmlInfo.eslesen} mevcut hammaddeyle eşleşti)
+                <Ikon ad="onay" boy={13} style={{marginRight:5}}/>{xmlInfo.adet} kalem okundu ({xmlInfo.eslesen} mevcut hammaddeyle eşleşti)
                 {xmlInfo.no ? " · Fatura no " + xmlInfo.no : ""}
                 <br/>Kalem toplamı ₺{xmlInfo.hesap} · faturada yazan ₺{xmlInfo.beyan}
                 {xmlInfo.beyan > 0 && Math.abs(xmlInfo.hesap - xmlInfo.beyan) > Math.max(2, xmlInfo.beyan * 0.02)
                   ? <span style={{color:"#8A8580"}}> — fark var, kalemleri kontrol et</span>
-                  : <span style={{color:"#FFFFFF"}}> ✓ tutuyor</span>}
-                {xmlInfo.currency && xmlInfo.currency !== "TRY" ? <span style={{color:"#8A8580"}}><br/>⚠ Fatura {xmlInfo.currency} — tutarlar TL değil</span> : null}
+                  : <span style={{color:"#FFFFFF"}}> <Ikon ad="onay" boy={12}/> tutuyor</span>}
+                {xmlInfo.currency && xmlInfo.currency !== "TRY" ? <span style={{color:"#8A8580"}}><br/><Ikon ad="uyari" boy={12} style={{marginRight:4}}/>Fatura {xmlInfo.currency} — tutarlar TL değil</span> : null}
               </div>
             )}
             <div style={{fontSize:10,color:"#888",marginTop:6,lineHeight:1.5}}>
@@ -460,12 +461,12 @@ export default function InvoicesPage() {
 
           {modal.mode !== "manual" && (
           <div style={{marginBottom:14,background:"rgba(255,255,255,0.06)",border:"1px dashed #FFFFFF",borderRadius:10,padding:12}}>
-            <div style={{fontSize:12,color:"#8A8580",letterSpacing:"0.2px",fontWeight:600,marginBottom:5}}>🤖 FATURA FOTOSUNDAN OTOMATIK DOLDUR</div>
+            <div style={{fontSize:12,color:"#8A8580",letterSpacing:"0.2px",fontWeight:600,marginBottom:5,display:"flex",alignItems:"center",gap:6}}><Ikon ad="parlak" boy={13}/>FATURA FOTOSUNDAN OTOMATIK DOLDUR</div>
             <input type="file" accept="image/*" capture="environment" onChange={onPhoto} style={{...inputS, padding:"8px"}}/>
             {photoPreview && <img src={photoPreview} alt="" style={{marginTop:8,maxHeight:120,borderRadius:8,objectFit:"cover"}}/>}
             {photoFile && (
               <button onClick={runOcr} disabled={ocrBusy} style={{width:"100%",marginTop:8,padding:"10px",background:ocrBusy?"#555":"#FFFFFF",color:"#000",border:"none",borderRadius:8,fontSize:13,fontWeight:800,cursor:ocrBusy?"wait":"pointer"}}>
-                {ocrBusy ? "AI okuyor... (10-30 sn)" : "🤖 Fotograftan doldur (AI)"}
+                {ocrBusy ? "AI okuyor... (10-30 sn)" : <><Ikon ad="parlak" boy={14} style={{marginRight:6}}/>Fotograftan doldur (AI)</>}
               </button>
             )}
             <div style={{fontSize:10,color:"#888",marginTop:6}}>Fotograf saklanmaz. Birim fiyatlar KDV DAHIL hesaplanir (satirdaki KDV orani uygulanir). Okunan kalemleri kontrol edip kaydet.</div>
@@ -473,7 +474,7 @@ export default function InvoicesPage() {
           )}
           {modal.mode === "manual" && (
             <div style={{marginBottom:14,background:"rgba(111,179,192,0.08)",border:"1px dashed #8A8580",borderRadius:10,padding:10,fontSize:11,color:"#F0EDE8",lineHeight:1.5}}>
-              📦 Eldeki mevcut stogu sayip giriyorsun — fatura gerekmez. Birim maliyeti bos (0) birakirsan urunun mevcut maliyeti korunur; biliyorsan girmen maliyet hesaplarini iyilestirir.
+              <Ikon ad="stok" boy={13} style={{marginRight:5}}/>Eldeki mevcut stogu sayip giriyorsun — fatura gerekmez. Birim maliyeti bos (0) birakirsan urunun mevcut maliyeti korunur; biliyorsan girmen maliyet hesaplarini iyilestirir.
             </div>
           )}
 
@@ -503,8 +504,8 @@ export default function InvoicesPage() {
                   const koli = l.buy_mode === "koli";
                   return (<>
                     <div style={{display:"flex",gap:6,marginBottom:6}}>
-                      <button onClick={()=>updateLine(idx,"buy_mode","adet")} style={{flex:1,padding:"8px",background:!koli?"#2A2A2A":"#161616",color:!koli?"#F0EDE8":"#777",border:"1px solid "+(!koli?"#555":"#2A2A2A"),borderRadius:8,fontSize:11,fontWeight:700,cursor:"pointer"}}>🍾 Şişe / Adet geldi</button>
-                      <button onClick={()=>updateLine(idx,"buy_mode","koli")} style={{flex:1,padding:"8px",background:koli?"#2A2A2A":"#161616",color:koli?"#F0EDE8":"#777",border:"1px solid "+(koli?"#555":"#2A2A2A"),borderRadius:8,fontSize:11,fontWeight:700,cursor:"pointer"}}>📦 Koli geldi</button>
+                      <button onClick={()=>updateLine(idx,"buy_mode","adet")} style={{flex:1,padding:"8px",background:!koli?"#2A2A2A":"#161616",color:!koli?"#F0EDE8":"#777",border:"1px solid "+(!koli?"#555":"#2A2A2A"),borderRadius:8,fontSize:11,fontWeight:700,cursor:"pointer"}}>Şişe / Adet geldi</button>
+                      <button onClick={()=>updateLine(idx,"buy_mode","koli")} style={{flex:1,padding:"8px",background:koli?"#2A2A2A":"#161616",color:koli?"#F0EDE8":"#777",border:"1px solid "+(koli?"#555":"#2A2A2A"),borderRadius:8,fontSize:11,fontWeight:700,cursor:"pointer"}}>Koli geldi</button>
                     </div>
                     <div style={{display:"flex",gap:6,alignItems:"center",flexWrap:"wrap"}}>
                       <label style={{flex:"1 1 90px"}}>

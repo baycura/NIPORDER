@@ -1,6 +1,7 @@
 import { useEffect, useState } from "react";
 import { supabase } from "../../lib/supabase.js";
 import { useAuth } from "../../contexts/AuthContext.jsx";
+import Ikon from "../../components/Ikon.jsx";
 
 const cv = "-apple-system,BlinkMacSystemFont,'Segoe UI',Roboto,sans-serif";
 const UNITS = ["ml","cl","l","g","kg","adet","şişe","porsiyon"];
@@ -123,7 +124,7 @@ export default function StockMgmtPage() {
           <Field label="FIRE ORANI (%)"><input type="number" step="0.1" min="0" max="100" value={form.waste_pct||0} onChange={e=>setForm({...form,waste_pct:e.target.value})} placeholder="orn: 3 = %3 dokulme/fire" style={inputS}/></Field>
 
           <div style={{background:"#0C0C0C",border:"1px solid #2A2A2A",borderRadius:10,padding:12,marginBottom:12}}>
-            <div style={{fontSize:12,color:"#8A8580",letterSpacing:"0.2px",fontWeight:600,marginBottom:8}}>📦 AMBALAJ (fatura girisi bunu kullanir)</div>
+            <div style={{fontSize:12,color:"#8A8580",letterSpacing:"0.2px",fontWeight:600,marginBottom:8,display:"flex",alignItems:"center",gap:6}}><Ikon ad="stok" boy={13}/>AMBALAJ (fatura girisi bunu kullanir)</div>
             <Field label="KOLI ICI ADET (koli gelmiyorsa 1)">
               <input type="number" min="1" step="1" value={form.pack_qty||1} onChange={e=>setForm({...form,pack_qty:e.target.value})} placeholder="orn: 24 sise/koli" style={inputS}/>
             </Field>
@@ -150,7 +151,7 @@ export default function StockMgmtPage() {
 
           <label style={{display:"flex",alignItems:"center",gap:8,marginBottom:12,cursor:"pointer"}}>
             <input type="checkbox" checked={!!form.is_consumable} onChange={e=>setForm({...form,is_consumable:e.target.checked})} style={{width:18,height:18,accentColor:"#FFFFFF"}}/>
-            <span style={{fontSize:13,color:"#F0EDE8"}}>🧊 Sarf malzeme (buz, pet bardak, pipet...) — recetelere tek dokunusla eklenir</span>
+            <span style={{fontSize:13,color:"#F0EDE8"}}>Sarf malzeme (buz, pet bardak, pipet...) — recetelere tek dokunusla eklenir</span>
           </label>
           <div style={{display:"flex",gap:8,marginTop:10}}>
             <button onClick={() => setModal(null)} style={cancelBtn}>Iptal</button>

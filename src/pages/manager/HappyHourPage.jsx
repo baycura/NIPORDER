@@ -1,6 +1,7 @@
 import { useState, useEffect } from "react";
 import { supabase } from "../../lib/supabase.js";
 import { useAuth } from "../../contexts/AuthContext.jsx";
+import Ikon from "../../components/Ikon.jsx";
 
 const cv = "-apple-system,BlinkMacSystemFont,'Segoe UI',Roboto,sans-serif";
 
@@ -122,7 +123,7 @@ export default function HappyHourPage() {
     <div style={{ fontFamily: cv, color: "#F0EDE8" }}>
       <div style={{ display: "flex", justifyContent: "space-between", alignItems: "center", marginBottom: 24 }}>
         <div>
-          <h1 style={{ fontSize: 24, fontWeight: 800, margin: 0 }}>🎉 Happy Hour</h1>
+          <h1 style={{ fontSize: 24, fontWeight: 800, margin: 0, display: "flex", alignItems: "center", gap: 10 }}><Ikon ad="kampanya" boy={22}/>Happy Hour</h1>
           <div style={{ fontSize: 12, color: "#888", marginTop: 4 }}>Seçilen gün ve saatlerde işaretli ürünlerin fiyatı otomatik düşer; saat bitince normale döner.</div>
         </div>
         <button onClick={() => setShowAdd(true)} style={{ padding: "12px 20px", background: "#FFFFFF", color: "#000", border: "none", fontWeight: 800, fontSize: 13, cursor: "pointer", borderRadius: 8 }}>+ YENİ KURAL</button>
@@ -180,7 +181,7 @@ export default function HappyHourPage() {
               </span>
             </label>
             <div style={{ display: "flex", gap: 6, marginBottom: 8, flexWrap: "wrap" }}>
-              <input value={search} onChange={e => setSearch(e.target.value)} placeholder="🔍 Ürün ara"
+              <input value={search} onChange={e => setSearch(e.target.value)} placeholder="Ürün ara"
                 style={{ flex: 1, minWidth: 140, padding: 9, background: "#000", color: "#fff", border: "1px solid #333", borderRadius: 6 }} />
               <input type="number" value={bulkPct} onChange={e => setBulkPct(e.target.value)}
                 style={{ width: 60, padding: 9, background: "#000", color: "#FFFFFF", border: "1px solid #333", borderRadius: 6, fontWeight: 700 }} />

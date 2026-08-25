@@ -1,6 +1,7 @@
 import { useState, useEffect } from "react";
 import { supabase } from "../../lib/supabase.js";
 import { useAuth } from "../../contexts/AuthContext.jsx";
+import Ikon from "../../components/Ikon.jsx";
 
 const cv = "-apple-system,BlinkMacSystemFont,'Segoe UI',Roboto,sans-serif";
 
@@ -98,7 +99,7 @@ export default function CategorySchedulePage() {
     <div style={{ fontFamily: cv, color: "#F0EDE8" }}>
       <div style={{ display: "flex", justifyContent: "space-between", alignItems: "center", marginBottom: 24 }}>
         <div>
-          <h1 style={{ fontSize: 24, fontWeight: 800, margin: 0 }}>⏰ Kategori Saatleri</h1>
+          <h1 style={{ fontSize: 24, fontWeight: 800, margin: 0, display: "flex", alignItems: "center", gap: 10 }}><Ikon ad="saat" boy={22}/>Kategori Saatleri</h1>
           <div style={{ fontSize: 12, color: "#888", marginTop: 4 }}>Seçilen saat aralığında işaretli kategori ve ürünler müşteri menüsünden otomatik gizlenir (örn. gece mutfak kapalı).</div>
         </div>
         <button onClick={() => setShowAdd(true)} style={{ padding: "12px 20px", background: "#FFFFFF", color: "#000", border: "none", fontWeight: 800, fontSize: 13, cursor: "pointer", borderRadius: 8 }}>+ YENİ KURAL</button>

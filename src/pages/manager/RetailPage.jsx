@@ -1,6 +1,7 @@
 import { useEffect, useState } from "react";
 import { supabase } from "../../lib/supabase.js";
 import { useAuth } from "../../contexts/AuthContext.jsx";
+import Ikon from "../../components/Ikon.jsx";
 
 const cv = "-apple-system,BlinkMacSystemFont,'Segoe UI',Roboto,sans-serif";
 const SIZE_SETS = {
@@ -190,7 +191,7 @@ export default function RetailPage() {
 
       {!category && (
         <div style={{ background: "#161616", border: "1px solid #2A2A2A", borderRadius: 10, padding: 14, marginBottom: 14, fontSize: 12, color: "#C87A6A", lineHeight: 1.6 }}>
-          "Yalnız kasada" işaretli bir kategori bulunamadı. Menü Yönetimi'nden bir kategori açıp "🛍 Yalnız kasada" kutusunu işaretleyin.
+          "Yalnız kasada" işaretli bir kategori bulunamadı. Menü Yönetimi'nden bir kategori açıp "Yalnız kasada" kutusunu işaretleyin.
         </div>
       )}
 
@@ -204,7 +205,7 @@ export default function RetailPage() {
           <div key={b.id} style={{ background: "#1A1A1A", border: "1px solid #2A2A2A", borderRadius: 12, marginBottom: 10, overflow: "hidden" }}>
             <div onClick={() => setOpenBrand(open ? null : b.id)} style={{ padding: 14, cursor: "pointer", display: "flex", justifyContent: "space-between", alignItems: "center", gap: 10 }}>
               <div style={{ flex: 1, minWidth: 0 }}>
-                <div style={{ fontSize: 16, fontWeight: 800, color: "#F0EDE8" }}>{open ? "▾" : "▸"} {b.name}</div>
+                <div style={{ fontSize: 16, fontWeight: 800, color: "#F0EDE8" }}><Ikon ad={open ? "asagi" : "sag"} boy={15} style={{marginRight:7}}/>{b.name}</div>
                 <div style={{ fontSize: 11, color: "#888", marginTop: 3 }}>
                   {list.length} ürün · {bStock} adet stok{b.description ? " · " + b.description : ""}
                 </div>

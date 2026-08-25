@@ -2,6 +2,7 @@ import { useEffect, useState } from "react";
 import { supabase } from "../../lib/supabase.js";
 import { useAuth } from "../../contexts/AuthContext.jsx";
 import { PARIS_STORE_ID, DONER_STORE_ID } from "../../lib/stores.js";
+import Ikon from "../../components/Ikon.jsx";
 
 const cv = "-apple-system,BlinkMacSystemFont,'Segoe UI',Roboto,sans-serif";
 const hv = "'Bebas Neue','Barlow Condensed',sans-serif";
@@ -49,7 +50,7 @@ export default function SettlementPage() {
   return (
     <div style={{ padding: 20, fontFamily: cv, color: "#F0EDE8", maxWidth: 900, margin: "0 auto", paddingBottom: 80 }}>
       <h1 style={{ fontFamily: hv, fontWeight: 900, fontSize: 34, marginBottom: 6, letterSpacing: 1 }}>
-        🥙 MUTFAĞA ÖDENECEK
+        <Ikon ad="mutfakodeme" boy={22} style={{ marginRight: 10 }}/>MUTFAĞA ÖDENECEK
       </h1>
       <p style={{ fontSize: 13, color: "#888", marginBottom: 18, lineHeight: 1.5 }}>
         NIP'te satılan <strong>mutfak (döner) ürünlerinin</strong> cirosu.
@@ -57,7 +58,7 @@ export default function SettlementPage() {
       </p>
 
       <div style={{ display: "flex", gap: 8, marginBottom: 20 }}>
-        {[{ k: "month", l: "🗓️ Aylık" }, { k: "week", l: "📅 Haftalık" }].map(p => (
+        {[{ k: "month", l: "Aylık" }, { k: "week", l: "Haftalık" }].map(p => (
           <button key={p.k} onClick={() => setPeriod(p.k)} style={{
             padding: "10px 20px", borderRadius: 8, cursor: "pointer",
             background: period === p.k ? "#FFFFFF" : "#222",
@@ -72,7 +73,7 @@ export default function SettlementPage() {
 
       {!loading && sortedPeriods.length === 0 && (
         <div style={{ padding: 32, background: "#1A1A1A", borderRadius: 12, textAlign: "center", color: "#888" }}>
-          <div style={{ fontSize: 48, marginBottom: 12 }}>✨</div>
+          <Ikon ad="parlak" boy={46} kalin={1.3} style={{ display: "block", margin: "0 auto 12px" }}/>
           <div style={{ fontSize: 15, marginBottom: 8 }}>Henüz mutfak ürünü satışı yok</div>
           <div style={{ fontSize: 12, color: "#888888" }}>
             Menüde "mutfak ürünü" (döner mutfağı) olarak işaretlenmiş bir ürün<br />
@@ -94,7 +95,7 @@ export default function SettlementPage() {
         return (
           <div key={ps} style={{ marginBottom: 14, padding: 16, background: "#1A1A1A", borderRadius: 12, border: "1px solid #2A2A2A" }}>
             <h3 style={{ fontSize: 15, marginBottom: 14, color: "#FFFFFF", fontWeight: 700, textTransform: "capitalize" }}>
-              📅 {dateLabel(ps)}
+              <Ikon ad="takvim" boy={13} style={{ marginRight: 6 }}/>{dateLabel(ps)}
             </h3>
 
             <div style={{ padding: 16, background: "#161616", borderRadius: 10, border: "1px solid #2A2A2A", marginBottom: receivable > 0.01 ? 10 : 0 }}>
@@ -116,7 +117,7 @@ export default function SettlementPage() {
                   <div style={{ fontSize: 18, fontWeight: 800, color: "#8A8580" }}>₺{fmt(receivable)}</div>
                 </div>
                 <div style={{ padding: 12, background: "#0A0A0A", borderRadius: 8, textAlign: "center" }}>
-                  <div style={{ fontSize: 11, color: "#888", marginBottom: 4, letterSpacing: 0.5 }}>⚖️ NET</div>
+                  <div style={{ fontSize: 11, color: "#888", marginBottom: 4, letterSpacing: 0.5 }}>NET</div>
                   {Math.abs(net) < 0.01 ? (
                     <div style={{ fontSize: 14, color: "#888" }}>Eşit — ödeme gerekmez</div>
                   ) : net > 0 ? (

@@ -54,9 +54,9 @@ const M = {
     ru: "Нет связи с сервером. Проверьте подключение и попробуйте снова.",
   },
   cok_hizli: {
-    tr: "Biraz hızlı gittik 🙂 Birkaç saniye sonra tekrar dene.",
-    en: "That was a bit fast 🙂 Please try again in a few seconds.",
-    ru: "Слишком часто 🙂 Повторите через несколько секунд.",
+    tr: "Biraz hızlı gittik — birkaç saniye sonra tekrar dene.",
+    en: "That was a bit fast — please try again in a few seconds.",
+    ru: "Слишком часто — повторите через несколько секунд.",
   },
   sunucu: {
     tr: "Sunucuda bir aksilik oldu. Birazdan tekrar dener misin?",

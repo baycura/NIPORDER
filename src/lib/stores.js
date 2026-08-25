@@ -8,13 +8,12 @@ export const PARIS_STORE_ID = "c3c6e0c7-1821-4edd-993d-ad960cfbc452";
 export const DONER_STORE_ID = "c39da530-7f73-4f69-a752-029bf03790b1";
 
 export const STORES = {
-  [PARIS_STORE_ID]: { id: PARIS_STORE_ID, label: "Not In Paris", short: "NIP", emoji: "🗼" },
-  [DONER_STORE_ID]: { id: DONER_STORE_ID, label: "Döner Mutfağı", short: "Döner", emoji: "🥙" },
+  [PARIS_STORE_ID]: { id: PARIS_STORE_ID, label: "Not In Paris", short: "NIP" },
+  [DONER_STORE_ID]: { id: DONER_STORE_ID, label: "Döner Mutfağı", short: "Döner" },
 };
 
 export const storeLabel = (id) => STORES[id]?.label || "—";
 export const storeShort = (id) => STORES[id]?.short || "—";
-export const storeEmoji = (id) => STORES[id]?.emoji || "";
 
 // Bir urun/siparis kalemi mutfaga (Doner) mi gidiyor?
 export const isKitchenDestination = (id) => id === DONER_STORE_ID;

@@ -1,6 +1,7 @@
 import { useState, useEffect } from "react";
 import { supabase } from "../../lib/supabase";
 import { useAuth } from "../../contexts/AuthContext";
+import Ikon from "../../components/Ikon.jsx";
 
 const PATRON_ROLES = ["super_admin", "owner", "admin", "manager"];
 const PARIS_STORE_UUID = "c3c6e0c7-1821-4edd-993d-ad960cfbc452";
@@ -87,7 +88,7 @@ export default function TasksPage() {
   return (
     <div style={{ padding: 16, maxWidth: 900, margin: "0 auto", color: "#F0EDE8" }}>
       <div style={{ display: "flex", justifyContent: "space-between", alignItems: "center", marginBottom: 16, flexWrap: "wrap", gap: 8 }}>
-        <h1 style={{ fontSize: 24, fontWeight: 900, letterSpacing: 1, margin: 0, fontFamily: "'Coolvetica Condensed','Barlow Condensed','Bebas Neue',sans-serif" }}>📋 GÖREVLER</h1>
+        <h1 style={{ fontSize: 24, fontWeight: 900, letterSpacing: 1, margin: 0, fontFamily: "'Coolvetica Condensed','Barlow Condensed','Bebas Neue',sans-serif", display: "flex", alignItems: "center", gap: 10 }}><Ikon ad="gorev" boy={24}/>GÖREVLER</h1>
         <div style={{ display: "flex", gap: 8 }}>
           <select value={storeId} onChange={e => setStoreId(e.target.value)} style={{ padding: "8px 12px", background: "#1A1A1A", color: "#F0EDE8", border: "1px solid #333", borderRadius: 8, fontSize: 14 }}>
             <option value={PARIS_STORE_UUID}>Paris</option>
@@ -113,13 +114,13 @@ export default function TasksPage() {
                   {t.assigned_to && t.assigned_to.length > 0 && (
                     <div style={{ marginTop: 6, display: "flex", flexWrap: "wrap", gap: 4 }}>
                       {t.assigned_to.map(aid => (
-                        <span key={aid} style={{ fontSize: 11, background: "#222222", color: "#F0EDE8", padding: "2px 8px", borderRadius: 10, fontWeight: 600 }}>👤 {staffMap[aid] || "?"}</span>
+                        <span key={aid} style={{ fontSize: 11, background: "#222222", color: "#F0EDE8", padding: "2px 8px", borderRadius: 10, fontWeight: 600, display: "inline-flex", alignItems: "center", gap: 4 }}><Ikon ad="kisi" boy={11}/>{staffMap[aid] || "?"}</span>
                       ))}
                     </div>
                   )}
                 </div>
                 {isPatron && (
-                  <button onClick={() => deleteTask(t.id)} style={{ background: "transparent", border: "none", color: "#888888", cursor: "pointer", fontSize: 18 }} title="Sil">🗑️</button>
+                  <button onClick={() => deleteTask(t.id)} style={{ background: "transparent", border: "none", color: "#888888", cursor: "pointer", display: "flex" }} title="Sil"><Ikon ad="cop" boy={17}/></button>
                 )}
               </div>
             ))}
@@ -136,12 +137,12 @@ export default function TasksPage() {
                   {t.description && <div style={{ fontSize: 13, color: "#888888", marginTop: 4, textDecoration: "line-through" }}>{t.description}</div>}
                   {isPatron && t.done_by && (
                     <div style={{ fontSize: 12, color: "#FFFFFF", marginTop: 6, fontWeight: 600 }}>
-                      ✓ {staffMap[t.done_by] || "Bilinmiyor"} · {formatDate(t.done_at)}
+                      <Ikon ad="onay" boy={12} style={{ marginRight: 4 }}/>{staffMap[t.done_by] || "Bilinmiyor"} · {formatDate(t.done_at)}
                     </div>
                   )}
                 </div>
                 {isPatron && (
-                  <button onClick={() => deleteTask(t.id)} style={{ background: "transparent", border: "none", color: "#888888", cursor: "pointer", fontSize: 18 }} title="Sil">🗑️</button>
+                  <button onClick={() => deleteTask(t.id)} style={{ background: "transparent", border: "none", color: "#888888", cursor: "pointer", display: "flex" }} title="Sil"><Ikon ad="cop" boy={17}/></button>
                 )}
               </div>
             ))}

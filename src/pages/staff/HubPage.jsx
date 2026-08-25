@@ -2,6 +2,7 @@ import { useMemo, useState } from "react";
 import { NavLink, useNavigate } from "react-router-dom";
 import { useAuth } from "../../contexts/AuthContext.jsx";
 import { gorunurGruplar } from "../../lib/panelNav.js";
+import Ikon from "../../components/Ikon.jsx";
 
 const cv = "-apple-system,BlinkMacSystemFont,'Segoe UI',Roboto,sans-serif";
 
@@ -27,9 +28,9 @@ export default function HubPage() {
 
   const Karo = ({ item }) => {
     const ic = (<>
-      <span style={{ fontSize: 20 }}>{item.icon}</span>
+      <Ikon ad={item.icon} boy={20}/>
       <span style={{ fontSize: 13, fontWeight: 700 }}>{item.label}</span>
-      {item.external && <span style={{ marginLeft: "auto", color: "#888888", fontSize: 12 }}>↗</span>}
+      {item.external && <span style={{ marginLeft: "auto", color: "#888888", display: "flex" }}><Ikon ad="disari" boy={13}/></span>}
     </>);
     const stil = {
       display: "flex", alignItems: "center", gap: 10, padding: "13px 14px",
@@ -46,11 +47,15 @@ export default function HubPage() {
     <div style={{ fontFamily: cv, color: "#F0EDE8", maxWidth: 560, margin: "0 auto" }}>
       <div style={{ fontSize: 22, fontWeight: 800, marginBottom: 12 }}>Menü</div>
 
-      <input
-        value={q} onChange={e => setQ(e.target.value)} placeholder="🔍 Sayfa ara…"
-        style={{ width: "100%", padding: "12px 14px", background: "#0F0F0F", border: "1px solid #2A2A2A",
-                 borderRadius: 12, color: "#F0EDE8", fontSize: 14, outline: "none", fontFamily: cv, marginBottom: 16 }}
-      />
+      <div style={{ position: "relative", marginBottom: 16 }}>
+        <span style={{ position: "absolute", left: 13, top: "50%", transform: "translateY(-50%)",
+                       color: "#8A8580", pointerEvents: "none" }}><Ikon ad="ara" boy={16}/></span>
+        <input
+          value={q} onChange={e => setQ(e.target.value)} placeholder="Sayfa ara…"
+          style={{ width: "100%", padding: "12px 14px 12px 38px", background: "#0F0F0F", border: "1px solid #2A2A2A",
+                   borderRadius: 12, color: "#F0EDE8", fontSize: 14, outline: "none", fontFamily: cv }}
+        />
+      </div>
 
       {sonuc ? (
         <div style={{ display: "grid", gridTemplateColumns: "1fr 1fr", gap: 8 }}>

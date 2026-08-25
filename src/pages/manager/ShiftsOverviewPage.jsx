@@ -2,6 +2,7 @@ import { useEffect, useState } from "react";
 import { supabase } from "../../lib/supabase.js";
 import { useAuth } from "../../contexts/AuthContext.jsx";
 import { businessDayStart, businessDayKey } from "../../lib/businessDay.js";
+import Ikon from "../../components/Ikon.jsx";
 
 const cv = "-apple-system,BlinkMacSystemFont,'Segoe UI',Roboto,sans-serif";
 
@@ -126,8 +127,8 @@ export default function ShiftsOverviewPage() {
                 : <span style={{ fontSize: 10, fontWeight: 800, color: "#FFFFFF", background: "#161616", border: "1px solid #2A2A2A", padding: "3px 9px", borderRadius: 14 }}>Vardiya kaydı yok</span>}
             </div>
             <div style={{ display: "flex", gap: 16, marginTop: 8, fontSize: 12.5, color: "#B8B3AC", flexWrap: "wrap" }}>
-              {k.vardiya && <span>🕐 {saat(k.vardiya.checked_in_at)} → {saat(k.vardiya.checked_out_at)} ({sure(k.vardiya)})</span>}
-              <span>🧾 {k.fis} fiş</span>
+              {k.vardiya && <span><Ikon ad="saat" boy={12} style={{marginRight:5}}/>{saat(k.vardiya.checked_in_at)} → {saat(k.vardiya.checked_out_at)} ({sure(k.vardiya)})</span>}
+              <span><Ikon ad="fatura" boy={12} style={{marginRight:5}}/>{k.fis} fiş</span>
               <span style={{ fontWeight: 800, color: "#F0EDE8" }}>₺{Math.round(k.ciro).toLocaleString("tr-TR")}</span>
               {k.fis > 0 && <span>ort ₺{Math.round(k.ciro / k.fis)}</span>}
             </div>

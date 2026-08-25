@@ -1,6 +1,7 @@
 import { useEffect, useState } from "react";
 import { supabase } from "../../lib/supabase.js";
 import { useAuth } from "../../contexts/AuthContext.jsx";
+import Ikon from "../../components/Ikon.jsx";
 
 const cv = "-apple-system,BlinkMacSystemFont,'Segoe UI',Roboto,sans-serif";
 const inputS = {width:"100%",padding:"10px 12px",background:"#0C0C0C",border:"1px solid #2A2A2A",borderRadius:8,color:"#F0EDE8",fontSize:14,outline:"none",fontFamily:"inherit"};
@@ -138,12 +139,12 @@ export default function PollsPage() {
       <div style={{fontSize:11,color:"#888",letterSpacing:"1px",marginBottom:14}}>QR MENÜDEKİ "OYLA" SEKMESİ · MÜŞTERİ TOPLU SONUCU GÖRÜR</div>
 
       <div style={{background:"#161616",border:"1px solid #2A2A2A",borderRadius:12,padding:12,marginBottom:14}}>
-        <div style={{fontSize:12,color:"#F0EDE8",letterSpacing:"0.2px",fontWeight:600,marginBottom:8}}>🤖 AI İLE SORU ÜRET (üç dilde birden)</div>
+        <div style={{fontSize:12,color:"#F0EDE8",letterSpacing:"0.2px",fontWeight:600,marginBottom:8,display:"flex",alignItems:"center",gap:6}}><Ikon ad="parlak" boy={13}/>AI İLE SORU ÜRET (üç dilde birden)</div>
         <textarea value={aiBrief} onChange={e=>setAiBrief(e.target.value)} rows={2}
           placeholder="örn: bu hafta parti var, kahve tarafına da soru olsun (boş bırakırsan menüye bakıp kendi seçer)"
           style={{...inputS, resize:"vertical"}}/>
         <button onClick={runAi} disabled={aiBusy} style={{width:"100%",marginTop:8,padding:"11px",background:aiBusy?"#555":"#2A2A2A",color:"#F0EDE8",border:"1px solid #2A2A2A",borderRadius:10,fontSize:13,fontWeight:800,cursor:aiBusy?"wait":"pointer"}}>
-          {aiBusy ? "AI düşünüyor..." : "🤖 4 soru öner"}
+          {aiBusy ? "AI düşünüyor..." : <><Ikon ad="parlak" boy={14} style={{marginRight:6}}/>4 soru öner</>}
         </button>
         {aiPolls.map((sp, i) => (
           <div key={i} style={{marginTop:10,padding:"10px 12px",background:"#12181A",border:"1px solid #2A2A2A",borderRadius:10}}>
@@ -153,7 +154,7 @@ export default function PollsPage() {
               {sp.allow_free_text && (sp.options||[]).length > 0 ? " · + serbest cevap" : ""}
             </div>
             <button onClick={() => useSuggestion(sp)} style={{marginTop:8,padding:"7px 14px",background:"#FFFFFF",color:"#000",border:"none",borderRadius:8,fontSize:12,fontWeight:800,cursor:"pointer"}}>
-              Bunu kullan →
+              Bunu kullan<Ikon ad="oksag" boy={12} style={{marginLeft:4}}/>
             </button>
           </div>
         ))}
@@ -200,7 +201,7 @@ export default function PollsPage() {
 
             {answers.length > 0 && (
               <div style={{marginTop:10,padding:"8px 10px",background:"#12181A",border:"1px solid #2A2A2A",borderRadius:8}}>
-                <div style={{fontSize:12,color:"#F0EDE8",letterSpacing:"0.2px",fontWeight:600,marginBottom:6}}>✍️ SERBEST CEVAPLAR ({answers.length}) — yalnız personel görür</div>
+                <div style={{fontSize:12,color:"#F0EDE8",letterSpacing:"0.2px",fontWeight:600,marginBottom:6,display:"flex",alignItems:"center",gap:6}}><Ikon ad="kalem" boy={13}/>SERBEST CEVAPLAR ({answers.length}) — yalnız personel görür</div>
                 <div style={{maxHeight:180,overflowY:"auto"}}>
                   {answers.map((a, i) => (
                     <div key={i} style={{fontSize:13,color:"#DDD",padding:"5px 0",borderBottom:"1px solid #161616"}}>{a}</div>
@@ -240,7 +241,7 @@ export default function PollsPage() {
 
             <label style={{display:"flex",alignItems:"center",gap:8,fontSize:13,color:"#ddd",cursor:"pointer",marginBottom:12}}>
               <input type="checkbox" checked={!!form.allow_free_text} onChange={e=>setForm({...form,allow_free_text:e.target.checked})} style={{width:16,height:16,accentColor:"#FFFFFF"}}/>
-              ✍️ Müşteri kendi cevabını da yazabilsin
+              <Ikon ad="kalem" boy={13} style={{marginRight:5}}/>Müşteri kendi cevabını da yazabilsin
             </label>
 
             <div style={{display:"flex",gap:10}}>

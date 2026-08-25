@@ -3,6 +3,7 @@ import { useNavigate } from "react-router-dom";
 import { supabase } from "../../lib/supabase.js";
 import { useAuth } from "../../contexts/AuthContext.jsx";
 import { businessDayStart, businessDayKey, BUSINESS_HOURS } from "../../lib/businessDay.js";
+import Ikon from "../../components/Ikon.jsx";
 
 const cv = "-apple-system,BlinkMacSystemFont,'Segoe UI',Roboto,sans-serif";
 const BAYAT_SAAT = 12;
@@ -161,9 +162,9 @@ export default function TodayPage() {
              style={{ background: "#161616", border: "1px solid #2A2A2A", borderRadius: 13,
                       padding: "11px 14px", fontSize: 13, color: "#F0EDE8", cursor: "pointer",
                       display: "flex", alignItems: "center", gap: 8 }}>
-          ⏳ {veri.unutulmus.length} hesap 12 saatten uzun süredir açık —{" "}
+          <Ikon ad="bekleme" boy={14}/>{veri.unutulmus.length} hesap 12 saatten uzun süredir açık —{" "}
           {veri.unutulmus.slice(0, 2).map(o => `${o.cafe_tables?.name || o.customer_name || "Misafir"} ₺${Math.round(o.total)}`).join(", ")}
-          <span style={{ marginLeft: "auto", fontWeight: 800, whiteSpace: "nowrap" }}>Kasa →</span>
+          <span style={{ marginLeft: "auto", fontWeight: 800, whiteSpace: "nowrap", display: "flex", alignItems: "center", gap: 4 }}>Kasa<Ikon ad="oksag" boy={13}/></span>
         </div>
       )}
 

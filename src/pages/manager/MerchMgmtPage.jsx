@@ -1,4 +1,5 @@
 import{useState,useEffect,useRef}from"react";import{supabase}from"../../lib/supabase.js";import{useAuth}from"../../contexts/AuthContext.jsx";
+import Ikon from "../../components/Ikon.jsx";
 const cv="'Coolvetica','Bebas Neue',sans-serif";const cvc="'Coolvetica Condensed','Barlow Condensed',sans-serif";
 export default function MerchMgmtPage(){
   const{staffUser}=useAuth();
@@ -33,12 +34,12 @@ export default function MerchMgmtPage(){
     <div style={{display:"grid",gridTemplateColumns:"repeat(3,1fr)",gap:14}}>
       {products.map(p=>{const stock=p.merch_variants?.reduce((s,v)=>s+(v.stock||0),0)??0;return(<div key={p.id} style={{background:"#1E1E1E",border:"1px solid #2A2A2A",borderRadius:12,overflow:"hidden"}}>
         <div style={{height:180,background:"#111",display:"flex",alignItems:"center",justifyContent:"center",cursor:"pointer"}} onClick={()=>openEdit(p)}>
-          {p.image_url?<img src={p.image_url} alt={p.name_en} style={{width:"100%",height:"100%",objectFit:"cover"}}/>:<div style={{textAlign:"center"}}><div style={{fontSize:24,opacity:.3}}>📸</div><div style={{color:"#888888",fontFamily:cvc,fontSize:12,letterSpacing:"0.2px",marginTop:6}}>Fotoğraf yok</div></div>}
+          {p.image_url?<img src={p.image_url} alt={p.name_en} style={{width:"100%",height:"100%",objectFit:"cover"}}/>:<div style={{textAlign:"center"}}><Ikon ad="kamera" boy={26} style={{opacity:.4,display:"block",margin:"0 auto"}}/><div style={{color:"#888888",fontFamily:cvc,fontSize:12,letterSpacing:"0.2px",marginTop:6}}>Fotoğraf yok</div></div>}
         </div>
         <div style={{padding:"12px 14px"}}>
           <div style={{color:"#F0EDE8",fontFamily:cv,fontSize:17,marginBottom:2}}>{p.name_en}</div>
           <div style={{display:"flex",justifyContent:"space-between",alignItems:"center",marginBottom:10}}><div style={{color:"#FFFFFF",fontFamily:cv,fontSize:18}}>₺{p.price?.toLocaleString()}</div><div style={{color:stock<5?"#C87A6A":"#888",fontFamily:cvc,fontSize:11}}>{stock} adet</div></div>
-          <div style={{display:"flex",gap:6}}><button onClick={()=>openEdit(p)} style={{flex:1,padding:"7px",background:"rgba(255,255,255,0.12)",border:"1px solid #FFFFFF",color:"#8A8580",fontFamily:cvc,fontSize:12,letterSpacing:"0.2px",cursor:"pointer",borderRadius:6}}>✏️ DÜZENLE</button><button onClick={()=>toggleActive(p)} style={{flex:1,padding:"7px",background:"transparent",border:"1px solid #2A2A2A",color:"#888",fontFamily:cvc,fontSize:10,cursor:"pointer",borderRadius:6}}>{p.is_active?"PASİF YAP":"AKTİF YAP"}</button></div>
+          <div style={{display:"flex",gap:6}}><button onClick={()=>openEdit(p)} style={{flex:1,padding:"7px",background:"rgba(255,255,255,0.12)",border:"1px solid #FFFFFF",color:"#8A8580",fontFamily:cvc,fontSize:12,letterSpacing:"0.2px",cursor:"pointer",borderRadius:6,display:"inline-flex",alignItems:"center",justifyContent:"center",gap:6}}><Ikon ad="kalem" boy={13}/>DÜZENLE</button><button onClick={()=>toggleActive(p)} style={{flex:1,padding:"7px",background:"transparent",border:"1px solid #2A2A2A",color:"#888",fontFamily:cvc,fontSize:10,cursor:"pointer",borderRadius:6}}>{p.is_active?"PASİF YAP":"AKTİF YAP"}</button></div>
         </div>
       </div>);})}
       <div onClick={()=>openEdit(null)} style={{background:"#1E1E1E",border:"2px dashed #2A2A2A",borderRadius:12,minHeight:300,display:"flex",flexDirection:"column",alignItems:"center",justifyContent:"center",gap:10,cursor:"pointer"}}><div style={{fontSize:28,opacity:.3}}>+</div><div style={{color:"#888888",fontFamily:cv,fontSize:16}}>Yeni ürün</div></div>

@@ -1,6 +1,7 @@
 import { useEffect, useState, useMemo } from "react";
 import { supabase } from "../../lib/supabase.js";
 import { useAuth } from "../../contexts/AuthContext.jsx";
+import Ikon from "../../components/Ikon.jsx";
 
 const cv = "-apple-system,BlinkMacSystemFont,'Segoe UI',Roboto,sans-serif";
 const UNITS = ["ml", "cl", "l", "g", "kg", "adet", "şişe", "porsiyon"];
@@ -189,7 +190,7 @@ export default function RecipesMgmtPage() {
     setBusy(false);
     if (error) { alert("Hata: " + error.message); return; }
     setRecipes(prev => [...prev, ...(data || [])]);
-    alert("✅ " + (data?.length || 0) + " ürüne eklendi");
+    alert((data?.length || 0) + " ürüne eklendi");
   };
 
   // Baska bir urunun recetesini kopyala (highball'lar birbirinin ayni)
@@ -254,7 +255,7 @@ export default function RecipesMgmtPage() {
           )}
           {selectedProduct.takeaway_cup && (
             <div style={{ fontSize: 11, color: "#888", marginTop: 8, lineHeight: 1.6, paddingTop: 8, borderTop: "1px solid #2A2A2A" }}>
-              🥤 Take away seçilirse otomatik eklenir:{" "}
+              <Ikon ad="bardak" boy={13} style={{ marginRight: 5 }}/>Take away seçilirse otomatik eklenir:{" "}
               <b style={{ color: "#FFFFFF" }}>
                 {selectedProduct.takeaway_cup === "hot" ? "karton bardak" : "pet bardak"}
                 {selectedProduct.takeaway_straw ? " + pipet" : ""}
@@ -266,14 +267,14 @@ export default function RecipesMgmtPage() {
 
         {/* AI ile reçete kur */}
         <div style={{ background: "#161616", border: "1px solid #2A2A2A", borderRadius: 12, padding: 12, marginBottom: 12 }}>
-          <div style={{ fontSize:12, color: "#F0EDE8", letterSpacing:"0.2px", fontWeight:600, marginBottom: 8 }}>🤖 REÇETEYİ YAZ, AI KURSUN</div>
+          <div style={{ fontSize:12, color: "#F0EDE8", letterSpacing:"0.2px", fontWeight:600, marginBottom: 8, display: "flex", alignItems: "center", gap: 6 }}><Ikon ad="parlak" boy={13}/>REÇETEYİ YAZ, AI KURSUN</div>
           <textarea
             value={aiText} onChange={e => setAiText(e.target.value)} rows={2}
             placeholder={"örn: 3cl gin, 3cl campari, 3cl kırmızı vermut, buz, portakal kabuğu"}
             style={{ width: "100%", padding: "12px 14px", background: "#0C0C0C", border: "1px solid #2A2A2A", borderRadius: 10, color: "#F0EDE8", fontSize: 15, outline: "none", fontFamily: "inherit", resize: "vertical" }}
           />
           <button onClick={runAi} disabled={aiBusy || !aiText.trim()} style={{ width: "100%", marginTop: 8, padding: "11px", background: aiBusy ? "#555" : "#2A2A2A", color: "#F0EDE8", border: "1px solid #2A2A2A", borderRadius: 10, fontSize: 13, fontWeight: 800, cursor: aiBusy ? "wait" : "pointer" }}>
-            {aiBusy ? "AI okuyor..." : "🤖 Malzemeleri çıkar"}
+            {aiBusy ? "AI okuyor..." : <><Ikon ad="parlak" boy={14} style={{ marginRight: 6 }}/>Malzemeleri çıkar</>}
           </button>
           {aiPreview && (
             <div style={{ marginTop: 10, background: "#0C0C0C", border: "1px solid #2A2A2A", borderRadius: 10, padding: 10 }}>
@@ -299,7 +300,7 @@ export default function RecipesMgmtPage() {
         {/* Başka üründen kopyala */}
         {products.filter(p => p.id !== selectedProduct.id && productRecipes(p.id).length > 0).length > 0 && (
           <div style={{ background: "#161616", border: "1px solid #2A2A2A", borderRadius: 12, padding: 12, marginBottom: 12 }}>
-            <div style={{ fontSize:12, color: "#8A8580", letterSpacing:"0.2px", fontWeight:600, marginBottom: 8 }}>📋 BAŞKA ÜRÜNDEN KOPYALA</div>
+            <div style={{ fontSize:12, color: "#8A8580", letterSpacing:"0.2px", fontWeight:600, marginBottom: 8, display: "flex", alignItems: "center", gap: 6 }}><Ikon ad="siparis" boy={13}/>BAŞKA ÜRÜNDEN KOPYALA</div>
             <div style={{ display: "flex", gap: 8 }}>
               <select value={copyFrom} onChange={e => setCopyFrom(e.target.value)} style={{ flex: 1, padding: "10px 12px", background: "#0C0C0C", border: "1px solid #2A2A2A", borderRadius: 8, color: "#F0EDE8", fontSize: 14, outline: "none", fontFamily: "inherit" }}>
                 <option value="">- Ürün seç -</option>
@@ -315,7 +316,7 @@ export default function RecipesMgmtPage() {
 
         {/* Malzeme ara & ekle */}
         <div style={{ background: "#161616", border: "1px solid #2A2A2A", borderRadius: 12, padding: 12, marginBottom: 12 }}>
-          <div style={{ fontSize:12, color: "#8A8580", letterSpacing:"0.2px", fontWeight:600, marginBottom: 8 }}>🔎 MALZEME EKLE</div>
+          <div style={{ fontSize:12, color: "#8A8580", letterSpacing:"0.2px", fontWeight:600, marginBottom: 8, display: "flex", alignItems: "center", gap: 6 }}><Ikon ad="ara" boy={13}/>MALZEME EKLE</div>
           <input
             value={ingSearch}
             onChange={e => setIngSearch(e.target.value)}
@@ -341,7 +342,7 @@ export default function RecipesMgmtPage() {
         {/* Sarf malzemeler — tek dokunuş */}
         {consumables.length > 0 && (
           <div style={{ background: "#12181A", border: "1px solid #2A2A2A", borderRadius: 12, padding: 12, marginBottom: 12 }}>
-            <div style={{ fontSize:12, color: "#F0EDE8", letterSpacing:"0.2px", fontWeight:600, marginBottom: 8 }}>🧊 SARF MALZEMELER</div>
+            <div style={{ fontSize:12, color: "#F0EDE8", letterSpacing:"0.2px", fontWeight:600, marginBottom: 8 }}>SARF MALZEMELER</div>
             <div style={{ display: "flex", flexWrap: "wrap", gap: 8 }}>
               {consumables.map(ing => {
                 const on = !!rows.find(r => r.ingredient_id === ing.id);
@@ -372,7 +373,7 @@ export default function RecipesMgmtPage() {
                 <div style={{ flex: 1, minWidth: 0 }}>
                   <div style={{ fontSize: 14, fontWeight: 700 }}>{ing.name}</div>
                   <div style={{ fontSize: 11, color: c > 0 ? "#FFFFFF" : "#2A2A2A", marginTop: 2, fontWeight: 600 }}>
-                    {c > 0 ? "₺" + c.toFixed(2) : "⚠ maliyet girilmemiş"}
+                    {c > 0 ? "₺" + c.toFixed(2) : <><Ikon ad="uyari" boy={12} style={{ marginRight: 4 }}/>maliyet girilmemiş</>}
                     {Number(ing.waste_pct) > 0 && <span style={{ color: "#F0EDE8" }}> · +%{ing.waste_pct} fire</span>}
                   </div>
                 </div>
@@ -398,7 +399,7 @@ export default function RecipesMgmtPage() {
                   <input type="checkbox" checked={!!r.party_only} onChange={e => setPartyOnly(r, e.target.checked)}
                     style={{ width: 18, height: 18, accentColor: "#FFFFFF", cursor: "pointer" }} />
                   <span style={{ fontSize: 12, color: r.party_only ? "#FFFFFF" : "#888", fontWeight: r.party_only ? 700 : 500 }}>
-                    🎉 Sadece parti gecesi kullanılır
+                    <Ikon ad="kampanya" boy={13} style={{ marginRight: 5 }}/>Sadece parti gecesi kullanılır
                   </span>
                 </label>
               )}
@@ -423,7 +424,7 @@ export default function RecipesMgmtPage() {
       </div>
       {kitchenCount > 0 && (
         <div style={{ fontSize: 11, color: "#888888", background: "#141414", border: "1px solid #242424", borderRadius: 8, padding: "8px 10px", marginBottom: 14, lineHeight: 1.5 }}>
-          🥙 {kitchenCount} ürün <b>NIP Kitchen envanteri</b> — mutfak hazırlıyor, maliyeti bizde tutulmuyor. Bu listede yer almazlar.
+          <Ikon ad="mutfakodeme" boy={14} style={{ marginRight: 6 }}/>{kitchenCount} ürün <b>NIP Kitchen envanteri</b> — mutfak hazırlıyor, maliyeti bizde tutulmuyor. Bu listede yer almazlar.
         </div>
       )}
 
@@ -437,7 +438,7 @@ export default function RecipesMgmtPage() {
 
       {consumables.length > 0 && (
         <details style={{ background: "#12181A", border: "1px solid #2A2A2A", borderRadius: 12, padding: 12, marginBottom: 12 }}>
-          <summary style={{ fontSize: 11, color: "#F0EDE8", letterSpacing: "1.5px", fontWeight: 700, cursor: "pointer" }}>🧊 TOPLU SARF EKLE (buz → tüm kokteyller gibi)</summary>
+          <summary style={{ fontSize: 11, color: "#F0EDE8", letterSpacing: "1.5px", fontWeight: 700, cursor: "pointer" }}>TOPLU SARF EKLE (buz → tüm kokteyller gibi)</summary>
           <div style={{ display: "flex", gap: 8, marginTop: 10, flexWrap: "wrap" }}>
             <select id="bulk-ing" style={{ flex: "1 1 130px", padding: "10px", background: "#0C0C0C", border: "1px solid #2A2A2A", borderRadius: 8, color: "#F0EDE8", fontSize: 13, fontFamily: "inherit" }}>
               {consumables.map(i => (<option key={i.id} value={i.id}>{i.name}</option>))}
