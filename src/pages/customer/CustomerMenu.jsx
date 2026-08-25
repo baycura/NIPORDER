@@ -1113,7 +1113,7 @@ export default function CustomerMenu() {
     const blk = blockedInfo(p);
     if (blk) { alert(`${hhmm(blk.window ? blk.start : blk.end)} – ${hhmm(blk.window ? blk.end : blk.start)} ${t.order_between}`); return; }
     if (p.has_options && p.options_config) {
-      setOptModal(p); setOptSelected({}); setOptNote("");
+      setOptModal(p); setOptSelected({}); setOptNote(""); setOptAdet(1);
     } else { addToCart(p, null, null); }
   };
 
@@ -1139,13 +1139,17 @@ export default function CustomerMenu() {
     });
   };
 
+  // Secenek penceresinde adet. Eskiden 2 kadeh icin pencereyi iki kez acmak,
+  // her seferinde secenekleri yeniden isaretlemek gerekiyordu.
+  const [optAdet, setOptAdet] = useState(1);
+
   const confirmOptions = () => {
     if (!optModal) return;
     const cfg = optModal.options_config || {};
     for (const group of cfg.groups || []) {
       if (group.required && (group.multi?!((optSelected[group.name]||[]).length):!optSelected[group.name])) { alert(t.please_choose + " " + optT(group.name)); return; }
     }
-    addToCart(optModal, optSelected, optNote.trim() || null);
+    for (let i = 0; i < optAdet; i++) addToCart(optModal, optSelected, optNote.trim() || null);
     setOptModal(null);
   };
 
@@ -2077,9 +2081,20 @@ export default function CustomerMenu() {
               <div style={{fontSize:11,color:"#333",letterSpacing:"1px",fontWeight:700,marginBottom:6}}>{t.optional_label}</div>
               <input value={optNote} onChange={e=>setOptNote(e.target.value)} placeholder={t.note_optional} style={{width:"100%",padding:"12px 14px",background:"#f7f7f7",border:"1px solid #eee",borderRadius:10,fontSize:14,outline:"none",fontFamily:"inherit"}}/>
             </div>
+            {/* Adet secici — secenekleri bir kez isaretleyip birden fazla ekle */}
+            <div style={{display:"flex",alignItems:"center",justifyContent:"space-between",gap:12,padding:"12px 0",borderTop:"1px solid #f0f0f0",marginBottom:12}}>
+              <span style={{fontSize:13.5,fontWeight:600}}>{L("Adet","Quantity","Количество")}</span>
+              <div style={{display:"flex",alignItems:"center",gap:6,background:"#000",borderRadius:24,padding:"3px 5px",color:"#fff"}}>
+                <button onClick={() => setOptAdet(a => Math.max(1, a - 1))} disabled={optAdet <= 1}
+                  style={{width:28,height:28,background:"transparent",color:optAdet<=1?"#666":"#fff",border:"none",borderRadius:"50%",fontSize:17,cursor:optAdet<=1?"default":"pointer",fontWeight:700,fontFamily:"inherit"}}>−</button>
+                <div style={{minWidth:20,textAlign:"center",fontSize:14,fontWeight:800,fontVariantNumeric:"tabular-nums"}}>{optAdet}</div>
+                <button onClick={() => setOptAdet(a => Math.min(20, a + 1))}
+                  style={{width:28,height:28,background:"transparent",color:"#fff",border:"none",borderRadius:"50%",fontSize:17,cursor:"pointer",fontWeight:700,fontFamily:"inherit"}}>+</button>
+              </div>
+            </div>
             <div style={{display:"flex",gap:8}}>
               <button onClick={() => setOptModal(null)} style={{flex:1,padding:"14px",background:"#fff",color:"#666",border:"1px solid #ddd",borderRadius:12,fontSize:14,fontWeight:700,cursor:"pointer"}}>{t.cancel}</button>
-              <button onClick={confirmOptions} style={{flex:2,padding:"14px",background:"#000",color:"#fff",border:"none",borderRadius:12,fontSize:14,fontWeight:800,cursor:"pointer"}}>{t.add_to_cart}</button>
+              <button onClick={confirmOptions} style={{flex:2,padding:"14px",background:"#000",color:"#fff",border:"none",borderRadius:12,fontSize:14,fontWeight:800,cursor:"pointer"}}>{t.add_to_cart}{optAdet > 1 ? " · " + optAdet : ""}</button>
             </div>
           </div>
         </div>

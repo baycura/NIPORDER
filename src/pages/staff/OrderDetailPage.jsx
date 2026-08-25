@@ -28,6 +28,7 @@ export default function OrderDetailPage() {
   const [prodSearch, setProdSearch] = useState("");
   const [hhPrices, setHhPrices] = useState({}); // happy hour: { urun_id: fiyat }
   const [menuOpen, setMenuOpen] = useState(true);
+  const [sonEklenen, setSonEklenen] = useState(null); // { id, ad, adet } — "Geri al" icin
   const [customerNameEdit, setCustomerNameEdit] = useState("");
   const [orderNote, setOrderNote] = useState("");
 
@@ -239,6 +240,25 @@ export default function OrderDetailPage() {
       return;
     }
     setItems(prev => prev.map(i => i.id === tempId ? saved : i));
+    // GERI AL icin son eklenen kalem. Yanlis eklenen urunu silmenin tek yolu
+    // adedi sifira indirmekti; mutfaga gitmisse hic silinmiyordu.
+    setSonEklenen({ id: saved.id, ad: saved.product_name, adet: saved.quantity || 1 });
+  };
+
+  // Son eklenen kalemi geri al. Mutfaga gitmisse silmiyoruz — iptal/ikram yolu var.
+  const sonEklenenGeriAl = async () => {
+    if (!sonEklenen) return;
+    const it = items.find(i => i.id === sonEklenen.id);
+    if (!it) { setSonEklenen(null); return; }
+    if (it.kitchen_status !== "pending") {
+      alert("Bu ürün mutfağa gitti, geri alınamaz. İptal ya da İkram kullanın.");
+      setSonEklenen(null);
+      return;
+    }
+    const next = items.filter(i => i.id !== sonEklenen.id);
+    setItems(next); syncTotal(next); setSonEklenen(null);
+    const { error } = await supabase.from("order_items").delete().eq("id", sonEklenen.id);
+    if (error) { alert("Geri alınamadı: " + error.message); loadOrderOnly(); }
   };
 
   const changeQty = async (itemId, delta) => {
@@ -405,6 +425,22 @@ export default function OrderDetailPage() {
           );
         })}
       </div>
+
+      {/* Son eklenen kalem — yanlis eklenen urun tek dokunusla geri aliniyor. */}
+      {sonEklenen && order.status !== "paid" && order.status !== "cancelled" && (
+        <div style={{background:"#161616",border:"1px solid #2A2A2A",borderRadius:12,padding:"11px 14px",marginBottom:10,display:"flex",alignItems:"center",gap:12}}>
+          <span style={{flex:1,minWidth:0,fontSize:12,color:"#F0EDE8",overflow:"hidden",textOverflow:"ellipsis",whiteSpace:"nowrap"}}>
+            Son eklenen: {sonEklenen.ad}{sonEklenen.adet > 1 ? " ×" + sonEklenen.adet : ""}
+          </span>
+          <button onClick={sonEklenenGeriAl}
+            style={{fontSize:11,fontWeight:700,border:"1px solid #2A2A2A",background:"transparent",color:"#F0EDE8",
+                    padding:"7px 11px",borderRadius:8,cursor:"pointer",fontFamily:"inherit",flexShrink:0}}>
+            Geri al
+          </button>
+          <button onClick={() => setSonEklenen(null)} aria-label="Kapat"
+            style={{background:"none",border:"none",color:"#666",fontSize:16,lineHeight:1,cursor:"pointer",padding:0,flexShrink:0,fontFamily:"inherit"}}>×</button>
+        </div>
+      )}
 
       {items.length > 0 && order.status !== "paid" && order.status !== "cancelled" && (
         <div style={{position:"fixed",bottom:14,left:14,right:14,zIndex:40}}>

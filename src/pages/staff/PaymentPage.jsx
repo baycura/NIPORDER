@@ -239,8 +239,29 @@ export default function PaymentPage() {
 
             <div style={{background:"#0C0C0C",border:"1px solid #2A2A2A",borderRadius:10,padding:14,marginBottom:14}}>
               {modal.stores?.slug && <div style={{display:"inline-block",background:modal.stores.slug==="doner"?"#FFFFFF":"#222222",color:modal.stores.slug==="doner"?"#000":"#F0EDE8",padding:"2px 8px",borderRadius:6,fontSize:10,fontWeight:800,letterSpacing:"0.5px",marginBottom:6}}>{modal.stores.slug==="doner"?"🥙 DÖNER":"🗼 PARIS"}</div>}
-              <div style={{fontSize:11,color:"#888",marginBottom:4}}>{modal.table_id ? (tables[modal.table_id] || "Masa") + (modal.customer_name ? " · 👤 " + modal.customer_name : "") : "👤 " + (modal.customer_name || "Misafir")}</div>
-              <div style={{fontSize:24,color:"#F0EDE8",fontWeight:800}}>₺{modal.total || 0}</div>
+              <div style={{fontSize:11,color:"#888",marginBottom:8}}>{modal.table_id ? (tables[modal.table_id] || "Masa") + (modal.customer_name ? " · 👤 " + modal.customer_name : "") : "👤 " + (modal.customer_name || "Misafir")}</div>
+              {/* Puan kullanilinca hesap toplami ile kasada alinacak tutar ayrisir;
+                  kasiyerin bakmasi gereken KALAN, en buyuk rakam olmali. */}
+              {usePoints && uyeId && ptsCover(modal) > 0 ? (
+                <>
+                  <div style={{display:"flex",justifyContent:"space-between",alignItems:"baseline",fontSize:12,color:"#888"}}>
+                    <span>Hesap toplamı</span><span style={{fontVariantNumeric:"tabular-nums"}}>₺{modal.total || 0}</span>
+                  </div>
+                  <div style={{display:"flex",justifyContent:"space-between",alignItems:"baseline",fontSize:12,color:"#888",marginTop:4}}>
+                    <span>Puandan düşen</span><span style={{fontVariantNumeric:"tabular-nums"}}>−₺{ptsCover(modal)}</span>
+                  </div>
+                  <div style={{height:1,background:"#2A2A2A",margin:"10px 0"}}></div>
+                  <div style={{display:"flex",justifyContent:"space-between",alignItems:"baseline"}}>
+                    <span style={{fontSize:15,fontWeight:800}}>Kalan</span>
+                    <span style={{fontSize:30,fontWeight:800,fontVariantNumeric:"tabular-nums"}}>₺{Math.max(0, Number(modal.total||0) - ptsCover(modal))}</span>
+                  </div>
+                </>
+              ) : (
+                <div style={{display:"flex",justifyContent:"space-between",alignItems:"baseline"}}>
+                  <span style={{fontSize:15,fontWeight:800}}>Kalan</span>
+                  <span style={{fontSize:30,fontWeight:800,fontVariantNumeric:"tabular-nums"}}>₺{modal.total || 0}</span>
+                </div>
+              )}
             </div>
 
             <div style={{display:"flex",gap:6,marginBottom:14}}>
@@ -311,6 +332,21 @@ export default function PaymentPage() {
             <div style={{marginBottom:12}}>
               <div style={{fontSize:10,color:"#888",letterSpacing:"1.5px",fontWeight:700,marginBottom:5}}>TUTAR (₺)</div>
               <input type="number" value={amount} onChange={e=>setAmount(e.target.value)} style={{width:"100%",padding:"14px 16px",background:"#0C0C0C",border:"1px solid #2A2A2A",borderRadius:10,color:"#F0EDE8",fontSize:20,fontWeight:700,outline:"none",fontFamily:"inherit"}}/>
+              {/* Hizli tutar: parca odemede tus tus yazmak yerine tek dokunus. */}
+              <div style={{display:"flex",gap:8,marginTop:8}}>
+                {[100, 200, 500].map(v => (
+                  <button key={v} onClick={()=>setAmount(String(v))}
+                    style={{flex:1,padding:"12px 0",background:"transparent",color:"#F0EDE8",border:"1px solid #2A2A2A",
+                            borderRadius:10,fontSize:14,fontWeight:700,cursor:"pointer",fontFamily:"inherit",fontVariantNumeric:"tabular-nums"}}>
+                    ₺{v}
+                  </button>
+                ))}
+                <button onClick={()=>setAmount(String(Math.max(0, Number(modal.total||0) - (usePoints && uyeId ? ptsCover(modal) : 0))))}
+                  style={{flex:1.3,padding:"12px 0",background:"#FFFFFF",color:"#0C0C0C",border:"1px solid #FFFFFF",
+                          borderRadius:10,fontSize:14,fontWeight:700,cursor:"pointer",fontFamily:"inherit"}}>
+                  Kalan
+                </button>
+              </div>
             </div>
 
 
