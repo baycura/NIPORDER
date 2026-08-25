@@ -20,10 +20,16 @@ export default function TodayPage() {
   useEffect(() => {
     let iptal = false;
     const yukle = async () => {
-      const start = businessDayStart().toISOString();
+      const bugunBas = businessDayStart();
+      const start = bugunBas.toISOString();
+      // "Dun bu saatte": dunun isletme gununde, bugun ne kadar zaman gectiyse
+      // o ana kadarki ciro. Tek basina 12.480 TL bir sey soylemiyor; kiyas soyluyor.
+      const gecenMs = Date.now() - bugunBas.getTime();
+      const dunBas = businessDayStart(new Date(), 1);
+      const dunKesim = new Date(dunBas.getTime() + gecenMs);
       const storeIds = staffUser?.store_ids?.length ? staffUser.store_ids : ["00000000-0000-0000-0000-000000000000"];
 
-      const [{ data: paid }, { data: acik }, { data: vardiyalar }] = await Promise.all([
+      const [{ data: paid }, { data: acik }, { data: vardiyalar }, { data: dun }] = await Promise.all([
         supabase.from("orders")
           .select("id,total,points_used,created_at,order_items(quantity,product_name)")
           .in("origin_store_id", storeIds).eq("status", "paid").gte("created_at", start),
@@ -32,6 +38,9 @@ export default function TodayPage() {
           .in("origin_store_id", storeIds).in("status", ["open", "sent", "preparing", "ready"]),
         supabase.from("shifts").select("staff_id,checked_in_at")
           .eq("date", businessDayKey(new Date())).eq("status", "active"),
+        supabase.from("orders").select("total,points_used")
+          .in("origin_store_id", storeIds).eq("status", "paid")
+          .gte("created_at", dunBas.toISOString()).lt("created_at", dunKesim.toISOString()),
       ]);
 
       // Vardiyadakilerin adlari (FK iliskisine guvenmeden iki adim)
@@ -46,6 +55,7 @@ export default function TodayPage() {
       }
 
       const ciro = (paid || []).reduce((t, o) => t + Number(o.total || 0) - Number(o.points_used || 0), 0);
+      const dunCiro = (dun || []).reduce((t, o) => t + Number(o.total || 0) - Number(o.points_used || 0), 0);
 
       const saatlik = Object.fromEntries(BUSINESS_HOURS.map(h => [h, 0]));
       (paid || []).forEach(o => {
@@ -65,7 +75,8 @@ export default function TodayPage() {
 
       if (!iptal) {
         setVeri({
-          ciro, saatlik,
+          ciro, dunCiro,
+          saatlik,
           siparisSayisi: (paid || []).length,
           acikSayi: (acik || []).length,
           acikTutar: (acik || []).reduce((t, o) => t + Number(o.total || 0), 0),
@@ -104,6 +115,20 @@ export default function TodayPage() {
 
       <Kart baslik="CİRO (TAHSİL EDİLEN)" tikla={isAdmin ? () => navigate("/reports") : undefined} cocuk={<>
         <div style={{ fontSize: 30, fontWeight: 800 }}>₺{Math.round(veri.ciro).toLocaleString("tr-TR")}</div>
+        {/* Tek basina bir rakam bir sey soylemiyor; ayni saatteki dun soyluyor. */}
+        {veri.dunCiro > 0 && (() => {
+          const fark = veri.ciro - veri.dunCiro;
+          const yuzde = Math.round((fark / veri.dunCiro) * 100);
+          return (
+            <div style={{ fontSize: 11, color: "#8A8580", marginTop: 4 }}>
+              Dün bu saatte <span style={{ color: "#F0EDE8", fontWeight: 700 }}>₺{Math.round(veri.dunCiro).toLocaleString("tr-TR")}</span>
+              {" · "}
+              <span style={{ color: "#F0EDE8", fontWeight: 700 }}>
+                {fark >= 0 ? "▲" : "▼"} %{Math.abs(yuzde)}
+              </span>
+            </div>
+          );
+        })()}
         <div style={{ display: "flex", alignItems: "flex-end", gap: 3, height: 46, marginTop: 8 }}>
           {BUSINESS_HOURS.map(h => (
             <div key={h} title={`${String(h).padStart(2, "0")}:00 — ₺${Math.round(veri.saatlik[h])}`}

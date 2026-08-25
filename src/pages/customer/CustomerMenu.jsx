@@ -984,7 +984,9 @@ export default function CustomerMenu() {
   }, [menuCategories]);
 
   // Shop sekmesi: raf/marka kategorileri ve urunleri (siparis edilebilir vitrin)
-  // Siralama sort_order ile: Not in Paris (100) en ustte, Ceren Studio (101), digerleri
+  // Siralama sort_order, esitlikte ada gore. Kafenin kendi markasi "Not in Paris"
+  // en ustte olsun diye sort_order'i 95 (digerleri 100+); esit birakilirsa ad
+  // siralamasi Murphy'yi one aliyordu.
   const shopCats = useMemo(() =>
     categories.filter(c => c.show_in_shop)
       .sort((a, b) => (a.sort_order || 0) - (b.sort_order || 0) || String(a.name).localeCompare(String(b.name), "tr")),
@@ -992,6 +994,23 @@ export default function CustomerMenu() {
   const shopCatIds = useMemo(() => new Set(shopCats.map(c => c.id)), [shopCats]);
   // Marka kutusunda acik olan alt grup: { kategori_id: "Şapkalar" | "__diger" | null }
   const [openGroup, setOpenGroup] = useState({});
+
+  // Tukenen urunde "haber ver". Eskiden urun sadece soluklasiyordu; musteri
+  // sessizce kayboluyor, o urune talep oldugunu kimse ogrenmiyordu.
+  const [haberVerilen, setHaberVerilen] = useState({});
+  const haberVer = async (p) => {
+    if (haberVerilen[p.id]) return;
+    setHaberVerilen(s => ({ ...s, [p.id]: true }));   // once ekranda onayla
+    const { error } = await supabase.from("restock_requests").insert({
+      product_id: p.id,
+      store_id: p.store_id || currentStoreId,
+      customer_id: customer?.id || null,
+    });
+    if (error) {
+      setHaberVerilen(s => ({ ...s, [p.id]: false }));
+      alert(L("Kaydedilemedi, tekrar dener misin?","Could not save, try again?","Не удалось сохранить, попробуйте ещё раз"));
+    }
+  };
   const gLabel = (g) => (GROUP_I18N[g] && GROUP_I18N[g][lang]) || g;
   // Grup secilmemisse hicbir urun gosterilmez (once grup secilir); gruplu urun
   // yoksa tum urunler dogrudan listelenir — eski davranis korunur.
@@ -1748,30 +1767,44 @@ export default function CustomerMenu() {
                       );
                     })()}
 
-                    <div style={{display:"grid",gridTemplateColumns:"1fr 1fr",gap:10,marginTop:12}}>
-                      {visibleShopProds(sc, prods).map(p => {
+                    {/* TEK SUTUN. Iki sutunda urun adi kirpiliyordu ("Bisiklet
+                        tisortu" -> "Bisiklet ti...") ve gorsel kucucuk kaliyordu. */}
+                    <div style={{display:"flex",flexDirection:"column",marginTop:8}}>
+                      {visibleShopProds(sc, prods).map((p, pi, dizi) => {
                         const fp = calcPrice(p);
                         const soldOut = p.sold_out_today;
                         const cartIdx = cart.findIndex(ci => ci.product.id === p.id && !ci.options);
                         const inCart = cartIdx >= 0 ? cart[cartIdx].quantity : 0;
                         return (
-                          <div key={p.id} style={{background:"#fff",border:"1px solid #eee",borderRadius:14,padding:"12px 12px 10px",display:"flex",flexDirection:"column",gap:6,opacity:soldOut?0.45:1}}>
-                            {p.image_url && <img src={p.image_url} alt="" style={{width:"100%",height:110,objectFit:"cover",borderRadius:10}}/>}
-                            <div style={{fontSize:13,fontWeight:700,lineHeight:1.3,minHeight:34}}>{pName(p)}</div>
-                            {pDesc(p) && <div style={{fontSize:11,color:"#777",lineHeight:1.4}}>{pDesc(p)}</div>}
-                            <div style={{display:"flex",alignItems:"center",justifyContent:"space-between",marginTop:"auto"}}>
-                              <span style={{fontSize:14,fontWeight:800}}>₺{fp}</span>
-                              {!soldOut && (inCart > 0 && !p.has_options ? (
-                                <div style={{display:"flex",alignItems:"center",gap:6,background:"#000",borderRadius:20,padding:"3px 5px"}}>
-                                  <button onClick={() => updateQty(cartIdx, -1)} style={{width:24,height:24,background:"transparent",color:"#fff",border:"none",fontSize:16,cursor:"pointer",fontWeight:700,padding:0}}>−</button>
-                                  <span style={{color:"#fff",fontSize:12,fontWeight:800,minWidth:14,textAlign:"center"}}>{inCart}</span>
-                                  <button onClick={() => updateQty(cartIdx, +1)} style={{width:24,height:24,background:"transparent",color:"#fff",border:"none",fontSize:16,cursor:"pointer",fontWeight:700,padding:0}}>+</button>
-                                </div>
-                              ) : (
-                                <button onClick={() => onProductTap(p)} style={{width:30,height:30,flexShrink:0,background:"#fff",color:"#000",border:"2px solid #000",borderRadius:7,fontSize:19,fontWeight:900,cursor:"pointer",display:"flex",alignItems:"center",justifyContent:"center",padding:0,lineHeight:1}}>+</button>
-                              ))}
+                          <div key={p.id} style={{display:"flex",gap:12,padding:"13px 2px",alignItems:"center",
+                                                  borderBottom: pi < dizi.length - 1 ? "1px solid #f0f0f0" : "none",
+                                                  opacity:soldOut?0.4:1}}>
+                            {p.image_url
+                              ? <img src={p.image_url} alt="" style={{width:70,height:70,objectFit:"cover",borderRadius:8,flexShrink:0}}/>
+                              : <span style={{width:70,height:70,background:"#f2f2f2",borderRadius:8,flexShrink:0,display:"block"}}></span>}
+                            <div style={{flex:1,minWidth:0}}>
+                              <div style={{fontSize:15,fontWeight:700,lineHeight:1.3}}>{pName(p)}</div>
+                              {pDesc(p) && <div style={{fontSize:12,color:"#666",lineHeight:1.35,marginTop:2}}>{pDesc(p)}</div>}
+                              {soldOut && <div style={{fontSize:12,color:"#666",lineHeight:1.35,marginTop:2}}>{L("Tükendi","Sold out","Распродано")}</div>}
+                              <div style={{fontSize:15,fontWeight:800,marginTop:5}}>₺{fp}</div>
+                              {p.has_options && !soldOut && <div style={{fontSize:10,color:"#000",fontWeight:700,letterSpacing:"0.4px",marginTop:3}}>{t.optional}</div>}
                             </div>
-                            {p.has_options && !soldOut && <div style={{fontSize:9,color:"#000000",fontWeight:700,letterSpacing:"0.4px"}}>{t.optional}</div>}
+                            {soldOut ? (
+                              <button onClick={() => haberVer(p)} disabled={haberVerilen[p.id]}
+                                style={{flexShrink:0,fontSize:11,fontWeight:700,border:"1px solid "+(haberVerilen[p.id]?"#ccc":"#000"),
+                                        background:"transparent",color:haberVerilen[p.id]?"#999":"#000",padding:"8px 10px",
+                                        borderRadius:8,cursor:haberVerilen[p.id]?"default":"pointer",fontFamily:"inherit",whiteSpace:"nowrap"}}>
+                                {haberVerilen[p.id] ? L("✓ Haber vereceğiz","✓ We'll tell you","✓ Сообщим") : L("Haber ver","Notify me","Сообщить")}
+                              </button>
+                            ) : (inCart > 0 && !p.has_options ? (
+                              <div style={{display:"flex",alignItems:"center",gap:6,background:"#000",borderRadius:24,padding:"3px 5px",flexShrink:0}}>
+                                <button onClick={() => updateQty(cartIdx, -1)} style={{width:26,height:26,background:"transparent",color:"#fff",border:"none",fontSize:17,cursor:"pointer",fontWeight:700,padding:0}}>−</button>
+                                <span style={{color:"#fff",fontSize:14,fontWeight:700,minWidth:16,textAlign:"center"}}>{inCart}</span>
+                                <button onClick={() => updateQty(cartIdx, +1)} style={{width:26,height:26,background:"transparent",color:"#fff",border:"none",fontSize:17,cursor:"pointer",fontWeight:700,padding:0}}>+</button>
+                              </div>
+                            ) : (
+                              <button onClick={() => onProductTap(p)} style={{width:36,height:36,flexShrink:0,background:"#fff",color:"#000",border:"2px solid #000",borderRadius:8,fontSize:21,fontWeight:900,cursor:"pointer",display:"flex",alignItems:"center",justifyContent:"center",padding:0,lineHeight:1}}>+</button>
+                            ))}
                           </div>
                         );
                       })}
