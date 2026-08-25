@@ -10,6 +10,7 @@ export default function MenuMgmtPage() {
   const [eurRate, setEurRate] = useState(0); // 1 € = ? ₺ (Ayarlar'dan)
   const [categories, setCategories] = useState([]);
   const [products, setProducts] = useState([]);
+  const [talepler, setTalepler] = useState({}); // urun_id -> kac kisi "haber ver" dedi
   const [loading, setLoading] = useState(true);
   const [selectedCat, setSelectedCat] = useState(null);
   const [catModal, setCatModal] = useState(null);
@@ -28,6 +29,14 @@ export default function MenuMgmtPage() {
     ]);
     setCategories(cats || []);
     setProducts(prods || []);
+    // Tukenen urune "haber ver" diyen musteri sayisi — hangi urunu geri getirmek
+    // gerektigi buradan gorunur (musteri Shop'ta tukenen urunde talep birakiyor).
+    supabase.from("restock_requests").select("product_id")
+      .then(({ data }) => {
+        const say = {};
+        (data || []).forEach(r => { say[r.product_id] = (say[r.product_id] || 0) + 1; });
+        setTalepler(say);
+      });
     // Euro kuru (Ayarlar > Euro Kuru) — EUR fiyatli urunlerin TL onizlemesi icin
     supabase.from("app_settings").select("value").eq("key", "eur_rate")
       .in("store_id", staffUser?.store_ids?.length ? staffUser.store_ids : ["00000000-0000-0000-0000-000000000000"])
@@ -329,6 +338,7 @@ export default function MenuMgmtPage() {
               </div>
               <div style={{fontSize:14,fontWeight:700,color:"#F0EDE8"}}>{p.name}</div>
                 {p.sold_out_today && <span style={{fontSize:9,padding:"2px 6px",background:"#2A2A2A",color:"#C87A6A",borderRadius:6,fontWeight:700}}>TUKENDI</span>}
+                {p.sold_out_today && talepler[p.id] > 0 && <span style={{fontSize:9,padding:"2px 6px",background:"#FFFFFF",color:"#0C0C0C",borderRadius:6,fontWeight:800}}>{talepler[p.id]} KİŞİ SORUYOR</span>}
                 {p.show_in_party_menu && <span style={{fontSize:9,padding:"2px 6px",background:"#2A2A2A",color:"#F0EDE8",borderRadius:6,fontWeight:700}}>PARTI</span>}
                 {p.has_options && <span style={{fontSize:9,padding:"2px 6px",background:"#2A2A2A",color:"#F0EDE8",borderRadius:6,fontWeight:700}}>SEÇENEKLI</span>}
                 {p.kitchen_consignment && <span style={{fontSize:9,padding:"2px 6px",background:"#2A2A2A",color:"#F0EDE8",borderRadius:6,fontWeight:700}}>MUTFAK</span>}
