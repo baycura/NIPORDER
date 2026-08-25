@@ -46,14 +46,19 @@ const rideLink = (r) =>
   : RIDES_URL;
 const FIND_BIKE_URL = "https://notinparis.me/pages/find-a-bike";
 const INSTAGRAM_URL = "https://instagram.com/notinparis.me";
+// Kazanc: 20 TL = 1 puan (%5); 1 puan = 1 TL olarak kasada harcanir (cuzdan).
+// SEVIYE PUANDAN gelir, ama CUZDAN BAKIYESINDEN degil KAZANILAN TOPLAM PUANDAN.
+// Aksi halde puanini kasada harcayan musteri seviye kaybederdi.
+// Kazanilan toplam puan = total_spent / 20 oldugu icin esikler bire bir karsilik:
+//   500 puan = 10.000 TL · 1.500 puan = 30.000 TL · 4.000 puan = 80.000 TL
+// Yani DB'de sema degisikligi gerekmiyor; fn_award_member_points ayni kaliyor.
+const PUAN_ORANI = 20;                                   // 20 TL = 1 puan
+const kazanilanPuan = (harcama) => Math.floor(Number(harcama || 0) / PUAN_ORANI);
 const TIERS = [
-  // Kazanc: 20 TL = 1 puan (%5); 1 puan = 1 TL olarak kasada harcanir (cuzdan).
-  // Seviye PUANDAN DEGIL toplam harcamadan gelir — puanini harcayan musteri
-  // seviye kaybetmesin. DB'deki fn_award_member_points ayni kurali uygular.
-  { key: "yeniyuz",   min: 0,     icon: "☕", tr: "Yeni Yüz",  en: "New Face", ru: "Новичок" },
-  { key: "mahalleli", min: 10000, icon: "🚲", tr: "Mahalleli", en: "Local",    ru: "Свой в районе" },
-  { key: "mudavim",   min: 30000, icon: "⭐", tr: "Müdavim",   en: "Regular",  ru: "Завсегдатай" },
-  { key: "aileden",   min: 80000, icon: "🗼", tr: "Aileden",   en: "Family",   ru: "Родной" },
+  { key: "yeniyuz",   min: 0,    icon: "☕", tr: "Yeni Yüz",  en: "New Face", ru: "Новичок" },
+  { key: "mahalleli", min: 500,  icon: "🚲", tr: "Mahalleli", en: "Local",    ru: "Свой в районе" },
+  { key: "mudavim",   min: 1500, icon: "⭐", tr: "Müdavim",   en: "Regular",  ru: "Завсегдатай" },
+  { key: "aileden",   min: 4000, icon: "🗼", tr: "Aileden",   en: "Family",   ru: "Родной" },
 ];
 
 const GOOGLE_RATE_URL = "https://share.google/AA07eYRVqpAoNFL8P";
@@ -1975,32 +1980,40 @@ export default function CustomerMenu() {
                     <div style={{fontSize:20,fontWeight:800}}>₺{Math.round(profileStats.totalSpent)}</div>
                     <div style={{fontSize:10,color:"#888",fontWeight:700}}>{L("HARCAMA","SPENT","ПОТРАЧЕНО")}</div>
                   </div>
+                  {/* CUZDAN — harcanabilir bakiye. Seviye bundan degil kazanilan
+                      toplam puandan hesaplanir (asagidaki seviye kartinda). */}
                   <div style={{background:"#111",color:"#FFFFFF",borderRadius:12,padding:"12px 8px",textAlign:"center"}}>
                     <div style={{fontSize:20,fontWeight:800}}>🪙 {Number(profileStats.cust?.points || 0)}</div>
-                    <div style={{fontSize:10,color:"#EDE6D8",fontWeight:700}}>{L("PUAN = ₺" + Number(profileStats.cust?.points || 0),"PTS = ₺" + Number(profileStats.cust?.points || 0),"= ₺" + Number(profileStats.cust?.points || 0))}</div>
+                    <div style={{fontSize:10,color:"#EDE6D8",fontWeight:700}}>{L("CÜZDAN = ₺" + Number(profileStats.cust?.points || 0),"WALLET = ₺" + Number(profileStats.cust?.points || 0),"КОШЕЛЁК = ₺" + Number(profileStats.cust?.points || 0))}</div>
                   </div>
                 </div>
 
                 {(() => {
-                  // Seviye toplam harcamadan; cuzdan (puan) ayri gosterilir
-                  const pts = Number(profileStats.cust?.total_spent || 0);
+                  // Seviye KAZANILAN TOPLAM PUANDAN. Cuzdandaki bakiye ayri
+                  // gosterilir — puanini harcayan musteri seviye kaybetmesin.
+                  const pts = kazanilanPuan(profileStats.cust?.total_spent);
                   const cur = [...TIERS].reverse().find(t => pts >= t.min) || TIERS[0];
                   const next = TIERS.find(t => t.min > pts);
                   const pct = next ? Math.min(100, Math.round(((pts - cur.min) / (next.min - cur.min)) * 100)) : 100;
+                  const kalan = next ? next.min - pts : 0;
                   return (
                     <div style={{background:"#111",color:"#fff",borderRadius:14,padding:"14px 16px",marginBottom:14}}>
                       <div style={{display:"flex",alignItems:"center",justifyContent:"space-between",marginBottom:next?8:0}}>
                         <span style={{fontSize:15,fontWeight:800}}>{cur.icon} {L(cur.tr, cur.en, cur.ru)}</span>
-                        <span style={{fontSize:11,color:"#bbb"}}>₺{Math.round(pts).toLocaleString("tr-TR")}</span>
+                        <span style={{fontSize:11,color:"#bbb",fontVariantNumeric:"tabular-nums"}}>
+                          {L(pts.toLocaleString("tr-TR") + " puan kazandın",
+                             pts.toLocaleString("tr-TR") + " pts earned",
+                             pts.toLocaleString("tr-TR") + " б. заработано")}
+                        </span>
                       </div>
                       {next && (<>
                         <div style={{height:6,background:"#333",borderRadius:4,overflow:"hidden"}}>
-                          <div style={{width:pct+"%",height:"100%",background:"#000000"}}/>
+                          <div style={{width:pct+"%",height:"100%",background:"#FFFFFF"}}/>
                         </div>
                         <div style={{fontSize:11,color:"#bbb",marginTop:6}}>
-                          {L("₺" + Math.round(next.min - pts).toLocaleString("tr-TR") + " sonra " + next.icon + " " + next.tr,
-                             "₺" + Math.round(next.min - pts).toLocaleString("tr-TR") + " to " + next.icon + " " + next.en,
-                             "ещё ₺" + Math.round(next.min - pts).toLocaleString("tr-TR") + " до " + next.icon + " " + next.ru)}
+                          {L(kalan.toLocaleString("tr-TR") + " puan sonra " + next.icon + " " + next.tr,
+                             kalan.toLocaleString("tr-TR") + " pts to " + next.icon + " " + next.en,
+                             "ещё " + kalan.toLocaleString("tr-TR") + " б. до " + next.icon + " " + next.ru)}
                         </div>
                       </>)}
                     </div>
