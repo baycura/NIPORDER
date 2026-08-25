@@ -103,7 +103,7 @@ export default function TasksPage() {
         <>
           <div style={{ marginBottom: 24 }}>
             <h2 style={{ fontSize: 13, color: "#888", marginBottom: 8, fontWeight: 700, letterSpacing: 1 }}>AKTİF ({active.length})</h2>
-            {active.length === 0 && <div style={{ color: "#666", fontSize: 14, fontStyle: "italic", padding: "12px 0" }}>Aktif görev yok</div>}
+            {active.length === 0 && <div style={{ color: "#888888", fontSize: 14, fontStyle: "italic", padding: "12px 0" }}>Aktif görev yok</div>}
             {active.map(t => (
               <div key={t.id} style={{ background: "#1A1A1A", border: "1px solid #2A2A2A", borderRadius: 10, padding: 14, marginBottom: 8, display: "flex", alignItems: "flex-start", gap: 12 }}>
                 <input type="checkbox" checked={false} onChange={() => toggle(t)} style={{ width: 22, height: 22, cursor: "pointer", marginTop: 2, accentColor: "#FFFFFF" }} />
@@ -119,7 +119,7 @@ export default function TasksPage() {
                   )}
                 </div>
                 {isPatron && (
-                  <button onClick={() => deleteTask(t.id)} style={{ background: "transparent", border: "none", color: "#666", cursor: "pointer", fontSize: 18 }} title="Sil">🗑️</button>
+                  <button onClick={() => deleteTask(t.id)} style={{ background: "transparent", border: "none", color: "#888888", cursor: "pointer", fontSize: 18 }} title="Sil">🗑️</button>
                 )}
               </div>
             ))}
@@ -127,13 +127,13 @@ export default function TasksPage() {
 
           <div>
             <h2 style={{ fontSize: 13, color: "#888", marginBottom: 8, fontWeight: 700, letterSpacing: 1 }}>TAMAMLANANLAR ({done.length})</h2>
-            {done.length === 0 && <div style={{ color: "#666", fontSize: 14, fontStyle: "italic", padding: "12px 0" }}>Henüz tamamlanan görev yok</div>}
+            {done.length === 0 && <div style={{ color: "#888888", fontSize: 14, fontStyle: "italic", padding: "12px 0" }}>Henüz tamamlanan görev yok</div>}
             {done.map(t => (
               <div key={t.id} style={{ background: "#0F0F0F", border: "1px solid #1A1A1A", borderRadius: 10, padding: 14, marginBottom: 8, display: "flex", alignItems: "flex-start", gap: 12, opacity: 0.75 }}>
                 <input type="checkbox" checked={true} onChange={() => toggle(t)} style={{ width: 22, height: 22, cursor: "pointer", marginTop: 2, accentColor: "#FFFFFF" }} />
                 <div style={{ flex: 1, minWidth: 0 }}>
                   <div style={{ fontSize: 15, fontWeight: 600, textDecoration: "line-through", color: "#888" }}>{t.title}</div>
-                  {t.description && <div style={{ fontSize: 13, color: "#666", marginTop: 4, textDecoration: "line-through" }}>{t.description}</div>}
+                  {t.description && <div style={{ fontSize: 13, color: "#888888", marginTop: 4, textDecoration: "line-through" }}>{t.description}</div>}
                   {isPatron && t.done_by && (
                     <div style={{ fontSize: 12, color: "#FFFFFF", marginTop: 6, fontWeight: 600 }}>
                       ✓ {staffMap[t.done_by] || "Bilinmiyor"} · {formatDate(t.done_at)}
@@ -141,7 +141,7 @@ export default function TasksPage() {
                   )}
                 </div>
                 {isPatron && (
-                  <button onClick={() => deleteTask(t.id)} style={{ background: "transparent", border: "none", color: "#666", cursor: "pointer", fontSize: 18 }} title="Sil">🗑️</button>
+                  <button onClick={() => deleteTask(t.id)} style={{ background: "transparent", border: "none", color: "#888888", cursor: "pointer", fontSize: 18 }} title="Sil">🗑️</button>
                 )}
               </div>
             ))}

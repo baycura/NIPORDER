@@ -114,7 +114,7 @@ export default function FixedExpensesPage() {
     <div style={{ fontFamily: cv, color: "#F0EDE8" }}>
       <div style={{ display: "flex", alignItems: "center", gap: 8, marginBottom: 4 }}>
         <div style={{ fontSize: 24, fontWeight: 800 }}>Sabit Giderler</div>
-        <span style={{ fontSize: 9, padding: "3px 8px", background: "#161616", color: "#8A8580", borderRadius: 6, fontWeight: 800, letterSpacing: "1px" }}>🔒 SADECE SAHİP</span>
+        <span style={{ fontSize:12, padding: "3px 8px", background: "#161616", color: "#8A8580", borderRadius: 6, fontWeight:600, letterSpacing:"0.2px" }}>🔒 SADECE SAHİP</span>
       </div>
       <div style={{ fontSize: 11, color: "#888", letterSpacing: "1px", marginBottom: 14 }}>
         {active.length} AKTİF GİDER · BU EKRANI PERSONEL GÖREMEZ
@@ -135,15 +135,15 @@ export default function FixedExpensesPage() {
       <div style={{ background: "#161616", border: "1px solid #FFFFFF", borderRadius: 12, padding: 16, marginBottom: 14 }}>
         <div style={{ display: "flex", justifyContent: "space-between", flexWrap: "wrap", gap: 12 }}>
           <div>
-            <div style={{ fontSize: 10, color: "#8A8580", letterSpacing: "1.5px", fontWeight: 700 }}>SABİT · AYLIK</div>
+            <div style={{ fontSize:12, color: "#8A8580", letterSpacing:"0.2px", fontWeight:600 }}>Sabit · aylık</div>
             <div style={{ fontSize: 26, fontWeight: 800, marginTop: 2 }}>{money(monthly)}</div>
           </div>
           <div>
-            <div style={{ fontSize: 10, color: "#8A8580", letterSpacing: "1.5px", fontWeight: 700 }}>MAL ALIMI · BU AY</div>
+            <div style={{ fontSize:12, color: "#8A8580", letterSpacing:"0.2px", fontWeight:600 }}>Mal alımı · bu ay</div>
             <div style={{ fontSize: 26, fontWeight: 800, marginTop: 2 }}>{money(alim)}</div>
           </div>
           <div>
-            <div style={{ fontSize: 10, color: "#8A8580", letterSpacing: "1.5px", fontWeight: 700 }}>GÜNLÜK BAŞABAŞ</div>
+            <div style={{ fontSize:12, color: "#8A8580", letterSpacing:"0.2px", fontWeight:600 }}>Günlük başabaş</div>
             <div style={{ fontSize: 26, fontWeight: 800, marginTop: 2 }}>{money(daily)}</div>
           </div>
         </div>
@@ -181,7 +181,7 @@ export default function FixedExpensesPage() {
 
       <button onClick={openNew} style={{ padding: "10px 16px", background: "#FFFFFF", color: "#000", border: "none", borderRadius: 10, fontSize: 13, fontWeight: 800, cursor: "pointer", marginBottom: 14 }}>+ Yeni Gider</button>
 
-      {items.length === 0 && <div style={{ textAlign: "center", padding: 40, color: "#666", fontSize: 13 }}>Henüz gider yok. Kira, maaşlar, elektrik, internet... ekleyin.</div>}
+      {items.length === 0 && <div style={{ textAlign: "center", padding: 40, color: "#888888", fontSize: 13 }}>Henüz gider yok. Kira, maaşlar, elektrik, internet... ekleyin.</div>}
 
       {items.map(i => {
         const c = catOf(i.category);
@@ -192,7 +192,7 @@ export default function FixedExpensesPage() {
               <div style={{ flex: 1, minWidth: 0 }}>
                 <div style={{ fontSize: 14, fontWeight: 700 }}>
                   {c.icon} {i.name}
-                  {off && <span style={{ marginLeft: 6, fontSize: 9, padding: "2px 6px", background: "#333", color: "#999", borderRadius: 6, fontWeight: 700 }}>PASİF</span>}
+                  {off && <span style={{ marginLeft: 6, fontSize: 9, padding: "2px 6px", background: "#333", color: "#999", borderRadius: 6, fontWeight: 700 }}>Pasif</span>}
                 </div>
                 <div style={{ fontSize: 11, color: "#888", marginTop: 3 }}>
                   {c.label}{i.day_of_month ? " · her ayın " + i.day_of_month + "'i" : ""}{i.notes ? " · " + i.notes : ""}
@@ -240,7 +240,7 @@ const saveBtn = { flex: 2, padding: "12px", background: "#FFFFFF", color: "#000"
 
 function Field({ label, children }) {
   return (<div style={{ marginBottom: 12 }}>
-    <div style={{ fontSize: 10, color: "#888", letterSpacing: "1.5px", fontWeight: 700, marginBottom: 5 }}>{label}</div>
+    <div style={{ fontSize:12, color: "#888", letterSpacing:"0.2px", fontWeight:600, marginBottom: 5 }}>{label}</div>
     {children}
   </div>);
 }

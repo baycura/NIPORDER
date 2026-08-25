@@ -69,7 +69,7 @@ export default function StockMgmtPage() {
       {totalValue > 0 && (
         <div style={{background:"#161616",border:"1px solid #FFFFFF",borderRadius:12,padding:14,marginBottom:14,display:"flex",justifyContent:"space-between",alignItems:"center"}}>
           <div>
-            <div style={{fontSize:11,color:"#8A8580",letterSpacing:"1.5px",fontWeight:700}}>TOPLAM STOK DEGERI</div>
+            <div style={{fontSize:11,color:"#8A8580",letterSpacing:"1.5px",fontWeight:700}}>Toplam stok değeri</div>
             <div style={{fontSize:22,color:"#F0EDE8",fontWeight:800,marginTop:2}}>₺{Math.round(totalValue).toLocaleString("tr-TR")}</div>
           </div>
         </div>
@@ -77,7 +77,7 @@ export default function StockMgmtPage() {
 
       <button onClick={openNew} style={{padding:"10px 16px",background:"#FFFFFF",color:"#000",border:"none",borderRadius:10,fontSize:13,fontWeight:800,cursor:"pointer",marginBottom:14}}>+ Yeni Hammadde</button>
 
-      {items.length === 0 && <div style={{textAlign:"center",padding:40,color:"#666",fontSize:13}}>Hic hammadde yok. Ekle veya fatura yukle.</div>}
+      {items.length === 0 && <div style={{textAlign:"center",padding:40,color:"#888888",fontSize:13}}>Hic hammadde yok. Ekle veya fatura yukle.</div>}
 
       {items.map(i => {
         const value = (Number(i.stock_qty)||0) * (Number(i.cost_per_unit)||0);
@@ -88,9 +88,9 @@ export default function StockMgmtPage() {
               <div style={{flex:1,minWidth:0}}>
                 <div style={{display:"flex",alignItems:"center",gap:6,flexWrap:"wrap"}}>
                   <div style={{fontSize:14,fontWeight:700,color:"#F0EDE8"}}>{i.name}</div>
-                  {isLow && <span style={{fontSize:9,padding:"2px 6px",background:"#2A2A2A",color:"#C87A6A",borderRadius:6,fontWeight:700}}>AZALAN</span>}
+                  {isLow && <span style={{fontSize:9,padding:"2px 6px",background:"#2A2A2A",color:"#C87A6A",borderRadius:6,fontWeight:700}}>Azalan</span>}
                   {i.waste_pct > 0 && <span style={{fontSize:9,padding:"2px 6px",background:"#2A2A2A",color:"#F0EDE8",borderRadius:6,fontWeight:700}}>FIRE %{i.waste_pct}</span>}
-                  {i.is_consumable && <span style={{fontSize:9,padding:"2px 6px",background:"#2A2A2A",color:"#F0EDE8",borderRadius:6,fontWeight:700}}>SARF</span>}
+                  {i.is_consumable && <span style={{fontSize:9,padding:"2px 6px",background:"#2A2A2A",color:"#F0EDE8",borderRadius:6,fontWeight:700}}>Sarf</span>}
                   {Number(i.unit_volume_ml) > 0 && <span style={{fontSize:9,padding:"2px 6px",background:"#22262E",color:"#8A8580",borderRadius:6,fontWeight:700}}>{Number(i.pack_qty)>1 ? i.pack_qty+"x" : ""}{Number(i.unit_volume_ml)>=1000 ? (Number(i.unit_volume_ml)/1000)+"L" : i.unit_volume_ml+"ml"}</span>}
                 </div>
                 <div style={{fontSize:12,color:"#888",marginTop:3}}>
@@ -123,7 +123,7 @@ export default function StockMgmtPage() {
           <Field label="FIRE ORANI (%)"><input type="number" step="0.1" min="0" max="100" value={form.waste_pct||0} onChange={e=>setForm({...form,waste_pct:e.target.value})} placeholder="orn: 3 = %3 dokulme/fire" style={inputS}/></Field>
 
           <div style={{background:"#0C0C0C",border:"1px solid #2A2A2A",borderRadius:10,padding:12,marginBottom:12}}>
-            <div style={{fontSize:10,color:"#8A8580",letterSpacing:"1.5px",fontWeight:700,marginBottom:8}}>📦 AMBALAJ (fatura girisi bunu kullanir)</div>
+            <div style={{fontSize:12,color:"#8A8580",letterSpacing:"0.2px",fontWeight:600,marginBottom:8}}>📦 AMBALAJ (fatura girisi bunu kullanir)</div>
             <Field label="KOLI ICI ADET (koli gelmiyorsa 1)">
               <input type="number" min="1" step="1" value={form.pack_qty||1} onChange={e=>setForm({...form,pack_qty:e.target.value})} placeholder="orn: 24 sise/koli" style={inputS}/>
             </Field>
@@ -168,7 +168,7 @@ const saveBtn = {flex:2,padding:"12px",background:"#FFFFFF",color:"#000",border:
 
 function Field({label, children}) {
   return (<div style={{marginBottom:12}}>
-    <div style={{fontSize:10,color:"#888",letterSpacing:"1.5px",fontWeight:700,marginBottom:5}}>{label}</div>
+    <div style={{fontSize:12,color:"#888",letterSpacing:"0.2px",fontWeight:600,marginBottom:5}}>{label}</div>
     {children}
   </div>);
 }

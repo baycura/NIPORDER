@@ -140,7 +140,7 @@ export default function StaffMgmtPage() {
                   <div style={{fontSize:11,color,letterSpacing:"1px",marginTop:2,fontWeight:600}}>{displayRole?.toUpperCase()}{s.role === "admin" && <span style={{color:"#FFFFFF",marginLeft:6}}>★</span>}</div>
                   {s.email && <div style={{fontSize:11,color:"#888",marginTop:3}}>{s.email}</div>}
                   {s.phone && <div style={{fontSize:11,color:"#888"}}>{s.phone}</div>}
-                  {s.last_login && <div style={{fontSize:10,color:"#666",marginTop:3}}>Son giris: {new Date(s.last_login).toLocaleDateString("tr-TR")}</div>}
+                  {s.last_login && <div style={{fontSize:10,color:"#888888",marginTop:3}}>Son giris: {new Date(s.last_login).toLocaleDateString("tr-TR")}</div>}
                 </div>
                 <div style={{display:"flex",flexDirection:"column",gap:4,flexShrink:0}}>
                   <button onClick={() => openEdit(s)} style={{padding:"5px 9px",background:"#222",color:"#aaa",border:"1px solid #333",borderRadius:6,fontSize:10,cursor:"pointer",fontWeight:700}}>Duzenle</button>
@@ -211,7 +211,7 @@ const saveBtn = {flex:2,padding:"12px",background:"#FFFFFF",color:"#000",border:
 
 function Field({label, children}) {
   return (<div style={{marginBottom:12}}>
-    <div style={{fontSize:10,color:"#888",letterSpacing:"1.5px",fontWeight:700,marginBottom:5}}>{label}</div>
+    <div style={{fontSize:12,color:"#888",letterSpacing:"0.2px",fontWeight:600,marginBottom:5}}>{label}</div>
     {children}
   </div>);
 }

@@ -360,7 +360,7 @@ export default function OrderDetailPage() {
 
       <div style={{marginBottom:14}}>
         <div style={{display:"flex",alignItems:"center",gap:8,flexWrap:"wrap"}}>
-          {order.stores?.slug && <span style={{display:"inline-block",background:order.stores.slug==="doner"?"#FFFFFF":"#222222",color:order.stores.slug==="doner"?"#000":"#F0EDE8",padding:"3px 10px",borderRadius:6,fontSize:10,fontWeight:800,letterSpacing:"0.5px"}}>{order.stores.slug==="doner"?"🥙 DÖNER":"🗼 PARIS"}</span>}
+          {order.stores?.slug && <span style={{display:"inline-block",background:order.stores.slug==="doner"?"#FFFFFF":"#222222",color:order.stores.slug==="doner"?"#000":"#F0EDE8",padding:"3px 10px",borderRadius:6,fontSize:12,fontWeight:600,letterSpacing:"0.2px"}}>{order.stores.slug==="doner"?"🥙 DÖNER":"🗼 PARIS"}</span>}
           {where ? (
             <div style={{display:"flex",alignItems:"center",gap:8,flexWrap:"wrap"}}>
               <div style={{fontSize:24,fontWeight:800}}>{where}</div>
@@ -372,14 +372,14 @@ export default function OrderDetailPage() {
               <input value={customerNameEdit} onChange={e=>setCustomerNameEdit(e.target.value)} onBlur={saveCustomerName} placeholder="Müşteri adı" style={{background:"#1A1A1A",border:"1px solid #2A2A2A",color:"#F0EDE8",fontSize:22,fontWeight:800,padding:"4px 10px",borderRadius:8,outline:"none",fontFamily:"inherit",width:220}}/>
             </div>
           )}
-          <div style={{fontSize:10,padding:"3px 8px",background:"#2A2A2A",color:"#aaa",borderRadius:6,fontWeight:700,letterSpacing:"1px"}}>{order.status?.toUpperCase()}</div>
+          <div style={{fontSize:12,padding:"3px 8px",background:"#2A2A2A",color:"#aaa",borderRadius:6,fontWeight:600,letterSpacing:"0.2px"}}>{order.status?.toUpperCase()}</div>
         </div>
         <div style={{fontSize:11,color:"#888",marginTop:4}}>{totalItems} urun · ₺{order.total || 0}</div>
       </div>
 
       {/* Uye bagla: bagli uyenin ozel fiyatlari eklenen urunlere otomatik uygulanir */}
       <div style={{marginBottom:14,background:"#161616",border:"1px solid "+(order?.customer_id?"#FFFFFF":"#2A2A2A"),borderRadius:10,padding:10}}>
-        <div style={{fontSize:10,color:order?.customer_id?"#FFFFFF":"#888",letterSpacing:"1.5px",fontWeight:700,marginBottom:6}}>
+        <div style={{fontSize:12,color:order?.customer_id?"#FFFFFF":"#888",letterSpacing:"0.2px",fontWeight:600,marginBottom:6}}>
           {order?.customer_id ? "👤 ÜYE HESABI BAĞLI" : "👤 ÜYE HESABI"}
         </div>
         <select value={order?.customer_id || ""} onChange={e => linkCustomer(e.target.value || null)}
@@ -387,7 +387,7 @@ export default function OrderDetailPage() {
           <option value="">— Üye değil (misafir) —</option>
           {customers.map(c => (<option key={c.id} value={c.id}>{c.name}{c.phone ? " · " + c.phone : ""}</option>))}
         </select>
-        <div style={{fontSize:10,color:"#777",marginTop:6,lineHeight:1.5}}>
+        <div style={{fontSize:10,color:"#888888",marginTop:6,lineHeight:1.5}}>
           {order?.customer_id
             ? (Object.keys(memberPrices).length > 0
                 ? "Bu üyenin " + Object.keys(memberPrices).length + " özel fiyatı var — eklediğin ürünlere otomatik uygulanır (kampanya daha ucuzsa kampanya)."
@@ -401,7 +401,7 @@ export default function OrderDetailPage() {
       </div>
 
       <div style={{marginBottom:14}}>
-        {items.length === 0 && <div style={{color:"#666",fontSize:12,textAlign:"center",padding:20}}>Henüz ürün yok. Aşağıdan ekle.</div>}
+        {items.length === 0 && <div style={{color:"#888888",fontSize:12,textAlign:"center",padding:20}}>Henüz ürün yok. Aşağıdan ekle.</div>}
         {items.map(it => {
           const opts = optionsText(it.selected_options);
           const prod = products.find(p => p.id === it.product_id);
@@ -416,7 +416,7 @@ export default function OrderDetailPage() {
                 {it.notes && <div style={{fontSize:11,color:"#aaa",fontStyle:"italic",marginTop:2}}>Not: {it.notes}</div>}
                 <div style={{fontSize:11,marginTop:4}}>
                   {Number(it.final_price) < Number(it.product_price) && (
-                    <span style={{color:"#666",textDecoration:"line-through",marginRight:5}}>₺{Math.round(Number(it.product_price))}</span>
+                    <span style={{color:"#888888",textDecoration:"line-through",marginRight:5}}>₺{Math.round(Number(it.product_price))}</span>
                   )}
                   {it.is_treat
                     ? <span style={{color:"#F0EDE8",fontWeight:800}}>🎁 İKRAM{verenAdi(it.treated_by) ? " — " + verenAdi(it.treated_by) : ""} · </span>
@@ -460,7 +460,7 @@ export default function OrderDetailPage() {
             Geri al
           </button>
           <button onClick={() => setSonEklenen(null)} aria-label="Kapat"
-            style={{background:"none",border:"none",color:"#666",fontSize:16,lineHeight:1,cursor:"pointer",padding:0,flexShrink:0,fontFamily:"inherit"}}>×</button>
+            style={{background:"none",border:"none",color:"#888888",fontSize:16,lineHeight:1,cursor:"pointer",padding:0,flexShrink:0,fontFamily:"inherit"}}>×</button>
         </div>
       )}
 
@@ -492,7 +492,7 @@ export default function OrderDetailPage() {
             </div>
             {!q && sikUrunler.length > 0 && (
               <div style={{marginTop:12,display:"flex",flexDirection:"column",gap:9}}>
-                <div style={{fontSize:10,color:"#8A8580",letterSpacing:"1.5px",fontWeight:700,textTransform:"uppercase"}}>Sık eklediklerin</div>
+                <div style={{fontSize:12,color:"#8A8580",letterSpacing:"0.2px",fontWeight:600,textTransform:"uppercase"}}>Sık eklediklerin</div>
                 <div style={{display:"flex",gap:8,flexWrap:"wrap"}}>
                   {sikUrunler.map(p => (
                     <button key={p.id} onClick={() => addProduct(p)}
@@ -507,7 +507,7 @@ export default function OrderDetailPage() {
             {!q && (
             <div style={{display:"flex",gap:5,overflowX:"auto",marginTop:10,paddingBottom:4}}>
               {catChips.map(c => (
-                <button key={c.id} onClick={() => setSelectedCat(c.id)} style={{flexShrink:0,padding:"6px 10px",border:"1px solid "+(selectedCat===c.id?"#FFFFFF":"#333"),borderRadius:12,fontSize:10,fontWeight:700,background:selectedCat===c.id?"rgba(255,255,255,0.2)":"#1A1A1A",color:selectedCat===c.id?"#FFFFFF":"#aaa",cursor:"pointer",whiteSpace:"nowrap",letterSpacing:"0.5px"}}>
+                <button key={c.id} onClick={() => setSelectedCat(c.id)} style={{flexShrink:0,padding:"6px 10px",border:"1px solid "+(selectedCat===c.id?"#FFFFFF":"#333"),borderRadius:12,fontSize:12,fontWeight:600,background:selectedCat===c.id?"rgba(255,255,255,0.2)":"#1A1A1A",color:selectedCat===c.id?"#FFFFFF":"#aaa",cursor:"pointer",whiteSpace:"nowrap",letterSpacing:"0.2px"}}>
                   {c.icon}{c.name?.toUpperCase()}
                 </button>
               ))}
@@ -519,14 +519,14 @@ export default function OrderDetailPage() {
                 <div key={p.id} style={{display:"flex",alignItems:"center",justifyContent:"space-between",padding:"12px 8px",borderBottom:"1px solid #222",gap:10}}>
                   <div>
                     <div style={{fontSize:15,fontWeight:700}}>{p.name}{p.brand && <span style={{color:"#888",fontWeight:600}}> · {p.brand}</span>}</div>
-                    {q && <div style={{fontSize:10,color:"#777",marginTop:1,letterSpacing:"0.5px"}}>{catNameOf(p)}</div>}
+                    {q && <div style={{fontSize:12,color:"#888888",marginTop:1,letterSpacing:"0.2px"}}>{catNameOf(p)}</div>}
                     {p.track_stock && <div style={{fontSize:11,color:Number(p.retail_stock)>0?"#8A8580":"#C87A6A",marginTop:2,fontWeight:600}}>Stok: {p.retail_stock||0} adet{Array.isArray(p.variants)&&p.variants.length?" · "+p.variants.filter(v=>Number(v.stock)>0).map(v=>v.name).join("/"):""}</div>}
                     <div style={{fontSize:13,color:"#FFFFFF",fontWeight:700,marginTop:2}}>
                       {hhPrices[p.id] != null && Number(p.price) > 0 ? (
                         <>
-                          <span style={{color:"#666",textDecoration:"line-through",fontWeight:600,marginRight:6}}>₺{Math.round(Number(p.price))}</span>
+                          <span style={{color:"#888888",textDecoration:"line-through",fontWeight:600,marginRight:6}}>₺{Math.round(Number(p.price))}</span>
                           <span>₺{Math.round(Number(hhPrices[p.id]))}</span>
-                          <span style={{marginLeft:6,fontSize:9,padding:"2px 6px",background:"#FFFFFF",color:"#000",borderRadius:5,letterSpacing:"0.5px"}}>HAPPY HOUR</span>
+                          <span style={{marginLeft:6,fontSize:12,padding:"2px 6px",background:"#FFFFFF",color:"#000",borderRadius:5,letterSpacing:"0.2px"}}>Happy hour</span>
                         </>
                       ) : (Number(p.price) > 0 ? "₺" + p.price : "Serbest tutar")}
                     </div>
@@ -581,7 +581,7 @@ export default function OrderDetailPage() {
               <div style={{fontSize:11,color:"#888",marginBottom:14}}>Seçenekleri işaretle{gruplar.some(g=>g.multi) ? " (çoklu seçim olabilir)" : ""}</div>
               {gruplar.map(g => (
                 <div key={g.name} style={{marginBottom:14}}>
-                  <div style={{fontSize:10,letterSpacing:"1.5px",color:"#8A8580",fontWeight:700,marginBottom:6}}>
+                  <div style={{fontSize:12,letterSpacing:"0.2px",color:"#8A8580",fontWeight:600,marginBottom:6}}>
                     {g.name.toLocaleUpperCase("tr-TR")}{g.required ? " *" : ""}
                   </div>
                   <div style={{display:"flex",flexWrap:"wrap",gap:6}}>

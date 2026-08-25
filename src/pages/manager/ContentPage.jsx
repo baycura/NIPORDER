@@ -143,7 +143,7 @@ export default function ContentPage() {
 
       <button onClick={openNew} style={{padding:"10px 16px",background:"#FFFFFF",color:"#000",border:"none",borderRadius:10,fontSize:13,fontWeight:800,cursor:"pointer",marginBottom:14}}>+ Yeni İçerik</button>
 
-      {filtered.length === 0 && <div style={{textAlign:"center",padding:30,color:"#666",fontSize:12}}>Henüz içerik yok</div>}
+      {filtered.length === 0 && <div style={{textAlign:"center",padding:30,color:"#888888",fontSize:12}}>Henüz içerik yok</div>}
 
       {filtered.map(p => (
         <div key={p.id} style={{background:"#1A1A1A",border:"1px solid #2A2A2A",borderRadius:10,padding:12,marginBottom:8,display:"flex",gap:12,alignItems:"center",opacity:p.is_active===false?0.5:1}}>
@@ -151,7 +151,7 @@ export default function ContentPage() {
           <div style={{flex:1,minWidth:0}}>
             <div style={{fontSize:14,fontWeight:700,color:"#F0EDE8"}}>{p.title}</div>
             <div style={{fontSize:11,color:"#888",marginTop:2,overflow:"hidden",textOverflow:"ellipsis",whiteSpace:"nowrap"}}>{p.body || "—"}</div>
-            <div style={{fontSize:10,color:"#666",marginTop:2}}>{(p.images||[]).length} foto · {new Date(p.created_at).toLocaleDateString("tr-TR")}</div>
+            <div style={{fontSize:10,color:"#888888",marginTop:2}}>{(p.images||[]).length} foto · {new Date(p.created_at).toLocaleDateString("tr-TR")}</div>
           </div>
           <div style={{display:"flex",flexDirection:"column",gap:4,flexShrink:0}}>
             <button onClick={() => openEdit(p)} style={{padding:"5px 9px",background:"#222",color:"#aaa",border:"1px solid #333",borderRadius:6,fontSize:10,cursor:"pointer",fontWeight:700}}>Düzenle</button>
@@ -173,7 +173,7 @@ export default function ContentPage() {
             </div>
 
             <div style={{background:"#161616",border:"1px solid #2A2A2A",borderRadius:12,padding:12,marginBottom:14}}>
-              <div style={{fontSize:10,color:"#F0EDE8",letterSpacing:"1.5px",fontWeight:700,marginBottom:8}}>🤖 AI İLE YAZ (üç dilde birden)</div>
+              <div style={{fontSize:12,color:"#F0EDE8",letterSpacing:"0.2px",fontWeight:600,marginBottom:8}}>🤖 AI İLE YAZ (üç dilde birden)</div>
               <textarea value={aiBrief} onChange={e=>setAiBrief(e.target.value)} rows={2}
                 placeholder={form.kind==="urun"
                   ? "örn: bisikletçi arkadaşlarla tasarladığımız tişört, sırtında Fethiye rotası var"
@@ -193,7 +193,7 @@ export default function ContentPage() {
                   📸 <b>Fotoğraf önerisi:</b> {aiTip}
                 </div>
               )}
-              <div style={{fontSize:10,color:"#666",marginTop:8,lineHeight:1.5}}>
+              <div style={{fontSize:10,color:"#888888",marginTop:8,lineHeight:1.5}}>
                 Metinler aşağıdaki alanlara yazılır — beğenmezsen düzenle, sonra kaydet. Fotoğraf saklanmaz, AI yalnızca yazarken bakar.
               </div>
             </div>
@@ -202,13 +202,13 @@ export default function ContentPage() {
             <Field label={form.kind==="urun"?"HİKAYE / TANITIM (Türkçe)":"YAZI (Türkçe)"}><textarea value={form.body||""} onChange={e=>setForm({...form,body:e.target.value})} rows={5} style={{...inputS,resize:"vertical"}}/></Field>
 
             <div style={{background:"#141414",border:"1px solid #2A2A2A",borderRadius:10,padding:12,marginBottom:12}}>
-              <div style={{fontSize:10,color:"#888",letterSpacing:"1.5px",fontWeight:700,marginBottom:8}}>🇬🇧 ENGLISH (opsiyonel — boşsa Türkçe gösterilir)</div>
+              <div style={{fontSize:12,color:"#888",letterSpacing:"0.2px",fontWeight:600,marginBottom:8}}>🇬🇧 ENGLISH (opsiyonel — boşsa Türkçe gösterilir)</div>
               <Field label="TITLE"><input value={form.title_en||""} onChange={e=>setForm({...form,title_en:e.target.value})} style={inputS}/></Field>
               <Field label="TEXT"><textarea value={form.body_en||""} onChange={e=>setForm({...form,body_en:e.target.value})} rows={4} style={{...inputS,resize:"vertical"}}/></Field>
             </div>
 
             <div style={{background:"#141414",border:"1px solid #2A2A2A",borderRadius:10,padding:12,marginBottom:12}}>
-              <div style={{fontSize:10,color:"#888",letterSpacing:"1.5px",fontWeight:700,marginBottom:8}}>🇷🇺 РУССКИЙ (opsiyonel — boşsa Türkçe gösterilir)</div>
+              <div style={{fontSize:12,color:"#888",letterSpacing:"0.2px",fontWeight:600,marginBottom:8}}>🇷🇺 РУССКИЙ (opsiyonel — boşsa Türkçe gösterilir)</div>
               <Field label="ЗАГОЛОВОК"><input value={form.title_ru||""} onChange={e=>setForm({...form,title_ru:e.target.value})} style={inputS}/></Field>
               <Field label="ТЕКСТ"><textarea value={form.body_ru||""} onChange={e=>setForm({...form,body_ru:e.target.value})} rows={4} style={{...inputS,resize:"vertical"}}/></Field>
             </div>
@@ -218,7 +218,7 @@ export default function ContentPage() {
             </Field>
 
             <div style={{marginBottom:12}}>
-              <div style={{fontSize:10,color:"#888",letterSpacing:"1.5px",fontWeight:700,marginBottom:5}}>FOTOĞRAFLAR</div>
+              <div style={{fontSize:12,color:"#888",letterSpacing:"0.2px",fontWeight:600,marginBottom:5}}>Fotoğraflar</div>
               <input type="file" accept="image/*" multiple onChange={uploadPhotos} style={{...inputS,padding:"8px"}}/>
               {(form.images||[]).length > 0 && (
                 <div style={{display:"flex",gap:8,overflowX:"auto",marginTop:8,paddingBottom:4}}>
@@ -254,7 +254,7 @@ const inputS = {width:"100%",padding:"10px 12px",background:"#0C0C0C",border:"1p
 
 function Field({label, children}) {
   return (<div style={{marginBottom:12,flex:1}}>
-    <div style={{fontSize:10,color:"#888",letterSpacing:"1.5px",fontWeight:700,marginBottom:5}}>{label}</div>
+    <div style={{fontSize:12,color:"#888",letterSpacing:"0.2px",fontWeight:600,marginBottom:5}}>{label}</div>
     {children}
   </div>);
 }

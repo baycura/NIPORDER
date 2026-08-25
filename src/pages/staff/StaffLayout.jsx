@@ -87,10 +87,10 @@ export default function StaffLayout() {
               <button onClick={() => grupAc(g.ad)}
                 style={{width:"100%",display:"flex",alignItems:"center",gap:8,padding:"9px 12px",borderRadius:9,
                         background:"#1B1B1B",border:"none",cursor:"pointer",fontFamily:cv,
-                        fontSize:10.5,letterSpacing:"1.6px",fontWeight:800,
+                        fontSize:12.5,letterSpacing:"0.2px",fontWeight:600,
                         color: g.sari ? "#8A8580" : "#B8B3AC"}}>
                 {g.ad}
-                <span style={{marginLeft:"auto",color:"#666",fontSize:10}}>{acik ? "▾" : "▸"}</span>
+                <span style={{marginLeft:"auto",color:"#888888",fontSize:10}}>{acik ? "▾" : "▸"}</span>
               </button>
               {acik && (
                 <div style={{display:"flex",flexDirection:"column",gap:1,padding:"4px 0 4px 6px"}}>
@@ -105,9 +105,9 @@ export default function StaffLayout() {
         <div style={{width:34,height:34,borderRadius:"50%",background:color+"33",display:"flex",alignItems:"center",justifyContent:"center",color,fontSize:15,fontWeight:700,fontFamily:cv}}>{staffUser?.name?.[0]||"?"}</div>
         <div style={{flex:1,minWidth:0}}>
           <div style={{color:"#F0EDE8",fontSize:13,fontWeight:700,fontFamily:cv,whiteSpace:"nowrap",overflow:"hidden",textOverflow:"ellipsis"}}>{staffUser?.name}</div>
-          <div style={{color,fontSize:10,letterSpacing:"1px",fontFamily:cv,fontWeight:600}}>{displayRole?.toUpperCase()}</div>
+          <div style={{color,fontSize:12,letterSpacing:"0.2px",fontFamily:cv,fontWeight:600}}>{displayRole?.toUpperCase()}</div>
         </div>
-        <button onClick={async()=>{await signOut();navigate("/login");}} title="Çıkış" aria-label="Çıkış" style={{background:"none",border:"none",color:"#666",fontSize:18,cursor:"pointer",padding:6}}>🚪</button>
+        <button onClick={async()=>{await signOut();navigate("/login");}} title="Çıkış" aria-label="Çıkış" style={{background:"none",border:"none",color:"#888888",fontSize:18,cursor:"pointer",padding:6}}>🚪</button>
       </div>
     </div>
   );
@@ -138,7 +138,7 @@ export default function StaffLayout() {
       {sekmeler.map(item => (
         <NavLink key={item.to} to={item.to} style={({isActive}) => ({display:"flex",flexDirection:"column",alignItems:"center",gap:3,textDecoration:"none",color:isActive?"#FFFFFF":"#666",padding:"4px 8px",minWidth:48})}>
           <span style={{fontSize:22}}>{item.icon}</span>
-          <span style={{fontSize:10,letterSpacing:"0.5px",fontWeight:600}}>{item.label.toLocaleUpperCase("tr-TR")}</span>
+          <span style={{fontSize:12,letterSpacing:"0.2px",fontWeight:600}}>{item.label.toLocaleUpperCase("tr-TR")}</span>
         </NavLink>
       ))}
     </nav>

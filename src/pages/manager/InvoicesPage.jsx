@@ -402,7 +402,7 @@ export default function InvoicesPage() {
         </div>
       )}
 
-      {invoices.length === 0 && <div style={{textAlign:"center",padding:40,color:"#666",fontSize:13}}>Henuz fatura yok</div>}
+      {invoices.length === 0 && <div style={{textAlign:"center",padding:40,color:"#888888",fontSize:13}}>Henüz fatura yok</div>}
 
       {invoices.map(inv => (
         <div key={inv.id} style={{background:"#1A1A1A",border:"1px solid #2A2A2A",borderRadius:10,padding:12,marginBottom:8}}>
@@ -414,7 +414,7 @@ export default function InvoicesPage() {
                 {inv.invoice_no ? " · No " + inv.invoice_no : ""}
               </div>
               {inv.supplier_invoice_items?.length > 0 && (
-                <div style={{fontSize:11,color:"#666",marginTop:4}}>
+                <div style={{fontSize:11,color:"#888888",marginTop:4}}>
                   {inv.supplier_invoice_items.map(it => (it.ingredients?.name || "?") + " " + it.qty + (it.ingredients?.unit||"")).join(" · ")}
                 </div>
               )}
@@ -439,7 +439,7 @@ export default function InvoicesPage() {
 
           {modal.mode !== "manual" && (
           <div style={{marginBottom:10,background:"rgba(62,207,142,0.07)",border:"1px dashed #FFFFFF",borderRadius:10,padding:12}}>
-            <div style={{fontSize:10,color:"#8A8580",letterSpacing:"1.5px",fontWeight:700,marginBottom:5}}>📄 E-FATURA XML YÜKLE (ÖNERİLEN)</div>
+            <div style={{fontSize:12,color:"#8A8580",letterSpacing:"0.2px",fontWeight:600,marginBottom:5}}>📄 E-FATURA XML YÜKLE (ÖNERİLEN)</div>
             <input type="file" accept=".xml,text/xml,application/xml" onChange={onXml} style={{...inputS, padding:"8px"}}/>
             {xmlInfo && (
               <div style={{marginTop:8,fontSize:11,color:"#F0EDE8",lineHeight:1.6}}>
@@ -460,7 +460,7 @@ export default function InvoicesPage() {
 
           {modal.mode !== "manual" && (
           <div style={{marginBottom:14,background:"rgba(255,255,255,0.06)",border:"1px dashed #FFFFFF",borderRadius:10,padding:12}}>
-            <div style={{fontSize:10,color:"#8A8580",letterSpacing:"1.5px",fontWeight:700,marginBottom:5}}>🤖 FATURA FOTOSUNDAN OTOMATIK DOLDUR</div>
+            <div style={{fontSize:12,color:"#8A8580",letterSpacing:"0.2px",fontWeight:600,marginBottom:5}}>🤖 FATURA FOTOSUNDAN OTOMATIK DOLDUR</div>
             <input type="file" accept="image/*" capture="environment" onChange={onPhoto} style={{...inputS, padding:"8px"}}/>
             {photoPreview && <img src={photoPreview} alt="" style={{marginTop:8,maxHeight:120,borderRadius:8,objectFit:"cover"}}/>}
             {photoFile && (
@@ -478,7 +478,7 @@ export default function InvoicesPage() {
           )}
 
           <div style={{borderTop:"1px solid #2A2A2A",paddingTop:14,marginBottom:10}}>
-            <div style={{fontSize:11,color:"#888",letterSpacing:"1px",marginBottom:8,fontWeight:700}}>KALEMLER</div>
+            <div style={{fontSize:11,color:"#888",letterSpacing:"1px",marginBottom:8,fontWeight:700}}>Kalemler</div>
             {lines.map((l, idx) => (
               <div key={idx} style={{background:"#0C0C0C",border:"1px solid #2A2A2A",borderRadius:8,padding:10,marginBottom:6}}>
                 <div style={{display:"flex",gap:6,marginBottom:6}}>
@@ -508,28 +508,28 @@ export default function InvoicesPage() {
                     </div>
                     <div style={{display:"flex",gap:6,alignItems:"center",flexWrap:"wrap"}}>
                       <label style={{flex:"1 1 90px"}}>
-                        <div style={{fontSize:9,color:"#777",fontWeight:700,marginBottom:3}}>{koli ? "KAÇ KOLİ" : "KAÇ ADET"}</div>
+                        <div style={{fontSize:9,color:"#888888",fontWeight:700,marginBottom:3}}>{koli ? "KAÇ KOLİ" : "KAÇ ADET"}</div>
                         <input type="number" step="0.01" value={l.qty||0} onChange={e=>updateLine(idx,"qty",e.target.value)} style={{...inputS, padding:"8px"}}/>
                       </label>
                       {koli && (
                         <label style={{flex:"1 1 90px"}}>
-                          <div style={{fontSize:9,color:"#777",fontWeight:700,marginBottom:3}}>KOLİ İÇİ ŞİŞE</div>
+                          <div style={{fontSize:9,color:"#888888",fontWeight:700,marginBottom:3}}>Koli içi şişe</div>
                           <input type="number" step="1" value={l.pack_qty||1} onChange={e=>updateLine(idx,"pack_qty",e.target.value)} style={{...inputS, padding:"8px"}}/>
                         </label>
                       )}
                       <label style={{flex:"1 1 100px"}}>
-                        <div style={{fontSize:9,color:"#777",fontWeight:700,marginBottom:3}}>ŞİŞE / FIÇI İÇERİĞİ ({c.unit})</div>
+                        <div style={{fontSize:9,color:"#888888",fontWeight:700,marginBottom:3}}>ŞİŞE / FIÇI İÇERİĞİ ({c.unit})</div>
                         <input type="number" step="0.01" value={l.content||1} onChange={e=>updateLine(idx,"content",e.target.value)} placeholder={c.unit==="ml"?"70cl = 700":"1"} style={{...inputS, padding:"8px"}}/>
                       </label>
                       <label style={{flex:"1 1 110px"}}>
-                        <div style={{fontSize:9,color:"#777",fontWeight:700,marginBottom:3}}>{koli ? "KOLİ FİYATI ₺" : "ADET FİYATI ₺"} (KDV dahil)</div>
+                        <div style={{fontSize:9,color:"#888888",fontWeight:700,marginBottom:3}}>{koli ? "KOLİ FİYATI ₺" : "ADET FİYATI ₺"} (KDV dahil)</div>
                         <input type="number" step="0.01" value={l.unit_cost||0} onChange={e=>updateLine(idx,"unit_cost",e.target.value)} style={{...inputS, padding:"8px"}}/>
                       </label>
                       <button onClick={()=>removeLine(idx)} style={{background:"transparent",color:"#C87A6A",border:"1px solid #2A2A2A",borderRadius:6,padding:"8px 10px",cursor:"pointer",fontSize:11,alignSelf:"flex-end"}}>Sil</button>
                     </div>
                     {VOLUME_PRESETS[c.unit] && (
                       <div style={{display:"flex",gap:5,marginTop:6,flexWrap:"wrap",alignItems:"center"}}>
-                        <span style={{fontSize:9,color:"#666",fontWeight:700,letterSpacing:"0.5px"}}>HIZLI:</span>
+                        <span style={{fontSize:12,color:"#888888",fontWeight:600,letterSpacing:"0.2px"}}>HIZLI:</span>
                         {VOLUME_PRESETS[c.unit].map(([label, val]) => (
                           <button key={label} onClick={()=>updateLine(idx,"content",val)}
                             style={{padding:"5px 9px",background:Number(l.content)===val?"#FFFFFF":"#161616",color:Number(l.content)===val?"#000":"#999",
@@ -565,7 +565,7 @@ export default function InvoicesPage() {
           </div>
 
           <div style={{display:"flex",justifyContent:"space-between",alignItems:"center",padding:"12px 14px",background:"rgba(255,255,255,0.1)",borderRadius:10,marginBottom:14}}>
-            <div style={{fontSize:11,color:"#8A8580",letterSpacing:"1px",fontWeight:700}}>TOPLAM</div>
+            <div style={{fontSize:11,color:"#8A8580",letterSpacing:"1px",fontWeight:700}}>Toplam</div>
             <div style={{fontSize:18,color:"#F0EDE8",fontWeight:800}}>₺{Math.round(linesTotal).toLocaleString("tr-TR")}</div>
           </div>
 
@@ -585,7 +585,7 @@ const saveBtn = {flex:2,padding:"12px",background:"#FFFFFF",color:"#000",border:
 
 function Field({label, children}) {
   return (<div style={{marginBottom:12}}>
-    <div style={{fontSize:10,color:"#888",letterSpacing:"1.5px",fontWeight:700,marginBottom:5}}>{label}</div>
+    <div style={{fontSize:12,color:"#888",letterSpacing:"0.2px",fontWeight:600,marginBottom:5}}>{label}</div>
     {children}
   </div>);
 }

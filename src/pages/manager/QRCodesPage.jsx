@@ -44,8 +44,8 @@ export default function QRCodesPage() {
       </div>
       <div style={{ color: "#aaa", fontSize: 11, fontFamily: "monospace", textAlign: "center", wordBreak: "break-all", maxWidth: 280 }}>{url}</div>
       <div className="qr-actions" style={{ display: "flex", gap: 8, width: "100%" }}>
-        <button onClick={() => printOne(title.toLowerCase().includes("paris") ? "paris" : "doner")} style={{ flex: 1, padding: "10px 16px", background: color, color: "#000", border: "none", borderRadius: 6, fontFamily: cvc, fontSize: 13, letterSpacing: "1px", cursor: "pointer" }}>YAZDIR</button>
-        <button onClick={() => downloadQR(url, title.replace(/\s+/g, "_") + "_QR.png")} style={{ flex: 1, padding: "10px 16px", background: "#222", color: "#fff", border: "1px solid #444", borderRadius: 6, fontFamily: cvc, fontSize: 13, letterSpacing: "1px", cursor: "pointer" }}>İNDİR</button>
+        <button onClick={() => printOne(title.toLowerCase().includes("paris") ? "paris" : "doner")} style={{ flex: 1, padding: "10px 16px", background: color, color: "#000", border: "none", borderRadius: 6, fontFamily: cvc, fontSize: 13, letterSpacing: "1px", cursor: "pointer" }}>Yazdır</button>
+        <button onClick={() => downloadQR(url, title.replace(/\s+/g, "_") + "_QR.png")} style={{ flex: 1, padding: "10px 16px", background: "#222", color: "#fff", border: "1px solid #444", borderRadius: 6, fontFamily: cvc, fontSize: 13, letterSpacing: "1px", cursor: "pointer" }}>İndir</button>
       </div>
     </div>
   );
@@ -66,10 +66,10 @@ export default function QRCodesPage() {
 
       <div className="qr-print-hint" style={{ display: "flex", justifyContent: "space-between", alignItems: "center", marginBottom: 24, flexWrap: "wrap", gap: 12 }}>
         <div>
-          <h1 style={{ fontSize: 32, fontFamily: cvc, letterSpacing: "2px", margin: 0 }}>QR KODLAR</h1>
+          <h1 style={{ fontSize: 32, fontFamily: cvc, letterSpacing: "2px", margin: 0 }}>QR kodlar</h1>
           <div style={{ color: "#888", fontSize: 13, marginTop: 4 }}>Masalara koymak için yazdır veya indir</div>
         </div>
-        <button onClick={() => printOne("both")} style={{ padding: "12px 20px", background: "#FFFFFF", color: "#000", border: "none", fontFamily: cvc, fontSize: 14, letterSpacing: "1px", cursor: "pointer", borderRadius: 8 }}>HER İKİSİNİ YAZDIR</button>
+        <button onClick={() => printOne("both")} style={{ padding: "12px 20px", background: "#FFFFFF", color: "#000", border: "none", fontFamily: cvc, fontSize: 14, letterSpacing: "1px", cursor: "pointer", borderRadius: 8 }}>Her ikisini yazdır</button>
       </div>
 
       <div className={"qr-print"} style={{ display: "flex", gap: 24, flexWrap: "wrap", alignItems: "stretch" }}>

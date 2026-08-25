@@ -266,7 +266,7 @@ export default function RecipesMgmtPage() {
 
         {/* AI ile reçete kur */}
         <div style={{ background: "#161616", border: "1px solid #2A2A2A", borderRadius: 12, padding: 12, marginBottom: 12 }}>
-          <div style={{ fontSize: 10, color: "#F0EDE8", letterSpacing: "1.5px", fontWeight: 700, marginBottom: 8 }}>🤖 REÇETEYİ YAZ, AI KURSUN</div>
+          <div style={{ fontSize:12, color: "#F0EDE8", letterSpacing:"0.2px", fontWeight:600, marginBottom: 8 }}>🤖 REÇETEYİ YAZ, AI KURSUN</div>
           <textarea
             value={aiText} onChange={e => setAiText(e.target.value)} rows={2}
             placeholder={"örn: 3cl gin, 3cl campari, 3cl kırmızı vermut, buz, portakal kabuğu"}
@@ -282,7 +282,7 @@ export default function RecipesMgmtPage() {
                 return (
                   <div key={i} style={{ display: "flex", justifyContent: "space-between", padding: "6px 0", borderBottom: "1px solid #1A1A1A", fontSize: 13 }}>
                     <span style={{ fontWeight: 600 }}>
-                      {ing ? ing.name : <span style={{ color: "#F0EDE8" }}>＋ {l.new_name} <span style={{ color: "#666" }}>(yeni)</span></span>}
+                      {ing ? ing.name : <span style={{ color: "#F0EDE8" }}>＋ {l.new_name} <span style={{ color: "#888888" }}>(yeni)</span></span>}
                     </span>
                     <span style={{ color: "#FFFFFF", fontWeight: 700 }}>{l.qty} {ing?.unit || l.new_unit}</span>
                   </div>
@@ -299,7 +299,7 @@ export default function RecipesMgmtPage() {
         {/* Başka üründen kopyala */}
         {products.filter(p => p.id !== selectedProduct.id && productRecipes(p.id).length > 0).length > 0 && (
           <div style={{ background: "#161616", border: "1px solid #2A2A2A", borderRadius: 12, padding: 12, marginBottom: 12 }}>
-            <div style={{ fontSize: 10, color: "#8A8580", letterSpacing: "1.5px", fontWeight: 700, marginBottom: 8 }}>📋 BAŞKA ÜRÜNDEN KOPYALA</div>
+            <div style={{ fontSize:12, color: "#8A8580", letterSpacing:"0.2px", fontWeight:600, marginBottom: 8 }}>📋 BAŞKA ÜRÜNDEN KOPYALA</div>
             <div style={{ display: "flex", gap: 8 }}>
               <select value={copyFrom} onChange={e => setCopyFrom(e.target.value)} style={{ flex: 1, padding: "10px 12px", background: "#0C0C0C", border: "1px solid #2A2A2A", borderRadius: 8, color: "#F0EDE8", fontSize: 14, outline: "none", fontFamily: "inherit" }}>
                 <option value="">- Ürün seç -</option>
@@ -309,13 +309,13 @@ export default function RecipesMgmtPage() {
               </select>
               <button onClick={() => copyRecipe(copyFrom)} disabled={!copyFrom || busy} style={{ padding: "10px 16px", background: copyFrom ? "#FFFFFF" : "#222", color: copyFrom ? "#000" : "#666", border: "none", borderRadius: 8, fontSize: 13, fontWeight: 800, cursor: copyFrom ? "pointer" : "default" }}>Kopyala</button>
             </div>
-            <div style={{ fontSize: 10, color: "#666", marginTop: 6 }}>Benzer ürünlerde (highball'lar, kahveler) tek tıkla aynı reçeteyi al, sonra farklı malzemeyi değiştir.</div>
+            <div style={{ fontSize: 10, color: "#888888", marginTop: 6 }}>Benzer ürünlerde (highball'lar, kahveler) tek tıkla aynı reçeteyi al, sonra farklı malzemeyi değiştir.</div>
           </div>
         )}
 
         {/* Malzeme ara & ekle */}
         <div style={{ background: "#161616", border: "1px solid #2A2A2A", borderRadius: 12, padding: 12, marginBottom: 12 }}>
-          <div style={{ fontSize: 10, color: "#8A8580", letterSpacing: "1.5px", fontWeight: 700, marginBottom: 8 }}>🔎 MALZEME EKLE</div>
+          <div style={{ fontSize:12, color: "#8A8580", letterSpacing:"0.2px", fontWeight:600, marginBottom: 8 }}>🔎 MALZEME EKLE</div>
           <input
             value={ingSearch}
             onChange={e => setIngSearch(e.target.value)}
@@ -341,7 +341,7 @@ export default function RecipesMgmtPage() {
         {/* Sarf malzemeler — tek dokunuş */}
         {consumables.length > 0 && (
           <div style={{ background: "#12181A", border: "1px solid #2A2A2A", borderRadius: 12, padding: 12, marginBottom: 12 }}>
-            <div style={{ fontSize: 10, color: "#F0EDE8", letterSpacing: "1.5px", fontWeight: 700, marginBottom: 8 }}>🧊 SARF MALZEMELER</div>
+            <div style={{ fontSize:12, color: "#F0EDE8", letterSpacing:"0.2px", fontWeight:600, marginBottom: 8 }}>🧊 SARF MALZEMELER</div>
             <div style={{ display: "flex", flexWrap: "wrap", gap: 8 }}>
               {consumables.map(ing => {
                 const on = !!rows.find(r => r.ingredient_id === ing.id);
@@ -357,8 +357,8 @@ export default function RecipesMgmtPage() {
         )}
 
         {/* Reçete satırları — miktar satır içinde düzenlenir */}
-        <div style={{ fontSize: 10, color: "#888", letterSpacing: "1.5px", fontWeight: 700, marginBottom: 8 }}>REÇETE ({rows.length} MALZEME)</div>
-        {rows.length === 0 && <div style={{ textAlign: "center", padding: 24, color: "#666", fontSize: 12, background: "#161616", borderRadius: 10, marginBottom: 10 }}>Henüz malzeme yok — yukarıdan arayıp ekle.</div>}
+        <div style={{ fontSize:12, color: "#888", letterSpacing:"0.2px", fontWeight:600, marginBottom: 8 }}>REÇETE ({rows.length} MALZEME)</div>
+        {rows.length === 0 && <div style={{ textAlign: "center", padding: 24, color: "#888888", fontSize: 12, background: "#161616", borderRadius: 10, marginBottom: 10 }}>Henüz malzeme yok — yukarıdan arayıp ekle.</div>}
 
         {rows.map(r => {
           const ing = ingredients.find(i => i.id === r.ingredient_id);
@@ -384,7 +384,7 @@ export default function RecipesMgmtPage() {
                   style={{ width: 90, padding: "10px", background: "#0C0C0C", border: "1px solid #3A3A3A", borderRadius: 8, color: "#F0EDE8", fontSize: 16, textAlign: "center", outline: "none", fontFamily: "inherit", fontWeight: 700 }} />
                 <span style={{ color: "#888", fontSize: 13, fontWeight: 700 }}>{ing.unit}</span>
                 <button onClick={() => setQty(r, Number(r.qty_per_unit) + step)} style={qtyBtn}>+</button>
-                <span style={{ color: "#555", fontSize: 10, marginLeft: 4 }}>istediğin değeri yazabilirsin</span>
+                <span style={{ color: "#888888", fontSize: 10, marginLeft: 4 }}>istediğin değeri yazabilirsin</span>
               </div>
               {presets.length > 0 && (
                 <div style={{ display: "flex", gap: 6, flexWrap: "wrap", marginTop: 8 }}>
@@ -403,7 +403,7 @@ export default function RecipesMgmtPage() {
                 </label>
               )}
               {r.party_only && (
-                <div style={{ fontSize: 10, color: "#666", marginTop: 5, lineHeight: 1.5 }}>
+                <div style={{ fontSize: 10, color: "#888888", marginTop: 5, lineHeight: 1.5 }}>
                   Yalnız Ayarlar&apos;daki parti gün ve saatlerinde stoktan düşer; diğer zamanlarda hiç sayılmaz.
                 </div>
               )}
@@ -422,7 +422,7 @@ export default function RecipesMgmtPage() {
         {recipes.length} SATIR · {products.length} ÜRÜN{noRecipe > 0 ? " · " + noRecipe + " ÜRÜNÜN REÇETESİ YOK" : ""}
       </div>
       {kitchenCount > 0 && (
-        <div style={{ fontSize: 11, color: "#777", background: "#141414", border: "1px solid #242424", borderRadius: 8, padding: "8px 10px", marginBottom: 14, lineHeight: 1.5 }}>
+        <div style={{ fontSize: 11, color: "#888888", background: "#141414", border: "1px solid #242424", borderRadius: 8, padding: "8px 10px", marginBottom: 14, lineHeight: 1.5 }}>
           🥙 {kitchenCount} ürün <b>NIP Kitchen envanteri</b> — mutfak hazırlıyor, maliyeti bizde tutulmuyor. Bu listede yer almazlar.
         </div>
       )}
@@ -482,7 +482,7 @@ const qtyBtn = { width: 44, height: 44, background: "#2A2A2A", color: "#fff", bo
 function Stat({ label, value, color }) {
   return (
     <div style={{ background: "#0C0C0C", borderRadius: 10, padding: "8px 12px", flex: "1 1 70px", textAlign: "center" }}>
-      <div style={{ fontSize: 9, color: "#777", letterSpacing: "1px", fontWeight: 700 }}>{label}</div>
+      <div style={{ fontSize:12, color: "#888888", letterSpacing:"0.2px", fontWeight:600 }}>{label}</div>
       <div style={{ fontSize: 15, fontWeight: 800, color, marginTop: 2 }}>{value}</div>
     </div>
   );

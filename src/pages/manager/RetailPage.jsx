@@ -143,8 +143,8 @@ export default function RetailPage() {
           <div style={{ flex: 1, minWidth: 0 }}>
             <div style={{ fontSize: 14, fontWeight: 700, color: "#F0EDE8" }}>
               {p.name}
-              {p.is_available === false && <span style={{ marginLeft: 6, fontSize: 9, padding: "2px 6px", background: "#333", color: "#999", borderRadius: 6, fontWeight: 700 }}>PASİF</span>}
-              {low && <span style={{ marginLeft: 6, fontSize: 9, padding: "2px 6px", background: "#2A2A2A", color: "#F0EDE8", borderRadius: 6, fontWeight: 700 }}>AZALAN</span>}
+              {p.is_available === false && <span style={{ marginLeft: 6, fontSize: 9, padding: "2px 6px", background: "#333", color: "#999", borderRadius: 6, fontWeight: 700 }}>Pasif</span>}
+              {low && <span style={{ marginLeft: 6, fontSize: 9, padding: "2px 6px", background: "#2A2A2A", color: "#F0EDE8", borderRadius: 6, fontWeight: 700 }}>Azalan</span>}
             </div>
             <div style={{ fontSize: 12, color: "#888", marginTop: 3 }}>
               {Number(p.price) > 0 ? <span style={{ color: "#FFFFFF", fontWeight: 700 }}>₺{p.price}</span> : <span>Serbest tutar</span>}
@@ -194,7 +194,7 @@ export default function RetailPage() {
         </div>
       )}
 
-      {brands.length === 0 && <div style={{ textAlign: "center", padding: 30, color: "#666", fontSize: 13 }}>Henüz marka yok. "+ Yeni Marka" ile başlayın (örn. Not in Paris, Rapha...).</div>}
+      {brands.length === 0 && <div style={{ textAlign: "center", padding: 30, color: "#888888", fontSize: 13 }}>Henüz marka yok. "+ Yeni Marka" ile başlayın (örn. Not in Paris, Rapha...).</div>}
 
       {brands.map(b => {
         const list = products.filter(p => p.brand_id === b.id);
@@ -217,7 +217,7 @@ export default function RetailPage() {
             {open && (
               <div style={{ padding: "0 12px 12px" }}>
                 {list.map(p => <ProductRow key={p.id} p={p} />)}
-                {list.length === 0 && <div style={{ color: "#666", fontSize: 12, padding: "6px 0 12px" }}>Bu markada ürün yok.</div>}
+                {list.length === 0 && <div style={{ color: "#888888", fontSize: 12, padding: "6px 0 12px" }}>Bu markada ürün yok.</div>}
                 <button onClick={() => openNewProduct(b.id)} style={{ width: "100%", padding: "10px", background: "transparent", color: "#FFFFFF", border: "1px dashed #FFFFFF", borderRadius: 8, fontSize: 12, fontWeight: 700, cursor: "pointer" }}>+ {b.name} ürünü ekle</button>
               </div>
             )}
@@ -227,7 +227,7 @@ export default function RetailPage() {
 
       {unbranded.length > 0 && (
         <div style={{ marginTop: 16 }}>
-          <div style={{ fontSize: 11, color: "#888", letterSpacing: "1.5px", fontWeight: 700, marginBottom: 8 }}>MARKASIZ ÜRÜNLER</div>
+          <div style={{ fontSize: 11, color: "#888", letterSpacing: "1.5px", fontWeight: 700, marginBottom: 8 }}>Markasız ürünler</div>
           {unbranded.map(p => <ProductRow key={p.id} p={p} />)}
         </div>
       )}
@@ -305,7 +305,7 @@ const saveBtn = { flex: 2, padding: "12px", background: "#FFFFFF", color: "#000"
 
 function Field({ label, children }) {
   return (<div style={{ marginBottom: 12 }}>
-    <div style={{ fontSize: 10, color: "#888", letterSpacing: "1.5px", fontWeight: 700, marginBottom: 5 }}>{label}</div>
+    <div style={{ fontSize:12, color: "#888", letterSpacing:"0.2px", fontWeight:600, marginBottom: 5 }}>{label}</div>
     {children}
   </div>);
 }

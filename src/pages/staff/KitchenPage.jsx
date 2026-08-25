@@ -224,7 +224,7 @@ export default function KitchenPage() {
         </div>
       )}
 
-      {tickets.length === 0 && <div style={{textAlign:"center",padding:60,color:"#666",fontSize:14}}>Aktif sipariş yok</div>}
+      {tickets.length === 0 && <div style={{textAlign:"center",padding:60,color:"#888888",fontSize:14}}>Aktif sipariş yok</div>}
 
       {[...tickets].sort((a, b) =>
         new Date(a.order.created_at) - new Date(b.order.created_at)
@@ -244,7 +244,7 @@ export default function KitchenPage() {
           <div key={t.order.id} style={{background:cardBg,border:"2px solid "+cardBorder,borderRadius:14,padding:14,marginBottom:12}}>
             <div style={{display:"flex",justifyContent:"space-between",alignItems:"center",marginBottom:10}}>
               <div style={{flex:1,minWidth:0}}>
-                {t.storeSlug && <div style={{display:"inline-block",background:t.storeSlug==="doner"?"#FFFFFF":"#222222",color:t.storeSlug==="doner"?"#000":"#F0EDE8",padding:"2px 8px",borderRadius:6,fontSize:10,fontWeight:800,letterSpacing:"0.5px",marginBottom:4}}>{t.storeSlug==="doner"?"🥙 DÖNER":"🗼 PARIS"}</div>}
+                {t.storeSlug && <div style={{display:"inline-block",background:t.storeSlug==="doner"?"#FFFFFF":"#222222",color:t.storeSlug==="doner"?"#000":"#F0EDE8",padding:"2px 8px",borderRadius:6,fontSize:12,fontWeight:600,letterSpacing:"0.2px",marginBottom:4}}>{t.storeSlug==="doner"?"🥙 DÖNER":"🗼 PARIS"}</div>}
                 <div style={{fontSize:16,fontWeight:800}}>{t.where}</div>
               </div>
               <div style={{fontSize:13,color:urgent?"#FFFFFF":"#8A8580",fontWeight:800}}>{waitMin} dk{urgent ? " ⚠" : ""}</div>

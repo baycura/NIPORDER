@@ -170,7 +170,7 @@ export default function MembersPage() {
       {totalDebt > 0 && (
         <div style={{background:"#161616",border:"1px solid #FFFFFF",borderRadius:12,padding:14,marginBottom:14,display:"flex",justifyContent:"space-between",alignItems:"center"}}>
           <div>
-            <div style={{fontSize:11,color:"#8A8580",letterSpacing:"1.5px",fontWeight:700}}>TOPLAM ACIK BORC</div>
+            <div style={{fontSize:11,color:"#8A8580",letterSpacing:"1.5px",fontWeight:700}}>Toplam açık borç</div>
             <div style={{fontSize:22,color:"#F0EDE8",fontWeight:800,marginTop:2}}>₺{totalDebt.toLocaleString("tr-TR")}</div>
           </div>
         </div>
@@ -186,7 +186,7 @@ export default function MembersPage() {
 
       <button onClick={openNew} style={{padding:"10px 16px",background:"#FFFFFF",color:"#000",border:"none",borderRadius:10,fontSize:13,fontWeight:800,cursor:"pointer",marginBottom:14}}>+ Yeni Musteri</button>
 
-      {filtered.length === 0 && <div style={{textAlign:"center",padding:30,color:"#666",fontSize:12}}>Kayit yok</div>}
+      {filtered.length === 0 && <div style={{textAlign:"center",padding:30,color:"#888888",fontSize:12}}>Kayıt yok</div>}
 
       {filtered.map(m => {
         const hasDebt = Number(m.outstanding_balance) > 0;
@@ -197,15 +197,15 @@ export default function MembersPage() {
               <div style={{display:"flex",alignItems:"center",gap:6,flexWrap:"wrap"}}>
                 <div style={{fontSize:14,fontWeight:700,color:"#F0EDE8"}}>{m.name}</div>
                 {m.admin_discount > 0 && <span style={{fontSize:9,padding:"2px 6px",background:"#2A2A2A",color:"#F0EDE8",borderRadius:6,fontWeight:700}}>-%{m.admin_discount}</span>}
-                {m.auth_user_id && <span style={{fontSize:9,padding:"2px 6px",background:"#222222",color:"#F0EDE8",borderRadius:6,fontWeight:700}}>UYE</span>}
-                {m.imported_from_old_system && <span style={{fontSize:9,padding:"2px 6px",background:"#2A2A2A",color:"#F0EDE8",borderRadius:6,fontWeight:700}}>ESKI</span>}
+                {m.auth_user_id && <span style={{fontSize:9,padding:"2px 6px",background:"#222222",color:"#F0EDE8",borderRadius:6,fontWeight:700}}>Üye</span>}
+                {m.imported_from_old_system && <span style={{fontSize:9,padding:"2px 6px",background:"#2A2A2A",color:"#F0EDE8",borderRadius:6,fontWeight:700}}>Eski</span>}
               </div>
               {m.email && <div style={{fontSize:11,color:"#888",marginTop:2}}>{m.email}</div>}
-              <div style={{fontSize:10,color:"#666",marginTop:2}}>{m.visit_count || 0} siparis</div>
+              <div style={{fontSize:10,color:"#888888",marginTop:2}}>{m.visit_count || 0} siparis</div>
             </div>
             {hasDebt && (
               <div style={{textAlign:"right",flexShrink:0}}>
-                <div style={{fontSize:9,color:"#888",letterSpacing:"1px",fontWeight:700}}>BORC</div>
+                <div style={{fontSize:12,color:"#888",letterSpacing:"0.2px",fontWeight:600}}>Borç</div>
                 <div style={{fontSize:16,color:"#FFFFFF",fontWeight:800}}>₺{Number(m.outstanding_balance).toLocaleString("tr-TR")}</div>
               </div>
             )}
@@ -223,7 +223,7 @@ export default function MembersPage() {
 
           {modal.mode === "edit" && stats && (
             <div style={{background:"#152015",border:"1px solid #2A2A2A",borderRadius:10,padding:12,marginBottom:12}}>
-              <div style={{fontSize:10,color:"#F0EDE8",letterSpacing:"1.5px",fontWeight:700,marginBottom:8}}>MUSTERI KARNESI</div>
+              <div style={{fontSize:12,color:"#F0EDE8",letterSpacing:"0.2px",fontWeight:600,marginBottom:8}}>Müşteri karnesi</div>
               <div style={{display:"flex",gap:14,flexWrap:"wrap",fontSize:12,color:"#ddd"}}>
                 <div><span style={{color:"#888"}}>Siparis:</span> <b>{stats.count}</b></div>
                 <div><span style={{color:"#888"}}>Harcama:</span> <b>₺{Math.round(stats.spent).toLocaleString("tr-TR")}</b></div>
@@ -234,7 +234,7 @@ export default function MembersPage() {
           )}
 
           <div style={{background:"#161616",border:"1px solid #FFFFFF",borderRadius:10,padding:12,marginBottom:12}}>
-            <div style={{fontSize:10,color:"#FFFFFF",letterSpacing:"1.5px",fontWeight:700,marginBottom:4}}>ÜYEYE ÖZEL FİYATLAR (₺)</div>
+            <div style={{fontSize:12,color:"#FFFFFF",letterSpacing:"0.2px",fontWeight:600,marginBottom:4}}>Üyeye özel fiyatlar (₺)</div>
             <div style={{fontSize:10,color:"#888",marginBottom:8,lineHeight:1.6}}>
               Ürünü işaretle, bu üyenin ödeyeceği <b style={{color:"#FFFFFF"}}>net fiyatı</b> yaz — yüzde yok, küsürat yok.
               Üye menüde liste fiyatını üstü çizili, kendi fiyatını yanında görür.
@@ -250,7 +250,7 @@ export default function MembersPage() {
                 return (
                   <div key={p.id} style={{display:"flex",alignItems:"center",gap:8,padding:"5px 0",borderBottom:"1px solid #1E1E1E"}}>
                     <input type="checkbox" checked={sel} onChange={e => { const pd = {...prodDiscounts}; if (e.target.checked) pd[p.id] = pd[p.id] ?? String(liste); else delete pd[p.id]; setProdDiscounts(pd); }} style={{accentColor:"#FFFFFF"}}/>
-                    <div style={{flex:1,fontSize:12,color:"#ddd",minWidth:0,overflow:"hidden",textOverflow:"ellipsis",whiteSpace:"nowrap"}}>{p.name} <span style={{color:"#666",fontSize:11}}>₺{liste}</span></div>
+                    <div style={{flex:1,fontSize:12,color:"#ddd",minWidth:0,overflow:"hidden",textOverflow:"ellipsis",whiteSpace:"nowrap"}}>{p.name} <span style={{color:"#888888",fontSize:11}}>₺{liste}</span></div>
                     {sel && (<div style={{display:"flex",alignItems:"center",gap:3}}>
                       <span style={{color:"#888",fontSize:11}}>₺</span>
                       <input type="number" min="0" value={val} onChange={e=>setProdDiscounts({...prodDiscounts, [p.id]: e.target.value})} style={{width:70,padding:5,background:"#0C0C0C",color:"#FFFFFF",border:"1px solid #FFFFFF",borderRadius:5,fontSize:12}}/>
@@ -261,28 +261,28 @@ export default function MembersPage() {
                   </div>
                 );
               })}
-              {products.length === 0 && <div style={{color:"#666",textAlign:"center",padding:12,fontSize:11}}>Urun bulunamadi</div>}
+              {products.length === 0 && <div style={{color:"#888888",textAlign:"center",padding:12,fontSize:11}}>Ürün bulunamadı</div>}
             </div>
           </div>
 
           <div style={{background:"#222",border:"1px solid #333",borderRadius:10,padding:12,marginBottom:12}}>
-            <div style={{fontSize:10,color:"#888",letterSpacing:"1.5px",fontWeight:700,marginBottom:8}}>OZEL INDIRIM</div>
+            <div style={{fontSize:12,color:"#888",letterSpacing:"0.2px",fontWeight:600,marginBottom:8}}>Özel indirim</div>
             <div style={{display:"flex",alignItems:"center",gap:8}}>
               <input type="number" min="0" max="50" value={form.admin_discount||0} onChange={e=>setForm({...form,admin_discount:e.target.value})} style={{...inputS,flex:1}}/>
               <span style={{fontSize:20,color:"#FFFFFF",fontWeight:700}}>%</span>
             </div>
-            <div style={{fontSize:10,color:"#666",marginTop:6}}>NOT: Bu musteriye ozel indirim. Uye indirimi yerine bu uygulanir.</div>
+            <div style={{fontSize:10,color:"#888888",marginTop:6}}>NOT: Bu musteriye ozel indirim. Uye indirimi yerine bu uygulanir.</div>
           </div>
 
           <div style={{background:"#161616",border:"1px solid #2A2A2A",borderRadius:10,padding:12,marginBottom:12}}>
-            <div style={{fontSize:10,color:"#C87A6A",letterSpacing:"1.5px",fontWeight:700,marginBottom:8}}>ACIK BORC</div>
+            <div style={{fontSize:12,color:"#C87A6A",letterSpacing:"0.2px",fontWeight:600,marginBottom:8}}>Açık borç</div>
             <div style={{display:"flex",alignItems:"center",gap:8,marginBottom:10}}>
               <input type="number" value={form.outstanding_balance||0} onChange={e=>setForm({...form,outstanding_balance:e.target.value})} style={{...inputS,flex:1}}/>
               <span style={{fontSize:16,color:"#FFFFFF",fontWeight:700}}>₺</span>
             </div>
             {modal.mode === "edit" && (
               <div>
-                <div style={{fontSize:10,color:"#888",letterSpacing:"1px",fontWeight:700,marginBottom:5}}>ODEME AL (borctan dus)</div>
+                <div style={{fontSize:12,color:"#888",letterSpacing:"0.2px",fontWeight:600,marginBottom:5}}>Ödeme al (borçtan düş)</div>
                 <div style={{display:"flex",gap:6}}>
                   <input type="number" value={payAmount} onChange={e=>setPayAmount(e.target.value)} placeholder="0" style={{...inputS,flex:1}}/>
                   <button onClick={recordPayment} style={{padding:"10px 14px",background:"#FFFFFF",color:"#000",border:"none",borderRadius:8,fontSize:12,fontWeight:800,cursor:"pointer",whiteSpace:"nowrap"}}>Odeme Al</button>
@@ -310,7 +310,7 @@ const saveBtn = {flex:2,padding:"12px",background:"#FFFFFF",color:"#000",border:
 
 function Field({label, children}) {
   return (<div style={{marginBottom:12}}>
-    <div style={{fontSize:10,color:"#888",letterSpacing:"1.5px",fontWeight:700,marginBottom:5}}>{label}</div>
+    <div style={{fontSize:12,color:"#888",letterSpacing:"0.2px",fontWeight:600,marginBottom:5}}>{label}</div>
     {children}
   </div>);
 }

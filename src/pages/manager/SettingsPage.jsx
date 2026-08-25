@@ -85,7 +85,7 @@ export default function SettingsPage() {
   return (
     <div style={{fontFamily:cv,color:"#F0EDE8"}}>
       <div style={{fontSize:24,fontWeight:800,marginBottom:4}}>Ayarlar</div>
-      <div style={{fontSize:11,color:"#888",letterSpacing:"1px",marginBottom:18}}>SISTEM AYARLARI</div>
+      <div style={{fontSize:11,color:"#888",letterSpacing:"1px",marginBottom:18}}>Sistem ayarları</div>
 
       {/* Parti modu */}
       <Section icon="🎉" title="Parti Gecesi" desc="Seçtiğin gün ve saatlerde parti menüsü açılır. Ayrıca reçetede &quot;sadece parti gecesi&quot; işaretli malzemeler (PET bardak gibi) yalnız bu pencerede stoktan düşer.">
@@ -197,7 +197,7 @@ const inputS = {width:"100%",padding:"10px 12px",background:"#0C0C0C",border:"1p
 
 function Field({label, children, style={}}) {
   return (<div style={{marginBottom:12,...style}}>
-    <div style={{fontSize:10,color:"#888",letterSpacing:"1.5px",fontWeight:700,marginBottom:5}}>{label}</div>
+    <div style={{fontSize:12,color:"#888",letterSpacing:"0.2px",fontWeight:600,marginBottom:5}}>{label}</div>
     {children}
   </div>);
 }

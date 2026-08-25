@@ -93,7 +93,7 @@ export default function TablesMgmtPage() {
       </div>
 
       {tables.length === 0 && (
-        <div style={{textAlign:"center",padding:40,color:"#666",fontSize:13}}>
+        <div style={{textAlign:"center",padding:40,color:"#888888",fontSize:13}}>
           Henuz masa yok. Yeni masa ekle veya hazir seti kullan.
         </div>
       )}
@@ -135,7 +135,7 @@ const inputS = {width:"100%",padding:"10px 12px",background:"#0C0C0C",border:"1p
 
 function Field({label, children, style={}}) {
   return (<div style={{marginBottom:12,...style}}>
-    <div style={{fontSize:10,color:"#888",letterSpacing:"1.5px",fontWeight:700,marginBottom:5}}>{label}</div>
+    <div style={{fontSize:12,color:"#888",letterSpacing:"0.2px",fontWeight:600,marginBottom:5}}>{label}</div>
     {children}
   </div>);
 }

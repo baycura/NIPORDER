@@ -204,7 +204,7 @@ export default function PaymentPage() {
           <span style={{color:"#FFFFFF"}}> · {orders.filter(o => bayatMi(o.created_at)).length} UNUTULMUŞ</span>}
       </div>
 
-      {orders.length === 0 && <div style={{textAlign:"center",padding:40,color:"#666",fontSize:13}}>Bekleyen hesap yok</div>}
+      {orders.length === 0 && <div style={{textAlign:"center",padding:40,color:"#888888",fontSize:13}}>Bekleyen hesap yok</div>}
 
       {orders.map(o => {
         const where = o.table_id ? (tables[o.table_id] || "Masa") + (o.customer_name ? " · 👤 " + o.customer_name : "") : "👤 " + (o.customer_name || "Misafir");
@@ -215,8 +215,8 @@ export default function PaymentPage() {
         return (
           <div key={o.id} style={{background:"#1A1A1A",border:"1px solid "+(eski?"#FFFFFF":"#2A2A2A"),borderRadius:10,padding:14,marginBottom:8,display:"flex",alignItems:"center",gap:12}}>
             <div style={{flex:1,minWidth:0}}>
-              {storeBadge && <div style={{display:"inline-block",background:storeBadgeColor,color:"#000",padding:"2px 8px",borderRadius:6,fontSize:10,fontWeight:800,letterSpacing:"0.5px",marginBottom:4,marginRight:4}}>{storeBadge}</div>}
-              {o.customer_id && <div style={{display:"inline-block",background:"#000",color:"#8A8580",padding:"2px 8px",borderRadius:6,fontSize:10,fontWeight:800,letterSpacing:"0.5px",marginBottom:4}}>⭐ ÜYE · puan kazanacak</div>}
+              {storeBadge && <div style={{display:"inline-block",background:storeBadgeColor,color:"#000",padding:"2px 8px",borderRadius:6,fontSize:12,fontWeight:600,letterSpacing:"0.2px",marginBottom:4,marginRight:4}}>{storeBadge}</div>}
+              {o.customer_id && <div style={{display:"inline-block",background:"#000",color:"#8A8580",padding:"2px 8px",borderRadius:6,fontSize:12,fontWeight:600,letterSpacing:"0.2px",marginBottom:4}}>⭐ ÜYE · puan kazanacak</div>}
               <div style={{fontSize:14,fontWeight:700,color:"#F0EDE8"}}>{where}</div>
               <div style={{fontSize:11,color: eski ? "#FFFFFF" : "#888",marginTop:2}}>
                 {new Date(o.created_at).toLocaleTimeString("tr-TR", {hour:"2-digit", minute:"2-digit"})}
@@ -238,7 +238,7 @@ export default function PaymentPage() {
             <div style={{fontSize:18,fontWeight:800,color:"#F0EDE8",marginBottom:16}}>Odeme Al</div>
 
             <div style={{background:"#0C0C0C",border:"1px solid #2A2A2A",borderRadius:10,padding:14,marginBottom:14}}>
-              {modal.stores?.slug && <div style={{display:"inline-block",background:modal.stores.slug==="doner"?"#FFFFFF":"#222222",color:modal.stores.slug==="doner"?"#000":"#F0EDE8",padding:"2px 8px",borderRadius:6,fontSize:10,fontWeight:800,letterSpacing:"0.5px",marginBottom:6}}>{modal.stores.slug==="doner"?"🥙 DÖNER":"🗼 PARIS"}</div>}
+              {modal.stores?.slug && <div style={{display:"inline-block",background:modal.stores.slug==="doner"?"#FFFFFF":"#222222",color:modal.stores.slug==="doner"?"#000":"#F0EDE8",padding:"2px 8px",borderRadius:6,fontSize:12,fontWeight:600,letterSpacing:"0.2px",marginBottom:6}}>{modal.stores.slug==="doner"?"🥙 DÖNER":"🗼 PARIS"}</div>}
               <div style={{fontSize:11,color:"#888",marginBottom:8}}>{modal.table_id ? (tables[modal.table_id] || "Masa") + (modal.customer_name ? " · 👤 " + modal.customer_name : "") : "👤 " + (modal.customer_name || "Misafir")}</div>
               {/* Puan kullanilinca hesap toplami ile kasada alinacak tutar ayrisir;
                   kasiyerin bakmasi gereken KALAN, en buyuk rakam olmali. */}
@@ -281,7 +281,7 @@ export default function PaymentPage() {
               </div>
             ) : (method === "debt" || uyeAcik) ? (
               <div style={{marginBottom:12,background:method==="debt"?"#161616":"#0C0C0C",border:"1px solid "+"#2A2A2A",borderRadius:10,padding:12}}>
-                <div style={{fontSize:10,color:method==="debt"?"#C87A6A":"#888",letterSpacing:"1.5px",fontWeight:700,marginBottom:8}}>
+                <div style={{fontSize:12,color:method==="debt"?"#C87A6A":"#888",letterSpacing:"0.2px",fontWeight:600,marginBottom:8}}>
                   {method==="debt" ? "MÜŞTERİ SEÇ · ZORUNLU" : "ÜYE SEÇ · İSTEĞE BAĞLI"}
                 </div>
                 <input value={customerSearch} onChange={e=>setCustomerSearch(e.target.value)} placeholder="İsim ya da telefonun son haneleri..." style={{width:"100%",padding:"10px 12px",background:"#0C0C0C",border:"1px solid #2A2A2A",borderRadius:8,color:"#F0EDE8",fontSize:13,outline:"none",marginBottom:8,fontFamily:"inherit"}}/>
@@ -295,7 +295,7 @@ export default function PaymentPage() {
                       </div>
                     </div>
                   ))}
-                  {filteredCustomers.length === 0 && <div style={{fontSize:12,color:"#666",padding:"10px 2px"}}>Eşleşen üye yok</div>}
+                  {filteredCustomers.length === 0 && <div style={{fontSize:12,color:"#888888",padding:"10px 2px"}}>Eşleşen üye yok</div>}
                 </div>
                 <div style={{fontSize:10,color:"#888",marginTop:6}}>
                   {method==="debt"
@@ -330,7 +330,7 @@ export default function PaymentPage() {
               </div>
             )}
             <div style={{marginBottom:12}}>
-              <div style={{fontSize:10,color:"#888",letterSpacing:"1.5px",fontWeight:700,marginBottom:5}}>TUTAR (₺)</div>
+              <div style={{fontSize:12,color:"#888",letterSpacing:"0.2px",fontWeight:600,marginBottom:5}}>Tutar (₺)</div>
               <input type="number" value={amount} onChange={e=>setAmount(e.target.value)} style={{width:"100%",padding:"14px 16px",background:"#0C0C0C",border:"1px solid #2A2A2A",borderRadius:10,color:"#F0EDE8",fontSize:20,fontWeight:700,outline:"none",fontFamily:"inherit"}}/>
               {/* Hizli tutar: parca odemede tus tus yazmak yerine tek dokunus. */}
               <div style={{display:"flex",gap:8,marginTop:8}}>

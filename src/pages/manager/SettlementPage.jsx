@@ -74,7 +74,7 @@ export default function SettlementPage() {
         <div style={{ padding: 32, background: "#1A1A1A", borderRadius: 12, textAlign: "center", color: "#888" }}>
           <div style={{ fontSize: 48, marginBottom: 12 }}>✨</div>
           <div style={{ fontSize: 15, marginBottom: 8 }}>Henüz mutfak ürünü satışı yok</div>
-          <div style={{ fontSize: 12, color: "#666" }}>
+          <div style={{ fontSize: 12, color: "#888888" }}>
             Menüde "mutfak ürünü" (döner mutfağı) olarak işaretlenmiş bir ürün<br />
             satıldığında, mutfağa ödenecek tutar burada birikecek.
           </div>
@@ -104,7 +104,7 @@ export default function SettlementPage() {
               <div style={{ fontSize: 34, fontWeight: 900, color: "#8A8580", lineHeight: 1, fontFamily: hv }}>
                 ₺{fmt(payable)}
               </div>
-              <div style={{ fontSize: 11, color: "#666", marginTop: 6 }}>{payableOrders} sipariş · mutfak ürünleri</div>
+              <div style={{ fontSize: 11, color: "#888888", marginTop: 6 }}>{payableOrders} sipariş · mutfak ürünleri</div>
             </div>
 
             {receivable > 0.01 && (

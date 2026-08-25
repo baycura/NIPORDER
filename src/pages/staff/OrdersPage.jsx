@@ -148,7 +148,7 @@ export default function OrdersPage() {
         ))}
       </div>
 
-      {orders.length === 0 && <div style={{textAlign:"center",padding:40,color:"#666",fontSize:13}}>Hic siparis yok</div>}
+      {orders.length === 0 && <div style={{textAlign:"center",padding:40,color:"#888888",fontSize:13}}>Hiç sipariş yok</div>}
 
       {orders.map(o => {
         const st = STATUS_LABEL[o.status] || {label:o.status, color:"#888"};
@@ -158,9 +158,9 @@ export default function OrdersPage() {
           <div key={o.id} onClick={() => navigate("/orders/" + o.id)} style={{background:"#1A1A1A",border:"1px solid #2A2A2A",borderRadius:10,padding:12,marginBottom:8,cursor:"pointer",display:"flex",alignItems:"center",gap:10}}>
             <div style={{flex:1,minWidth:0}}>
               <div style={{display:"flex",alignItems:"center",gap:8,flexWrap:"wrap"}}>
-                {o.stores?.slug && <span style={{display:"inline-block",background:o.stores.slug==="doner"?"#FFFFFF":"#222222",color:o.stores.slug==="doner"?"#000":"#F0EDE8",padding:"2px 8px",borderRadius:6,fontSize:9,fontWeight:800,letterSpacing:"0.5px"}}>{o.stores.slug==="doner"?"🥙 DÖNER":"🗼 PARIS"}</span>}
+                {o.stores?.slug && <span style={{display:"inline-block",background:o.stores.slug==="doner"?"#FFFFFF":"#222222",color:o.stores.slug==="doner"?"#000":"#F0EDE8",padding:"2px 8px",borderRadius:6,fontSize:12,fontWeight:600,letterSpacing:"0.2px"}}>{o.stores.slug==="doner"?"🥙 DÖNER":"🗼 PARIS"}</span>}
                 <div style={{fontSize:14,fontWeight:700,color:"#F0EDE8"}}>{where}</div>
-                <span style={{fontSize:9,padding:"2px 8px",background:st.color+"22",color:st.color,borderRadius:6,fontWeight:700,letterSpacing:"1px"}}>{st.label?.toUpperCase()}</span>
+                <span style={{fontSize:12,padding:"2px 8px",background:st.color+"22",color:st.color,borderRadius:6,fontWeight:600,letterSpacing:"0.2px"}}>{st.label?.toUpperCase()}</span>
               </div>
               <div style={{fontSize:11,color:"#888",marginTop:3}}>
                 {new Date(o.created_at).toLocaleString("tr-TR", {hour:"2-digit", minute:"2-digit", day:"2-digit", month:"2-digit"})}
@@ -199,7 +199,7 @@ export default function OrdersPage() {
             </div>
             {newMode === "table" ? (
               <div>
-                <div style={{fontSize:10,color:"#888",letterSpacing:"1.5px",fontWeight:700,marginBottom:6}}>MASA SEÇ</div>
+                <div style={{fontSize:12,color:"#888",letterSpacing:"0.2px",fontWeight:600,marginBottom:6}}>Masa seç</div>
                 {tables.length === 0 ? (
                   <div style={{color:"#888",fontSize:12,padding:10}}>Henüz masa yok. "Masa Yönetimi"nden ekle.</div>
                 ) : (
@@ -212,7 +212,7 @@ export default function OrdersPage() {
               </div>
             ) : (
               <div>
-                <div style={{fontSize:10,color:"#888",letterSpacing:"1.5px",fontWeight:700,marginBottom:6}}>MİSAFİR ADI</div>
+                <div style={{fontSize:12,color:"#888",letterSpacing:"0.2px",fontWeight:600,marginBottom:6}}>Misafir adı</div>
                 <input value={newCustomerName} onChange={e=>setNewCustomerName(e.target.value)} placeholder="Örn: Efekan" style={{width:"100%",padding:"10px 12px",background:"#0C0C0C",border:"1px solid #2A2A2A",borderRadius:8,color:"#F0EDE8",fontSize:14,outline:"none",fontFamily:"inherit"}}/>
               </div>
             )}

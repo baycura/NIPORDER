@@ -29,7 +29,7 @@ export default function HubPage() {
     const ic = (<>
       <span style={{ fontSize: 20 }}>{item.icon}</span>
       <span style={{ fontSize: 13, fontWeight: 700 }}>{item.label}</span>
-      {item.external && <span style={{ marginLeft: "auto", color: "#666", fontSize: 12 }}>↗</span>}
+      {item.external && <span style={{ marginLeft: "auto", color: "#888888", fontSize: 12 }}>↗</span>}
     </>);
     const stil = {
       display: "flex", alignItems: "center", gap: 10, padding: "13px 14px",
@@ -55,13 +55,13 @@ export default function HubPage() {
       {sonuc ? (
         <div style={{ display: "grid", gridTemplateColumns: "1fr 1fr", gap: 8 }}>
           {sonuc.length === 0
-            ? <div style={{ gridColumn: "1/-1", color: "#777", fontSize: 13, padding: 8 }}>Eşleşen sayfa yok.</div>
+            ? <div style={{ gridColumn: "1/-1", color: "#888888", fontSize: 13, padding: 8 }}>Eşleşen sayfa yok.</div>
             : sonuc.map(i => <Karo key={i.to} item={i} />)}
         </div>
       ) : (
         gruplar.map(g => (
           <div key={g.ad} style={{ marginBottom: 18 }}>
-            <div style={{ fontSize: 10, letterSpacing: "2px", fontWeight: 800, marginBottom: 8,
+            <div style={{ fontSize:12, letterSpacing:"0.2px", fontWeight:600, marginBottom: 8,
                           color: "#8A8580" }}>
               {g.ad}{g.sari ? " — SAHİP" : ""}
             </div>

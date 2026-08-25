@@ -129,13 +129,13 @@ export default function KitchenDisplayPage() {
 
       <div style={{display:"flex",justifyContent:"space-between",alignItems:"center",marginBottom:20}}>
         <div>
-          <div style={{fontSize:32,fontWeight:900,letterSpacing:"-1px"}}>MUTFAK</div>
-          <div style={{fontSize:12,color:"#666",letterSpacing:"2px"}}>{tickets.length} AKTIF HESAP</div>
+          <div style={{fontSize:32,fontWeight:900,letterSpacing:"-1px"}}>Mutfak</div>
+          <div style={{fontSize:12,color:"#888888",letterSpacing:"2px"}}>{tickets.length} AKTIF HESAP</div>
         </div>
-        <div style={{fontSize:14,color:"#666"}}>{new Date().toLocaleTimeString("tr-TR",{hour:"2-digit",minute:"2-digit"})}</div>
+        <div style={{fontSize:14,color:"#888888"}}>{new Date().toLocaleTimeString("tr-TR",{hour:"2-digit",minute:"2-digit"})}</div>
       </div>
 
-      {tickets.length === 0 && <div style={{textAlign:"center",padding:80,color:"#444",fontSize:20}}>Aktif sipariş yok</div>}
+      {tickets.length === 0 && <div style={{textAlign:"center",padding:80,color:"#888888",fontSize:20}}>Aktif sipariş yok</div>}
 
       <div style={{display:"grid",gridTemplateColumns:"repeat(auto-fill,minmax(280px,1fr))",gap:12}}>
         {tickets.map(t => {
@@ -145,7 +145,7 @@ export default function KitchenDisplayPage() {
             <div key={t.order.id} style={{background:urgent?"#161616":"#141414",border:"2px solid "+(urgent?"#2A2A2A":"#222"),borderRadius:12,padding:14}}>
               <div style={{display:"flex",justifyContent:"space-between",alignItems:"center",marginBottom:10}}>
                 <div style={{flex:1,minWidth:0}}>
-                  {t.storeSlug && <div style={{display:"inline-block",background:t.storeSlug==="doner"?"#FFFFFF":"#222222",color:t.storeSlug==="doner"?"#000":"#F0EDE8",padding:"2px 8px",borderRadius:6,fontSize:10,fontWeight:800,letterSpacing:"0.5px",marginBottom:4}}>{t.storeSlug==="doner"?"🥙 DÖNER":"🗼 PARIS"}</div>}
+                  {t.storeSlug && <div style={{display:"inline-block",background:t.storeSlug==="doner"?"#FFFFFF":"#222222",color:t.storeSlug==="doner"?"#000":"#F0EDE8",padding:"2px 8px",borderRadius:6,fontSize:12,fontWeight:600,letterSpacing:"0.2px",marginBottom:4}}>{t.storeSlug==="doner"?"🥙 DÖNER":"🗼 PARIS"}</div>}
                   <div style={{fontSize:18,fontWeight:800}}>{t.where}</div>
                 </div>
                 <div style={{fontSize:20,fontWeight:900,color:urgent?"#C87A6A":"#FFFFFF"}}>{waitMin}'</div>
@@ -157,7 +157,7 @@ export default function KitchenDisplayPage() {
                     <div style={{fontSize:16,fontWeight:700,color:it.kitchen_status==="ready"?"#FFFFFF":it.kitchen_status==="preparing"?"#FFFFFF":"#fff"}}>
                       {it.quantity}× {it.product_name}
                       {it.is_takeaway && <span style={{marginLeft:8,padding:"3px 10px",background:"#FFFFFF",color:"#000",borderRadius:12,fontSize:12,fontWeight:800,letterSpacing:"0.5px"}}>🥤 PAKET</span>}
-                      <span style={{fontSize:10,marginLeft:8,letterSpacing:"1px",color:"#888"}}>{it.kitchen_status?.toUpperCase()}</span>
+                      <span style={{fontSize:12,marginLeft:8,letterSpacing:"0.2px",color:"#888"}}>{it.kitchen_status?.toUpperCase()}</span>
                     </div>
                     {opts && <div style={{fontSize:13,color:"#FFFFFF",marginTop:2,fontWeight:600}}>{opts}</div>}
                     {it.notes && <div style={{fontSize:12,color:"#aaa",fontStyle:"italic",marginTop:2}}>Not: {it.notes}</div>}
