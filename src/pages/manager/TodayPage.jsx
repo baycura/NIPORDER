@@ -3,6 +3,7 @@ import { useNavigate } from "react-router-dom";
 import { supabase } from "../../lib/supabase.js";
 import { useAuth } from "../../contexts/AuthContext.jsx";
 import { businessDayStart, businessDayKey, BUSINESS_HOURS } from "../../lib/businessDay.js";
+import Ikon from "../../components/Ikon.jsx";
 
 const cv = "-apple-system,BlinkMacSystemFont,'Segoe UI',Roboto,sans-serif";
 const BAYAT_SAAT = 12;
@@ -98,7 +99,7 @@ export default function TodayPage() {
   const Kart = ({ baslik, cocuk, tikla }) => (
     <div onClick={tikla} style={{ background: "#161616", border: "1px solid #2A2A2A", borderRadius: 14,
                                   padding: "13px 15px", cursor: tikla ? "pointer" : "default", flex: 1 }}>
-      <div style={{ fontSize: 10, letterSpacing: "1.6px", color: "#8A8580", fontWeight: 700, marginBottom: 4 }}>{baslik}</div>
+      <div style={{ fontSize:12, letterSpacing:"0.2px", color: "#8A8580", fontWeight:600, marginBottom: 4 }}>{baslik}</div>
       {cocuk}
     </div>
   );
@@ -113,7 +114,7 @@ export default function TodayPage() {
         <div style={{ fontSize: 11, color: "#8A8580" }}>{gun} · gün 03:00'te biter</div>
       </div>
 
-      <Kart baslik="CİRO (TAHSİL EDİLEN)" tikla={isAdmin ? () => navigate("/reports") : undefined} cocuk={<>
+      <Kart baslik="Ciro (tahsil edilen)" tikla={isAdmin ? () => navigate("/reports") : undefined} cocuk={<>
         <div style={{ fontSize: 30, fontWeight: 800 }}>₺{Math.round(veri.ciro).toLocaleString("tr-TR")}</div>
         {/* Tek basina bir rakam bir sey soylemiyor; ayni saatteki dun soyluyor. */}
         {veri.dunCiro > 0 && (() => {
@@ -143,11 +144,11 @@ export default function TodayPage() {
       </>} />
 
       <div style={{ display: "flex", gap: 10 }}>
-        <Kart baslik="AÇIK HESAP" tikla={() => navigate("/payment")} cocuk={
+        <Kart baslik="Açık hesap" tikla={() => navigate("/payment")} cocuk={
           <div style={{ fontSize: 20, fontWeight: 800 }}>
             {veri.acikSayi} · ₺{Math.round(veri.acikTutar).toLocaleString("tr-TR")}
           </div>} />
-        <Kart baslik="VARDİYADA" cocuk={<>
+        <Kart baslik="Vardiyada" cocuk={<>
           <div style={{ fontSize: 20, fontWeight: 800 }}>{veri.vardiyaAd.length} kişi</div>
           {veri.vardiyaAd.length > 0 && (
             <div style={{ fontSize: 11, color: "#8A8580", marginTop: 2 }}>
@@ -161,13 +162,13 @@ export default function TodayPage() {
              style={{ background: "#161616", border: "1px solid #2A2A2A", borderRadius: 13,
                       padding: "11px 14px", fontSize: 13, color: "#F0EDE8", cursor: "pointer",
                       display: "flex", alignItems: "center", gap: 8 }}>
-          ⏳ {veri.unutulmus.length} hesap 12 saatten uzun süredir açık —{" "}
+          <Ikon ad="bekleme" boy={14}/>{veri.unutulmus.length} hesap 12 saatten uzun süredir açık —{" "}
           {veri.unutulmus.slice(0, 2).map(o => `${o.cafe_tables?.name || o.customer_name || "Misafir"} ₺${Math.round(o.total)}`).join(", ")}
-          <span style={{ marginLeft: "auto", fontWeight: 800, whiteSpace: "nowrap" }}>Kasa →</span>
+          <span style={{ marginLeft: "auto", fontWeight: 800, whiteSpace: "nowrap", display: "flex", alignItems: "center", gap: 4 }}>Kasa<Ikon ad="oksag" boy={13}/></span>
         </div>
       )}
 
-      <Kart baslik="BUGÜN EN ÇOK" cocuk={
+      <Kart baslik="Bugün en çok" cocuk={
         veri.cokSatan.length === 0
           ? <div style={{ fontSize: 13, color: "#8A8580" }}>Henüz satış yok.</div>
           : <div style={{ fontSize: 13.5 }}>{veri.cokSatan.map(([ad, n]) => `${ad} ×${n}`).join(" · ")}</div>} />

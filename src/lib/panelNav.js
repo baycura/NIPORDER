@@ -6,59 +6,63 @@
 // Gorunurluk kurallari App.jsx'teki PrivateRoute'larla birebir ayni olmali:
 // rota erisimi degisirse burasi da degismeli, yoksa kullanici tiklayip
 // yonlendirmeyle geri dusen kart gorur.
+//
+// icon: components/Ikon.jsx setindeki ad. Emoji YAZMA — emoji her cihazda
+// baska cizilir ve paletin disina duser. Yeni bir ad gerekiyorsa once
+// Ikon.jsx'e cizimi eklenir.
 
 export const GRUPLAR = [
   {
     ad: "GÜNLÜK İŞLER",
     items: [
-      { to: "/tables",   icon: "🪑", label: "Masalar",   deny: ["viewer"] },
-      { to: "/orders",   icon: "📋", label: "Sipariş",   deny: ["viewer"] },
-      { to: "/kitchen",  icon: "🍳", label: "Mutfak",    deny: ["viewer", "parttime"] },
-      { to: "/payment",  icon: "💰", label: "Kasa",      deny: ["viewer"] },
-      { to: "/myshift",  icon: "⏱",  label: "Vardiyam",  deny: ["viewer", "parttime"] },
-      { to: "/stock",    icon: "📦", label: "Stok",      deny: ["parttime"] },
-      { to: "/expenses", icon: "💸", label: "Giderler" },
-      { to: "/invoices", icon: "🧾", label: "Faturalar", deny: ["viewer", "parttime"] },
-      { to: "/tasks",    icon: "✅", label: "Görevler",  deny: ["viewer", "parttime"] },
+      { to: "/tables",   icon: "masa", label: "Masalar",   deny: ["viewer"] },
+      { to: "/orders",   icon: "siparis", label: "Sipariş",   deny: ["viewer"] },
+      { to: "/kitchen",  icon: "mutfak", label: "Mutfak",    deny: ["viewer", "parttime"] },
+      { to: "/payment",  icon: "kasa", label: "Kasa",      deny: ["viewer"] },
+      { to: "/myshift",  icon: "vardiya", label: "Vardiyam",  deny: ["viewer", "parttime"] },
+      { to: "/stock",    icon: "stok", label: "Stok",      deny: ["parttime"] },
+      { to: "/expenses", icon: "gider", label: "Giderler" },
+      { to: "/invoices", icon: "fatura", label: "Faturalar", deny: ["viewer", "parttime"] },
+      { to: "/tasks",    icon: "gorev", label: "Görevler",  deny: ["viewer", "parttime"] },
     ],
   },
   {
     ad: "MENÜ & ÜRÜNLER", manager: true,
     items: [
-      { to: "/menu-mgmt",         icon: "🍽",  label: "Menü Yönetimi" },
-      { to: "/recipes",           icon: "📝", label: "Reçeteler" },
-      { to: "/stock-mgmt",        icon: "🗃",  label: "Stok Yönetimi" },
-      { to: "/retail",            icon: "🛍",  label: "Ürünler (Raf)" },
-      { to: "/merch-mgmt",        icon: "👕", label: "Merch" },
-      { to: "/category-schedule", icon: "⏰", label: "Kategori Saatleri" },
+      { to: "/menu-mgmt",         icon: "menu", label: "Menü Yönetimi" },
+      { to: "/recipes",           icon: "recete", label: "Reçeteler" },
+      { to: "/stock-mgmt",        icon: "arsiv", label: "Stok Yönetimi" },
+      { to: "/retail",            icon: "raf", label: "Ürünler (Raf)" },
+      { to: "/merch-mgmt",        icon: "merch", label: "Merch" },
+      { to: "/category-schedule", icon: "saat", label: "Kategori Saatleri" },
     ],
   },
   {
     ad: "ÜYELER & KAMPANYA", manager: true,
     items: [
-      { to: "/members",    icon: "🌟", label: "Üyeler & Borç" },
-      { to: "/happy-hour", icon: "🎉", label: "Happy Hour" },
-      { to: "/polls",      icon: "🗳",  label: "Oylamalar" },
-      { to: "/content",    icon: "📰", label: "Vitrin & Blog" },
+      { to: "/members",    icon: "uye", label: "Üyeler & Borç" },
+      { to: "/happy-hour", icon: "kampanya", label: "Happy Hour" },
+      { to: "/polls",      icon: "oylama", label: "Oylamalar" },
+      { to: "/content",    icon: "blog", label: "Vitrin & Blog" },
     ],
   },
   {
     ad: "PARA & PERSONEL", admin: true, sari: true,
     items: [
-      { to: "/reports",        icon: "📈", label: "Raporlar" },
-      { to: "/shifts",         icon: "🕐", label: "Vardiyalar" },
-      { to: "/settlement",     icon: "🥙", label: "Mutfağa Ödenecek" },
-      { to: "/fixed-expenses", icon: "🔒", label: "Sabit Giderler" },
-      { to: "/staff-mgmt",     icon: "👥", label: "Personel" },
+      { to: "/reports",        icon: "rapor", label: "Raporlar" },
+      { to: "/shifts",         icon: "takvim", label: "Vardiyalar" },
+      { to: "/settlement",     icon: "mutfakodeme", label: "Mutfağa Ödenecek" },
+      { to: "/fixed-expenses", icon: "kilit", label: "Sabit Giderler" },
+      { to: "/staff-mgmt",     icon: "personel", label: "Personel" },
     ],
   },
   {
     ad: "SİSTEM", manager: true,
     items: [
-      { to: "/tables-mgmt",     icon: "🛠",  label: "Masa Yönetimi" },
-      { to: "/qr-codes",        icon: "📱", label: "QR Kodlar" },
-      { to: "/settings",        icon: "⚙",   label: "Ayarlar" },
-      { to: "/kitchen-display", icon: "📺", label: "Mutfak Ekranı (Tablet)", external: true },
+      { to: "/tables-mgmt",     icon: "plan", label: "Masa Yönetimi" },
+      { to: "/qr-codes",        icon: "qr", label: "QR Kodlar" },
+      { to: "/settings",        icon: "ayar", label: "Ayarlar" },
+      { to: "/kitchen-display", icon: "ekran", label: "Mutfak Ekranı (Tablet)", external: true },
     ],
   },
 ];
@@ -67,10 +71,10 @@ export const GRUPLAR = [
 const VIEWER_GRUP = [{
   ad: "GÖRÜNÜM",
   items: [
-    { to: "/reports",    icon: "📈", label: "Raporlar" },
-    { to: "/settlement", icon: "🥙", label: "Mutfağa Ödenecek" },
-    { to: "/expenses",   icon: "💸", label: "Giderler" },
-    { to: "/stock",      icon: "📦", label: "Stok" },
+    { to: "/reports",    icon: "rapor", label: "Raporlar" },
+    { to: "/settlement", icon: "mutfakodeme", label: "Mutfağa Ödenecek" },
+    { to: "/expenses",   icon: "gider", label: "Giderler" },
+    { to: "/stock",      icon: "stok", label: "Stok" },
   ],
 }];
 
@@ -87,24 +91,24 @@ export function gorunurGruplar({ role, isManager, isAdmin, isViewer }) {
 export function altBar({ isManager, isAdmin, isViewer, isParttime }) {
   if (isViewer) return VIEWER_GRUP[0].items;
   if (isParttime) return [
-    { to: "/tables",   icon: "🪑", label: "Masalar" },
-    { to: "/orders",   icon: "📋", label: "Sipariş" },
-    { to: "/payment",  icon: "💰", label: "Kasa" },
-    { to: "/expenses", icon: "💸", label: "Giderler" },
+    { to: "/tables",   icon: "masa", label: "Masalar" },
+    { to: "/orders",   icon: "siparis", label: "Sipariş" },
+    { to: "/payment",  icon: "kasa", label: "Kasa" },
+    { to: "/expenses", icon: "gider", label: "Giderler" },
   ];
   if (isManager) return [
-    { to: "/today",   icon: "🏠", label: "Bugün" },
-    { to: "/tables",  icon: "🪑", label: "Masalar" },
-    { to: "/payment", icon: "💰", label: "Kasa" },
-    isAdmin ? { to: "/reports", icon: "📈", label: "Rapor" }
-            : { to: "/orders",  icon: "📋", label: "Sipariş" },
-    { to: "/hub",     icon: "☰",  label: "Menü" },
+    { to: "/today",   icon: "ev", label: "Bugün" },
+    { to: "/tables",  icon: "masa", label: "Masalar" },
+    { to: "/payment", icon: "kasa", label: "Kasa" },
+    isAdmin ? { to: "/reports", icon: "rapor", label: "Rapor" }
+            : { to: "/orders",  icon: "siparis", label: "Sipariş" },
+    { to: "/hub",     icon: "hamburger", label: "Menü" },
   ];
   return [
-    { to: "/tables",  icon: "🪑", label: "Masalar" },
-    { to: "/orders",  icon: "📋", label: "Sipariş" },
-    { to: "/payment", icon: "💰", label: "Kasa" },
-    { to: "/kitchen", icon: "🍳", label: "Mutfak" },
-    { to: "/hub",     icon: "☰",  label: "Menü" },
+    { to: "/tables",  icon: "masa", label: "Masalar" },
+    { to: "/orders",  icon: "siparis", label: "Sipariş" },
+    { to: "/payment", icon: "kasa", label: "Kasa" },
+    { to: "/kitchen", icon: "mutfak", label: "Mutfak" },
+    { to: "/hub",     icon: "hamburger", label: "Menü" },
   ];
 }

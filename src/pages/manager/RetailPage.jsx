@@ -1,6 +1,7 @@
 import { useEffect, useState } from "react";
 import { supabase } from "../../lib/supabase.js";
 import { useAuth } from "../../contexts/AuthContext.jsx";
+import Ikon from "../../components/Ikon.jsx";
 
 const cv = "-apple-system,BlinkMacSystemFont,'Segoe UI',Roboto,sans-serif";
 const SIZE_SETS = {
@@ -143,8 +144,8 @@ export default function RetailPage() {
           <div style={{ flex: 1, minWidth: 0 }}>
             <div style={{ fontSize: 14, fontWeight: 700, color: "#F0EDE8" }}>
               {p.name}
-              {p.is_available === false && <span style={{ marginLeft: 6, fontSize: 9, padding: "2px 6px", background: "#333", color: "#999", borderRadius: 6, fontWeight: 700 }}>PASİF</span>}
-              {low && <span style={{ marginLeft: 6, fontSize: 9, padding: "2px 6px", background: "#2A2A2A", color: "#F0EDE8", borderRadius: 6, fontWeight: 700 }}>AZALAN</span>}
+              {p.is_available === false && <span style={{ marginLeft: 6, fontSize: 9, padding: "2px 6px", background: "#333", color: "#999", borderRadius: 6, fontWeight: 700 }}>Pasif</span>}
+              {low && <span style={{ marginLeft: 6, fontSize: 9, padding: "2px 6px", background: "#2A2A2A", color: "#F0EDE8", borderRadius: 6, fontWeight: 700 }}>Azalan</span>}
             </div>
             <div style={{ fontSize: 12, color: "#888", marginTop: 3 }}>
               {Number(p.price) > 0 ? <span style={{ color: "#FFFFFF", fontWeight: 700 }}>₺{p.price}</span> : <span>Serbest tutar</span>}
@@ -190,11 +191,11 @@ export default function RetailPage() {
 
       {!category && (
         <div style={{ background: "#161616", border: "1px solid #2A2A2A", borderRadius: 10, padding: 14, marginBottom: 14, fontSize: 12, color: "#C87A6A", lineHeight: 1.6 }}>
-          "Yalnız kasada" işaretli bir kategori bulunamadı. Menü Yönetimi'nden bir kategori açıp "🛍 Yalnız kasada" kutusunu işaretleyin.
+          "Yalnız kasada" işaretli bir kategori bulunamadı. Menü Yönetimi'nden bir kategori açıp "Yalnız kasada" kutusunu işaretleyin.
         </div>
       )}
 
-      {brands.length === 0 && <div style={{ textAlign: "center", padding: 30, color: "#666", fontSize: 13 }}>Henüz marka yok. "+ Yeni Marka" ile başlayın (örn. Not in Paris, Rapha...).</div>}
+      {brands.length === 0 && <div style={{ textAlign: "center", padding: 30, color: "#888888", fontSize: 13 }}>Henüz marka yok. "+ Yeni Marka" ile başlayın (örn. Not in Paris, Rapha...).</div>}
 
       {brands.map(b => {
         const list = products.filter(p => p.brand_id === b.id);
@@ -204,7 +205,7 @@ export default function RetailPage() {
           <div key={b.id} style={{ background: "#1A1A1A", border: "1px solid #2A2A2A", borderRadius: 12, marginBottom: 10, overflow: "hidden" }}>
             <div onClick={() => setOpenBrand(open ? null : b.id)} style={{ padding: 14, cursor: "pointer", display: "flex", justifyContent: "space-between", alignItems: "center", gap: 10 }}>
               <div style={{ flex: 1, minWidth: 0 }}>
-                <div style={{ fontSize: 16, fontWeight: 800, color: "#F0EDE8" }}>{open ? "▾" : "▸"} {b.name}</div>
+                <div style={{ fontSize: 16, fontWeight: 800, color: "#F0EDE8" }}><Ikon ad={open ? "asagi" : "sag"} boy={15} style={{marginRight:7}}/>{b.name}</div>
                 <div style={{ fontSize: 11, color: "#888", marginTop: 3 }}>
                   {list.length} ürün · {bStock} adet stok{b.description ? " · " + b.description : ""}
                 </div>
@@ -217,7 +218,7 @@ export default function RetailPage() {
             {open && (
               <div style={{ padding: "0 12px 12px" }}>
                 {list.map(p => <ProductRow key={p.id} p={p} />)}
-                {list.length === 0 && <div style={{ color: "#666", fontSize: 12, padding: "6px 0 12px" }}>Bu markada ürün yok.</div>}
+                {list.length === 0 && <div style={{ color: "#888888", fontSize: 12, padding: "6px 0 12px" }}>Bu markada ürün yok.</div>}
                 <button onClick={() => openNewProduct(b.id)} style={{ width: "100%", padding: "10px", background: "transparent", color: "#FFFFFF", border: "1px dashed #FFFFFF", borderRadius: 8, fontSize: 12, fontWeight: 700, cursor: "pointer" }}>+ {b.name} ürünü ekle</button>
               </div>
             )}
@@ -227,7 +228,7 @@ export default function RetailPage() {
 
       {unbranded.length > 0 && (
         <div style={{ marginTop: 16 }}>
-          <div style={{ fontSize: 11, color: "#888", letterSpacing: "1.5px", fontWeight: 700, marginBottom: 8 }}>MARKASIZ ÜRÜNLER</div>
+          <div style={{ fontSize: 11, color: "#888", letterSpacing: "1.5px", fontWeight: 700, marginBottom: 8 }}>Markasız ürünler</div>
           {unbranded.map(p => <ProductRow key={p.id} p={p} />)}
         </div>
       )}
@@ -305,7 +306,7 @@ const saveBtn = { flex: 2, padding: "12px", background: "#FFFFFF", color: "#000"
 
 function Field({ label, children }) {
   return (<div style={{ marginBottom: 12 }}>
-    <div style={{ fontSize: 10, color: "#888", letterSpacing: "1.5px", fontWeight: 700, marginBottom: 5 }}>{label}</div>
+    <div style={{ fontSize:12, color: "#888", letterSpacing:"0.2px", fontWeight:600, marginBottom: 5 }}>{label}</div>
     {children}
   </div>);
 }

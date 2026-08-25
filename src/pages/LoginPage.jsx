@@ -1,6 +1,7 @@
 import { useState } from "react";
 import { APP_HOST } from "../lib/appUrl.js";
 import { useAuth } from "../contexts/AuthContext.jsx";
+import Ikon from "../components/Ikon.jsx";
 const cv="'Coolvetica','Bebas Neue',sans-serif";
 const cvc="'Coolvetica Condensed','Barlow Condensed',sans-serif";
 export default function LoginPage() {
@@ -25,19 +26,19 @@ export default function LoginPage() {
           <div style={{color:"#888",fontFamily:cvc,fontSize:11,letterSpacing:"2px",marginTop:6}}>{APP_HOST} · PERSONEL GİRİŞİ</div>
         </div>
         <form onSubmit={handleSubmit} style={{background:"#1E1E1E",border:"1px solid #2A2A2A",borderRadius:16,padding:28}}>
-          <div style={{color:"#888",fontFamily:cvc,fontSize:10,letterSpacing:"2px",marginBottom:6}}>E-POSTA</div>
+          <div style={{color:"#888",fontFamily:cvc,fontSize:12,letterSpacing:"0.2px",marginBottom:6}}>E-posta</div>
           <input type="email" value={email} onChange={e=>setEmail(e.target.value)} placeholder="isim@notinparis.me"
             style={{width:"100%",background:"#111",border:"1px solid #2A2A2A",borderRadius:8,padding:"12px 14px",color:"#F0EDE8",fontFamily:cvc,fontSize:15,marginBottom:16}}/>
-          <div style={{color:"#888",fontFamily:cvc,fontSize:10,letterSpacing:"2px",marginBottom:6}}>ŞİFRE</div>
+          <div style={{color:"#888",fontFamily:cvc,fontSize:12,letterSpacing:"0.2px",marginBottom:6}}>Şifre</div>
           <input type="password" value={password} onChange={e=>setPassword(e.target.value)} placeholder="••••••••"
             style={{width:"100%",background:"#111",border:"1px solid #2A2A2A",borderRadius:8,padding:"12px 14px",color:"#F0EDE8",fontFamily:cvc,fontSize:15,marginBottom:20}}/>
-          {error&&<div style={{color:"#C87A6A",fontFamily:cvc,fontSize:11,marginBottom:14}}>⚠ {error}</div>}
+          {error&&<div style={{color:"#C87A6A",fontFamily:cvc,fontSize:11,marginBottom:14}}><Ikon ad="uyari" boy={12} style={{marginRight:5}}/>{error}</div>}
           <button type="submit" disabled={loading}
             style={{width:"100%",padding:"14px",background:loading?"#555":"#FFFFFF",border:"none",color:"#000",fontFamily:cv,fontSize:20,letterSpacing:"1px",borderRadius:8,cursor:"pointer"}}>
             {loading?"GİRİŞ YAPILIYOR...":"GİRİŞ YAP"}
           </button>
         </form>
-        <div style={{marginTop:12,color:"#555",fontFamily:cvc,fontSize:11,textAlign:"center"}}>Hesabınız yoksa yöneticinizle iletişime geçin</div>
+        <div style={{marginTop:12,color:"#888888",fontFamily:cvc,fontSize:11,textAlign:"center"}}>Hesabınız yoksa yöneticinizle iletişime geçin</div>
       </div>
     </div>
   );

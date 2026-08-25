@@ -1,6 +1,7 @@
 import { useEffect, useState } from "react";
 import { supabase } from "../../lib/supabase.js";
 import { useAuth } from "../../contexts/AuthContext.jsx";
+import Ikon from "../../components/Ikon.jsx";
 
 const cv = "-apple-system,BlinkMacSystemFont,'Segoe UI',Roboto,sans-serif";
 const inputS = {width:"100%",padding:"10px 12px",background:"#0C0C0C",border:"1px solid #2A2A2A",borderRadius:8,color:"#F0EDE8",fontSize:14,outline:"none",fontFamily:"inherit"};
@@ -138,12 +139,12 @@ export default function PollsPage() {
       <div style={{fontSize:11,color:"#888",letterSpacing:"1px",marginBottom:14}}>QR MENÜDEKİ "OYLA" SEKMESİ · MÜŞTERİ TOPLU SONUCU GÖRÜR</div>
 
       <div style={{background:"#161616",border:"1px solid #2A2A2A",borderRadius:12,padding:12,marginBottom:14}}>
-        <div style={{fontSize:10,color:"#F0EDE8",letterSpacing:"1.5px",fontWeight:700,marginBottom:8}}>🤖 AI İLE SORU ÜRET (üç dilde birden)</div>
+        <div style={{fontSize:12,color:"#F0EDE8",letterSpacing:"0.2px",fontWeight:600,marginBottom:8,display:"flex",alignItems:"center",gap:6}}><Ikon ad="parlak" boy={13}/>AI İLE SORU ÜRET (üç dilde birden)</div>
         <textarea value={aiBrief} onChange={e=>setAiBrief(e.target.value)} rows={2}
           placeholder="örn: bu hafta parti var, kahve tarafına da soru olsun (boş bırakırsan menüye bakıp kendi seçer)"
           style={{...inputS, resize:"vertical"}}/>
         <button onClick={runAi} disabled={aiBusy} style={{width:"100%",marginTop:8,padding:"11px",background:aiBusy?"#555":"#2A2A2A",color:"#F0EDE8",border:"1px solid #2A2A2A",borderRadius:10,fontSize:13,fontWeight:800,cursor:aiBusy?"wait":"pointer"}}>
-          {aiBusy ? "AI düşünüyor..." : "🤖 4 soru öner"}
+          {aiBusy ? "AI düşünüyor..." : <><Ikon ad="parlak" boy={14} style={{marginRight:6}}/>4 soru öner</>}
         </button>
         {aiPolls.map((sp, i) => (
           <div key={i} style={{marginTop:10,padding:"10px 12px",background:"#12181A",border:"1px solid #2A2A2A",borderRadius:10}}>
@@ -153,7 +154,7 @@ export default function PollsPage() {
               {sp.allow_free_text && (sp.options||[]).length > 0 ? " · + serbest cevap" : ""}
             </div>
             <button onClick={() => useSuggestion(sp)} style={{marginTop:8,padding:"7px 14px",background:"#FFFFFF",color:"#000",border:"none",borderRadius:8,fontSize:12,fontWeight:800,cursor:"pointer"}}>
-              Bunu kullan →
+              Bunu kullan<Ikon ad="oksag" boy={12} style={{marginLeft:4}}/>
             </button>
           </div>
         ))}
@@ -161,7 +162,7 @@ export default function PollsPage() {
 
       <button onClick={openNew} style={{padding:"10px 16px",background:"#FFFFFF",color:"#000",border:"none",borderRadius:10,fontSize:13,fontWeight:800,cursor:"pointer",marginBottom:14}}>+ Yeni Soru</button>
 
-      {polls.length === 0 && <div style={{textAlign:"center",padding:30,color:"#666",fontSize:12}}>Henüz oylama yok</div>}
+      {polls.length === 0 && <div style={{textAlign:"center",padding:30,color:"#888888",fontSize:12}}>Henüz oylama yok</div>}
 
       {polls.map(p => {
         const r = results[p.id] || {};
@@ -172,7 +173,7 @@ export default function PollsPage() {
             <div style={{display:"flex",justifyContent:"space-between",gap:10,alignItems:"flex-start"}}>
               <div style={{flex:1,minWidth:0}}>
                 <div style={{fontSize:15,fontWeight:700}}>{p.question}</div>
-                <div style={{fontSize:10,color:"#666",marginTop:3}}>
+                <div style={{fontSize:10,color:"#888888",marginTop:3}}>
                   {total} oy{p.allow_free_text ? " · serbest cevap açık" : ""}{p.ends_at ? " · bitiş " + new Date(p.ends_at).toLocaleDateString("tr-TR") : ""}
                 </div>
               </div>
@@ -200,7 +201,7 @@ export default function PollsPage() {
 
             {answers.length > 0 && (
               <div style={{marginTop:10,padding:"8px 10px",background:"#12181A",border:"1px solid #2A2A2A",borderRadius:8}}>
-                <div style={{fontSize:10,color:"#F0EDE8",letterSpacing:"1.5px",fontWeight:700,marginBottom:6}}>✍️ SERBEST CEVAPLAR ({answers.length}) — yalnız personel görür</div>
+                <div style={{fontSize:12,color:"#F0EDE8",letterSpacing:"0.2px",fontWeight:600,marginBottom:6,display:"flex",alignItems:"center",gap:6}}><Ikon ad="kalem" boy={13}/>SERBEST CEVAPLAR ({answers.length}) — yalnız personel görür</div>
                 <div style={{maxHeight:180,overflowY:"auto"}}>
                   {answers.map((a, i) => (
                     <div key={i} style={{fontSize:13,color:"#DDD",padding:"5px 0",borderBottom:"1px solid #161616"}}>{a}</div>
@@ -221,11 +222,11 @@ export default function PollsPage() {
             <Field label="QUESTION (English)"><input value={form.question_en} onChange={e=>setForm({...form,question_en:e.target.value})} style={inputS}/></Field>
             <Field label="ВОПРОС (Русский)"><input value={form.question_ru} onChange={e=>setForm({...form,question_ru:e.target.value})} style={inputS}/></Field>
 
-            <div style={{fontSize:10,color:"#888",letterSpacing:"1.5px",fontWeight:700,margin:"14px 0 6px"}}>SEÇENEKLER</div>
+            <div style={{fontSize:12,color:"#888",letterSpacing:"0.2px",fontWeight:600,margin:"14px 0 6px"}}>Seçenekler</div>
             {(form.options || []).map((o, i) => (
               <div key={i} style={{background:"#141414",border:"1px solid #2A2A2A",borderRadius:8,padding:8,marginBottom:6}}>
                 <div style={{display:"flex",gap:6,alignItems:"center",marginBottom:6}}>
-                  <span style={{fontSize:11,color:"#666",fontWeight:800,width:14}}>{i+1}.</span>
+                  <span style={{fontSize:11,color:"#888888",fontWeight:800,width:14}}>{i+1}.</span>
                   <input value={o.tr} onChange={e=>{const n=[...form.options];n[i]={...o,tr:e.target.value};setForm({...form,options:n});}} placeholder="Türkçe" style={{...inputS,flex:1}}/>
                   <button onClick={()=>setForm({...form,options:form.options.filter((_,j)=>j!==i)})} style={{background:"transparent",color:"#C87A6A",border:"1px solid #2A2A2A",borderRadius:6,padding:"8px 10px",fontSize:12,cursor:"pointer",flexShrink:0}}>×</button>
                 </div>
@@ -240,7 +241,7 @@ export default function PollsPage() {
 
             <label style={{display:"flex",alignItems:"center",gap:8,fontSize:13,color:"#ddd",cursor:"pointer",marginBottom:12}}>
               <input type="checkbox" checked={!!form.allow_free_text} onChange={e=>setForm({...form,allow_free_text:e.target.checked})} style={{width:16,height:16,accentColor:"#FFFFFF"}}/>
-              ✍️ Müşteri kendi cevabını da yazabilsin
+              <Ikon ad="kalem" boy={13} style={{marginRight:5}}/>Müşteri kendi cevabını da yazabilsin
             </label>
 
             <div style={{display:"flex",gap:10}}>
@@ -264,7 +265,7 @@ export default function PollsPage() {
 
 function Field({label, children}) {
   return (<div style={{marginBottom:12,flex:1}}>
-    <div style={{fontSize:10,color:"#888",letterSpacing:"1.5px",fontWeight:700,marginBottom:5}}>{label}</div>
+    <div style={{fontSize:12,color:"#888",letterSpacing:"0.2px",fontWeight:600,marginBottom:5}}>{label}</div>
     {children}
   </div>);
 }

@@ -2,6 +2,7 @@ import { useEffect, useState } from "react";
 import { useNavigate } from "react-router-dom";
 import { supabase } from "../../lib/supabase.js";
 import { useAuth } from "../../contexts/AuthContext.jsx";
+import Ikon from "../../components/Ikon.jsx";
 
 const cv = "-apple-system,BlinkMacSystemFont,'Segoe UI',Roboto,sans-serif";
 
@@ -153,12 +154,12 @@ export default function TablesPage() {
                   style={{background:"#1A1A1A",border:"1px solid "+(i===0?"#FFFFFF":"#2A2A2A"),borderRadius:12,
                           padding:"13px 15px",cursor:"pointer",display:"flex",alignItems:"center",gap:12}}>
                   <div style={{flex:1,minWidth:0}}>
-                    {s.magaza && <div style={{display:"inline-block",background:s.magaza==="doner"?"#FFFFFF":"#222222",color:s.magaza==="doner"?"#000":"#F0EDE8",padding:"2px 8px",borderRadius:6,fontSize:10,fontWeight:800,letterSpacing:"0.5px",marginBottom:4}}>{s.magaza==="doner"?"🥙 DÖNER":"🗼 PARIS"}</div>}
+                    {s.magaza && <div style={{display:"inline-block",background:s.magaza==="doner"?"#FFFFFF":"#222222",color:s.magaza==="doner"?"#000":"#F0EDE8",padding:"2px 8px",borderRadius:6,fontSize:12,fontWeight:600,letterSpacing:"0.2px",marginBottom:4}}>{s.magaza==="doner"?"DÖNER":"PARIS"}</div>}
                     <div style={{fontSize:17,fontWeight:800,color:"#F0EDE8",overflow:"hidden",textOverflow:"ellipsis",whiteSpace:"nowrap"}}>{s.ad}</div>
                     <div style={{fontSize:12,color:"#888",marginTop:3,overflow:"hidden",textOverflow:"ellipsis",whiteSpace:"nowrap"}}>{s.alt}</div>
                   </div>
                   <span style={{fontSize:18,fontWeight:800,fontVariantNumeric:"tabular-nums"}}>₺{s.tutar.toLocaleString("tr-TR")}</span>
-                  <span style={{color:"#666",fontSize:15}}>{ortak ? (acik ? "⌄" : "›") : "›"}</span>
+                  <span style={{color:"#888888",display:"flex"}}><Ikon ad={ortak && acik ? "asagi" : "sag"} boy={14}/></span>
                 </div>
                 {acik && (
                   <div style={{display:"flex",flexDirection:"column",gap:6,padding:"8px 0 0 12px"}}>
@@ -195,12 +196,12 @@ export default function TablesPage() {
                 <button onClick={() => openOrderForTable(t)}
                   style={{padding:"11px 14px",background:"transparent",color:"#F0EDE8",border:"none",
                           fontSize:13,fontWeight:700,cursor:"pointer",fontFamily:"inherit"}}>
-                  {t.name}{t.shared && <span style={{marginLeft:6,fontSize:9,color:"#8A8580",fontWeight:800,letterSpacing:"0.5px"}}>ORTAK</span>}
+                  {t.name}{t.shared && <span style={{marginLeft:6,fontSize:12,color:"#8A8580",fontWeight:600,letterSpacing:"0.2px"}}>Ortak</span>}
                 </button>
                 <button onClick={(e) => {e.stopPropagation(); setEditTable(t); setEditName(t.name);}}
                   title="Adını değiştir"
-                  style={{padding:"11px 9px 11px 3px",background:"transparent",border:"none",color:"#555",
-                          cursor:"pointer",fontSize:11,fontFamily:"inherit"}}>✏️</button>
+                  style={{padding:"11px 9px 11px 3px",background:"transparent",border:"none",color:"#888888",
+                          cursor:"pointer",fontFamily:"inherit",display:"flex"}}><Ikon ad="kalem" boy={15}/></button>
               </div>
             ))}
           </div>

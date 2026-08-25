@@ -2,6 +2,7 @@ import { useEffect, useRef, useState } from "react";
 import { supabase } from "../../lib/supabase.js";
 import { useAuth } from "../../contexts/AuthContext.jsx";
 import { businessDayStart, businessDayKey, BUSINESS_HOURS } from "../../lib/businessDay.js";
+import Ikon from "../../components/Ikon.jsx";
 
 const cv = "-apple-system,BlinkMacSystemFont,'Segoe UI',Roboto,sans-serif";
 const hv = "'Bebas Neue','Barlow Condensed','Coolvetica Condensed',sans-serif";
@@ -153,7 +154,7 @@ export default function ReportsPage() {
         <div style={{ fontSize: 12, color: C.faint }}>
           {new Date().toLocaleDateString("tr-TR", { weekday: "long", day: "numeric", month: "long" })}
           {updatedAt && <> · <span style={{ color: C.muted }}>{updatedAt.toLocaleTimeString("tr-TR", { hour: "2-digit", minute: "2-digit" })}</span></>}
-          <button onClick={() => loadData()} title="Yenile" style={{ marginLeft: 8, background: "none", border: `1px solid ${C.cardLine}`, color: C.muted, borderRadius: 6, padding: "2px 8px", cursor: "pointer", fontSize: 12 }}>↻</button>
+          <button onClick={() => loadData()} title="Yenile" style={{ marginLeft: 8, background: "none", border: `1px solid ${C.cardLine}`, color: C.muted, borderRadius: 6, padding: "4px 8px", cursor: "pointer", display: "inline-flex" }}><Ikon ad="yenile" boy={13}/></button>
         </div>
       </div>
 
@@ -166,7 +167,7 @@ export default function ReportsPage() {
               color: selectedStore === s.id ? "#000" : C.muted,
               border: `1px solid ${selectedStore === s.id ? C.accent : C.cardLine}`,
             }}>
-              {s.slug === "paris" ? "🗼" : "🍩"} {s.name}
+              {s.name}
             </button>
           ))}
         </div>

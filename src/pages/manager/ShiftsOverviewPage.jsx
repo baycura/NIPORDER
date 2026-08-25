@@ -2,6 +2,7 @@ import { useEffect, useState } from "react";
 import { supabase } from "../../lib/supabase.js";
 import { useAuth } from "../../contexts/AuthContext.jsx";
 import { businessDayStart, businessDayKey } from "../../lib/businessDay.js";
+import Ikon from "../../components/Ikon.jsx";
 
 const cv = "-apple-system,BlinkMacSystemFont,'Segoe UI',Roboto,sans-serif";
 
@@ -97,20 +98,20 @@ export default function ShiftsOverviewPage() {
       {loading ? (<div style={{ color: "#888", padding: 20 }}>Yükleniyor...</div>) : (<>
         <div style={{ display: "flex", gap: 10, marginBottom: 12 }}>
           <div style={{ flex: 1, background: "#161616", border: "1px solid #2A2A2A", borderRadius: 13, padding: "11px 14px" }}>
-            <div style={{ fontSize: 10, letterSpacing: "1.5px", color: "#8A8580", fontWeight: 700 }}>GÜN CİROSU</div>
+            <div style={{ fontSize:12, letterSpacing:"0.2px", color: "#8A8580", fontWeight:600 }}>Gün cirosu</div>
             <div style={{ fontSize: 22, fontWeight: 800 }}>₺{Math.round(veri.toplamCiro).toLocaleString("tr-TR")}</div>
           </div>
           <div style={{ flex: 1, background: "#161616", border: "1px solid #2A2A2A", borderRadius: 13, padding: "11px 14px" }}>
-            <div style={{ fontSize: 10, letterSpacing: "1.5px", color: "#8A8580", fontWeight: 700 }}>KAPANAN FİŞ</div>
+            <div style={{ fontSize:12, letterSpacing:"0.2px", color: "#8A8580", fontWeight:600 }}>Kapanan fiş</div>
             <div style={{ fontSize: 22, fontWeight: 800 }}>{veri.toplamFis}</div>
           </div>
         </div>
 
         {veri.liste.length === 0 && veri.toplamFis === 0 && (
-          <div style={{ textAlign: "center", padding: "34px 20px", color: "#777", fontSize: 13,
+          <div style={{ textAlign: "center", padding: "34px 20px", color: "#888888", fontSize: 13,
                         background: "#141414", border: "1px dashed #2A2A2A", borderRadius: 14 }}>
             Bu gün için ne vardiya kaydı ne satış var.<br />
-            <span style={{ fontSize: 12, color: "#5A5550" }}>Ekip vardiyaya girmemiş ya da hesaplar sisteme yazılmamış.</span>
+            <span style={{ fontSize: 12, color: "#888888" }}>Ekip vardiyaya girmemiş ya da hesaplar sisteme yazılmamış.</span>
           </div>
         )}
 
@@ -121,13 +122,13 @@ export default function ShiftsOverviewPage() {
               <div style={{ fontSize: 15, fontWeight: 800, flex: 1 }}>{k.ad}</div>
               {k.vardiya
                 ? (k.vardiya.status === "active"
-                    ? <span style={{ fontSize: 10, fontWeight: 800, color: "#FFFFFF", background: "#161616", border: "1px solid #2A2A2A", padding: "3px 9px", borderRadius: 14 }}>VARDİYADA</span>
-                    : <span style={{ fontSize: 10, fontWeight: 800, color: "#999", background: "#1E1E1E", border: "1px solid #333", padding: "3px 9px", borderRadius: 14 }}>BİTTİ</span>)
-                : <span style={{ fontSize: 10, fontWeight: 800, color: "#FFFFFF", background: "#161616", border: "1px solid #2A2A2A", padding: "3px 9px", borderRadius: 14 }}>VARDİYA KAYDI YOK</span>}
+                    ? <span style={{ fontSize: 10, fontWeight: 800, color: "#FFFFFF", background: "#161616", border: "1px solid #2A2A2A", padding: "3px 9px", borderRadius: 14 }}>Vardiyada</span>
+                    : <span style={{ fontSize: 10, fontWeight: 800, color: "#999", background: "#1E1E1E", border: "1px solid #333", padding: "3px 9px", borderRadius: 14 }}>Bitti</span>)
+                : <span style={{ fontSize: 10, fontWeight: 800, color: "#FFFFFF", background: "#161616", border: "1px solid #2A2A2A", padding: "3px 9px", borderRadius: 14 }}>Vardiya kaydı yok</span>}
             </div>
             <div style={{ display: "flex", gap: 16, marginTop: 8, fontSize: 12.5, color: "#B8B3AC", flexWrap: "wrap" }}>
-              {k.vardiya && <span>🕐 {saat(k.vardiya.checked_in_at)} → {saat(k.vardiya.checked_out_at)} ({sure(k.vardiya)})</span>}
-              <span>🧾 {k.fis} fiş</span>
+              {k.vardiya && <span><Ikon ad="saat" boy={12} style={{marginRight:5}}/>{saat(k.vardiya.checked_in_at)} → {saat(k.vardiya.checked_out_at)} ({sure(k.vardiya)})</span>}
+              <span><Ikon ad="fatura" boy={12} style={{marginRight:5}}/>{k.fis} fiş</span>
               <span style={{ fontWeight: 800, color: "#F0EDE8" }}>₺{Math.round(k.ciro).toLocaleString("tr-TR")}</span>
               {k.fis > 0 && <span>ort ₺{Math.round(k.ciro / k.fis)}</span>}
             </div>
@@ -138,7 +139,7 @@ export default function ShiftsOverviewPage() {
           <div style={{ background: "#141414", border: "1px solid #2A2A2A", borderRadius: 13,
                         padding: "11px 14px", fontSize: 12.5, color: "#8A8580" }}>
             Personele bağlanmamış satış: {veri.vardiyasiz.fis} fiş · ₺{Math.round(veri.vardiyasiz.ciro).toLocaleString("tr-TR")}
-            <div style={{ fontSize: 11, color: "#5A5550", marginTop: 2 }}>QR ile müşterinin kendi açtığı ya da personel seçilmeden kapatılan hesaplar.</div>
+            <div style={{ fontSize: 11, color: "#888888", marginTop: 2 }}>QR ile müşterinin kendi açtığı ya da personel seçilmeden kapatılan hesaplar.</div>
           </div>
         )}
       </>)}

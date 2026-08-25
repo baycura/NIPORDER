@@ -2,6 +2,7 @@ import { useEffect, useRef, useState } from "react";
 import { supabase } from "../../lib/supabase.js";
 import { useAuth } from "../../contexts/AuthContext.jsx";
 import { optionsText } from "../../lib/productOptions.js";
+import Ikon from "../../components/Ikon.jsx";
 
 const cv = "-apple-system,BlinkMacSystemFont,'Segoe UI',Roboto,sans-serif";
 
@@ -72,7 +73,7 @@ export default function KitchenPage() {
       .filter(o => itemsByOrder[o.id] && itemsByOrder[o.id].length > 0)
       .map(o => ({
         order: o, items: itemsByOrder[o.id],
-        where: o.table_id ? (tabMap[o.table_id] || "Masa") + (o.customer_name ? " · 👤 " + o.customer_name : "") : "👤 " + (o.customer_name || "Misafir"),
+        where: o.table_id ? (tabMap[o.table_id] || "Masa") + (o.customer_name ? " · " + o.customer_name : "") : (o.customer_name || "Misafir"),
         storeSlug: o.stores?.slug,
       }));
 
@@ -197,7 +198,7 @@ export default function KitchenPage() {
     <div style={{fontFamily:cv,color:"#F0EDE8",position:"relative",minHeight:"80vh"}}>
       {flash && (
         <div style={{position:"fixed",top:0,left:0,right:0,padding:"18px 20px",background:"#C87A6A",color:"#fff",fontSize:20,fontWeight:900,textAlign:"center",letterSpacing:"2px",zIndex:200,animation:"flash 0.2s ease-in-out 6"}}>
-          🔔 YENİ SİPARİŞ!
+          <Ikon ad="zil" boy={22} style={{marginRight:10,verticalAlign:"-0.2em"}}/>YENİ SİPARİŞ!
           <style>{`@keyframes flash { 0%,100%{background:#C87A6A} 50%{background:#8A8580} }`}</style>
         </div>
       )}
@@ -209,22 +210,22 @@ export default function KitchenPage() {
         </div>
         <div style={{display:"flex",gap:6}}>
           <button onClick={() => { setSoundOn(!soundOn); unlockEverything(); }} style={{padding:"8px 12px",background:soundOn?"#FFFFFF":"#444",color:soundOn?"#000":"#aaa",border:"none",borderRadius:8,fontSize:11,fontWeight:700,cursor:"pointer",letterSpacing:"1px"}}>
-            {soundOn ? "🔊 SES AÇIK" : "🔇 SES KAPALI"}
+            <span style={{display:"flex",alignItems:"center",gap:6}}><Ikon ad={soundOn ? "ses" : "sessiz"} boy={14}/>{soundOn ? "SES AÇIK" : "SES KAPALI"}</span>
           </button>
-          <button onClick={() => { unlockEverything(); playLoudDing(audioCtxRef); }} style={{padding:"8px 12px",background:"#222",color:"#aaa",border:"1px solid #444",borderRadius:8,fontSize:11,fontWeight:700,cursor:"pointer"}}>🔔 Test</button>
+          <button onClick={() => { unlockEverything(); playLoudDing(audioCtxRef); }} style={{padding:"8px 12px",background:"#222",color:"#aaa",border:"1px solid #444",borderRadius:8,fontSize:11,fontWeight:700,cursor:"pointer",display:"inline-flex",alignItems:"center",gap:6}}><Ikon ad="zil" boy={14}/>Test</button>
           <button onClick={unlockEverything} style={{padding:"8px 12px",background:wakeLockOn?"#FFFFFF":"#222222",color:wakeLockOn?"#000":"#8A8580",border:"none",borderRadius:8,fontSize:11,fontWeight:700,cursor:"pointer",letterSpacing:"1px"}}>
-            {wakeLockOn ? "💡 EKRAN AÇIK" : "💤 Aktifleştir"}
+            <span style={{display:"flex",alignItems:"center",gap:6}}><Ikon ad="ampul" boy={14}/>{wakeLockOn ? "EKRAN AÇIK" : "Aktifleştir"}</span>
           </button>
         </div>
       </div>
 
       {!unlocked && (
         <div onClick={unlockEverything} style={{background:"#161616",border:"1px solid #FFFFFF",color:"#F0EDE8",padding:"12px 16px",borderRadius:10,fontSize:13,marginBottom:14,cursor:"pointer",fontWeight:700}}>
-          👆 Ses ve uyku engeli için buraya bir kez tıklayın (ZORUNLU)
+          Ses ve uyku engeli için buraya bir kez tıklayın (ZORUNLU)
         </div>
       )}
 
-      {tickets.length === 0 && <div style={{textAlign:"center",padding:60,color:"#666",fontSize:14}}>Aktif sipariş yok</div>}
+      {tickets.length === 0 && <div style={{textAlign:"center",padding:60,color:"#888888",fontSize:14}}>Aktif sipariş yok</div>}
 
       {[...tickets].sort((a, b) =>
         new Date(a.order.created_at) - new Date(b.order.created_at)
@@ -244,15 +245,15 @@ export default function KitchenPage() {
           <div key={t.order.id} style={{background:cardBg,border:"2px solid "+cardBorder,borderRadius:14,padding:14,marginBottom:12}}>
             <div style={{display:"flex",justifyContent:"space-between",alignItems:"center",marginBottom:10}}>
               <div style={{flex:1,minWidth:0}}>
-                {t.storeSlug && <div style={{display:"inline-block",background:t.storeSlug==="doner"?"#FFFFFF":"#222222",color:t.storeSlug==="doner"?"#000":"#F0EDE8",padding:"2px 8px",borderRadius:6,fontSize:10,fontWeight:800,letterSpacing:"0.5px",marginBottom:4}}>{t.storeSlug==="doner"?"🥙 DÖNER":"🗼 PARIS"}</div>}
+                {t.storeSlug && <div style={{display:"inline-block",background:t.storeSlug==="doner"?"#FFFFFF":"#222222",color:t.storeSlug==="doner"?"#000":"#F0EDE8",padding:"2px 8px",borderRadius:6,fontSize:12,fontWeight:600,letterSpacing:"0.2px",marginBottom:4}}>{t.storeSlug==="doner"?"DÖNER":"PARIS"}</div>}
                 <div style={{fontSize:16,fontWeight:800}}>{t.where}</div>
               </div>
-              <div style={{fontSize:13,color:urgent?"#FFFFFF":"#8A8580",fontWeight:800}}>{waitMin} dk{urgent ? " ⚠" : ""}</div>
+              <div style={{fontSize:13,color:urgent?"#FFFFFF":"#8A8580",fontWeight:800}}>{waitMin} dk{urgent && <Ikon ad="uyari" boy={13} style={{marginLeft:5}}/>}</div>
             </div>
 
             {t.order.note && (
               <div style={{background:"#161616",border:"1px solid #FFFFFF",borderRadius:8,padding:"8px 12px",marginBottom:10,fontSize:12,color:"#F0EDE8"}}>
-                📝 <strong>Not:</strong> {t.order.note}
+                <Ikon ad="not" boy={13} style={{marginRight:5}}/><strong>Not:</strong> {t.order.note}
               </div>
             )}
 
@@ -264,8 +265,8 @@ export default function KitchenPage() {
                 <div key={it.id} style={{padding:"8px 0",borderTop:"1px solid #2A2A2A"}}>
                   <div style={{fontSize:15,fontWeight:700,color:itemColor}}>
                     {it.quantity}× {it.product_name}
-                    {it.is_takeaway && <span style={{marginLeft:8,padding:"2px 8px",background:"#FFFFFF",color:"#000",borderRadius:10,fontSize:11,fontWeight:800,letterSpacing:"0.5px"}}>🥤 PAKET</span>}
-                    {it.kitchen_status === "ready" && <span style={{marginLeft:8,fontSize:11,color:"#FFFFFF"}}>✓</span>}
+                    {it.is_takeaway && <span style={{marginLeft:8,padding:"2px 8px",background:"#FFFFFF",color:"#000",borderRadius:10,fontSize:11,fontWeight:800,letterSpacing:"0.5px"}}><Ikon ad="bardak" boy={11} style={{marginRight:4}}/>PAKET</span>}
+                    {it.kitchen_status === "ready" && <Ikon ad="onay" boy={13} style={{marginLeft:8,color:"#FFFFFF"}}/>}
                   </div>
                   {opts && <div style={{fontSize:12,color:"#8A8580",marginTop:2,fontWeight:600}}>{opts}</div>}
                   {it.notes && <div style={{fontSize:12,color:"#aaa",fontStyle:"italic",marginTop:2}}>Not: {it.notes}</div>}
@@ -276,17 +277,17 @@ export default function KitchenPage() {
             <div style={{marginTop:12,display:"flex",gap:6}}>
               {anyPending && (
                 <button onClick={() => startPreparingAll(t.order.id)} style={{flex:1,padding:"14px",background:"#FFFFFF",color:"#000",border:"none",borderRadius:10,fontSize:14,fontWeight:800,cursor:"pointer",letterSpacing:"0.5px"}}>
-                  🔥 Hazırlamaya başla
+                  <Ikon ad="mutfak" boy={15} style={{marginRight:7}}/>Hazırlamaya başla
                 </button>
               )}
               {!anyPending && !allReady && (
                 <button onClick={() => markAllReady(t.order.id)} style={{flex:1,padding:"14px",background:"#FFFFFF",color:"#000",border:"none",borderRadius:10,fontSize:14,fontWeight:800,cursor:"pointer",letterSpacing:"0.5px"}}>
-                  ✓ Hepsi Hazır
+                  <Ikon ad="onay" boy={15} style={{marginRight:7}}/>Hepsi Hazır
                 </button>
               )}
               {allReady && (
                 <button onClick={() => markServedAndClose(t.order.id)} style={{flex:1,padding:"14px",background:"#FFFFFF",color:"#000",border:"none",borderRadius:10,fontSize:14,fontWeight:800,cursor:"pointer",letterSpacing:"0.5px"}}>
-                  ✓ Servis Edildi → Kapat
+                  <Ikon ad="onay" boy={15} style={{marginRight:7}}/>Servis Edildi<Ikon ad="oksag" boy={13} style={{margin:"0 5px"}}/>Kapat
                 </button>
               )}
             </div>

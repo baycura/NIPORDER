@@ -1,6 +1,7 @@
 import { useState, useEffect } from "react";
 import { supabase } from "../../lib/supabase.js";
 import { useAuth } from "../../contexts/AuthContext.jsx";
+import Ikon from "../../components/Ikon.jsx";
 
 const cv = "'Coolvetica','Bebas Neue',sans-serif";
 const cvc = "'Coolvetica Condensed','Barlow Condensed',sans-serif";
@@ -44,7 +45,7 @@ function EntryModal({ item, onClose, onDone }) {
         </div>
         <input type="number" value={qty} onChange={e => setQty(e.target.value)} placeholder={`Miktar (${item.unit})`}
           style={{ width: "100%", background: "#111", border: "1px solid #2A2A2A", borderRadius: 8, padding: "11px 14px", color: "#F0EDE8", fontFamily: cvc, fontSize: 16, marginBottom: 12 }} />
-        <div style={{ color: "#666", fontFamily: cvc, fontSize: 11, marginBottom: 18, lineHeight: 1.5 }}>
+        <div style={{ color: "#888888", fontFamily: cvc, fontSize: 11, marginBottom: 18, lineHeight: 1.5 }}>
           Faturayla gelen mallar için Faturalar ekranını kullan — maliyet de oradan güncellenir.
           Burası sayım düzeltmesi ve elden alınan mallar içindir.
         </div>
@@ -82,14 +83,14 @@ export default function StockViewPage() {
       <h1 style={{ color: "#F0EDE8", fontFamily: cv, fontSize: 28, letterSpacing: "-0.5px", margin: "0 0 16px" }}>Stok</h1>
       {alerts.length > 0 && (
         <div style={{ background: "rgba(224,90,90,0.12)", border: "1px solid #2A2A2A", borderRadius: 10, padding: "10px 16px", marginBottom: 16, display: "flex", gap: 10, alignItems: "center" }}>
-          <span>⚠️</span><span style={{ color: "#C87A6A", fontFamily: cvc, fontSize: 12 }}>{alerts.length} malzeme kritik</span>
+          <Ikon ad="uyari" boy={15} style={{ color: "#C87A6A" }}/><span style={{ color: "#C87A6A", fontFamily: cvc, fontSize: 12 }}>{alerts.length} malzeme kritik</span>
         </div>
       )}
       <input value={search} onChange={e => setSearch(e.target.value)} placeholder="Malzeme ara..."
         style={{ width: "100%", background: "#111", border: "1px solid #2A2A2A", borderRadius: 8, padding: "10px 14px", color: "#F0EDE8", fontFamily: cvc, fontSize: 14, marginBottom: 16 }} />
-      {loading && <div style={{ color: "#888", fontFamily: cvc, fontSize: 12, textAlign: "center", padding: 40 }}>YÜKLENİYOR...</div>}
+      {loading && <div style={{ color: "#888", fontFamily: cvc, fontSize: 12, textAlign: "center", padding: 40 }}>Yükleniyor...</div>}
       {!loading && filtered.length === 0 && (
-        <div style={{ color: "#666", fontFamily: cvc, fontSize: 12, textAlign: "center", padding: 40 }}>
+        <div style={{ color: "#888888", fontFamily: cvc, fontSize: 12, textAlign: "center", padding: 40 }}>
           {items.length === 0 ? "Henüz hammadde girilmemiş." : "Aramaya uyan malzeme yok."}
         </div>
       )}

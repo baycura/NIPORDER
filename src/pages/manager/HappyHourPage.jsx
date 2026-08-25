@@ -1,6 +1,7 @@
 import { useState, useEffect } from "react";
 import { supabase } from "../../lib/supabase.js";
 import { useAuth } from "../../contexts/AuthContext.jsx";
+import Ikon from "../../components/Ikon.jsx";
 
 const cv = "-apple-system,BlinkMacSystemFont,'Segoe UI',Roboto,sans-serif";
 
@@ -122,7 +123,7 @@ export default function HappyHourPage() {
     <div style={{ fontFamily: cv, color: "#F0EDE8" }}>
       <div style={{ display: "flex", justifyContent: "space-between", alignItems: "center", marginBottom: 24 }}>
         <div>
-          <h1 style={{ fontSize: 24, fontWeight: 800, margin: 0 }}>🎉 Happy Hour</h1>
+          <h1 style={{ fontSize: 24, fontWeight: 800, margin: 0, display: "flex", alignItems: "center", gap: 10 }}><Ikon ad="kampanya" boy={22}/>Happy Hour</h1>
           <div style={{ fontSize: 12, color: "#888", marginTop: 4 }}>Seçilen gün ve saatlerde işaretli ürünlerin fiyatı otomatik düşer; saat bitince normale döner.</div>
         </div>
         <button onClick={() => setShowAdd(true)} style={{ padding: "12px 20px", background: "#FFFFFF", color: "#000", border: "none", fontWeight: 800, fontSize: 13, cursor: "pointer", borderRadius: 8 }}>+ YENİ KURAL</button>
@@ -144,7 +145,7 @@ export default function HappyHourPage() {
               </div>
               <div style={{ display: "flex", gap: 8 }}>
                 <button onClick={() => toggle(r.id, !r.is_active)} style={{ padding: "8px 16px", background: r.is_active ? "#8A8580" : "#444", color: "#fff", border: "none", borderRadius: 6, fontWeight: 700, fontSize: 12, cursor: "pointer" }}>{r.is_active ? "AKTİF" : "PASİF"}</button>
-                <button onClick={() => remove(r.id)} style={{ padding: "8px 16px", background: "#2A2A2A", color: "#fff", border: "none", borderRadius: 6, fontWeight: 700, fontSize: 12, cursor: "pointer" }}>SİL</button>
+                <button onClick={() => remove(r.id)} style={{ padding: "8px 16px", background: "#2A2A2A", color: "#fff", border: "none", borderRadius: 6, fontWeight: 700, fontSize: 12, cursor: "pointer" }}>Sil</button>
               </div>
             </div>
           </div>
@@ -154,20 +155,20 @@ export default function HappyHourPage() {
       {showAdd && (
         <div style={{ position: "fixed", inset: 0, background: "rgba(0,0,0,0.85)", display: "flex", alignItems: "flex-start", justifyContent: "center", overflowY: "auto", zIndex: 100, padding: 24 }}>
           <div style={{ background: "#111", padding: 24, borderRadius: 12, width: "100%", maxWidth: 700, border: "1px solid #333" }}>
-            <h2 style={{ fontWeight: 800, fontSize: 20, margin: "0 0 16px 0" }}>YENİ HAPPY HOUR</h2>
-            <label style={{ display: "block", color: "#aaa", fontSize: 12, marginBottom: 4 }}>İSİM</label>
+            <h2 style={{ fontWeight: 800, fontSize: 20, margin: "0 0 16px 0" }}>Yeni happy hour</h2>
+            <label style={{ display: "block", color: "#aaa", fontSize: 12, marginBottom: 4 }}>İsim</label>
             <input value={form.name} onChange={e => setForm({ ...form, name: e.target.value })} placeholder="Örn: Akşam Kokteyl Saati" style={{ width: "100%", padding: 10, background: "#000", color: "#fff", border: "1px solid #333", borderRadius: 6, marginBottom: 12 }} />
             <div style={{ display: "flex", gap: 12, marginBottom: 12 }}>
               <div style={{ flex: 1 }}>
-                <label style={{ display: "block", color: "#aaa", fontSize: 12, marginBottom: 4 }}>BAŞLANGIÇ</label>
+                <label style={{ display: "block", color: "#aaa", fontSize: 12, marginBottom: 4 }}>Başlangıç</label>
                 <input type="time" value={form.start_time} onChange={e => setForm({ ...form, start_time: e.target.value })} style={{ width: "100%", padding: 10, background: "#000", color: "#fff", border: "1px solid #333", borderRadius: 6 }} />
               </div>
               <div style={{ flex: 1 }}>
-                <label style={{ display: "block", color: "#aaa", fontSize: 12, marginBottom: 4 }}>BİTİŞ</label>
+                <label style={{ display: "block", color: "#aaa", fontSize: 12, marginBottom: 4 }}>Bitiş</label>
                 <input type="time" value={form.end_time} onChange={e => setForm({ ...form, end_time: e.target.value })} style={{ width: "100%", padding: 10, background: "#000", color: "#fff", border: "1px solid #333", borderRadius: 6 }} />
               </div>
             </div>
-            <label style={{ display: "block", color: "#aaa", fontSize: 12, marginBottom: 4 }}>GÜNLER</label>
+            <label style={{ display: "block", color: "#aaa", fontSize: 12, marginBottom: 4 }}>Günler</label>
             <div style={{ display: "flex", gap: 6, marginBottom: 16, flexWrap: "wrap" }}>
               {DAYS.map(d => (
                 <button key={d.idx} onClick={() => toggleDay(d.idx)} style={{ padding: "8px 12px", background: form.days_of_week.includes(d.idx) ? "#FFFFFF" : "#222", color: form.days_of_week.includes(d.idx) ? "#000" : "#aaa", border: "none", borderRadius: 6, fontWeight: 700, fontSize: 12, cursor: "pointer", minWidth: 50 }}>{d.label}</button>
@@ -180,7 +181,7 @@ export default function HappyHourPage() {
               </span>
             </label>
             <div style={{ display: "flex", gap: 6, marginBottom: 8, flexWrap: "wrap" }}>
-              <input value={search} onChange={e => setSearch(e.target.value)} placeholder="🔍 Ürün ara"
+              <input value={search} onChange={e => setSearch(e.target.value)} placeholder="Ürün ara"
                 style={{ flex: 1, minWidth: 140, padding: 9, background: "#000", color: "#fff", border: "1px solid #333", borderRadius: 6 }} />
               <input type="number" value={bulkPct} onChange={e => setBulkPct(e.target.value)}
                 style={{ width: 60, padding: 9, background: "#000", color: "#FFFFFF", border: "1px solid #333", borderRadius: 6, fontWeight: 700 }} />
@@ -196,7 +197,7 @@ export default function HappyHourPage() {
                     <input type="checkbox" checked={isSelected} onChange={e => setProductPrice(p.id, p.price, e.target.checked ? Math.round(p.price) : "")} style={{ accentColor: "#FFFFFF" }} />
                     <div style={{ flex: 1, fontSize: 14 }}>
                       <span style={{ color: "#fff" }}>{p.name}</span>
-                      <span style={{ color: "#666", fontSize: 12, marginLeft: 8 }}>(₺{Math.round(p.price)})</span>
+                      <span style={{ color: "#888888", fontSize: 12, marginLeft: 8 }}>(₺{Math.round(p.price)})</span>
                     </div>
                     {isSelected && (
                       <div style={{ display: "flex", alignItems: "center", gap: 4 }}>
@@ -207,10 +208,10 @@ export default function HappyHourPage() {
                   </div>
                 );
               })}
-              {shownProducts.length === 0 && <div style={{ color: "#666", textAlign: "center", padding: 16 }}>{products.length === 0 ? "Ürün yükleniyor…" : "Aramaya uyan ürün yok"}</div>}
+              {shownProducts.length === 0 && <div style={{ color: "#888888", textAlign: "center", padding: 16 }}>{products.length === 0 ? "Ürün yükleniyor…" : "Aramaya uyan ürün yok"}</div>}
             </div>
             <div style={{ display: "flex", gap: 8, justifyContent: "flex-end" }}>
-              <button onClick={() => setShowAdd(false)} style={{ padding: "10px 20px", background: "#333", color: "#fff", border: "none", borderRadius: 6, fontWeight: 700, fontSize: 12, cursor: "pointer" }}>İPTAL</button>
+              <button onClick={() => setShowAdd(false)} style={{ padding: "10px 20px", background: "#333", color: "#fff", border: "none", borderRadius: 6, fontWeight: 700, fontSize: 12, cursor: "pointer" }}>İptal</button>
               <button onClick={save} disabled={!canSave || busy}
                 title={canSave ? "" : "İsim yaz ve en az bir ürün seç"}
                 style={{ padding: "10px 20px", background: canSave ? "#FFFFFF" : "#3a3a3a", color: canSave ? "#000" : "#888", border: "none", borderRadius: 6, fontWeight: 700, fontSize: 12, cursor: canSave ? "pointer" : "not-allowed", opacity: busy ? 0.6 : 1 }}>

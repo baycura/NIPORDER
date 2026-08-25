@@ -2,6 +2,7 @@ import { useEffect, useState } from "react";
 import { supabase } from "../../lib/supabase.js";
 import { useAuth } from "../../contexts/AuthContext.jsx";
 import { PARIS_STORE_ID, DONER_STORE_ID } from "../../lib/stores.js";
+import Ikon from "../../components/Ikon.jsx";
 
 const cv = "-apple-system,BlinkMacSystemFont,'Segoe UI',Roboto,sans-serif";
 
@@ -279,7 +280,7 @@ export default function MenuMgmtPage() {
       <div style={{display:"flex",gap:6,overflowX:"auto",marginBottom:12,paddingBottom:4}}>
         {orderedCats.map(c => (
           <button key={c.id} onClick={() => setSelectedCat(c.id)} style={{flexShrink:0,padding:"8px 12px",border:"1px solid "+(selectedCat===c.id?"#FFFFFF":"#333"),borderRadius:14,fontSize:12,fontWeight:700,background:selectedCat===c.id?"rgba(255,255,255,0.2)":"#1A1A1A",color:selectedCat===c.id?"#FFFFFF":"#aaa",cursor:"pointer",whiteSpace:"nowrap",opacity:c.is_active===false?0.5:1}}>
-            {c.parent_id && <span style={{color:"#666",marginRight:4}}>└</span>}
+            {c.parent_id && <span style={{color:"#888888",marginRight:4}}>—</span>}
             {c.icon && <span style={{marginRight:4}}>{c.icon}</span>}{c.name}
           </button>
         ))}
@@ -304,7 +305,7 @@ export default function MenuMgmtPage() {
 
       <button onClick={openNewProd} style={{padding:"10px 16px",background:"#FFFFFF",color:"#000",border:"none",borderRadius:10,fontSize:13,fontWeight:800,cursor:"pointer",marginBottom:14}}>+ Yeni Ürün</button>
 
-      {visibleProducts.length === 0 && <div style={{textAlign:"center",padding:30,color:"#666",fontSize:12}}>Bu kategoride urun yok</div>}
+      {visibleProducts.length === 0 && <div style={{textAlign:"center",padding:30,color:"#888888",fontSize:12}}>Bu kategoride ürün yok</div>}
 
       {visibleProducts.map((p, idx) => (
         <div
@@ -327,7 +328,7 @@ export default function MenuMgmtPage() {
           <div style={{display:"flex",justifyContent:"space-between",alignItems:"flex-start",gap:10}}>
             <div style={{flex:1,minWidth:0}}>
               <div style={{display:"flex",alignItems:"center",gap:6,flexWrap:"wrap"}}>
-                <div style={{color:"#666",fontSize:22,marginRight:6,userSelect:"none",lineHeight:1,touchAction:"none",cursor:"grab",padding:"6px 4px"}} title="Sürükleyerek sırala"
+                <div style={{color:"#888888",fontSize:22,marginRight:6,userSelect:"none",lineHeight:1,touchAction:"none",cursor:"grab",padding:"6px 4px"}} title="Sürükleyerek sırala"
                 onTouchStart={(e)=>{ e.preventDefault(); setDragSrc(idx); }}
                 onTouchMove={(e)=>{ e.preventDefault(); const t=e.touches[0]; const el=document.elementFromPoint(t.clientX,t.clientY); const card=el?.closest('[draggable="true"]'); if(card){ const all=Array.from(document.querySelectorAll('[draggable="true"]')); const other=all.indexOf(card); if(other>=0 && other!==dragOver) setDragOver(other); } }}
                 onTouchEnd={async()=>{ if(dragSrc==null||dragOver==null||dragSrc===dragOver){ setDragSrc(null); setDragOver(null); return; } const reordered=[...visibleProducts]; const [moved]=reordered.splice(dragSrc,1); reordered.splice(dragOver,0,moved); setDragSrc(null); setDragOver(null); await Promise.all(reordered.map((prod,i)=>supabase.from("products").update({sort_order:(i+1)*10}).eq("id",prod.id))); load(); }}
@@ -337,11 +338,11 @@ export default function MenuMgmtPage() {
                 <button onClick={()=>moveProduct(p,"down")} style={{background:"#333",color:"#fff",border:"none",borderRadius:4,padding:"2px 8px",fontSize:11,cursor:"pointer",lineHeight:1}}>▼</button>
               </div>
               <div style={{fontSize:14,fontWeight:700,color:"#F0EDE8"}}>{p.name}</div>
-                {p.sold_out_today && <span style={{fontSize:9,padding:"2px 6px",background:"#2A2A2A",color:"#C87A6A",borderRadius:6,fontWeight:700}}>TUKENDI</span>}
+                {p.sold_out_today && <span style={{fontSize:9,padding:"2px 6px",background:"#2A2A2A",color:"#C87A6A",borderRadius:6,fontWeight:700}}>Tükendi</span>}
                 {p.sold_out_today && talepler[p.id] > 0 && <span style={{fontSize:9,padding:"2px 6px",background:"#FFFFFF",color:"#0C0C0C",borderRadius:6,fontWeight:800}}>{talepler[p.id]} KİŞİ SORUYOR</span>}
-                {p.show_in_party_menu && <span style={{fontSize:9,padding:"2px 6px",background:"#2A2A2A",color:"#F0EDE8",borderRadius:6,fontWeight:700}}>PARTI</span>}
-                {p.has_options && <span style={{fontSize:9,padding:"2px 6px",background:"#2A2A2A",color:"#F0EDE8",borderRadius:6,fontWeight:700}}>SEÇENEKLI</span>}
-                {p.kitchen_consignment && <span style={{fontSize:9,padding:"2px 6px",background:"#2A2A2A",color:"#F0EDE8",borderRadius:6,fontWeight:700}}>MUTFAK</span>}
+                {p.show_in_party_menu && <span style={{fontSize:9,padding:"2px 6px",background:"#2A2A2A",color:"#F0EDE8",borderRadius:6,fontWeight:700}}>Parti</span>}
+                {p.has_options && <span style={{fontSize:9,padding:"2px 6px",background:"#2A2A2A",color:"#F0EDE8",borderRadius:6,fontWeight:700}}>Seçenekli</span>}
+                {p.kitchen_consignment && <span style={{fontSize:9,padding:"2px 6px",background:"#2A2A2A",color:"#F0EDE8",borderRadius:6,fontWeight:700}}>Mutfak</span>}
                 {p.instant_discount_pct > 0 && <span style={{fontSize:9,padding:"2px 6px",background:"#2A2A2A",color:"#F0EDE8",borderRadius:6,fontWeight:700}}>-%{p.instant_discount_pct}</span>}
               </div>
               {p.description && <div style={{fontSize:11,color:"#888",marginTop:3}}>{p.description}</div>}
@@ -369,45 +370,45 @@ export default function MenuMgmtPage() {
               {categories.filter(c => !c.parent_id && c.id !== catModal.data?.id && !c.show_in_shop)
                 .map(c => <option key={c.id} value={c.id}>{c.name}</option>)}
             </select>
-            <div style={{fontSize:10,color:"#777",marginTop:4}}>Secilirse ust kategorinin icinde alt secim olarak gorunur, ust menude yer kaplamaz.</div>
+            <div style={{fontSize:10,color:"#888888",marginTop:4}}>Secilirse ust kategorinin icinde alt secim olarak gorunur, ust menude yer kaplamaz.</div>
           </Field>
           <div style={{display:"flex",gap:8}}>
             <Field label="SİPARİŞ SAATİ — BAŞLANGIÇ"><input type="time" value={catForm.available_from||""} onChange={e=>setCatForm({...catForm,available_from:e.target.value})} style={inputS}/></Field>
             <Field label="SİPARİŞ SAATİ — BİTİŞ"><input type="time" value={catForm.available_until||""} onChange={e=>setCatForm({...catForm,available_until:e.target.value})} style={inputS}/></Field>
           </div>
-          <div style={{fontSize:10,color:"#777",marginTop:-6,marginBottom:12,lineHeight:1.5}}>
+          <div style={{fontSize:10,color:"#888888",marginTop:-6,marginBottom:12,lineHeight:1.5}}>
             Menü her saat okunur; bu aralığın dışında ürünler silik görünür ve sipariş butonu çalışmaz.
             Başlığın altında aralık yazar. Boş bırakırsan kısıt yoktur.<br/>
             Kategoriyi tamamen <b>gizlemek</b> için Kategori Zamanlama sayfasını kullan.
           </div>
           <label style={{display:"flex",alignItems:"center",gap:8,marginBottom:12,cursor:"pointer"}}>
             <input type="checkbox" checked={catForm.show_in_party_menu!==false} onChange={e=>setCatForm({...catForm,show_in_party_menu:e.target.checked})}/>
-            <span style={{fontSize:13,color:"#F0EDE8"}}>🎉 Parti menusunde goster</span>
+            <span style={{fontSize:13,color:"#F0EDE8"}}>Parti menusunde goster</span>
           </label>
           <label style={{display:"flex",alignItems:"center",gap:8,marginBottom:12,cursor:"pointer"}}>
             <input type="checkbox" checked={!!catForm.staff_only} onChange={e=>setCatForm({...catForm,staff_only:e.target.checked})}/>
-            <span style={{fontSize:13,color:"#F0EDE8"}}>🛍 Yalnız kasada (müşteri menüsünde gizli — tişört, seramik gibi satış ürünleri için)</span>
+            <span style={{fontSize:13,color:"#F0EDE8"}}>Yalnız kasada (müşteri menüsünde gizli — tişört, seramik gibi satış ürünleri için)</span>
           </label>
           <label style={{display:"flex",alignItems:"center",gap:8,marginBottom:12,cursor:"pointer"}}>
             <input type="checkbox" checked={!!catForm.show_in_shop} onChange={e=>setCatForm({...catForm,show_in_shop:e.target.checked})}/>
-            <span style={{fontSize:13,color:"#F0EDE8"}}>🛒 Müşteride SHOP sekmesinde göster (menüde değil — kişisel bakım, şapka, kolye, marka ürünleri)</span>
+            <span style={{fontSize:13,color:"#F0EDE8"}}>Müşteride SHOP sekmesinde göster (menüde değil — kişisel bakım, şapka, kolye, marka ürünleri)</span>
           </label>
           {catModal.data?.store_id === DONER_STORE_ID && (
             <label style={{display:"flex",alignItems:"center",gap:8,marginBottom:10,cursor:"pointer"}}>
               <input type="checkbox" checked={!!catForm.show_in_paris_menu} onChange={e=>setCatForm({...catForm,show_in_paris_menu:e.target.checked})}/>
-              <span style={{fontSize:13,color:"#F0EDE8"}}>🍳 Paris menüsünde de göster (döner mutfağının ürünleri Paris'ten de sipariş edilebilsin)</span>
+              <span style={{fontSize:13,color:"#F0EDE8"}}>Paris menüsünde de göster (döner mutfağının ürünleri Paris'ten de sipariş edilebilsin)</span>
             </label>
           )}
           {catForm.show_in_shop && (
             <div style={{background:"#161616",border:"1px solid #2A2A2A",borderRadius:10,padding:12,marginBottom:12}}>
-              <div style={{fontSize:10,color:"#8A8580",letterSpacing:"1.5px",fontWeight:700,marginBottom:8}}>🛍 MARKA KUTUSU (Shop sekmesinde görünür)</div>
-              <div style={{fontSize:10,color:"#888",letterSpacing:"1px",fontWeight:700,marginBottom:4}}>KATEGORİ ETİKETİ (Seramik, Takı, Doğal Bakım...)</div>
+              <div style={{fontSize:12,color:"#8A8580",letterSpacing:"0.2px",fontWeight:600,marginBottom:8,display:"flex",alignItems:"center",gap:6}}><Ikon ad="raf" boy={13}/>MARKA KUTUSU (Shop sekmesinde görünür)</div>
+              <div style={{fontSize:12,color:"#888",letterSpacing:"0.2px",fontWeight:600,marginBottom:4}}>KATEGORİ ETİKETİ (Seramik, Takı, Doğal Bakım...)</div>
               <div style={{display:"flex",gap:6,marginBottom:10}}>
                 <input value={catForm.shop_tag||""} onChange={e=>setCatForm({...catForm,shop_tag:e.target.value})} placeholder="TR" style={{flex:1,padding:"8px 10px",background:"#0C0C0C",border:"1px solid #2A2A2A",borderRadius:8,color:"#F0EDE8",fontSize:13,outline:"none"}}/>
                 <input value={catForm.shop_tag_en||""} onChange={e=>setCatForm({...catForm,shop_tag_en:e.target.value})} placeholder="EN" style={{flex:1,padding:"8px 10px",background:"#0C0C0C",border:"1px solid #2A2A2A",borderRadius:8,color:"#F0EDE8",fontSize:13,outline:"none"}}/>
                 <input value={catForm.shop_tag_ru||""} onChange={e=>setCatForm({...catForm,shop_tag_ru:e.target.value})} placeholder="RU" style={{flex:1,padding:"8px 10px",background:"#0C0C0C",border:"1px solid #2A2A2A",borderRadius:8,color:"#F0EDE8",fontSize:13,outline:"none"}}/>
               </div>
-              <div style={{fontSize:10,color:"#888",letterSpacing:"1px",fontWeight:700,marginBottom:4}}>MİNİ TANITIM (1-2 cümle)</div>
+              <div style={{fontSize:12,color:"#888",letterSpacing:"0.2px",fontWeight:600,marginBottom:4}}>Mini tanıtım (1-2 cümle)</div>
               <textarea value={catForm.description||""} onChange={e=>setCatForm({...catForm,description:e.target.value})} placeholder="TR — örn: El yapımı seramikler..." rows={2} style={{width:"100%",padding:"8px 10px",background:"#0C0C0C",border:"1px solid #2A2A2A",borderRadius:8,color:"#F0EDE8",fontSize:13,outline:"none",resize:"vertical",marginBottom:6,fontFamily:"inherit"}}/>
               <textarea value={catForm.description_en||""} onChange={e=>setCatForm({...catForm,description_en:e.target.value})} placeholder="EN" rows={2} style={{width:"100%",padding:"8px 10px",background:"#0C0C0C",border:"1px solid #2A2A2A",borderRadius:8,color:"#F0EDE8",fontSize:13,outline:"none",resize:"vertical",marginBottom:6,fontFamily:"inherit"}}/>
               <textarea value={catForm.description_ru||""} onChange={e=>setCatForm({...catForm,description_ru:e.target.value})} placeholder="RU" rows={2} style={{width:"100%",padding:"8px 10px",background:"#0C0C0C",border:"1px solid #2A2A2A",borderRadius:8,color:"#F0EDE8",fontSize:13,outline:"none",resize:"vertical",fontFamily:"inherit"}}/>
@@ -434,13 +435,13 @@ export default function MenuMgmtPage() {
           <Field label="AÇIKLAMA (Türkçe)"><textarea value={prodForm.description||""} onChange={e=>setProdForm({...prodForm,description:e.target.value})} rows={2} style={{...inputS,resize:"vertical"}}/></Field>
           <Field label="DESCRIPTION (English)"><textarea value={prodForm.description_en||""} onChange={e=>setProdForm({...prodForm,description_en:e.target.value})} rows={2} placeholder="Optional - shown when customer selects EN" style={{...inputS,resize:"vertical"}}/></Field>
           <Field label="ОПИСАНИЕ (Rusca)"><textarea value={prodForm.description_ru||""} onChange={e=>setProdForm({...prodForm,description_ru:e.target.value})} rows={2} placeholder="Opsiyonel - RU secilince gorunur" style={{...inputS,resize:"vertical"}}/></Field>
-          <Field label="🛍 SHOP ALT GRUBU (opsiyonel)">
+          <Field label="SHOP ALT GRUBU (opsiyonel)">
             <input list="nip-shop-groups" value={prodForm.shop_group||""} onChange={e=>setProdForm({...prodForm,shop_group:e.target.value})}
               placeholder="örn: Tişörtler, Şapkalar, Takılar" style={inputS}/>
             <datalist id="nip-shop-groups">
               {[...new Set(products.map(p=>p.shop_group).filter(Boolean))].map(g => <option key={g} value={g}/>)}
             </datalist>
-            <div style={{fontSize:10,color:"#777",marginTop:4,lineHeight:1.5}}>
+            <div style={{fontSize:10,color:"#888888",marginTop:4,lineHeight:1.5}}>
               Shop sekmesinde marka kutusu içinde bu grup bir seçenek olarak çıkar; müşteri dokununca grubun ürünleri açılır. Boş bırakırsan ürün "Diğer" altında görünür.
             </div>
           </Field>
@@ -464,7 +465,7 @@ export default function MenuMgmtPage() {
               <div style={{fontSize:11,color:"#888",marginTop:5,lineHeight:1.5}}>
                 {eurRate > 0
                   ? "≈ ₺" + Math.round((Number(prodForm.price_eur)||0) * eurRate) + "  ·  kur 1 € = ₺" + eurRate + " (Ayarlar'dan değişir; kur değişince fiyat kendiliğinden güncellenir)"
-                  : "⚠ Euro kuru tanımlı değil — Ayarlar'dan gir, yoksa TL fiyatı hesaplanamaz."}
+                  : "Euro kuru tanımlı değil — Ayarlar'dan gir, yoksa TL fiyatı hesaplanamaz."}
               </div>
             )}
           </Field>
@@ -474,18 +475,18 @@ export default function MenuMgmtPage() {
         <div style={{background:"#0C0C0C",border:"1px solid #222",borderRadius:10,padding:12,marginBottom:10}}>
           <label style={{display:"flex",alignItems:"center",gap:8,cursor:"pointer",fontSize:14,fontWeight:600,color:"#F0EDE8"}}>
             <input type="checkbox" checked={!!prodForm.hh_enabled} onChange={e=>setProdForm({...prodForm,hh_enabled:e.target.checked})}/>
-            🎉 Happy Hour
+            <Ikon ad="kampanya" boy={14} style={{marginRight:6}}/>Happy Hour
           </label>
           {prodForm.hh_enabled && (<div style={{marginTop:10}}>
             <div style={{display:"flex",gap:10,marginBottom:10}}>
-              <div style={{flex:1}}><div style={{fontSize:11,color:"#888",fontWeight:600,marginBottom:4}}>BAŞLANGIÇ</div><input type="time" value={prodForm.hh_start||""} onChange={e=>setProdForm({...prodForm,hh_start:e.target.value})} style={{width:"100%",padding:8,background:"#1a1a1a",border:"1px solid #333",borderRadius:8,color:"#fff",boxSizing:"border-box"}}/></div>
-              <div style={{flex:1}}><div style={{fontSize:11,color:"#888",fontWeight:600,marginBottom:4}}>BİTİŞ</div><input type="time" value={prodForm.hh_end||""} onChange={e=>setProdForm({...prodForm,hh_end:e.target.value})} style={{width:"100%",padding:8,background:"#1a1a1a",border:"1px solid #333",borderRadius:8,color:"#fff",boxSizing:"border-box"}}/></div>
+              <div style={{flex:1}}><div style={{fontSize:11,color:"#888",fontWeight:600,marginBottom:4}}>Başlangıç</div><input type="time" value={prodForm.hh_start||""} onChange={e=>setProdForm({...prodForm,hh_start:e.target.value})} style={{width:"100%",padding:8,background:"#1a1a1a",border:"1px solid #333",borderRadius:8,color:"#fff",boxSizing:"border-box"}}/></div>
+              <div style={{flex:1}}><div style={{fontSize:11,color:"#888",fontWeight:600,marginBottom:4}}>Bitiş</div><input type="time" value={prodForm.hh_end||""} onChange={e=>setProdForm({...prodForm,hh_end:e.target.value})} style={{width:"100%",padding:8,background:"#1a1a1a",border:"1px solid #333",borderRadius:8,color:"#fff",boxSizing:"border-box"}}/></div>
             </div>
-            <div style={{fontSize:11,color:"#888",fontWeight:600,marginBottom:6}}>GÜNLER</div>
+            <div style={{fontSize:11,color:"#888",fontWeight:600,marginBottom:6}}>Günler</div>
             <div style={{display:"flex",gap:6,marginBottom:10,flexWrap:"wrap"}}>
               {["Pzt","Sal","Çar","Per","Cum","Cmt","Paz"].map((d,i)=>{const dn=(i+1)%7;const days=Array.isArray(prodForm.hh_days)?prodForm.hh_days:[0,1,2,3,4,5,6];const on=days.includes(dn);return(<button key={d} type="button" onClick={()=>{const nd=on?days.filter(x=>x!==dn):[...days,dn];setProdForm({...prodForm,hh_days:nd});}} style={{padding:"6px 11px",borderRadius:8,fontSize:13,fontWeight:600,border:"1px solid "+(on?"#FFFFFF":"#333"),background:on?"#FFFFFF":"#1a1a1a",color:on?"#000":"#888",cursor:"pointer"}}>{d}</button>);})}
             </div>
-            <div style={{fontSize:11,color:"#888",fontWeight:600,marginBottom:4}}>HAPPY HOUR FİYATI (₺)</div>
+            <div style={{fontSize:11,color:"#888",fontWeight:600,marginBottom:4}}>Happy hour fiyatı (₺)</div>
             <input type="number" step="0.01" value={prodForm.hh_price??""} onChange={e=>setProdForm({...prodForm,hh_price:e.target.value})} placeholder="örn: 200" style={{width:"100%",padding:8,background:"#1a1a1a",border:"1px solid #333",borderRadius:8,color:"#fff",boxSizing:"border-box"}}/>
           </div>)}
         </div>
@@ -539,16 +540,16 @@ export default function MenuMgmtPage() {
           </div>
 
           <div style={{marginBottom:10}}>
-            <label style={{display:"block",fontSize:11,color:"#888",marginBottom:4,fontWeight:600,letterSpacing:0.5}}>🏪 HANGİ MENÜDE GÖRÜNSÜN? (birden fazla seçilebilir)</label>
+            <label style={{display:"block",fontSize:11,color:"#888",marginBottom:4,fontWeight:600,letterSpacing:0.5}}>HANGİ MENÜDE GÖRÜNSÜN? (birden fazla seçilebilir)</label>
             <div style={{display:"flex",gap:6}}>
-              {[{id:PARIS_STORE_ID,label:"🗼 Not In Paris"},{id:DONER_STORE_ID,label:"🥙 Döner"}].map(s => { const sel = [prodForm.store_id,...(prodForm.additional_store_ids||[])].filter(Boolean).includes(s.id); return (<button key={s.id} type="button" onClick={()=>{const cur=[prodForm.store_id,...(prodForm.additional_store_ids||[])].filter(Boolean);const next=cur.includes(s.id)?cur.filter(x=>x!==s.id):[...cur,s.id];setProdForm({...prodForm,store_id:next[0]||"",additional_store_ids:next.slice(1)});}} style={{flex:1,padding:"8px",background:sel?"#FFFFFF":"#222",color:sel?"#000":"#888",border:"1px solid "+(sel?"#FFFFFF":"#333"),borderRadius:6,fontSize:13,fontWeight:700,cursor:"pointer"}}>{sel?"✓ ":""}{s.label}</button>); })}
+              {[{id:PARIS_STORE_ID,label:"Not In Paris"},{id:DONER_STORE_ID,label:"Döner"}].map(s => { const sel = [prodForm.store_id,...(prodForm.additional_store_ids||[])].filter(Boolean).includes(s.id); return (<button key={s.id} type="button" onClick={()=>{const cur=[prodForm.store_id,...(prodForm.additional_store_ids||[])].filter(Boolean);const next=cur.includes(s.id)?cur.filter(x=>x!==s.id):[...cur,s.id];setProdForm({...prodForm,store_id:next[0]||"",additional_store_ids:next.slice(1)});}} style={{flex:1,padding:"8px",background:sel?"#FFFFFF":"#222",color:sel?"#000":"#888",border:"1px solid "+(sel?"#FFFFFF":"#333"),borderRadius:6,fontSize:13,fontWeight:700,cursor:"pointer"}}>{sel?"✓ ":""}{s.label}</button>); })}
             </div>
           </div>
 
           <div style={{marginBottom:10}}>
-            <label style={{display:"block",fontSize:11,color:"#888",marginBottom:4,fontWeight:600,letterSpacing:0.5}}>🍽️ BU ÜRÜNÜ KİM YAPIYOR? (mutfak)</label>
+            <label style={{display:"block",fontSize:11,color:"#888",marginBottom:4,fontWeight:600,letterSpacing:0.5}}>BU ÜRÜNÜ KİM YAPIYOR? (mutfak)</label>
             <div style={{display:"flex",gap:6}}>
-              {[{id:PARIS_STORE_ID,label:"🗼 Kendi Mutfağımız"},{id:DONER_STORE_ID,label:"🥙 Döner Mutfağı"}].map(s => { const sel = prodForm.kitchen_destination_store_id === s.id; return (<button key={s.id} type="button" onClick={()=>setProdForm({...prodForm,kitchen_destination_store_id:s.id})} style={{flex:1,padding:"8px",background:sel?"#FFFFFF":"#222",color:sel?"#000":"#888",border:"1px solid "+(sel?"#FFFFFF":"#333"),borderRadius:6,fontSize:13,fontWeight:700,cursor:"pointer"}}>{sel?"✓ ":""}{s.label}</button>); })}
+              {[{id:PARIS_STORE_ID,label:"Kendi Mutfağımız"},{id:DONER_STORE_ID,label:"Döner Mutfağı"}].map(s => { const sel = prodForm.kitchen_destination_store_id === s.id; return (<button key={s.id} type="button" onClick={()=>setProdForm({...prodForm,kitchen_destination_store_id:s.id})} style={{flex:1,padding:"8px",background:sel?"#FFFFFF":"#222",color:sel?"#000":"#888",border:"1px solid "+(sel?"#FFFFFF":"#333"),borderRadius:6,fontSize:13,fontWeight:700,cursor:"pointer"}}>{sel?"✓ ":""}{s.label}</button>); })}
             </div>
             {prodForm.kitchen_destination_store_id === DONER_STORE_ID && (
               <div style={{marginTop:6,fontSize:11,color:"#8A8580",background:"rgba(224,122,62,0.1)",border:"1px solid #2A2A2A",borderRadius:6,padding:"6px 8px",lineHeight:1.4}}>
@@ -564,9 +565,9 @@ export default function MenuMgmtPage() {
 
           <label style={{display:"flex",alignItems:"flex-start",gap:8,marginBottom:4,cursor:"pointer"}}>
             <input type="checkbox" checked={!!prodForm.kitchen_consignment} onChange={e=>setProdForm({...prodForm,kitchen_consignment:e.target.checked})} style={{marginTop:3}}/>
-            <span style={{fontSize:13,color:"#F0EDE8"}}>🥙 NIP Kitchen envanteri</span>
+            <span style={{fontSize:13,color:"#F0EDE8"}}>NIP Kitchen envanteri</span>
           </label>
-          <div style={{fontSize:10,color:"#777",marginBottom:12,marginLeft:24,lineHeight:1.5}}>
+          <div style={{fontSize:10,color:"#888888",marginBottom:12,marginLeft:24,lineHeight:1.5}}>
             Mutfak hazırlıyor, maliyetini biz tutmuyoruz ve kâr etmiyoruz. Satış tutarı ay sonu mutfağa ödenir.
             Reçete ekranında çıkmaz, kâr hesabına girmez, raporda ayrı gösterilir.
           </div>
@@ -579,7 +580,7 @@ export default function MenuMgmtPage() {
           <div style={{display:"flex",alignItems:"center",gap:10,marginBottom:10,flexWrap:"wrap"}}>
             <label style={{display:"flex",alignItems:"center",gap:8,cursor:"pointer",color:"#F0EDE8",fontSize:13}}>
               <input type="checkbox" checked={!!prodForm.show_prep_time} onChange={e=>setProdForm({...prodForm,show_prep_time:e.target.checked})}/>
-              <span>⏱ Hazırlanma süresi göster</span>
+              <span><Ikon ad="vardiya" boy={13} style={{marginRight:5}}/>Hazırlanma süresi göster</span>
             </label>
             {prodForm.show_prep_time && (
               <div style={{display:"flex",alignItems:"center",gap:6}}>
@@ -616,7 +617,7 @@ const saveBtn = {flex:2,padding:"12px",background:"#FFFFFF",color:"#000",border:
 
 function Field({label, children}) {
   return (<div style={{marginBottom:12}}>
-    <div style={{fontSize:10,color:"#888",letterSpacing:"1.5px",fontWeight:700,marginBottom:5}}>{label}</div>
+    <div style={{fontSize:12,color:"#888",letterSpacing:"0.2px",fontWeight:600,marginBottom:5}}>{label}</div>
     {children}
   </div>);
 }

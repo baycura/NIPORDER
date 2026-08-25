@@ -1,16 +1,17 @@
 import { useEffect, useState } from "react";
 import { supabase } from "../../lib/supabase.js";
 import { useAuth } from "../../contexts/AuthContext.jsx";
+import Ikon from "../../components/Ikon.jsx";
 
 const cv = "-apple-system,BlinkMacSystemFont,'Segoe UI',Roboto,sans-serif";
 
 const CATEGORIES = [
-  { key: "kira",     label: "Kira",          icon: "🏠" },
-  { key: "personel", label: "Personel",      icon: "👥" },
-  { key: "fatura",   label: "Fatura",        icon: "💡" },
-  { key: "yazilim",  label: "Yazılım/Abonelik", icon: "💻" },
-  { key: "vergi",    label: "Vergi/Muhasebe", icon: "🧾" },
-  { key: "diger",    label: "Diğer",         icon: "📌" },
+  { key: "kira",     label: "Kira",          icon: "ev" },
+  { key: "personel", label: "Personel",      icon: "personel" },
+  { key: "fatura",   label: "Fatura",        icon: "ampul" },
+  { key: "yazilim",  label: "Yazılım/Abonelik", icon: "ekran" },
+  { key: "vergi",    label: "Vergi/Muhasebe", icon: "fatura" },
+  { key: "diger",    label: "Diğer",         icon: "not" },
 ];
 const catOf = (k) => CATEGORIES.find(c => c.key === k) || CATEGORIES[5];
 const money = (n) => "₺" + Math.round(Number(n) || 0).toLocaleString("tr-TR");
@@ -114,7 +115,7 @@ export default function FixedExpensesPage() {
     <div style={{ fontFamily: cv, color: "#F0EDE8" }}>
       <div style={{ display: "flex", alignItems: "center", gap: 8, marginBottom: 4 }}>
         <div style={{ fontSize: 24, fontWeight: 800 }}>Sabit Giderler</div>
-        <span style={{ fontSize: 9, padding: "3px 8px", background: "#161616", color: "#8A8580", borderRadius: 6, fontWeight: 800, letterSpacing: "1px" }}>🔒 SADECE SAHİP</span>
+        <span style={{ fontSize:12, padding: "3px 8px", background: "#161616", color: "#8A8580", borderRadius: 6, fontWeight:600, letterSpacing:"0.2px", display:"inline-flex", alignItems:"center", gap:4 }}><Ikon ad="kilit" boy={11}/>SADECE SAHİP</span>
       </div>
       <div style={{ fontSize: 11, color: "#888", letterSpacing: "1px", marginBottom: 14 }}>
         {active.length} AKTİF GİDER · BU EKRANI PERSONEL GÖREMEZ
@@ -126,7 +127,7 @@ export default function FixedExpensesPage() {
             <button key={s.id} onClick={() => setStoreId(s.id)}
               style={{ padding: "8px 14px", background: storeId === s.id ? "#FFFFFF" : "#1A1A1A", color: storeId === s.id ? "#000" : "#888",
                        border: "1px solid " + (storeId === s.id ? "#FFFFFF" : "#2A2A2A"), borderRadius: 9, fontSize: 12, fontWeight: 800, cursor: "pointer", fontFamily: "inherit" }}>
-              {s.slug === "doner" ? "🥙 " : "🗼 "}{s.name}
+              {s.name}
             </button>
           ))}
         </div>
@@ -135,15 +136,15 @@ export default function FixedExpensesPage() {
       <div style={{ background: "#161616", border: "1px solid #FFFFFF", borderRadius: 12, padding: 16, marginBottom: 14 }}>
         <div style={{ display: "flex", justifyContent: "space-between", flexWrap: "wrap", gap: 12 }}>
           <div>
-            <div style={{ fontSize: 10, color: "#8A8580", letterSpacing: "1.5px", fontWeight: 700 }}>SABİT · AYLIK</div>
+            <div style={{ fontSize:12, color: "#8A8580", letterSpacing:"0.2px", fontWeight:600 }}>Sabit · aylık</div>
             <div style={{ fontSize: 26, fontWeight: 800, marginTop: 2 }}>{money(monthly)}</div>
           </div>
           <div>
-            <div style={{ fontSize: 10, color: "#8A8580", letterSpacing: "1.5px", fontWeight: 700 }}>MAL ALIMI · BU AY</div>
+            <div style={{ fontSize:12, color: "#8A8580", letterSpacing:"0.2px", fontWeight:600 }}>Mal alımı · bu ay</div>
             <div style={{ fontSize: 26, fontWeight: 800, marginTop: 2 }}>{money(alim)}</div>
           </div>
           <div>
-            <div style={{ fontSize: 10, color: "#8A8580", letterSpacing: "1.5px", fontWeight: 700 }}>GÜNLÜK BAŞABAŞ</div>
+            <div style={{ fontSize:12, color: "#8A8580", letterSpacing:"0.2px", fontWeight:600 }}>Günlük başabaş</div>
             <div style={{ fontSize: 26, fontWeight: 800, marginTop: 2 }}>{money(daily)}</div>
           </div>
         </div>
@@ -152,7 +153,7 @@ export default function FixedExpensesPage() {
             <div style={{ display: "flex", justifyContent: "space-between", fontSize: 11, color: "#bbb", marginBottom: 5, flexWrap: "wrap", gap: 6 }}>
               <span>Bu ay ciro: <b style={{ color: "#F0EDE8" }}>{money(revenue)}</b> · gider: <b style={{ color: "#F0EDE8" }}>{money(toplamGider)}</b></span>
               <span style={{ color: covered >= 100 ? "#FFFFFF" : "#8A8580", fontWeight: 700 }}>
-                {covered >= 100 ? "✓ Giderler karşılandı" : "Giderlerin %" + covered + "'i karşılandı"}
+                {covered >= 100 ? <><Ikon ad="onay" boy={12} style={{marginRight:4}}/>Giderler karşılandı</> : "Giderlerin %" + covered + "'i karşılandı"}
               </span>
             </div>
             <div style={{ height: 8, background: "#2A2A2A", borderRadius: 4, overflow: "hidden" }}>
@@ -181,7 +182,7 @@ export default function FixedExpensesPage() {
 
       <button onClick={openNew} style={{ padding: "10px 16px", background: "#FFFFFF", color: "#000", border: "none", borderRadius: 10, fontSize: 13, fontWeight: 800, cursor: "pointer", marginBottom: 14 }}>+ Yeni Gider</button>
 
-      {items.length === 0 && <div style={{ textAlign: "center", padding: 40, color: "#666", fontSize: 13 }}>Henüz gider yok. Kira, maaşlar, elektrik, internet... ekleyin.</div>}
+      {items.length === 0 && <div style={{ textAlign: "center", padding: 40, color: "#888888", fontSize: 13 }}>Henüz gider yok. Kira, maaşlar, elektrik, internet... ekleyin.</div>}
 
       {items.map(i => {
         const c = catOf(i.category);
@@ -192,7 +193,7 @@ export default function FixedExpensesPage() {
               <div style={{ flex: 1, minWidth: 0 }}>
                 <div style={{ fontSize: 14, fontWeight: 700 }}>
                   {c.icon} {i.name}
-                  {off && <span style={{ marginLeft: 6, fontSize: 9, padding: "2px 6px", background: "#333", color: "#999", borderRadius: 6, fontWeight: 700 }}>PASİF</span>}
+                  {off && <span style={{ marginLeft: 6, fontSize: 9, padding: "2px 6px", background: "#333", color: "#999", borderRadius: 6, fontWeight: 700 }}>Pasif</span>}
                 </div>
                 <div style={{ fontSize: 11, color: "#888", marginTop: 3 }}>
                   {c.label}{i.day_of_month ? " · her ayın " + i.day_of_month + "'i" : ""}{i.notes ? " · " + i.notes : ""}
@@ -240,7 +241,7 @@ const saveBtn = { flex: 2, padding: "12px", background: "#FFFFFF", color: "#000"
 
 function Field({ label, children }) {
   return (<div style={{ marginBottom: 12 }}>
-    <div style={{ fontSize: 10, color: "#888", letterSpacing: "1.5px", fontWeight: 700, marginBottom: 5 }}>{label}</div>
+    <div style={{ fontSize:12, color: "#888", letterSpacing:"0.2px", fontWeight:600, marginBottom: 5 }}>{label}</div>
     {children}
   </div>);
 }

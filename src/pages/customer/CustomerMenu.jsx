@@ -6,17 +6,18 @@ import { happyHourPrices } from "../../lib/happyHour.js";
 import { optionMod } from "../../lib/productOptions.js";
 import { PHONE_CODES, toE164 } from "../../lib/phoneCodes.js";
 import { errorText } from "../../lib/errorText.js";
+import Ikon from "../../components/Ikon.jsx";
 
 const cv = "-apple-system,BlinkMacSystemFont,'Segoe UI',Roboto,sans-serif";
 
 // Alt sekmeler — QR menu ayni zamanda vitrin: etkinlik/rezervasyon, surusler, shop, blog
 const CUST_TABS = [
-  { key: "menu",   icon: "🍽", tr: "Menü",     en: "Menu",   ru: "Меню" },
-  { key: "events", icon: "🎟", tr: "Etkinlik", en: "Events", ru: "События" },
-  { key: "rides",  icon: "🚴", tr: "Sürüş",    en: "Rides",  ru: "Заезды" },
-  { key: "vote",   icon: "📊", tr: "Oyla",     en: "Vote",   ru: "Голос" },
-  { key: "shop",   icon: "👕", tr: "Shop",     en: "Shop",   ru: "Шоп" },
-  { key: "blog",   icon: "📰", tr: "Blog",     en: "Blog",   ru: "Блог" },
+  { key: "menu",   icon: "menu",     tr: "Menü",     en: "Menu",   ru: "Меню" },
+  { key: "events", icon: "etkinlik", tr: "Etkinlik", en: "Events", ru: "События" },
+  { key: "rides",  icon: "surus",    tr: "Sürüş",    en: "Rides",  ru: "Заезды" },
+  { key: "vote",   icon: "oylama",   tr: "Oyla",     en: "Vote",   ru: "Голос" },
+  { key: "shop",   icon: "merch",    tr: "Shop",     en: "Shop",   ru: "Шоп" },
+  { key: "blog",   icon: "blog",     tr: "Blog",     en: "Blog",   ru: "Блог" },
 ];
 
 // Misafir de oy verebilsin: kimlik yerine telefonda saklanan anonim anahtar
@@ -55,10 +56,10 @@ const INSTAGRAM_URL = "https://instagram.com/notinparis.me";
 const PUAN_ORANI = 20;                                   // 20 TL = 1 puan
 const kazanilanPuan = (harcama) => Math.floor(Number(harcama || 0) / PUAN_ORANI);
 const TIERS = [
-  { key: "yeniyuz",   min: 0,    icon: "☕", tr: "Yeni Yüz",  en: "New Face", ru: "Новичок" },
-  { key: "mahalleli", min: 500,  icon: "🚲", tr: "Mahalleli", en: "Local",    ru: "Свой в районе" },
-  { key: "mudavim",   min: 1500, icon: "⭐", tr: "Müdavim",   en: "Regular",  ru: "Завсегдатай" },
-  { key: "aileden",   min: 4000, icon: "🗼", tr: "Aileden",   en: "Family",   ru: "Родной" },
+  { key: "yeniyuz",   min: 0,    icon: "kahve",  tr: "Yeni Yüz",  en: "New Face", ru: "Новичок" },
+  { key: "mahalleli", min: 500,  icon: "surus",  tr: "Mahalleli", en: "Local",    ru: "Свой в районе" },
+  { key: "mudavim",   min: 1500, icon: "yildiz", tr: "Müdavim",   en: "Regular",  ru: "Завсегдатай" },
+  { key: "aileden",   min: 4000, icon: "kule",   tr: "Aileden",   en: "Family",   ru: "Родной" },
 ];
 
 const GOOGLE_RATE_URL = "https://share.google/AA07eYRVqpAoNFL8P";
@@ -113,7 +114,7 @@ const T = {
     other_group: "Diğer",
     sold_out: "Tükendi",
     optional: "SEÇENEKLI",
-    cart: "🛒 Sepetim",
+    cart: "Sepetim",
     continue: "Devam",
     note_optional: "Örn: buzsuz, sekersiz",
     optional_label: "NOT (OPSİYONEL)",
@@ -139,13 +140,13 @@ const T = {
     order_received: "Siparişin alındı!",
     order_kitchen_msg: "utfağa iletildi. Hazırlanıyor…",
     preparing: "Hazırlanıyor...",
-    notif_granted: "🔔 Hazır olunca bildirim alacaksın",
-    notif_denied: "⚠️ Bildirim engellendi. Sayfayı açık bırak — hazır olunca ses çalacak.",
-    notif_ask: "🔔 Bildirim izni ver",
+    notif_granted: "Hazır olunca bildirim alacaksın",
+    notif_denied: "Bildirim engellendi. Sayfayı açık bırak — hazır olunca ses çalacak.",
+    notif_ask: "Bildirim izni ver",
     back_to_menu: "Menüye dön",
     order_ready_big: "SİPARİŞİN HAZIR!",
     pick_from_cashier: "Kasadan alabilirsin.",
-    play_again: "🔊 Tekrar çal",
+    play_again: "Tekrar çal",
     enjoy: "Afiyet olsun!",
     thanks: "Tekrar bekleriz ♥",
     new_order: "Yeni sipariş ver",
@@ -194,7 +195,7 @@ const T = {
     other_group: "Other",
     sold_out: "Sold out",
     optional: "OPTIONS",
-    cart: "🛒 Cart",
+    cart: "Cart",
     continue: "Continue",
     note_optional: "e.g. no ice, no sugar",
     optional_label: "NOTE (OPTIONAL)",
@@ -220,13 +221,13 @@ const T = {
     order_received: "Order received!",
     order_kitchen_msg: "ent to kitchen. Being prepared…",
     preparing: "Preparing...",
-    notif_granted: "🔔 You'll be notified when ready",
-    notif_denied: "⚠️ Notifications blocked. Keep this page open — you'll hear a sound when ready.",
-    notif_ask: "🔔 Enable notifications",
+    notif_granted: "You'll be notified when ready",
+    notif_denied: "Notifications blocked. Keep this page open — you'll hear a sound when ready.",
+    notif_ask: "Enable notifications",
     back_to_menu: "Back to menu",
     order_ready_big: "YOUR ORDER IS READY!",
     pick_from_cashier: "Pick it up from the cashier.",
-    play_again: "🔊 Play again",
+    play_again: "Play again",
     enjoy: "Enjoy your meal!",
     thanks: "See you soon ♥",
     new_order: "Place a new order",
@@ -275,7 +276,7 @@ const T = {
     other_group: "Другое",
     sold_out: "Закончилось",
     optional: "ОПЦИИ",
-    cart: "🛒 Корзина",
+    cart: "Корзина",
     continue: "Далее",
     note_optional: "напр.: без льда, без сахара",
     optional_label: "ПРИМЕЧАНИЕ (НЕОБЯЗАТЕЛЬНО)",
@@ -301,13 +302,13 @@ const T = {
     order_kitchen_msg: "тправлено на кухню. Готовится…",
     order_received: "Заказ принят!",
     preparing: "Готовится...",
-    notif_granted: "🔔 Сообщим, когда будет готово",
-    notif_denied: "⚠️ Уведомления заблокированы. Не закрывайте страницу — прозвучит сигнал.",
-    notif_ask: "🔔 Разрешить уведомления",
+    notif_granted: "Сообщим, когда будет готово",
+    notif_denied: "Уведомления заблокированы. Не закрывайте страницу — прозвучит сигнал.",
+    notif_ask: "Разрешить уведомления",
     back_to_menu: "Вернуться в меню",
     order_ready_big: "ВАШ ЗАКАЗ ГОТОВ!",
     pick_from_cashier: "Заберите на кассе.",
-    play_again: "🔊 Повторить",
+    play_again: "Повторить",
     enjoy: "Приятного аппетита!",
     thanks: "Ждём вас снова ♥",
     new_order: "Новый заказ",
@@ -1275,9 +1276,9 @@ export default function CustomerMenu() {
 
   const LangSwitcher = () => (
     <div style={{display:"flex",gap:4,background:"#f2f2f2",borderRadius:18,padding:3}}>
-      <button onClick={() => setLanguage("tr")} style={{padding:"10px 16px",minWidth:48,minHeight:36,background:lang==="tr"?"#000":"transparent",color:lang==="tr"?"#fff":"#666",border:"none",borderRadius:14,fontSize:11,fontWeight:700,cursor:"pointer"}}>🇹🇷 TR</button>
-      <button onClick={() => setLanguage("en")} style={{padding:"10px 16px",minWidth:48,minHeight:36,background:lang==="en"?"#000":"transparent",color:lang==="en"?"#fff":"#666",border:"none",borderRadius:14,fontSize:11,fontWeight:700,cursor:"pointer"}}>🇬🇧 EN</button>
-      <button onClick={() => setLanguage("ru")} style={{padding:"10px 16px",minWidth:48,minHeight:36,background:lang==="ru"?"#000":"transparent",color:lang==="ru"?"#fff":"#666",border:"none",borderRadius:14,fontSize:11,fontWeight:700,cursor:"pointer"}}>🇷🇺 RU</button>
+      <button onClick={() => setLanguage("tr")} style={{padding:"10px 16px",minWidth:48,minHeight:36,background:lang==="tr"?"#000":"transparent",color:lang==="tr"?"#fff":"#666",border:"none",borderRadius:14,fontSize:11,fontWeight:700,cursor:"pointer"}}>R</button>
+      <button onClick={() => setLanguage("en")} style={{padding:"10px 16px",minWidth:48,minHeight:36,background:lang==="en"?"#000":"transparent",color:lang==="en"?"#fff":"#666",border:"none",borderRadius:14,fontSize:11,fontWeight:700,cursor:"pointer"}}>N</button>
+      <button onClick={() => setLanguage("ru")} style={{padding:"10px 16px",minWidth:48,minHeight:36,background:lang==="ru"?"#000":"transparent",color:lang==="ru"?"#fff":"#666",border:"none",borderRadius:14,fontSize:11,fontWeight:700,cursor:"pointer"}}>U</button>
     </div>
   );
 
@@ -1319,7 +1320,7 @@ export default function CustomerMenu() {
             {pfBusy ? t.pf_saving : t.pf_save}
           </button>
           <button onClick={signOut}
-            style={{width:"100%",marginTop:12,background:"none",border:"none",color:"#9AA0A6",fontSize:12.5,cursor:"pointer",fontFamily:"inherit"}}>
+            style={{width:"100%",marginTop:12,background:"none",border:"none",color:"#666666",fontSize:12.5,cursor:"pointer",fontFamily:"inherit"}}>
             {t.pf_signout}
           </button>
         </div>
@@ -1403,11 +1404,11 @@ export default function CustomerMenu() {
     const isServed = orderStage === "served";
     const PayBlock = () => orderPaid ? (
       <div style={{padding:"12px 18px",background:"#F5F5F5",border:"1px solid #E5E5E5",borderRadius:12,fontSize:14,fontWeight:800,color:"#444444",marginBottom:14}}>
-        {L("Ödendi ✅ Teşekkürler!","Paid ✅ Thank you!","Оплачено ✅ Спасибо!")}
+        <Ikon ad="onayli" boy={15} style={{marginRight:6}}/>{L("Ödendi — teşekkürler!","Paid — thank you!","Оплачено — спасибо!")}
       </div>
     ) : onlinePayEnabled ? (
       <button onClick={startPay} disabled={payBusy} style={{padding:"14px 28px",background:"#000",color:"#fff",border:"none",borderRadius:12,fontSize:14,fontWeight:800,cursor:"pointer",marginBottom:14,opacity:payBusy?0.6:1}}>
-        {payBusy ? L("Açılıyor...","Opening...","Открывается...") : L("💳 Kart ile Öde","💳 Pay by Card","💳 Оплатить картой")}
+        {payBusy ? L("Açılıyor...","Opening...","Открывается...") : <><Ikon ad="kart" boy={15} style={{marginRight:7}}/>{L("Kart ile Öde","Pay by Card","Оплатить картой")}</>}
       </button>
     ) : null;
     return (
@@ -1424,7 +1425,7 @@ export default function CustomerMenu() {
         <div style={{maxWidth:460,margin:"0 auto",textAlign:"center"}}>
           {isReady ? (
             <>
-              <div style={{fontSize:80,marginBottom:14}}>🔔</div>
+              <Ikon ad="zil" boy={76} kalin={1.15} style={{display:"block",margin:"0 auto 14px"}}/>
               <div style={{fontSize:30,fontWeight:900,marginBottom:8,letterSpacing:"-0.5px"}}>{t.order_ready_big}</div>
               <div style={{fontSize:15,color:"#555",marginBottom:24,lineHeight:1.5}}>
                 {table ? (table.name + " · ") : ""}{t.pick_from_cashier}
@@ -1434,14 +1435,14 @@ export default function CustomerMenu() {
             </>
           ) : isServed ? (
             <>
-              <div style={{fontSize:72,marginBottom:14}}>🙏</div>
+              <Ikon ad="kalp" boy={68} kalin={1.15} style={{display:"block",margin:"0 auto 14px"}}/>
               <div style={{fontSize:26,fontWeight:800,marginBottom:8}}>{t.enjoy}</div>
               <div style={{fontSize:14,color:"#555",marginBottom:24,lineHeight:1.5}}>{t.thanks}</div>
               <button onClick={() => { setSuccessOrderId(null); setOrderStage("pending"); load(); }} style={{padding:"14px 28px",background:"#000000",color:"#FFFFFF",border:"none",borderRadius:12,fontSize:14,fontWeight:800,cursor:"pointer"}}>{t.new_order}</button>
             </>
           ) : (
             <>
-              <div style={{fontSize:60,marginBottom:14}}>✅</div>
+              <Ikon ad="onayli" boy={60} kalin={1.3} style={{display:"block",margin:"0 auto 14px"}}/>
               <div style={{fontSize:24,fontWeight:800,marginBottom:8}}>{t.order_received}</div>
               <div style={{fontSize:14,color:"#555",marginBottom:18,lineHeight:1.5}}>
                 {table ? (table.name + L(": m", ": s", ": о")) : L("M", "S", "О")}{t.order_kitchen_msg}
@@ -1461,10 +1462,10 @@ export default function CustomerMenu() {
               </div>
               <PayBlock/>
               <button onClick={() => setBrowsing(true)} style={{padding:"12px 24px",background:orderPaid?"#000":"#f2f2f2",color:orderPaid?"#fff":"#333",border:"none",borderRadius:12,fontSize:13,fontWeight:700,cursor:"pointer"}}>
-                {L("Beklerken göz at →","Browse while you wait →","Полистайте, пока ждёте →")}
+                {L("Beklerken göz at","Browse while you wait","Полистайте, пока ждёте")}<Ikon ad="oksag" boy={14} style={{marginLeft:6}}/>
               </button>
-              <div style={{fontSize:11,color:"#999",marginTop:10,lineHeight:1.5}}>
-                {L("Etkinlikler, sürüşler, shop & blog — hazır olunca zili çalarız 🔔","Events, rides, shop & blog — we'll ring when it's ready 🔔","События, заезды, шоп и блог — позвоним, когда будет готово 🔔")}
+              <div style={{fontSize:11,color:"#666666",marginTop:10,lineHeight:1.5}}>
+                {L("Etkinlikler, sürüşler, shop & blog — hazır olunca zili çalarız","Events, rides, shop & blog — we'll ring when it's ready","События, заезды, шоп и блог — позвоним, когда будет готово")}
               </div>
             </>
           )}
@@ -1484,7 +1485,7 @@ export default function CustomerMenu() {
           const annText = !annOn ? "" : String((lang === "ru" ? (settings.announcement_ru || settings.announcement_tr) : lang === "en" ? (settings.announcement_en || settings.announcement_tr) : settings.announcement_tr) || "").trim();
           return annText ? (
             <div style={{background:"#000",color:"#FFFFFF",padding:"7px 14px",fontSize:12,fontWeight:700,textAlign:"center",letterSpacing:"0.3px",lineHeight:1.4}}>
-              📢 {annText}
+              <Ikon ad="duyuru" boy={14} style={{marginRight:6}}/>{annText}
             </div>
           ) : null;
         })()}
@@ -1492,13 +1493,13 @@ export default function CustomerMenu() {
         <div style={{display:"flex",alignItems:"center",justifyContent:"space-between"}}>
           <div>
             <div style={{fontSize:24,fontWeight:400,letterSpacing:"0.005em",fontFamily:"'Coolvetica Heavy','Coolvetica Condensed','Barlow Condensed',sans-serif",textTransform:"uppercase"}}>Not in Paris</div>
-            <div style={{fontSize:10,color:"#888",letterSpacing:"2px",marginTop:2}}>
+            <div style={{fontSize:12,color:"#666666",letterSpacing:"0.2px",marginTop:2}}>
               {custTab !== "menu" ? (CUST_TABS.find(x=>x.key===custTab)?.[["en","ru"].includes(lang)?lang:"tr"] || "").toUpperCase() : (table ? table.name?.toUpperCase() : t.menu)}
-              {partyMode && custTab === "menu" && <span style={{marginLeft:6,color:"#000000",fontWeight:700}}>· {t.partyMode} 🎉</span>}
+              {partyMode && custTab === "menu" && <span style={{marginLeft:6,color:"#000000",fontWeight:700}}>· {t.partyMode}</span>}
             </div>
           </div>
           <div style={{display:"flex",alignItems:"center",gap:8}}>
-            {hh && custTab === "menu" && <div style={{background:"#000000",color:"#FFFFFF",padding:"4px 10px",borderRadius:10,fontSize:10,fontWeight:800,letterSpacing:"0.5px"}}>{t.happy_hour} -%{hh.discount_pct}</div>}
+            {hh && custTab === "menu" && <div style={{background:"#000000",color:"#FFFFFF",padding:"4px 10px",borderRadius:10,fontSize:12,fontWeight:600,letterSpacing:"0.2px"}}>{t.happy_hour} -%{hh.discount_pct}</div>}
             <LangSwitcher/>
           </div>
         </div>
@@ -1531,20 +1532,18 @@ export default function CustomerMenu() {
             gezmek gerekiyordu. Yazilinca kategori secimi devre disi kalir. */}
         <div style={{display:"flex",alignItems:"center",gap:8,marginTop:12}}>
           <div style={{flex:1,border:"1px solid #ddd",borderRadius:8,display:"flex",alignItems:"center",gap:8,padding:"9px 12px"}}>
-            <svg width="15" height="15" viewBox="0 0 24 24" fill="none" stroke="#999" strokeWidth="2" strokeLinecap="round" style={{flexShrink:0}}>
-              <circle cx="11" cy="11" r="6.5"></circle><path d="M16 16l4 4"></path>
-            </svg>
+            <Ikon ad="ara" boy={15} style={{color:"#666666"}}/>
             <input value={menuSearch} onChange={e=>setMenuSearch(e.target.value)}
               placeholder={L("Ürün ara — latte, efes, aperol","Search — latte, beer, aperol","Поиск — латте, пиво, апероль")}
               style={{flex:1,minWidth:0,border:"none",outline:"none",fontSize:13,color:"#000",background:"transparent",fontFamily:"inherit",padding:0}}/>
             {menuSearch && (
               <button onClick={()=>setMenuSearch("")} aria-label={L("Aramayı temizle","Clear search","Очистить")}
-                style={{border:"none",background:"none",color:"#999",fontSize:17,lineHeight:1,cursor:"pointer",padding:0,flexShrink:0,fontFamily:"inherit"}}>×</button>
+                style={{border:"none",background:"none",color:"#666666",fontSize:17,lineHeight:1,cursor:"pointer",padding:0,flexShrink:0,fontFamily:"inherit"}}>×</button>
             )}
           </div>
         </div>
         {aramaTerimi && (
-          <div style={{fontSize:11,color:"#999",marginTop:6}}>
+          <div style={{fontSize:11,color:"#666666",marginTop:6}}>
             {visibleProducts.length > 0
               ? L(`Tüm menüde ${visibleProducts.length} sonuç`, `${visibleProducts.length} results in the whole menu`, `${visibleProducts.length} результатов`)
               : L("Sonuç yok","No results","Ничего не найдено")}
@@ -1560,14 +1559,14 @@ export default function CustomerMenu() {
         {customer ? (
           <button onClick={openProfile} style={{fontSize:12,color:"#5A5348",fontWeight:600,background:"none",border:"none",cursor:"pointer",padding:0,textAlign:"left",fontFamily:"inherit",display:"flex",alignItems:"center",gap:6,width:"100%",justifyContent:"space-between"}}>
             <span>
-              ⭐ {L("Merhaba","Hi","Привет")} {customer.name?.split(" ")[0] || ""}
+              <Ikon ad="yildiz" boy={13} style={{marginRight:5}}/>{L("Merhaba","Hi","Привет")} {customer.name?.split(" ")[0] || ""}
               {Object.keys(memberDiscounts).length > 0 && <span> — {L("üye fiyatların aktif","member prices active","цены для участников активны")}</span>}
             </span>
-            <span style={{fontSize:11,fontWeight:800,whiteSpace:"nowrap"}}>{L("Profilim →","My profile →","Профиль →")}</span>
+            <span style={{fontSize:11,fontWeight:800,whiteSpace:"nowrap"}}>{L("Profilim","My profile","Профиль")}<Ikon ad="oksag" boy={12} style={{marginLeft:4}}/></span>
           </button>
         ) : (
           <>
-            <span style={{fontSize:12,color:"#5A5348"}}>⭐ {L("Üye misin?","Member?","Участник клуба?")}</span>
+            <span style={{fontSize:12,color:"#5A5348"}}><Ikon ad="yildiz" boy={13} style={{marginRight:5}}/>{L("Üye misin?","Member?","Участник клуба?")}</span>
             <button onClick={() => setLoginSheet(true)} style={{padding:"6px 12px",background:"#000",color:"#fff",border:"none",borderRadius:10,fontSize:11,fontWeight:700,cursor:"pointer",whiteSpace:"nowrap"}}>
               {t.login_cta}
             </button>
@@ -1580,16 +1579,16 @@ export default function CustomerMenu() {
         <div style={{padding:"14px 16px"}}>
           {custTab === "events" && (
             <a href={RESERVATION_URL} onClick={openReservation} rel="noreferrer" style={{display:"flex",justifyContent:"space-between",alignItems:"center",padding:"16px 18px",background:"#000",color:"#fff",borderRadius:14,textDecoration:"none",marginBottom:14}}>
-              <span style={{fontSize:14,fontWeight:800}}>🎟 {L("Rezervasyon yap","Make a reservation","Забронировать")}</span>
-              <span style={{fontSize:16}}>→</span>
+              <span style={{fontSize:14,fontWeight:800,display:"flex",alignItems:"center",gap:8}}><Ikon ad="etkinlik" boy={17}/>{L("Rezervasyon yap","Make a reservation","Забронировать")}</span>
+              <Ikon ad="oksag" boy={16}/>
             </a>
           )}
           {custTab === "events" && (
             <>
-              {feeds.events === undefined && <div style={{textAlign:"center",color:"#888",padding:30,fontSize:13}}>...</div>}
+              {feeds.events === undefined && <div style={{textAlign:"center",color:"#666666",padding:30,fontSize:13}}>...</div>}
               {feeds.events?.length === 0 && (
-                <div style={{textAlign:"center",color:"#888",padding:30,fontSize:13,lineHeight:1.6}}>
-                  {L("Yaklaşan etkinlikler yakında burada 🎉","Upcoming events will appear here soon 🎉","Скоро здесь появятся события 🎉")}
+                <div style={{textAlign:"center",color:"#666666",padding:30,fontSize:13,lineHeight:1.6}}>
+                  {L("Yaklaşan etkinlikler yakında burada","Upcoming events will appear here soon","Скоро здесь появятся события")}
                 </div>
               )}
               {(feeds.events || []).map((ev, i) => (
@@ -1597,30 +1596,30 @@ export default function CustomerMenu() {
                   <div style={{flex:1,minWidth:0}}>
                     <div style={{fontSize:15,fontWeight:800,lineHeight:1.3}}>
                       {ev.name}
-                      {ev.subtitle && <span style={{fontSize:11,fontWeight:600,color:"#888",marginLeft:6}}>{ev.subtitle}</span>}
+                      {ev.subtitle && <span style={{fontSize:11,fontWeight:600,color:"#666666",marginLeft:6}}>{ev.subtitle}</span>}
                     </div>
                     <div style={{fontSize:12,color:"#666",marginTop:3}}>
                       {fmtDay(ev.date)}{ev.time ? " · " + ev.time : ""}{ev.genre ? " · " + ev.genre : ""}
                     </div>
                   </div>
                   {ev.access_type && ev.access_type !== "open" && (
-                    <span style={{fontSize:9,padding:"3px 7px",background:"#000",color:"#fff",borderRadius:6,fontWeight:800,letterSpacing:"0.5px",flexShrink:0}}>{L("ÜYE","MEMBERS","КЛУБ")}</span>
+                    <span style={{fontSize:12,padding:"3px 7px",background:"#000",color:"#fff",borderRadius:6,fontWeight:600,letterSpacing:"0.2px",flexShrink:0}}>{L("ÜYE","MEMBERS","КЛУБ")}</span>
                   )}
-                  <span style={{fontSize:12,fontWeight:700,flexShrink:0}}>{L("Rezerve","Reserve","Бронь")} →</span>
+                  <span style={{fontSize:12,fontWeight:700,flexShrink:0}}>{L("Rezerve","Reserve","Бронь")}<Ikon ad="oksag" boy={12} style={{marginLeft:4}}/></span>
                 </a>
               ))}
               <a href={YOUTUBE_URL} target="_blank" rel="noreferrer" style={{display:"flex",justifyContent:"space-between",alignItems:"center",padding:"14px 16px",background:"#fafafa",border:"1px solid #eee",borderRadius:14,textDecoration:"none",color:"#000",marginTop:14}}>
-                <span style={{fontSize:13,fontWeight:800}}>▶️ Dance Till They Come — YouTube</span>
-                <span>↗</span>
+                <span style={{fontSize:13,fontWeight:800}}>Dance Till They Come — YouTube</span>
+                <Ikon ad="disari" boy={15}/>
               </a>
             </>
           )}
           {custTab === "rides" && (
             <>
-              {feeds.rides === undefined && <div style={{textAlign:"center",color:"#888",padding:30,fontSize:13}}>...</div>}
+              {feeds.rides === undefined && <div style={{textAlign:"center",color:"#666666",padding:30,fontSize:13}}>...</div>}
               {feeds.rides?.length === 0 && (
-                <div style={{textAlign:"center",color:"#888",padding:30,fontSize:13,lineHeight:1.6}}>
-                  {L("Planlı sürüşler yakında burada 🚴","Planned rides will appear here soon 🚴","Скоро здесь появятся заезды 🚴")}
+                <div style={{textAlign:"center",color:"#666666",padding:30,fontSize:13,lineHeight:1.6}}>
+                  {L("Planlı sürüşler yakında burada","Planned rides will appear here soon","Скоро здесь появятся заезды")}
                 </div>
               )}
               {(feeds.rides || []).map((r, i) => (
@@ -1630,37 +1629,37 @@ export default function CustomerMenu() {
                     <div style={{fontSize:12,color:"#666",marginTop:3}}>
                       {fmtDay(r.ride_date)}{r.ride_time ? " · " + r.ride_time : ""}
                     </div>
-                    <div style={{fontSize:11,color:"#888",marginTop:2}}>
+                    <div style={{fontSize:11,color:"#666666",marginTop:2}}>
                       {[r.pace, r.distance_km ? Math.round(r.distance_km) + " km" : null, r.elevation_m ? Math.round(r.elevation_m) + " m↑" : null, r.meet_point].filter(Boolean).join(" · ")}
                     </div>
                   </div>
                   <span style={{fontSize:12,fontWeight:700,flexShrink:0,textAlign:"right"}}>
-                    {L("Katıl","Join","Поехали")} →
+                    {L("Katıl","Join","Поехали")}<Ikon ad="oksag" boy={12} style={{marginLeft:4}}/>
                     {r.strava_event_id && <span style={{display:"block",fontSize:9,color:"#FC5200",fontWeight:800,letterSpacing:"0.3px"}}>STRAVA</span>}
                   </span>
                 </a>
               ))}
               <a href={FIND_BIKE_URL} target="_blank" rel="noreferrer" style={{display:"flex",justifyContent:"space-between",alignItems:"center",gap:10,padding:"14px 16px",background:"#000",color:"#fff",borderRadius:14,textDecoration:"none",marginTop:14}}>
                 <span style={{minWidth:0}}>
-                  <span style={{fontSize:13,fontWeight:800,display:"block"}}>🚲 {L("Bisiklet bul","Find a Bike","Найти велосипед")}</span>
+                  <span style={{fontSize:13,fontWeight:800,display:"flex",alignItems:"center",gap:7}}><Ikon ad="surus" boy={16}/>{L("Bisiklet bul","Find a Bike","Найти велосипед")}</span>
                   <span style={{fontSize:11,color:"#bbb",display:"block",marginTop:2,lineHeight:1.4}}>
                     {L("Sürüşe bisikletsiz mi geldin? Kiralık ve ikinci el.","No bike for the ride? Rentals and second-hand.","Приехал без велосипеда? Аренда и б/у.")}
                   </span>
                 </span>
-                <span style={{flexShrink:0}}>→</span>
+                <Ikon ad="oksag" boy={16}/>
               </a>
               <a href={STRAVA_URL} target="_blank" rel="noreferrer" style={{display:"flex",justifyContent:"space-between",alignItems:"center",padding:"14px 16px",background:"#fafafa",border:"1px solid #eee",borderRadius:14,textDecoration:"none",color:"#000",marginTop:10}}>
-                <span style={{fontSize:13,fontWeight:800}}>🟠 NIP Cycling Club — Strava</span>
-                <span>↗</span>
+                <span style={{fontSize:13,fontWeight:800,display:"flex",alignItems:"center",gap:8}}><span style={{width:8,height:8,borderRadius:"50%",background:"#FC5200",flexShrink:0}}/>NIP Cycling Club — Strava</span>
+                <Ikon ad="disari" boy={15}/>
               </a>
             </>
           )}
           {custTab === "vote" && (
             <>
-              {feeds.polls === undefined && <div style={{textAlign:"center",color:"#888",padding:30,fontSize:13}}>...</div>}
+              {feeds.polls === undefined && <div style={{textAlign:"center",color:"#666666",padding:30,fontSize:13}}>...</div>}
               {feeds.polls?.length === 0 && (
-                <div style={{textAlign:"center",color:"#888",padding:30,fontSize:13,lineHeight:1.6}}>
-                  {L("Şu an açık oylama yok — yakında yeni sorular 🗳","No open polls right now — new questions soon 🗳","Сейчас нет открытых голосований — скоро новые вопросы 🗳")}
+                <div style={{textAlign:"center",color:"#666666",padding:30,fontSize:13,lineHeight:1.6}}>
+                  {L("Şu an açık oylama yok — yakında yeni sorular","No open polls right now — new questions soon","Сейчас нет открытых голосований — скоро новые вопросы")}
                 </div>
               )}
               {(feeds.polls || []).map(poll => {
@@ -1682,7 +1681,7 @@ export default function CustomerMenu() {
                                   fontSize:14,fontWeight:picked?800:600,cursor:"pointer",fontFamily:"inherit",color:"#000"}}>
                           {voted && <span style={{position:"absolute",inset:0,width:pct+"%",background:picked?"#000":"#ececec",opacity:picked?0.09:1,transition:"width .35s"}}/>}
                           <span style={{position:"relative",display:"flex",justifyContent:"space-between",gap:10,alignItems:"center"}}>
-                            <span>{picked ? "✓ " : ""}{optLabel(o)}</span>
+                            <span>{picked && <Ikon ad="onay" boy={14} style={{marginRight:6}}/>}{optLabel(o)}</span>
                             {voted && <span style={{fontSize:12,fontWeight:800,color:"#666",flexShrink:0}}>{L("%" + pct, pct + "%", pct + "%")}</span>}
                           </span>
                         </button>
@@ -1703,18 +1702,18 @@ export default function CustomerMenu() {
                     )}
                     {mine?.free_text && (
                       <div style={{fontSize:12,color:"#444444",fontWeight:700,marginTop:8}}>
-                        ✓ {L("Cevabın alındı","Your answer is in","Ваш ответ принят")}: “{mine.free_text}”
+                        <Ikon ad="onay" boy={13} style={{marginRight:5}}/>{L("Cevabın alındı","Your answer is in","Ваш ответ принят")}: “{mine.free_text}”
                       </div>
                     )}
-                    <div style={{fontSize:11,color:"#999",marginTop:9,lineHeight:1.5}}>
+                    <div style={{fontSize:11,color:"#666666",marginTop:9,lineHeight:1.5}}>
                       {voted
                         ? L(total + " kişi oy verdi · fikrini değiştirebilirsin", total + " people voted · you can change your mind", "Проголосовало: " + total + " · можно передумать")
-                        : L("Oyla, sonucu gör 👀","Vote to see the results 👀","Проголосуйте, чтобы увидеть результаты 👀")}
+                        : L("Oyla, sonucu gör","Vote to see the results","Проголосуйте, чтобы увидеть результаты")}
                     </div>
                   </div>
                 );
               })}
-              <div style={{fontSize:11,color:"#999",textAlign:"center",marginTop:4,lineHeight:1.6}}>
+              <div style={{fontSize:11,color:"#666666",textAlign:"center",marginTop:4,lineHeight:1.6}}>
                 {L("Cevaplarını okuyoruz — bazıları menüde ve çalma listesinde karşına çıkacak ♥",
                    "We read every answer — some will show up on the menu and the playlist ♥",
                    "Мы читаем все ответы — часть из них появится в меню и плейлисте ♥")}
@@ -1732,7 +1731,7 @@ export default function CustomerMenu() {
                   <div key={sc.id} style={{marginBottom:16,background:"#fafafa",border:"1px solid #eee",borderRadius:16,padding:"14px 12px 12px"}}>
                     <div style={{display:"flex",alignItems:"center",gap:8,flexWrap:"wrap",padding:"0 2px"}}>
                       <div style={{fontSize:17,fontWeight:800,letterSpacing:"0.2px"}}>{sc.icon ? sc.icon + " " : ""}{cName(sc)}</div>
-                      {scTag && <span style={{fontSize:10,fontWeight:800,letterSpacing:"0.5px",padding:"3px 9px",background:"#000",color:"#fff",borderRadius:20,textTransform:"uppercase"}}>{scTag}</span>}
+                      {scTag && <span style={{fontSize:12,fontWeight:600,letterSpacing:"0.2px",padding:"3px 9px",background:"#000",color:"#fff",borderRadius:20,textTransform:"uppercase"}}>{scTag}</span>}
                     </div>
                     {scDesc && <div style={{fontSize:12,color:"#666",lineHeight:1.5,margin:"5px 2px 0"}}>{scDesc}</div>}
 
@@ -1794,16 +1793,18 @@ export default function CustomerMenu() {
                                 style={{flexShrink:0,fontSize:11,fontWeight:700,border:"1px solid "+(haberVerilen[p.id]?"#ccc":"#000"),
                                         background:"transparent",color:haberVerilen[p.id]?"#999":"#000",padding:"8px 10px",
                                         borderRadius:8,cursor:haberVerilen[p.id]?"default":"pointer",fontFamily:"inherit",whiteSpace:"nowrap"}}>
-                                {haberVerilen[p.id] ? L("✓ Haber vereceğiz","✓ We'll tell you","✓ Сообщим") : L("Haber ver","Notify me","Сообщить")}
+                                {haberVerilen[p.id]
+                                  ? <><Ikon ad="onay" boy={13} style={{marginRight:4}}/>{L("Haber vereceğiz","We'll tell you","Сообщим")}</>
+                                  : L("Haber ver","Notify me","Сообщить")}
                               </button>
                             ) : (inCart > 0 && !p.has_options ? (
                               <div style={{display:"flex",alignItems:"center",gap:6,background:"#000",borderRadius:24,padding:"3px 5px",flexShrink:0}}>
-                                <button onClick={() => updateQty(cartIdx, -1)} style={{width:26,height:26,background:"transparent",color:"#fff",border:"none",fontSize:17,cursor:"pointer",fontWeight:700,padding:0}}>−</button>
+                                <button onClick={() => updateQty(cartIdx, -1)} style={{width:44,height:44,background:"transparent",color:"#fff",border:"none",fontSize:17,cursor:"pointer",fontWeight:700,padding:0}}>−</button>
                                 <span style={{color:"#fff",fontSize:14,fontWeight:700,minWidth:16,textAlign:"center"}}>{inCart}</span>
-                                <button onClick={() => updateQty(cartIdx, +1)} style={{width:26,height:26,background:"transparent",color:"#fff",border:"none",fontSize:17,cursor:"pointer",fontWeight:700,padding:0}}>+</button>
+                                <button onClick={() => updateQty(cartIdx, +1)} style={{width:44,height:44,background:"transparent",color:"#fff",border:"none",fontSize:17,cursor:"pointer",fontWeight:700,padding:0}}>+</button>
                               </div>
                             ) : (
-                              <button onClick={() => onProductTap(p)} style={{width:36,height:36,flexShrink:0,background:"#fff",color:"#000",border:"2px solid #000",borderRadius:8,fontSize:21,fontWeight:900,cursor:"pointer",display:"flex",alignItems:"center",justifyContent:"center",padding:0,lineHeight:1}}>+</button>
+                              <button onClick={() => onProductTap(p)} style={{width:44,height:44,flexShrink:0,background:"#fff",color:"#000",border:"2px solid #000",borderRadius:9,fontSize:22,fontWeight:900,cursor:"pointer",display:"flex",alignItems:"center",justifyContent:"center",padding:0,lineHeight:1}}>+</button>
                             ))}
                           </div>
                         );
@@ -1816,10 +1817,10 @@ export default function CustomerMenu() {
           )}
           {(custTab === "shop" || custTab === "blog") && (
             <>
-              {postFeeds[custTab] === undefined && <div style={{textAlign:"center",color:"#888",padding:30,fontSize:13}}>...</div>}
+              {postFeeds[custTab] === undefined && <div style={{textAlign:"center",color:"#666666",padding:30,fontSize:13}}>...</div>}
               {postFeeds[custTab]?.length === 0 && !(custTab === "shop" && shopCats.length > 0) && (
-                <div style={{textAlign:"center",color:"#888",padding:30,fontSize:13}}>
-                  {L("Yakında ✨","Coming soon ✨","Скоро ✨")}
+                <div style={{textAlign:"center",color:"#666666",padding:30,fontSize:13}}>
+                  {L("Yakında","Coming soon","Скоро")}
                 </div>
               )}
               {(postFeeds[custTab] || []).map(p => {
@@ -1839,15 +1840,15 @@ export default function CustomerMenu() {
                   <div style={{padding:"12px 14px"}}>
                     <div style={{fontSize:16,fontWeight:800,display:"flex",justifyContent:"space-between",alignItems:"center",gap:8}}>
                       <span>{postTitle(p)}</span>
-                      {p.link_url && <span style={{fontSize:14,color:"#888",flexShrink:0}}>↗</span>}
+                      {p.link_url && <span style={{color:"#666666",flexShrink:0,display:"flex"}}><Ikon ad="disari" boy={14}/></span>}
                     </div>
                     {postBody(p) && <div style={{fontSize:13,color:"#444",marginTop:6,lineHeight:1.6,whiteSpace:"pre-wrap"}}>{postBody(p)}</div>}
                     {custTab === "shop" ? (
                       <div style={{display:"inline-block",marginTop:10,padding:"6px 12px",background:"#000",color:"#FFFFFF",borderRadius:10,fontSize:11,fontWeight:800}}>
-                        💳 {L("Kasadan alabilirsin","Available at the counter","Можно купить на кассе")}
+                        <Ikon ad="kart" boy={13} style={{marginRight:5}}/>{L("Kasadan alabilirsin","Available at the counter","Можно купить на кассе")}
                       </div>
                     ) : (
-                      <div style={{fontSize:10,color:"#999",marginTop:8}}>{new Date(p.created_at).toLocaleDateString(dateLocale,{day:"numeric",month:"long"})}</div>
+                      <div style={{fontSize:10,color:"#666666",marginTop:8}}>{new Date(p.created_at).toLocaleDateString(dateLocale,{day:"numeric",month:"long"})}</div>
                     )}
                   </div>
                 </Card>
@@ -1855,14 +1856,14 @@ export default function CustomerMenu() {
               })}
               {custTab === "shop" && (
                 <a href={INSTAGRAM_URL} target="_blank" rel="noreferrer" style={{display:"flex",justifyContent:"space-between",alignItems:"center",padding:"14px 16px",background:"#fafafa",border:"1px solid #eee",borderRadius:14,textDecoration:"none",color:"#000",marginTop:4}}>
-                  <span style={{fontSize:13,fontWeight:800}}>📷 Instagram — @notinparis.me</span>
-                  <span>↗</span>
+                  <span style={{fontSize:13,fontWeight:800,display:"flex",alignItems:"center",gap:8}}><Ikon ad="kamera" boy={16}/>Instagram — @notinparis.me</span>
+                  <Ikon ad="disari" boy={15}/>
                 </a>
               )}
               {custTab === "blog" && (
                 <a href={GOOGLE_RATE_URL} target="_blank" rel="noreferrer" style={{display:"flex",justifyContent:"space-between",alignItems:"center",padding:"14px 16px",background:"#000",color:"#fff",borderRadius:14,textDecoration:"none",marginTop:4}}>
-                  <span style={{fontSize:13,fontWeight:800}}>⭐ {L("Bizi Google'da değerlendir","Rate us on Google","Оцените нас в Google")}</span>
-                  <span>↗</span>
+                  <span style={{fontSize:13,fontWeight:800,display:"flex",alignItems:"center",gap:8}}><Ikon ad="yildiz" boy={16}/>{L("Bizi Google'da değerlendir","Rate us on Google","Оцените нас в Google")}</span>
+                  <Ikon ad="disari" boy={15}/>
                 </a>
               )}
             </>
@@ -1872,15 +1873,15 @@ export default function CustomerMenu() {
 
       {custTab === "menu" && (
       <div style={{padding:"14px 16px"}}>
-        {visibleProducts.length === 0 && <div style={{textAlign:"center",color:"#888",padding:40,fontSize:13}}>{t.category_empty}</div>}
+        {visibleProducts.length === 0 && <div style={{textAlign:"center",color:"#666666",padding:40,fontSize:13}}>{t.category_empty}</div>}
         {productSections.map(sec => (
         <div key={sec.key}>
         {sec.title && (
           <div style={{fontSize:15,fontWeight:800,letterSpacing:"0.8px",color:"#000",textTransform:"uppercase",padding:"26px 0 4px"}}>{sec.title}</div>
         )}
         {sec.hours && (
-          <div style={{fontSize:11,color:"#a0a0a0",fontWeight:600,padding:sec.title?"0 0 6px":"14px 0 6px"}}>
-            🕐 {sec.hours} · {t.order_hours}
+          <div style={{fontSize:11,color:"#666666",fontWeight:600,padding:sec.title?"0 0 6px":"14px 0 6px"}}>
+            <Ikon ad="saat" boy={13} style={{marginRight:5}}/>{sec.hours} · {t.order_hours}
           </div>
         )}
         {sec.items.map(p => {
@@ -1903,28 +1904,28 @@ export default function CustomerMenu() {
                       : `${hhmm(blocked.end)} – ${hhmm(blocked.start)} ${t.order_between}`}
                   </div>
                 )}
-                {p.show_prep_time && p.prep_time_minutes && <div style={{fontSize:12,color:"#888",marginTop:4,display:"flex",alignItems:"center",gap:4}}>⏱ <span>~{p.prep_time_minutes} {L("dk","min","мин")}</span></div>}
+                {p.show_prep_time && p.prep_time_minutes && <div style={{fontSize:12,color:"#666666",marginTop:4,display:"flex",alignItems:"center",gap:5}}><Ikon ad="vardiya" boy={13}/><span>~{p.prep_time_minutes} {L("dk","min","мин")}</span></div>}
                 {soldOut && <div style={{fontSize:11,color:"#A34A3A",marginTop:4,fontWeight:600}}>{p.unavailable_reason || t.sold_out}</div>}
-                {p.has_options && !soldOut && <div style={{fontSize:10,color:"#000000",marginTop:3,fontWeight:700,letterSpacing:"0.5px"}}>{t.optional}</div>}
+                {p.has_options && !soldOut && <div style={{fontSize:12,color:"#000000",marginTop:3,fontWeight:600,letterSpacing:"0.2px"}}>{t.optional}</div>}
                 <div style={{display:"flex",alignItems:"center",gap:10,marginTop:8}}>
-                  {dis && <span style={{fontSize:12,color:"#999",textDecoration:"line-through"}}>₺{p.price}</span>}
+                  {dis && <span style={{fontSize:12,color:"#666666",textDecoration:"line-through"}}>₺{p.price}</span>}
                   <span style={{fontSize:15,fontWeight:800,color:"#000"}}>₺{fp}</span>
                   {p.currency === "EUR" && p.price_eur != null && (
-                    <span style={{fontSize:12,color:"#888",fontWeight:600}}>· €{Number(p.price_eur)}</span>
+                    <span style={{fontSize:12,color:"#666666",fontWeight:600}}>· €{Number(p.price_eur)}</span>
                   )}
-                  {memberPriceFor(p) != null && memberPriceFor(p) <= fp && <span style={{fontSize:9,padding:"2px 6px",background:"#000",color:"#FFFFFF",borderRadius:6,fontWeight:800,letterSpacing:"0.5px"}}>{L("SANA ÖZEL","YOUR PRICE","ВАША ЦЕНА")}</span>}
+                  {memberPriceFor(p) != null && memberPriceFor(p) <= fp && <span style={{fontSize:12,padding:"2px 6px",background:"#000",color:"#FFFFFF",borderRadius:6,fontWeight:600,letterSpacing:"0.2px"}}>{L("SANA ÖZEL","YOUR PRICE","ВАША ЦЕНА")}</span>}
                 </div>
               </div>
               {!soldOut && !isFaded && (
                 <div style={{display:"flex",alignItems:"center",flexShrink:0}}>
                   {inCart > 0 && !p.has_options ? (
                     <div style={{display:"flex",alignItems:"center",gap:8,background:"#000",borderRadius:24,padding:"4px 6px"}}>
-                      <button onClick={() => updateQty(cartIdx, -1)} style={{width:28,height:28,background:"transparent",color:"#fff",border:"none",borderRadius:"50%",fontSize:18,cursor:"pointer",fontWeight:700}}>−</button>
+                      <button onClick={() => updateQty(cartIdx, -1)} style={{width:44,height:44,background:"transparent",color:"#fff",border:"none",borderRadius:"50%",fontSize:18,cursor:"pointer",fontWeight:700}}>−</button>
                       <div style={{minWidth:18,textAlign:"center",color:"#fff",fontSize:14,fontWeight:800}}>{inCart}</div>
-                      <button onClick={() => updateQty(cartIdx, +1)} style={{width:28,height:28,background:"transparent",color:"#fff",border:"none",borderRadius:"50%",fontSize:18,cursor:"pointer",fontWeight:700}}>+</button>
+                      <button onClick={() => updateQty(cartIdx, +1)} style={{width:44,height:44,background:"transparent",color:"#fff",border:"none",borderRadius:"50%",fontSize:18,cursor:"pointer",fontWeight:700}}>+</button>
                     </div>
                   ) : (
-                    <button onClick={() => onProductTap(p)} style={{width:36,height:36,flexShrink:0,background:"#fff",color:"#000",border:"2px solid #000",borderRadius:8,fontSize:22,cursor:"pointer",fontWeight:900,display:"flex",alignItems:"center",justifyContent:"center",padding:0,lineHeight:1}}>+</button>
+                    <button onClick={() => onProductTap(p)} style={{width:44,height:44,flexShrink:0,background:"#fff",color:"#000",border:"2px solid #000",borderRadius:8,fontSize:22,cursor:"pointer",fontWeight:900,display:"flex",alignItems:"center",justifyContent:"center",padding:0,lineHeight:1}}>+</button>
                   )}
                 </div>
               )}
@@ -1939,23 +1940,23 @@ export default function CustomerMenu() {
       {cart.length > 0 && (
         <div style={{position:"fixed",bottom:susBarActive?128:84,left:14,right:14,zIndex:40}}>
           <button onClick={() => setCheckoutOpen(true)} style={{width:"100%",padding:"16px 20px",background:"#000",color:"#fff",border:"none",borderRadius:14,fontSize:15,fontWeight:800,cursor:"pointer",boxShadow:"0 6px 20px rgba(0,0,0,0.35)",display:"flex",justifyContent:"space-between",alignItems:"center"}}>
-            <span>{t.cart} ({cartCount})</span>
-            <span>₺{cartTotal} · {t.continue} →</span>
+            <span style={{display:"flex",alignItems:"center",gap:8}}><Ikon ad="sepet" boy={16}/>{t.cart} ({cartCount})</span>
+            <span>₺{cartTotal} · {t.continue}<Ikon ad="oksag" boy={14} style={{marginLeft:6}}/></span>
           </button>
         </div>
       )}
 
       {susBarActive && (
         <button onClick={() => setBrowsing(false)} style={{position:"fixed",bottom:76,left:14,right:14,zIndex:45,display:"flex",justifyContent:"space-between",alignItems:"center",padding:"12px 16px",background:"#000000",color:"#FFFFFF",border:"none",borderRadius:12,fontSize:13,fontWeight:800,cursor:"pointer",boxShadow:"0 4px 16px rgba(0,0,0,0.25)"}}>
-          <span>🍳 {L("Siparişin hazırlanıyor","Your order is being prepared","Ваш заказ готовится")}</span>
-          <span>→</span>
+          <span style={{display:"flex",alignItems:"center",gap:7}}><Ikon ad="mutfak" boy={15}/>{L("Siparişin hazırlanıyor","Your order is being prepared","Ваш заказ готовится")}</span>
+          <Ikon ad="oksag" boy={15}/>
         </button>
       )}
 
       <nav style={{position:"fixed",bottom:0,left:0,right:0,background:"#fff",borderTop:"1px solid #eee",display:"flex",justifyContent:"space-around",padding:"8px 0 16px",zIndex:50,boxShadow:"0 -2px 12px rgba(0,0,0,0.06)"}}>
         {CUST_TABS.map(tab => (
           <button key={tab.key} onClick={() => setCustTab(tab.key)} style={{display:"flex",flexDirection:"column",alignItems:"center",gap:2,background:"none",border:"none",cursor:"pointer",color:custTab===tab.key?"#000":"#999",padding:"4px 8px",minWidth:52}}>
-            <span style={{fontSize:20,filter:custTab===tab.key?"none":"grayscale(1)"}}>{tab.icon}</span>
+            <Ikon ad={tab.icon} boy={21}/>
             <span style={{fontSize:9,fontWeight:custTab===tab.key?800:600,letterSpacing:"0.3px"}}>{tab[["en","ru"].includes(lang)?lang:"tr"]}</span>
           </button>
         ))}
@@ -1972,20 +1973,20 @@ export default function CustomerMenu() {
               )}
               <div style={{flex:1,minWidth:0}}>
                 <div style={{fontSize:17,fontWeight:800}}>{profileStats?.cust?.name || customer.name}</div>
-                <div style={{fontSize:11,color:"#888",overflow:"hidden",textOverflow:"ellipsis"}}>{profileStats?.cust?.email || customer.email}</div>
+                <div style={{fontSize:11,color:"#666666",overflow:"hidden",textOverflow:"ellipsis"}}>{profileStats?.cust?.email || customer.email}</div>
               </div>
-              <span style={{fontSize:10,padding:"4px 10px",background:"#000",color:"#FFFFFF",borderRadius:10,fontWeight:800,letterSpacing:"0.5px"}}>⭐ {L("ÜYE","MEMBER","УЧАСТНИК")}</span>
+              <span style={{fontSize:12,padding:"4px 10px",background:"#000",color:"#FFFFFF",borderRadius:10,fontWeight:600,letterSpacing:"0.2px",display:"inline-flex",alignItems:"center",gap:5}}><Ikon ad="yildiz" boy={12}/>{L("ÜYE","MEMBER","УЧАСТНИК")}</span>
             </div>
 
             {!profileStats ? (
-              <div style={{textAlign:"center",color:"#888",padding:20,fontSize:13}}>...</div>
+              <div style={{textAlign:"center",color:"#666666",padding:20,fontSize:13}}>...</div>
             ) : (
               <>
                 {(profileStats.open?.length > 0 || Number(profileStats.cust?.outstanding_balance || 0) > 0) && (
                   <div style={{background:"#FAF6EE",border:"1px solid #EDE6D8",borderRadius:14,padding:"12px 14px",marginBottom:14}}>
                     {profileStats.open?.length > 0 && (<>
                       <div style={{fontSize:12,fontWeight:800,color:"#5A5348",marginBottom:8}}>
-                        🧾 {L("Açık hesabın","Open tab","Открытый счёт")} — ₺{Math.round(profileStats.open.reduce((t,o)=>t+Number(o.total||0),0))}
+                        <Ikon ad="fatura" boy={13} style={{marginRight:5}}/>{L("Açık hesabın","Open tab","Открытый счёт")} — ₺{Math.round(profileStats.open.reduce((t,o)=>t+Number(o.total||0),0))}
                       </div>
                       {profileStats.open.map(o => (
                         <div key={o.id} style={{display:"flex",justifyContent:"space-between",fontSize:12,color:"#5A5348",padding:"3px 0"}}>
@@ -1999,7 +2000,7 @@ export default function CustomerMenu() {
                     </>)}
                     {Number(profileStats.cust?.outstanding_balance || 0) > 0 && (
                       <div style={{fontSize:12,fontWeight:700,color:"#A34A3A",marginTop:profileStats.open?.length?8:0}}>
-                        📝 {L("Borç","Balance due","Долг")}: ₺{Math.round(Number(profileStats.cust.outstanding_balance))}
+                        <Ikon ad="veresiye" boy={13} style={{marginRight:5}}/>{L("Borç","Balance due","Долг")}: ₺{Math.round(Number(profileStats.cust.outstanding_balance))}
                       </div>
                     )}
                   </div>
@@ -2007,16 +2008,16 @@ export default function CustomerMenu() {
                 <div style={{display:"grid",gridTemplateColumns:"1fr 1fr 1fr",gap:8,marginBottom:14}}>
                   <div style={{background:"#f7f7f7",borderRadius:12,padding:"12px 8px",textAlign:"center"}}>
                     <div style={{fontSize:20,fontWeight:800}}>{profileStats.orders}</div>
-                    <div style={{fontSize:10,color:"#888",fontWeight:700}}>{L("SİPARİŞ","ORDERS","ЗАКАЗЫ")}</div>
+                    <div style={{fontSize:10,color:"#666666",fontWeight:700}}>{L("SİPARİŞ","ORDERS","ЗАКАЗЫ")}</div>
                   </div>
                   <div style={{background:"#f7f7f7",borderRadius:12,padding:"12px 8px",textAlign:"center"}}>
                     <div style={{fontSize:20,fontWeight:800}}>₺{Math.round(profileStats.totalSpent)}</div>
-                    <div style={{fontSize:10,color:"#888",fontWeight:700}}>{L("HARCAMA","SPENT","ПОТРАЧЕНО")}</div>
+                    <div style={{fontSize:10,color:"#666666",fontWeight:700}}>{L("HARCAMA","SPENT","ПОТРАЧЕНО")}</div>
                   </div>
                   {/* CUZDAN — harcanabilir bakiye. Seviye bundan degil kazanilan
                       toplam puandan hesaplanir (asagidaki seviye kartinda). */}
                   <div style={{background:"#111",color:"#FFFFFF",borderRadius:12,padding:"12px 8px",textAlign:"center"}}>
-                    <div style={{fontSize:20,fontWeight:800}}>🪙 {Number(profileStats.cust?.points || 0)}</div>
+                    <div style={{fontSize:20,fontWeight:800,display:"flex",alignItems:"center",justifyContent:"center",gap:5}}><Ikon ad="puan" boy={17}/>{Number(profileStats.cust?.points || 0)}</div>
                     <div style={{fontSize:10,color:"#EDE6D8",fontWeight:700}}>{L("CÜZDAN = ₺" + Number(profileStats.cust?.points || 0),"WALLET = ₺" + Number(profileStats.cust?.points || 0),"КОШЕЛЁК = ₺" + Number(profileStats.cust?.points || 0))}</div>
                   </div>
                 </div>
@@ -2032,7 +2033,7 @@ export default function CustomerMenu() {
                   return (
                     <div style={{background:"#111",color:"#fff",borderRadius:14,padding:"14px 16px",marginBottom:14}}>
                       <div style={{display:"flex",alignItems:"center",justifyContent:"space-between",marginBottom:next?8:0}}>
-                        <span style={{fontSize:15,fontWeight:800}}>{cur.icon} {L(cur.tr, cur.en, cur.ru)}</span>
+                        <span style={{fontSize:15,fontWeight:800,display:"flex",alignItems:"center",gap:7}}><Ikon ad={cur.icon} boy={17}/>{L(cur.tr, cur.en, cur.ru)}</span>
                         <span style={{fontSize:11,color:"#bbb",fontVariantNumeric:"tabular-nums"}}>
                           {L(pts.toLocaleString("tr-TR") + " puan kazandın",
                              pts.toLocaleString("tr-TR") + " pts earned",
@@ -2044,9 +2045,10 @@ export default function CustomerMenu() {
                           <div style={{width:pct+"%",height:"100%",background:"#FFFFFF"}}/>
                         </div>
                         <div style={{fontSize:11,color:"#bbb",marginTop:6}}>
-                          {L(kalan.toLocaleString("tr-TR") + " puan sonra " + next.icon + " " + next.tr,
-                             kalan.toLocaleString("tr-TR") + " pts to " + next.icon + " " + next.en,
-                             "ещё " + kalan.toLocaleString("tr-TR") + " б. до " + next.icon + " " + next.ru)}
+                          {L(kalan.toLocaleString("tr-TR") + " puan sonra",
+                             kalan.toLocaleString("tr-TR") + " pts to",
+                             "ещё " + kalan.toLocaleString("tr-TR") + " б. до")}
+                          {" "}<Ikon ad={next.icon} boy={13} style={{marginRight:4}}/>{L(next.tr, next.en, next.ru)}
                         </div>
                       </>)}
                     </div>
@@ -2055,19 +2057,19 @@ export default function CustomerMenu() {
 
                 {profileStats.top.length > 0 && (
                   <div style={{marginBottom:14}}>
-                    <div style={{fontSize:10,color:"#888",letterSpacing:"1.5px",fontWeight:700,marginBottom:6}}>{L("EN ÇOK ALDIKLARIN","YOUR FAVOURITES","ВАШИ ЛЮБИМЫЕ")}</div>
+                    <div style={{fontSize:12,color:"#666666",letterSpacing:"0.2px",fontWeight:600,marginBottom:6}}>{L("EN ÇOK ALDIKLARIN","YOUR FAVOURITES","ВАШИ ЛЮБИМЫЕ")}</div>
                     {profileStats.top.map(([n, q]) => (
                       <div key={n} style={{display:"flex",justifyContent:"space-between",padding:"7px 0",borderBottom:"1px solid #f0f0f0",fontSize:13}}>
-                        <span style={{fontWeight:600}}>{n}</span><span style={{color:"#888"}}>×{q}</span>
+                        <span style={{fontWeight:600}}>{n}</span><span style={{color:"#666666"}}>×{q}</span>
                       </div>
                     ))}
                   </div>
                 )}
 
                 <div style={{marginBottom:14}}>
-                  <div style={{fontSize:10,color:"#888",letterSpacing:"1.5px",fontWeight:700,marginBottom:6}}>{L("SANA ÖZEL FİYATLAR","YOUR MEMBER PRICES","ВАШИ ЦЕНЫ")}</div>
+                  <div style={{fontSize:12,color:"#666666",letterSpacing:"0.2px",fontWeight:600,marginBottom:6}}>{L("SANA ÖZEL FİYATLAR","YOUR MEMBER PRICES","ВАШИ ЦЕНЫ")}</div>
                   {Object.keys(memberDiscounts).length === 0 ? (
-                    <div style={{fontSize:12,color:"#999"}}>{L("Henüz tanımlı fiyatın yok","No special prices yet","Особых цен пока нет")}</div>
+                    <div style={{fontSize:12,color:"#666666"}}>{L("Henüz tanımlı fiyatın yok","No special prices yet","Особых цен пока нет")}</div>
                   ) : (
                     Object.keys(memberDiscounts).map(pid => {
                       const p = products.find(x => x.id === pid);
@@ -2077,7 +2079,7 @@ export default function CustomerMenu() {
                         <div key={pid} style={{display:"flex",justifyContent:"space-between",alignItems:"center",padding:"7px 0",borderBottom:"1px solid #f0f0f0",fontSize:13}}>
                           <span style={{fontWeight:600}}>{pName(p)}</span>
                           <span>
-                            <span style={{color:"#999",textDecoration:"line-through",marginRight:8}}>₺{Math.round(Number(p.price))}</span>
+                            <span style={{color:"#666666",textDecoration:"line-through",marginRight:8}}>₺{Math.round(Number(p.price))}</span>
                             <span style={{color:"#444444",fontWeight:800}}>₺{mp}</span>
                           </span>
                         </div>
@@ -2106,7 +2108,7 @@ export default function CustomerMenu() {
               <div key={group.name} style={{marginBottom:14}}>
                 <div style={{fontSize:11,color:"#333",letterSpacing:"1px",fontWeight:700,marginBottom:6}}>
                   {optT(group.name)?.toUpperCase()}{group.required && <span style={{color:"#A34A3A",marginLeft:4}}>*</span>}
-                  {group.multi && <span style={{color:"#999",fontWeight:600,marginLeft:6}}>· {t.multi_select}</span>}
+                  {group.multi && <span style={{color:"#666666",fontWeight:600,marginLeft:6}}>· {t.multi_select}</span>}
                 </div>
                 <div style={{display:"flex",flexWrap:"wrap",gap:6}}>
                   {(group.options || []).map(opt => {
@@ -2132,10 +2134,10 @@ export default function CustomerMenu() {
               <span style={{fontSize:13.5,fontWeight:600}}>{L("Adet","Quantity","Количество")}</span>
               <div style={{display:"flex",alignItems:"center",gap:6,background:"#000",borderRadius:24,padding:"3px 5px",color:"#fff"}}>
                 <button onClick={() => setOptAdet(a => Math.max(1, a - 1))} disabled={optAdet <= 1}
-                  style={{width:28,height:28,background:"transparent",color:optAdet<=1?"#666":"#fff",border:"none",borderRadius:"50%",fontSize:17,cursor:optAdet<=1?"default":"pointer",fontWeight:700,fontFamily:"inherit"}}>−</button>
+                  style={{width:44,height:44,background:"transparent",color:optAdet<=1?"#666":"#fff",border:"none",borderRadius:"50%",fontSize:18,cursor:optAdet<=1?"default":"pointer",fontWeight:700,fontFamily:"inherit"}}>−</button>
                 <div style={{minWidth:20,textAlign:"center",fontSize:14,fontWeight:800,fontVariantNumeric:"tabular-nums"}}>{optAdet}</div>
                 <button onClick={() => setOptAdet(a => Math.min(20, a + 1))}
-                  style={{width:28,height:28,background:"transparent",color:"#fff",border:"none",borderRadius:"50%",fontSize:17,cursor:"pointer",fontWeight:700,fontFamily:"inherit"}}>+</button>
+                  style={{width:44,height:44,background:"transparent",color:"#fff",border:"none",borderRadius:"50%",fontSize:18,cursor:"pointer",fontWeight:700,fontFamily:"inherit"}}>+</button>
               </div>
             </div>
             <div style={{display:"flex",gap:8}}>
@@ -2150,7 +2152,7 @@ export default function CustomerMenu() {
         <div onClick={() => setLoginSheet(false)} style={{position:"fixed",inset:0,background:"rgba(0,0,0,0.5)",display:"flex",alignItems:"flex-end",justifyContent:"center",zIndex:120}}>
           <div onClick={e=>e.stopPropagation()} style={{background:"#fff",borderRadius:"18px 18px 0 0",padding:"22px 20px 30px",width:"100%",maxWidth:520}}>
             <div style={{fontSize:18,fontWeight:800,marginBottom:4}}>{t.login_title}</div>
-            <div style={{fontSize:12.5,color:"#888",marginBottom:16}}>{t.login_note}</div>
+            <div style={{fontSize:12.5,color:"#666666",marginBottom:16}}>{t.login_note}</div>
 
             {inAppBrowser && (
               <div style={{background:"#FAF6EE",border:"1px solid #EDE6D8",borderRadius:12,padding:"10px 13px",fontSize:12.5,color:"#5A5348",marginBottom:14}}>
@@ -2167,7 +2169,7 @@ export default function CustomerMenu() {
                   style={{width:"100%",padding:"14px",background:"#000",color:"#fff",border:"none",borderRadius:12,fontSize:14,fontWeight:800,cursor:"pointer",fontFamily:"inherit"}}>
                   {t.login_google}
                 </button>
-                <div style={{display:"flex",alignItems:"center",gap:10,margin:"14px 0",color:"#bbb",fontSize:11,fontWeight:700}}>
+                <div style={{display:"flex",alignItems:"center",gap:10,margin:"14px 0",color:"#666666",fontSize:11,fontWeight:700}}>
                   <div style={{flex:1,height:1,background:"#eee"}}/>{t.login_or}<div style={{flex:1,height:1,background:"#eee"}}/>
                 </div>
                 <input value={otpEmail} onChange={e=>setOtpEmail(e.target.value)} placeholder={t.login_email_ph}
@@ -2180,7 +2182,7 @@ export default function CustomerMenu() {
               </>
             ) : (
               <>
-                <div style={{fontSize:13,color:"#333",marginBottom:12}}>📧 {t.login_sent}</div>
+                <div style={{fontSize:13,color:"#333",marginBottom:12}}><Ikon ad="posta" boy={14} style={{marginRight:6}}/>{t.login_sent}</div>
                 <input value={otpCode} onChange={e=>setOtpCode(e.target.value.replace(/\D/g,"").slice(0,6))} placeholder={t.login_code_ph}
                   inputMode="numeric" autoComplete="one-time-code"
                   style={{width:"100%",padding:"13px 14px",background:"#f7f7f7",border:"1px solid #eee",borderRadius:12,fontSize:20,letterSpacing:"0.3em",textAlign:"center",outline:"none",fontFamily:"inherit",marginBottom:10}}/>
@@ -2188,8 +2190,8 @@ export default function CustomerMenu() {
                   style={{width:"100%",padding:"14px",background:otpBusy?"#DDDDDD":"#000000",color:otpBusy?"#666666":"#FFFFFF",border:"none",borderRadius:12,fontSize:14,fontWeight:800,cursor:otpBusy?"default":"pointer",fontFamily:"inherit"}}>
                   {otpBusy ? "..." : t.login_verify}
                 </button>
-                <div style={{fontSize:11.5,color:"#999",marginTop:10,textAlign:"center"}}>{t.login_link_hint}</div>
-                <button onClick={()=>{setOtpSent(false);setOtpCode("");}} style={{width:"100%",marginTop:8,background:"none",border:"none",color:"#bbb",fontSize:12,cursor:"pointer",fontFamily:"inherit"}}>←</button>
+                <div style={{fontSize:11.5,color:"#666666",marginTop:10,textAlign:"center"}}>{t.login_link_hint}</div>
+                <button onClick={()=>{setOtpSent(false);setOtpCode("");}} style={{width:"100%",marginTop:8,background:"none",border:"none",color:"#666666",fontSize:12,cursor:"pointer",fontFamily:"inherit",display:"flex",justifyContent:"center"}}><Ikon ad="oksol" boy={15}/></button>
               </>
             )}
           </div>
@@ -2205,7 +2207,7 @@ export default function CustomerMenu() {
                   musteri ne odeyecegini gormek icin sepeti sonuna kadar iniyordu. */}
               <div style={{display:"flex",alignItems:"center",gap:12}}>
                 <div style={{textAlign:"right"}}>
-                  <div style={{fontSize:10,fontWeight:700,letterSpacing:"1.5px",textTransform:"uppercase",color:"#999"}}>{t.to_pay_at_register}</div>
+                  <div style={{fontSize:12,fontWeight:600,letterSpacing:"0.2px",textTransform:"uppercase",color:"#666666"}}>{t.to_pay_at_register}</div>
                   <div style={{fontSize:22,fontWeight:800,marginTop:2,fontVariantNumeric:"tabular-nums"}}>₺{cartTotal - Math.min(usePoints ? walletBalance : 0, cartTotal)}</div>
                 </div>
                 <button onClick={() => setCheckoutOpen(false)} style={{background:"none",border:"none",fontSize:24,cursor:"pointer",padding:0,color:"#666"}}>×</button>
@@ -2215,7 +2217,7 @@ export default function CustomerMenu() {
               <button onClick={() => setAllTakeaway(!allTakeaway)}
                 style={{width:"100%",marginBottom:10,padding:"11px",background:allTakeaway?"#000":"#f7f7f7",color:allTakeaway?"#fff":"#444",
                         border:"1px solid "+(allTakeaway?"#000":"#e6e6e6"),borderRadius:12,fontSize:13,fontWeight:800,cursor:"pointer",fontFamily:"inherit"}}>
-                {allTakeaway ? "✓ " : ""}🥤 {t.takeaway_all}
+                {allTakeaway && <Ikon ad="onay" boy={14} style={{marginRight:5}}/>}<Ikon ad="bardak" boy={14} style={{marginRight:5}}/>{t.takeaway_all}
               </button>
             )}
             {cart.map((c, idx) => (
@@ -2226,7 +2228,7 @@ export default function CustomerMenu() {
                   {c.note && <div style={{fontSize:11,color:"#666",fontStyle:"italic",marginTop:2}}>{c.note}</div>}
                   <div style={{fontSize:12,color:"#555",marginTop:3}}>
                     {calcPrice(c.product, c.options) < listPrice(c.product, c.options) && (
-                      <span style={{color:"#aaa",textDecoration:"line-through",marginRight:5}}>₺{listPrice(c.product, c.options)}</span>
+                      <span style={{color:"#666666",textDecoration:"line-through",marginRight:5}}>₺{listPrice(c.product, c.options)}</span>
                     )}
                     ₺{calcPrice(c.product, c.options)} × {c.quantity} = ₺{calcPrice(c.product, c.options) * c.quantity}
                   </div>
@@ -2234,7 +2236,7 @@ export default function CustomerMenu() {
                     <button onClick={() => toggleTakeaway(idx)}
                       style={{marginTop:6,padding:"6px 12px",background:c.takeaway?"#000":"#f2f2f2",color:c.takeaway?"#fff":"#666",
                               border:"1px solid "+(c.takeaway?"#000":"#e0e0e0"),borderRadius:20,fontSize:12,fontWeight:700,cursor:"pointer",fontFamily:"inherit"}}>
-                      {c.takeaway ? "✓ " : ""}🥤 {t.takeaway}
+                      {c.takeaway && <Ikon ad="onay" boy={13} style={{marginRight:4}}/>}<Ikon ad="bardak" boy={13} style={{marginRight:4}}/>{t.takeaway}
                     </button>
                   )}
                 </div>
@@ -2242,14 +2244,14 @@ export default function CustomerMenu() {
                     sayiyi sifira indirmekti ve bunu kimse kendiliginden bulmuyordu. */}
                 {c.quantity <= 1 ? (
                   <button onClick={() => updateQty(idx, -1)}
-                    style={{padding:"8px 10px",background:"transparent",color:"#777",border:"1px solid #ddd",borderRadius:8,fontSize:11,fontWeight:700,cursor:"pointer",fontFamily:"inherit",whiteSpace:"nowrap"}}>
+                    style={{padding:"8px 10px",background:"transparent",color:"#666666",border:"1px solid #ddd",borderRadius:8,fontSize:11,fontWeight:700,cursor:"pointer",fontFamily:"inherit",whiteSpace:"nowrap"}}>
                     {L("Kaldır","Remove","Убрать")}
                   </button>
                 ) : (
                   <div style={{display:"flex",alignItems:"center",gap:6,background:"#f2f2f2",borderRadius:20,padding:"3px 5px"}}>
-                    <button onClick={() => updateQty(idx, -1)} style={{width:26,height:26,background:"transparent",color:"#000",border:"none",borderRadius:"50%",fontSize:16,cursor:"pointer",fontWeight:700}}>−</button>
+                    <button onClick={() => updateQty(idx, -1)} style={{width:44,height:44,background:"transparent",color:"#000",border:"none",borderRadius:"50%",fontSize:18,cursor:"pointer",fontWeight:700}}>−</button>
                     <div style={{minWidth:18,textAlign:"center",fontSize:13,fontWeight:800}}>{c.quantity}</div>
-                    <button onClick={() => updateQty(idx, +1)} style={{width:26,height:26,background:"transparent",color:"#000",border:"none",borderRadius:"50%",fontSize:16,cursor:"pointer",fontWeight:700}}>+</button>
+                    <button onClick={() => updateQty(idx, +1)} style={{width:44,height:44,background:"transparent",color:"#000",border:"none",borderRadius:"50%",fontSize:18,cursor:"pointer",fontWeight:700}}>+</button>
                   </div>
                 )}
               </div>
@@ -2269,7 +2271,7 @@ export default function CustomerMenu() {
                 style={{width:"100%",marginTop:14,padding:"12px 14px",display:"flex",justifyContent:"space-between",alignItems:"center",
                         background:usePoints?"#111":"#FAF6EE",color:usePoints?"#FFFFFF":"#5A5348",
                         border:"1px solid "+(usePoints?"#111":"#EDE6D8"),borderRadius:12,fontSize:13,fontWeight:800,cursor:"pointer",fontFamily:"inherit"}}>
-                <span>{usePoints ? "✓ " : ""}🪙 {t.pay_with_points}</span>
+                <span>{usePoints && <Ikon ad="onay" boy={14} style={{marginRight:5}}/>}<Ikon ad="puan" boy={14} style={{marginRight:5}}/>{t.pay_with_points}</span>
                 <span>{walletBalance} {L("puan","pts","б.")} = ₺{walletBalance}</span>
               </button>
             )}
@@ -2282,12 +2284,12 @@ export default function CustomerMenu() {
               return (
                 <div style={{display:"flex",flexDirection:"column",gap:4,marginTop:-8,marginBottom:4,fontSize:13}}>
                   <div style={{display:"flex",justifyContent:"space-between",color:"#5A5348",fontWeight:700}}>
-                    <span>🪙 {t.points_applied}</span><span>−₺{kullanilacak}</span>
+                    <span><Ikon ad="puan" boy={13} style={{marginRight:5}}/>{t.points_applied}</span><span>−₺{kullanilacak}</span>
                   </div>
                   <div style={{display:"flex",justifyContent:"space-between",fontWeight:800}}>
                     <span>{t.to_pay_at_register}</span><span>₺{cartTotal - kullanilacak}</span>
                   </div>
-                  <div style={{fontSize:11,color:"#999"}}>{t.points_note}</div>
+                  <div style={{fontSize:11,color:"#666666"}}>{t.points_note}</div>
                 </div>
               );
             })()}
@@ -2300,7 +2302,7 @@ export default function CustomerMenu() {
                 </button>
               );
             })()}
-            <div style={{textAlign:"center",fontSize:11,color:"#888",marginTop:10}}>
+            <div style={{textAlign:"center",fontSize:11,color:"#666666",marginTop:10}}>
               {table && !table.shared ? t.waiter_will_bring : t.notif_promise}
             </div>
           </div>
