@@ -19,6 +19,7 @@ export const GRUPLAR = [
       { to: "/orders",   icon: "siparis", label: "Sipariş",   deny: ["viewer"] },
       { to: "/kitchen",  icon: "mutfak", label: "Mutfak",    deny: ["viewer", "parttime"] },
       { to: "/payment",  icon: "kasa", label: "Kasa",      deny: ["viewer"] },
+      { to: "/cash-count", icon: "nakit", label: "Kasa Sayımı", deny: ["viewer", "kitchen"] },
       { to: "/myshift",  icon: "vardiya", label: "Vardiyam",  deny: ["viewer", "parttime"] },
       { to: "/stock",    icon: "stok", label: "Stok",      deny: ["parttime"] },
       { to: "/expenses", icon: "gider", label: "Giderler" },
@@ -51,6 +52,7 @@ export const GRUPLAR = [
     items: [
       { to: "/reports",        icon: "rapor", label: "Raporlar" },
       { to: "/profit",         icon: "puan", label: "Ürün Kârlılığı" },
+      { to: "/cash-history",   icon: "takvim", label: "Kasa Geçmişi" },
       { to: "/shifts",         icon: "takvim", label: "Vardiyalar" },
       { to: "/settlement",     icon: "mutfakodeme", label: "Mutfağa Ödenecek" },
       { to: "/fixed-expenses", icon: "kilit", label: "Sabit Giderler" },
@@ -96,6 +98,10 @@ export function altBar({ isManager, isAdmin, isViewer, isParttime }) {
     { to: "/orders",   icon: "siparis", label: "Sipariş" },
     { to: "/payment",  icon: "kasa", label: "Kasa" },
     { to: "/expenses", icon: "gider", label: "Giderler" },
+    // Parttime'in alt barinda /hub yok — gorunurGruplar yalniz masaustu
+    // kenar menusunde ve HubPage'de render ediliyor (StaffLayout.jsx:115).
+    // Kapanisi fiilen yapan kisi bu; sayima baska yoldan ulasamaz.
+    { to: "/cash-count", icon: "nakit", label: "Sayım" },
   ];
   if (isManager) return [
     { to: "/today",   icon: "ev", label: "Bugün" },

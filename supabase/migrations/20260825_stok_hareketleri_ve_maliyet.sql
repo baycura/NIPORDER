@@ -89,6 +89,9 @@ create policy stock_moves_read_personel on public.stock_moves
   for select to authenticated using (public.is_staff());
 
 revoke all on table public.stock_moves from anon;
+-- RLS zaten yazmayi kapatiyor (yazma politikasi yok) ama tablo grant'i da
+-- daraltilir: defteri yalniz tetikleyicilerin DEFINER fonksiyonlari yazar.
+revoke insert, update, delete on table public.stock_moves from authenticated;
 
 -- ----------------------------------------------------------------------------
 -- 2) TEK MALZEME ESITLEME

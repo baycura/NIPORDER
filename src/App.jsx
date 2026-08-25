@@ -18,6 +18,8 @@ import CategorySchedulePage from "./pages/manager/CategorySchedulePage.jsx";
 import QRCodesPage from "./pages/manager/QRCodesPage.jsx";
 import ReportsPage from "./pages/manager/ReportsPage.jsx";
 import ProfitPage from "./pages/manager/ProfitPage.jsx";
+import CashCountPage from "./pages/staff/CashCountPage.jsx";
+import CashCountsPage from "./pages/manager/CashCountsPage.jsx";
 import SettlementPage from "./pages/manager/SettlementPage.jsx";
 import MembersPage from "./pages/manager/MembersPage.jsx";
 import MerchMgmtPage from "./pages/manager/MerchMgmtPage.jsx";
@@ -68,6 +70,8 @@ function AppRoutes() {
         <Route path="orders/:orderId"  element={<PrivateRoute deny={["viewer"]}><OrderDetailPage /></PrivateRoute>} />
         <Route path="kitchen"          element={<PrivateRoute deny={["viewer","parttime"]}><KitchenPage /></PrivateRoute>} />
         <Route path="payment"          element={<PrivateRoute deny={["viewer"]}><PaymentPage /></PrivateRoute>} />
+        <Route path="cash-count"       element={<PrivateRoute deny={["viewer","kitchen"]}><CashCountPage /></PrivateRoute>} />
+        <Route path="cash-history"     element={<PrivateRoute managerOnly><CashCountsPage /></PrivateRoute>} />
         <Route path="stock"            element={<PrivateRoute deny={["parttime"]}><StockViewPage /></PrivateRoute>} />
         <Route path="myshift"          element={<PrivateRoute deny={["viewer","parttime"]}><MyShiftPage /></PrivateRoute>} />
         <Route path="stock-mgmt"       element={<PrivateRoute managerOnly><StockMgmtPage /></PrivateRoute>} />
