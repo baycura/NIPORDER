@@ -17,6 +17,7 @@ import HappyHourPage from "./pages/manager/HappyHourPage.jsx";
 import CategorySchedulePage from "./pages/manager/CategorySchedulePage.jsx";
 import QRCodesPage from "./pages/manager/QRCodesPage.jsx";
 import ReportsPage from "./pages/manager/ReportsPage.jsx";
+import ProfitPage from "./pages/manager/ProfitPage.jsx";
 import SettlementPage from "./pages/manager/SettlementPage.jsx";
 import MembersPage from "./pages/manager/MembersPage.jsx";
 import MerchMgmtPage from "./pages/manager/MerchMgmtPage.jsx";
@@ -76,6 +77,7 @@ function AppRoutes() {
         <Route path="qr-codes" element={<PrivateRoute managerOnly><QRCodesPage /></PrivateRoute>} />
         <Route path="tasks" element={<PrivateRoute deny={["viewer","parttime"]}><TasksPage /></PrivateRoute>} />
         <Route path="reports"          element={<PrivateRoute adminOnly allowViewer><ReportsPage /></PrivateRoute>} />
+        <Route path="profit"           element={<PrivateRoute adminOnly><ProfitPage /></PrivateRoute>} />
           <Route path="settlement"       element={<PrivateRoute adminOnly allowViewer><SettlementPage /></PrivateRoute>} />
         <Route path="members"          element={<PrivateRoute managerOnly><MembersPage /></PrivateRoute>} />
         <Route path="merch-mgmt"       element={<PrivateRoute managerOnly><MerchMgmtPage /></PrivateRoute>} />

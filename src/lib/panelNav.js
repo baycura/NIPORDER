@@ -50,6 +50,7 @@ export const GRUPLAR = [
     ad: "PARA & PERSONEL", admin: true, sari: true,
     items: [
       { to: "/reports",        icon: "rapor", label: "Raporlar" },
+      { to: "/profit",         icon: "puan", label: "Ürün Kârlılığı" },
       { to: "/shifts",         icon: "takvim", label: "Vardiyalar" },
       { to: "/settlement",     icon: "mutfakodeme", label: "Mutfağa Ödenecek" },
       { to: "/fixed-expenses", icon: "kilit", label: "Sabit Giderler" },

@@ -104,7 +104,7 @@ export default function MenuMgmtPage() {
     if (!selectedCat) { alert("Once kategori sec"); return; }
     setProdModal({mode:"new"});
     setProdForm({
-      name:"", name_en:"", name_ru:"", brand:"", description:"", description_en:"", description_ru:"", price:'', instant_discount_pct:'', hh_enabled:false, hh_price:'', hh_start:'', hh_end:'', hh_days:[0,1,2,3,4,5,6],
+      name:"", name_en:"", name_ru:"", brand:"", description:"", description_en:"", description_ru:"", price:'', cost_price:'', instant_discount_pct:'', hh_enabled:false, hh_price:'', hh_start:'', hh_end:'', hh_days:[0,1,2,3,4,5,6],
       sold_out_today:false, unavailable_reason:"",
       show_in_party_menu:false, kitchen_consignment:false, store_id:"", kitchen_destination_store_id:"", is_available:true, prep_time_minutes:null, show_prep_time:false,
       currency:"TRY", price_eur:"", shop_group:"",
@@ -118,7 +118,7 @@ export default function MenuMgmtPage() {
     setProdModal({mode:"edit", data:p});
     setProdForm({
       name:p.name||"", name_en:p.name_en||"", name_ru:p.name_ru||"", brand:p.brand||"", description:p.description||"", description_en:p.description_en||"", description_ru:p.description_ru||"",
-      price:Number(p.price)||0,
+      price:Number(p.price)||0, cost_price:p.cost_price??'',
       instant_discount_pct:Number(p.instant_discount_pct)||0,
       sold_out_today:!!p.sold_out_today,
       unavailable_reason:p.unavailable_reason||"",
@@ -154,6 +154,10 @@ export default function MenuMgmtPage() {
       description_en: prodForm.description_en?.trim() || null,
       description_ru: prodForm.description_ru?.trim() || null,
       price: Number(prodForm.price)||0,
+      // Alis fiyati: yalniz recetesi olmayan satis urunlerinde kullanilir.
+      // Bos birakilirsa null kalir ve karlilik raporu urunu "maliyet yok"
+      // grubunda gosterir — 0 yazip kari sisirmez.
+      cost_price: (prodForm.cost_price===''||prodForm.cost_price==null) ? null : Number(prodForm.cost_price),
       // EUR urunlerde TL fiyati veritabani tetikleyicisi kurdan hesaplar
       currency: prodForm.currency === "EUR" ? "EUR" : "TRY",
       price_eur: prodForm.currency === "EUR" ? (Number(prodForm.price_eur)||0) : null,
@@ -468,6 +472,18 @@ export default function MenuMgmtPage() {
                   : "Euro kuru tanımlı değil — Ayarlar'dan gir, yoksa TL fiyatı hesaplanamaz."}
               </div>
             )}
+          </Field>
+          {/* Recetesi olmayan satis urunlerinin (tisort, gozluk, sapka) maliyeti
+              baska hicbir yerde tutulmuyor; urun karliligi raporu bu alani okur. */}
+          <Field label="ALIŞ FİYATI (₺ / adet — opsiyonel)">
+            <input type="number" step="0.01" min="0" value={prodForm.cost_price??''}
+                   onChange={e=>setProdForm({...prodForm,cost_price:e.target.value})}
+                   placeholder="örn: 950" style={inputS}/>
+            <div style={{fontSize:12,color:"#8A8580",marginTop:5,lineHeight:1.5}}>
+              Reçetesi olan ürünlerde boş bırak — orada maliyet reçeteden hesaplanır.
+              Tişört, gözlük, şapka gibi hazır alınan ürünlerde bunu doldur, yoksa
+              kârlılık raporu bu ürünü göremez.
+            </div>
           </Field>
           <Field label="ANLIK INDIRIM (%)"><input type="number" step="1" min="0" max="99" value={prodForm.instant_discount_pct??''} onChange={e=>setProdForm({...prodForm,instant_discount_pct:e.target.value})} style={inputS}/></Field>
 
