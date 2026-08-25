@@ -1,6 +1,7 @@
 import { useEffect, useState } from "react";
 import { supabase } from "../../lib/supabase.js";
 import { useAuth } from "../../contexts/AuthContext.jsx";
+import Ikon from "../../components/Ikon.jsx";
 
 const cv = "-apple-system,BlinkMacSystemFont,'Segoe UI',Roboto,sans-serif";
 
@@ -13,6 +14,9 @@ export default function MembersPage() {
   const [modal, setModal] = useState(null);
   const [form, setForm] = useState({});
   const [payAmount, setPayAmount] = useState("");
+  // Veresiye tahsilati NAKIT de olabilir; hangisi oldugu kasa sayimini
+  // dogrudan etkiliyor, o yuzden secim zorunlu bir alan.
+  const [payMethod, setPayMethod] = useState("cash");
   const [busy, setBusy] = useState(false);
   const [products, setProducts] = useState([]);
   const [prodSearch, setProdSearch] = useState("");
@@ -131,8 +135,17 @@ export default function MembersPage() {
     if (!confirm('"' + modal.data.name + '" icin ₺' + amt + ' odeme alindi. Kalan borc: ₺' + newBalance)) return;
     setBusy(true);
     const { error } = await supabase.from("customers").update({ outstanding_balance: newBalance }).eq("id", modal.data.id);
+    if (error) { setBusy(false); alert("Hata: " + error.message); return; }
+    // Tahsilat payments'a da yazilir. Yoksa cekmeceye giren nakit hicbir
+    // yerde gorunmez ve gun sonu kasa sayimi her seferinde sistematik
+    // "fazla" verir — bu bilinen fazlanin altina gercek bir acik gizlenebilir.
+    // order_id NULL: bu tahsilat tek bir siparise degil, birikmis borca ait.
+    const { error: payErr } = await supabase.from("payments").insert({
+      order_id: null, amount: amt, method: payMethod,
+      store_id: staffUser?.store_ids?.[0], staff_id: staffUser?.id || null,
+    });
     setBusy(false);
-    if (error) { alert("Hata: " + error.message); return; }
+    if (payErr) alert("Uyarı: ödeme kaydı yazılamadı, kasa sayımında görünmeyecek — " + payErr.message);
     setPayAmount("");
     setForm({...form, outstanding_balance: newBalance});
     alert("Odeme kaydedildi. Yeni borc: ₺" + newBalance);
@@ -283,9 +296,20 @@ export default function MembersPage() {
             {modal.mode === "edit" && (
               <div>
                 <div style={{fontSize:12,color:"#888",letterSpacing:"0.2px",fontWeight:600,marginBottom:5}}>Ödeme al (borçtan düş)</div>
+                <div style={{display:"flex",gap:6,marginBottom:6}}>
+                  {[["cash","nakit","Nakit"],["card","kart","Kart"]].map(([k,ik,l]) => (
+                    <button key={k} onClick={()=>setPayMethod(k)} style={{flex:1,minHeight:40,padding:"10px",
+                            background:payMethod===k?"#FFFFFF":"transparent",color:payMethod===k?"#000":"#888888",
+                            border:"1px solid "+(payMethod===k?"#FFFFFF":"#2A2A2A"),borderRadius:8,fontSize:12,
+                            fontWeight:700,cursor:"pointer",fontFamily:"inherit",display:"flex",
+                            alignItems:"center",justifyContent:"center",gap:6}}>
+                      <Ikon ad={ik} boy={14}/>{l}
+                    </button>
+                  ))}
+                </div>
                 <div style={{display:"flex",gap:6}}>
                   <input type="number" value={payAmount} onChange={e=>setPayAmount(e.target.value)} placeholder="0" style={{...inputS,flex:1}}/>
-                  <button onClick={recordPayment} style={{padding:"10px 14px",background:"#FFFFFF",color:"#000",border:"none",borderRadius:8,fontSize:12,fontWeight:800,cursor:"pointer",whiteSpace:"nowrap"}}>Odeme Al</button>
+                  <button onClick={recordPayment} style={{padding:"10px 14px",minHeight:44,background:"#FFFFFF",color:"#000",border:"none",borderRadius:8,fontSize:12,fontWeight:800,cursor:"pointer",whiteSpace:"nowrap"}}>Ödeme Al</button>
                 </div>
               </div>
             )}

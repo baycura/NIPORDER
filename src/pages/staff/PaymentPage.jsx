@@ -92,6 +92,26 @@ export default function PaymentPage() {
   const ptsCover = (o) => Math.min(Number(memberPts?.points || 0), Math.floor(Number(o?.total || 0)));
 
   // Siparis ekranindaki "Odeme Al" butonundan gelindi: ?order=<id> ile modali direkt ac
+  // Gece 23:00'ten sonra kasa sayilmadiysa serit gosterilir. Sayimin en cok
+  // atlandigi an, kapanis telasi; giris kapisi kasanin kendisi olmali.
+  const [sayimYok, setSayimYok] = useState(false);
+  useEffect(() => {
+    const saat = new Date().getHours();
+    if (saat < 23 && saat >= 3) return;
+    const magaza = staffUser?.store_ids?.[0];
+    if (!magaza) return;
+    let iptal = false;
+    supabase.rpc("kasa_gun_ozeti", { p_store_id: magaza }).then(({ data }) => {
+      if (iptal) return;
+      const o = Array.isArray(data) ? data[0] : data;
+      if (!o?.isletme_gunu) return;
+      supabase.from("cash_counts").select("id")
+        .eq("store_id", magaza).eq("business_day", o.isletme_gunu).limit(1)
+        .then(({ data: c }) => { if (!iptal) setSayimYok(!(c || []).length); });
+    });
+    return () => { iptal = true; };
+  }, [staffUser?.id]);
+
   const [searchParams] = useSearchParams();
   const autoOpened = useRef(false);
   useEffect(() => {
@@ -204,6 +224,18 @@ export default function PaymentPage() {
         {orders.filter(o => bayatMi(o.created_at)).length > 0 &&
           <span style={{color:"#FFFFFF"}}> · {orders.filter(o => bayatMi(o.created_at)).length} UNUTULMUŞ</span>}
       </div>
+
+      {sayimYok && (
+        <div onClick={() => navigate("/cash-count")}
+             style={{background:"#161616",border:"1px solid #FFFFFF",borderRadius:12,padding:"12px 14px",
+                     marginBottom:12,cursor:"pointer",display:"flex",alignItems:"center",gap:10,fontSize:13}}>
+          <Ikon ad="nakit" boy={17}/>
+          <span style={{flex:1}}>Bu gecenin kasası henüz sayılmadı</span>
+          <span style={{fontWeight:800,whiteSpace:"nowrap",display:"flex",alignItems:"center",gap:4}}>
+            Say<Ikon ad="oksag" boy={13}/>
+          </span>
+        </div>
+      )}
 
       {orders.length === 0 && <div style={{textAlign:"center",padding:40,color:"#888888",fontSize:13}}>Bekleyen hesap yok</div>}
 
