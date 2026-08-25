@@ -1012,6 +1012,18 @@ export default function CustomerMenu() {
   useEffect(() => { setSelectedSub(null); }, [selectedCat]);
 
   const activeSubs = subCatsByParent[selectedCat] || [];
+
+  // Menude urun arama. Uzun listede aranan seyi bulmak icin kategorileri tek tek
+  // gezmek gerekiyordu; arama yazilinca kategori/alt kategori secimi devre disi
+  // kalir ve TUM menude aranir.
+  const [menuSearch, setMenuSearch] = useState("");
+  // Turkce duyarli sadelestirme: "Şapka" ile "sapka" ayni sayilsin.
+  const sadelestir = (s) => (s || "").toLocaleLowerCase("tr-TR")
+    .replace(/ç/g, "c").replace(/ğ/g, "g").replace(/ı/g, "i")
+    .replace(/ö/g, "o").replace(/ş/g, "s").replace(/ü/g, "u")
+    .replace(/â/g, "a").replace(/î/g, "i").replace(/û/g, "u")
+    .replace(/\s+/g, " ").trim();
+  const aramaTerimi = sadelestir(menuSearch);
   // Ust kategoride dogrudan duran urun var mi (Kakao, Sahlep gibi)
   const hasDirect = useMemo(
     () => activeSubs.length > 0 && products.some(p => p.category_id === selectedCat),
@@ -1030,6 +1042,14 @@ export default function CustomerMenu() {
     // hours: bolum basliginin altinda gorunen siparis saati araligi
     const sec = (key, title, catId, items) => ({ key, title, items, hours: windowText(orderWindow(catId)) });
 
+    // Arama yaziliyken kategori secimi gecersiz — tum menude tek liste.
+    if (aramaTerimi) {
+      const eslesen = party(products).filter(p =>
+        sadelestir(pName(p)).includes(aramaTerimi) ||
+        sadelestir(p.description).includes(aramaTerimi));
+      return [sec("__arama", null, selectedCat, eslesen)];
+    }
+
     if (activeSubs.length === 0) return [sec(selectedCat, null, selectedCat, inCat(selectedCat))];
     if (selectedSub === "__diger") return [sec("__diger", null, selectedCat, inCat(selectedCat))];
     if (selectedSub) {
@@ -1039,7 +1059,7 @@ export default function CustomerMenu() {
     const secs = activeSubs.map(sc => sec(sc.id, cName(sc), sc.id, inCat(sc.id)));
     if (hasDirect) secs.push(sec("__diger", t.other_group, selectedCat, inCat(selectedCat)));
     return secs.filter(s => s.items.length > 0);
-  }, [products, selectedCat, selectedSub, partyMode, activeSubs, hasDirect, lang, categories, now]);
+  }, [products, selectedCat, selectedSub, partyMode, activeSubs, hasDirect, lang, categories, now, aramaTerimi]);
 
   const visibleProducts = useMemo(
     () => productSections.flatMap(s => s.items),
@@ -1477,6 +1497,29 @@ export default function CustomerMenu() {
                 {s.label}
               </button>
             ))}
+          </div>
+        )}
+        {/* Urun arama — uzun listede aranan seyi bulmak icin kategorileri tek tek
+            gezmek gerekiyordu. Yazilinca kategori secimi devre disi kalir. */}
+        <div style={{display:"flex",alignItems:"center",gap:8,marginTop:12}}>
+          <div style={{flex:1,border:"1px solid #ddd",borderRadius:8,display:"flex",alignItems:"center",gap:8,padding:"9px 12px"}}>
+            <svg width="15" height="15" viewBox="0 0 24 24" fill="none" stroke="#999" strokeWidth="2" strokeLinecap="round" style={{flexShrink:0}}>
+              <circle cx="11" cy="11" r="6.5"></circle><path d="M16 16l4 4"></path>
+            </svg>
+            <input value={menuSearch} onChange={e=>setMenuSearch(e.target.value)}
+              placeholder={L("Ürün ara — latte, efes, aperol","Search — latte, beer, aperol","Поиск — латте, пиво, апероль")}
+              style={{flex:1,minWidth:0,border:"none",outline:"none",fontSize:13,color:"#000",background:"transparent",fontFamily:"inherit",padding:0}}/>
+            {menuSearch && (
+              <button onClick={()=>setMenuSearch("")} aria-label={L("Aramayı temizle","Clear search","Очистить")}
+                style={{border:"none",background:"none",color:"#999",fontSize:17,lineHeight:1,cursor:"pointer",padding:0,flexShrink:0,fontFamily:"inherit"}}>×</button>
+            )}
+          </div>
+        </div>
+        {aramaTerimi && (
+          <div style={{fontSize:11,color:"#999",marginTop:6}}>
+            {visibleProducts.length > 0
+              ? L(`Tüm menüde ${visibleProducts.length} sonuç`, `${visibleProducts.length} results in the whole menu`, `${visibleProducts.length} результатов`)
+              : L("Sonuç yok","No results","Ничего не найдено")}
           </div>
         )}
         </>
@@ -2097,7 +2140,15 @@ export default function CustomerMenu() {
           <div onClick={e=>e.stopPropagation()} style={{background:"#fff",borderRadius:"18px 18px 0 0",padding:20,width:"100%",maxWidth:520,maxHeight:"92vh",overflowY:"auto"}}>
             <div style={{display:"flex",justifyContent:"space-between",alignItems:"center",marginBottom:14}}>
               <div style={{fontSize:20,fontWeight:800}}>{t.my_cart}</div>
-              <button onClick={() => setCheckoutOpen(false)} style={{background:"none",border:"none",fontSize:24,cursor:"pointer",padding:0,color:"#666"}}>×</button>
+              {/* Odenecek tutar EN USTTE — eskiden yalnizca listenin sonundaydi,
+                  musteri ne odeyecegini gormek icin sepeti sonuna kadar iniyordu. */}
+              <div style={{display:"flex",alignItems:"center",gap:12}}>
+                <div style={{textAlign:"right"}}>
+                  <div style={{fontSize:10,fontWeight:700,letterSpacing:"1.5px",textTransform:"uppercase",color:"#999"}}>{t.to_pay_at_register}</div>
+                  <div style={{fontSize:22,fontWeight:800,marginTop:2,fontVariantNumeric:"tabular-nums"}}>₺{cartTotal - Math.min(usePoints ? walletBalance : 0, cartTotal)}</div>
+                </div>
+                <button onClick={() => setCheckoutOpen(false)} style={{background:"none",border:"none",fontSize:24,cursor:"pointer",padding:0,color:"#666"}}>×</button>
+              </div>
             </div>
             {takeawayLines.length > 1 && (
               <button onClick={() => setAllTakeaway(!allTakeaway)}
@@ -2126,11 +2177,20 @@ export default function CustomerMenu() {
                     </button>
                   )}
                 </div>
-                <div style={{display:"flex",alignItems:"center",gap:6,background:"#f2f2f2",borderRadius:20,padding:"3px 5px"}}>
-                  <button onClick={() => updateQty(idx, -1)} style={{width:26,height:26,background:"transparent",color:"#000",border:"none",borderRadius:"50%",fontSize:16,cursor:"pointer",fontWeight:700}}>−</button>
-                  <div style={{minWidth:18,textAlign:"center",fontSize:13,fontWeight:800}}>{c.quantity}</div>
-                  <button onClick={() => updateQty(idx, +1)} style={{width:26,height:26,background:"transparent",color:"#000",border:"none",borderRadius:"50%",fontSize:16,cursor:"pointer",fontWeight:700}}>+</button>
-                </div>
+                {/* Adet 1 iken "−" yerine KALDIR. Eskiden urunu silmenin tek yolu
+                    sayiyi sifira indirmekti ve bunu kimse kendiliginden bulmuyordu. */}
+                {c.quantity <= 1 ? (
+                  <button onClick={() => updateQty(idx, -1)}
+                    style={{padding:"8px 10px",background:"transparent",color:"#777",border:"1px solid #ddd",borderRadius:8,fontSize:11,fontWeight:700,cursor:"pointer",fontFamily:"inherit",whiteSpace:"nowrap"}}>
+                    {L("Kaldır","Remove","Убрать")}
+                  </button>
+                ) : (
+                  <div style={{display:"flex",alignItems:"center",gap:6,background:"#f2f2f2",borderRadius:20,padding:"3px 5px"}}>
+                    <button onClick={() => updateQty(idx, -1)} style={{width:26,height:26,background:"transparent",color:"#000",border:"none",borderRadius:"50%",fontSize:16,cursor:"pointer",fontWeight:700}}>−</button>
+                    <div style={{minWidth:18,textAlign:"center",fontSize:13,fontWeight:800}}>{c.quantity}</div>
+                    <button onClick={() => updateQty(idx, +1)} style={{width:26,height:26,background:"transparent",color:"#000",border:"none",borderRadius:"50%",fontSize:16,cursor:"pointer",fontWeight:700}}>+</button>
+                  </div>
+                )}
               </div>
             ))}
             {(!table || table.shared) && (
@@ -2146,7 +2206,7 @@ export default function CustomerMenu() {
             {customer && walletBalance > 0 && (
               <button onClick={() => setUsePoints(!usePoints)}
                 style={{width:"100%",marginTop:14,padding:"12px 14px",display:"flex",justifyContent:"space-between",alignItems:"center",
-                        background:usePoints?"#111":"#FAF6EE",color:usePoints?"#000000":"#5A5348",
+                        background:usePoints?"#111":"#FAF6EE",color:usePoints?"#FFFFFF":"#5A5348",
                         border:"1px solid "+(usePoints?"#111":"#EDE6D8"),borderRadius:12,fontSize:13,fontWeight:800,cursor:"pointer",fontFamily:"inherit"}}>
                 <span>{usePoints ? "✓ " : ""}🪙 {t.pay_with_points}</span>
                 <span>{walletBalance} {L("puan","pts","б.")} = ₺{walletBalance}</span>
