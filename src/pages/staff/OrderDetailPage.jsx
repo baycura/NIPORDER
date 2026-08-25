@@ -171,6 +171,28 @@ export default function OrderDetailPage() {
     }
   };
 
+  // SIK EKLEDIKLERIN: bu garsonun son 30 gunde en cok ekledigi alti urun.
+  // Aksam trafiginde "latte" yazip aramak yerine tek dokunus.
+  const [sikUrunler, setSikUrunler] = useState([]);
+  useEffect(() => {
+    if (!staffUser?.id || !products.length) return;
+    const otuzGunOnce = new Date(Date.now() - 30 * 86400000).toISOString();
+    supabase.from("order_items")
+      .select("product_id, orders!inner(staff_id, created_at)")
+      .eq("orders.staff_id", staffUser.id)
+      .gte("orders.created_at", otuzGunOnce)
+      .limit(2000)
+      .then(({ data, error }) => {
+        if (error || !data) return;
+        const say = {};
+        data.forEach(r => { if (r.product_id) say[r.product_id] = (say[r.product_id] || 0) + 1; });
+        const ilk = Object.entries(say).sort((a, b) => b[1] - a[1]).slice(0, 6)
+          .map(([id]) => products.find(p => p.id === id))
+          .filter(p => p && p.is_available);
+        setSikUrunler(ilk);
+      });
+  }, [staffUser?.id, products.length]);
+
   const addProduct = async (p, selOpts = null) => {
     // Secenekli urun (sarap kadeh/sise, doner malzemeleri...): musteri menusundeki
     // gibi secim sart — yoksa sise sarap kadeh fiyatindan yazilirdi
@@ -468,6 +490,20 @@ export default function OrderDetailPage() {
                 <button onClick={() => setProdSearch("")} style={{position:"absolute",right:8,top:"50%",transform:"translateY(-50%)",width:28,height:28,background:"#2A2A2A",color:"#aaa",border:"none",borderRadius:8,fontSize:14,cursor:"pointer",lineHeight:1}}>×</button>
               )}
             </div>
+            {!q && sikUrunler.length > 0 && (
+              <div style={{marginTop:12,display:"flex",flexDirection:"column",gap:9}}>
+                <div style={{fontSize:10,color:"#8A8580",letterSpacing:"1.5px",fontWeight:700,textTransform:"uppercase"}}>Sık eklediklerin</div>
+                <div style={{display:"flex",gap:8,flexWrap:"wrap"}}>
+                  {sikUrunler.map(p => (
+                    <button key={p.id} onClick={() => addProduct(p)}
+                      style={{fontSize:12.5,fontWeight:700,border:"1px solid #2A2A2A",background:"transparent",color:"#F0EDE8",
+                              borderRadius:20,padding:"10px 14px",cursor:"pointer",fontFamily:"inherit"}}>
+                      {p.name}
+                    </button>
+                  ))}
+                </div>
+              </div>
+            )}
             {!q && (
             <div style={{display:"flex",gap:5,overflowX:"auto",marginTop:10,paddingBottom:4}}>
               {catChips.map(c => (
