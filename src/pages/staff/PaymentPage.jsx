@@ -136,66 +136,35 @@ export default function PaymentPage() {
     setAmount(String(Math.max(0, Number(modal.total || 0) - ptsCover(modal))));
   }, [memberPts]);
 
+  // Tahsilat TEK islemde: nip_odeme_al payments satirini, siparis kapatmayi ve
+  // borc bakiyesini ayni transaction'da yazar. Eskiden bunlar iki ayri istekti
+  // ve ilki dusunce siparis kapaniyor ama tahsilat kaydi yazilmiyordu — canli
+  // veride 6 siparis boyle olusmus. Fonksiyon siparisi de kilitliyor, ayni
+  // hesap iki kez tahsil edilemiyor.
   const completePayment = async () => {
     if (busy) return;
     const amt = Number(amount);
     // Puan tum tutari karsiliyorsa nakit 0 olabilir
-    if ((!amt || amt <= 0) && !(usePoints && ptsCover(modal) >= Number(modal.total || 0))) { alert("Gecerli tutar gir"); return; }
+    if ((!amt || amt <= 0) && !(usePoints && ptsCover(modal) >= Number(modal.total || 0))) { alert("Geçerli tutar gir"); return; }
+    if (method === "debt" && !uyeId) { alert("Borç için müşteri seç"); return; }
 
+    setBusy(true);
+    const { data, error } = await supabase.rpc("nip_odeme_al", {
+      p_order_id: modal.id,
+      p_method: method,
+      p_amount: amt > 0 ? amt : 0,
+      p_customer_id: customerId || null,
+      p_use_points: !!(usePoints && uyeId),
+    });
+    setBusy(false);
+    if (error) { alert("Tahsilat yapılamadı: " + error.message); return; }
+
+    const sonuc = Array.isArray(data) ? data[0] : data;
     if (method === "debt") {
-      if (!customerId) { alert("Borc icin musteri sec"); return; }
-      setBusy(true);
-      const cust = customers.find(c => c.id === customerId);
-      const newBalance = Number(cust?.outstanding_balance || 0) + amt;
-      const [custRes, ordRes] = await Promise.all([
-        supabase.from("customers").update({ outstanding_balance: newBalance }).eq("id", customerId).select("id"),
-        supabase.from("orders").update({ status: "paid", paid_at: new Date().toISOString(), customer_id: customerId, use_points: false,
-          ...(modal.staff_id ? {} : { staff_id: staffUser?.id || null }) }).eq("id", modal.id),
-      ]);
-      // Bakiye yazilamazsa borc kaybolur — sessiz gecilmemeli
-      if (custRes.error || !custRes.data?.length) {
-        alert("Veresiye bakiyesi güncellenemedi" + (custRes.error ? ": " + custRes.error.message : " (yetki yok)"));
-        setBusy(false); return;
-      }
-      if (ordRes.error) { alert("Sipariş kapatılamadı: " + ordRes.error.message); setBusy(false); return; }
-      // store_id ZORUNLU (NOT NULL). customer_id bu tabloda YOK — musteri zaten
-      // siparise bagli; gonderilirse PostgREST 400 doner ve kayit hic yazilmaz.
-      const { error: payErr } = await supabase.from("payments").insert({
-        order_id: modal.id, amount: amt, method: "debt",
-        store_id: modal.origin_store_id || staffUser?.store_ids?.[0],
-        staff_id: staffUser?.id || null,
-      });
-      setBusy(false);
-      if (custRes.error || ordRes.error) { alert("Hata: " + (custRes.error?.message || ordRes.error?.message)); return; }
-      if (payErr) alert("Uyari: odeme kaydi yazilamadi — " + payErr.message);
-      alert("Borc kaydedildi: ₺" + amt + " (Kalan: ₺" + newBalance + ")");
+      alert("Borç kaydedildi: ₺" + amt + " (Kalan: ₺" + Math.round(Number(sonuc?.kalan_borc || 0)) + ")");
     } else {
-      setBusy(true);
-      // Puan tum tutari karsiladiysa nakit 0 — bos odeme kaydi atilmaz.
-      // staff_id: tahsil eden — vardiya istatistigi ve otomatik vardiya
-      // acilisi (shift_auto_checkin tetikleyicisi) buna dayanir.
-      const { error: payErr } = amt > 0 ? await supabase.from("payments").insert({
-        order_id: modal.id, amount: amt, method,
-        store_id: modal.origin_store_id || staffUser?.store_ids?.[0],
-        staff_id: staffUser?.id || null,
-      }) : { error: null };
-      // QR ile musterinin actigi siparislerde staff_id bos kalir; tahsil eden
-      // damgalanir ki satis "personelsiz" kalmasin. Garsonun actigi siparis
-      // garsona kayitli kalir — kasiyer ezmez.
-      const { error } = await supabase.from("orders").update({
-        status: "paid", paid_at: new Date().toISOString(),
-        use_points: !!(usePoints && uyeId),
-        // Kasada uye secildiyse siparise yazilir — puan ancak bu alan doluysa
-        // islenir (fn_award_member_points customer_id bos ise hic calismaz).
-        // Siparis zaten bir uyeye bagliysa (QR) kasiyer ustune yazamaz.
-        ...(!uyeKilitli && customerId ? { customer_id: customerId } : {}),
-        ...(modal.staff_id ? {} : { staff_id: staffUser?.id || null }),
-      }).eq("id", modal.id);
-      setBusy(false);
-      if (error) { alert("Hata: " + error.message); return; }
-      if (payErr) alert("Uyari: odeme kaydi yazilamadi — " + payErr.message);
       const kazanilan = uyeId
-        ? Math.floor((Number(modal.total || 0) - (usePoints ? ptsCover(modal) : 0)) / 20)
+        ? Math.floor((Number(modal.total || 0) - Number(sonuc?.puan || 0)) / 20)
         : 0;
       alert((method === "cash" ? "Nakit tahsil edildi" : "Kart ile tahsil edildi")
         + (uyeId ? "\n· " + (memberPts?.name || "Üye") + " · +" + kazanilan + " puan" : ""));

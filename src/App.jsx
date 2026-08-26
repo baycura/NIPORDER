@@ -18,6 +18,7 @@ import CategorySchedulePage from "./pages/manager/CategorySchedulePage.jsx";
 import QRCodesPage from "./pages/manager/QRCodesPage.jsx";
 import ReportsPage from "./pages/manager/ReportsPage.jsx";
 import ProfitPage from "./pages/manager/ProfitPage.jsx";
+import CostsPage from "./pages/manager/CostsPage.jsx";
 import CashCountPage from "./pages/staff/CashCountPage.jsx";
 import CashCountsPage from "./pages/manager/CashCountsPage.jsx";
 import SettlementPage from "./pages/manager/SettlementPage.jsx";
@@ -82,6 +83,7 @@ function AppRoutes() {
         <Route path="tasks" element={<PrivateRoute deny={["viewer","parttime"]}><TasksPage /></PrivateRoute>} />
         <Route path="reports"          element={<PrivateRoute adminOnly allowViewer><ReportsPage /></PrivateRoute>} />
         <Route path="profit"           element={<PrivateRoute adminOnly><ProfitPage /></PrivateRoute>} />
+        <Route path="costs"            element={<PrivateRoute managerOnly><CostsPage /></PrivateRoute>} />
           <Route path="settlement"       element={<PrivateRoute adminOnly allowViewer><SettlementPage /></PrivateRoute>} />
         <Route path="members"          element={<PrivateRoute managerOnly><MembersPage /></PrivateRoute>} />
         <Route path="merch-mgmt"       element={<PrivateRoute managerOnly><MerchMgmtPage /></PrivateRoute>} />
