@@ -3,6 +3,7 @@ import { useNavigate } from "react-router-dom";
 import { supabase } from "../../lib/supabase.js";
 import { useAuth } from "../../contexts/AuthContext.jsx";
 import Ikon from "../../components/Ikon.jsx";
+import { paketIkilemi, ikilemMetni, birimYaz } from "../../lib/birimMaliyet.js";
 
 const cv = "-apple-system,BlinkMacSystemFont,'Segoe UI',Roboto,sans-serif";
 const UNITS = ["ml","cl","l","g","kg","adet","şişe","porsiyon"];
@@ -31,11 +32,27 @@ export default function StockMgmtPage() {
   const save = async () => {
     if (busy) return;
     if (!form.name?.trim()) { alert("Isim gerekli"); return; }
+
+    // Fatura geldiginde guncellenen hane burasi. Yeni rakam eskisinin ~paket
+    // kati ise paket fiyati girilmis olma ihtimali cok yuksek — pipet boyle
+    // kacmisti. Otomatik bolmuyoruz, soruyoruz.
+    let maliyet = Number(form.cost_per_unit) || 0;
+    const ik = modal.mode === "edit" ? paketIkilemi(maliyet, modal.data) : null;
+    if (ik?.kesin) {
+      const paketMi = confirm(
+        ikilemMetni(ik, form.unit) +
+        `\n\nEski birim maliyet ${birimYaz(modal.data.cost_per_unit)} idi.\n\n` +
+        `TAMAM = paket fiyati, ${birimYaz(ik.birim)} olarak kaydet\n` +
+        `İPTAL = adet fiyati, girdigim gibi kaydet`
+      );
+      if (paketMi) { maliyet = ik.birim; setForm(f => ({ ...f, cost_per_unit: ik.birim })); }
+    }
+
     setBusy(true);
     const payload = {
       name: form.name.trim(), unit: form.unit, store_id: staffUser?.store_ids?.[0],
       stock_qty: Number(form.stock_qty)||0,
-      cost_per_unit: Number(form.cost_per_unit)||0,
+      cost_per_unit: maliyet,
       waste_pct: Number(form.waste_pct)||0,
       pack_qty: Number(form.pack_qty)||1,
       unit_volume_ml: form.unit_volume_ml === "" || form.unit_volume_ml == null ? null : Number(form.unit_volume_ml),
@@ -134,7 +151,20 @@ export default function StockMgmtPage() {
             </div>
           </Field>
           <Field label={"STOK MIKTARI (" + form.unit + ")"}><input type="number" step="0.01" value={form.stock_qty||0} onChange={e=>setForm({...form,stock_qty:e.target.value})} style={inputS}/></Field>
-          <Field label={"BIRIM MALIYET (₺ / " + form.unit + ")"}><input type="number" step="0.01" value={form.cost_per_unit||0} onChange={e=>setForm({...form,cost_per_unit:e.target.value})} style={inputS}/></Field>
+          <Field label={"BIRIM MALIYET (₺ / " + form.unit + ")"}>
+            <input type="number" step="0.01" value={form.cost_per_unit||0} onChange={e=>setForm({...form,cost_per_unit:e.target.value})} style={inputS}/>
+            {/* Paketli malzemede iki okuma da mumkun; rakam yazilirken gorunsun. */}
+            {(() => {
+              const ik = paketIkilemi(form.cost_per_unit, { pack_qty: form.pack_qty, cost_per_unit: modal.data?.cost_per_unit });
+              if (!ik) return null;
+              return (
+                <div style={{fontSize:11,color:ik.kesin?"#C87A6A":"#666",marginTop:5,lineHeight:1.5}}>
+                  {ik.paket}'li paket · girdigin rakam paket fiyatiysa birim maliyet <b style={{color:"#F0EDE8"}}>{birimYaz(ik.birim)}</b> olmali
+                  {ik.kesin && <> — eskisinin tam {ik.paket} kati, kaydederken sorulacak</>}
+                </div>
+              );
+            })()}
+          </Field>
           <Field label="FIRE ORANI (%)"><input type="number" step="0.1" min="0" max="100" value={form.waste_pct||0} onChange={e=>setForm({...form,waste_pct:e.target.value})} placeholder="orn: 3 = %3 dokulme/fire" style={inputS}/></Field>
 
           <div style={{background:"#0C0C0C",border:"1px solid #2A2A2A",borderRadius:10,padding:12,marginBottom:12}}>
