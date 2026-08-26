@@ -33,6 +33,7 @@ export const GRUPLAR = [
       { to: "/menu-mgmt",         icon: "menu", label: "Menü Yönetimi" },
       { to: "/recipes",           icon: "recete", label: "Reçeteler" },
       { to: "/stock-mgmt",        icon: "arsiv", label: "Stok Yönetimi" },
+      { to: "/costs",             icon: "gider", label: "Eksik Maliyetler" },
       { to: "/retail",            icon: "raf", label: "Ürünler (Raf)" },
       { to: "/merch-mgmt",        icon: "merch", label: "Merch" },
       { to: "/category-schedule", icon: "saat", label: "Kategori Saatleri" },

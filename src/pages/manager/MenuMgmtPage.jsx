@@ -51,8 +51,8 @@ export default function MenuMgmtPage() {
   useEffect(() => { load(); }, []);
 
   // -------- CATEGORIES --------
-  const openNewCat = () => { setCatModal({mode:"new"}); setCatForm({name:"", name_en:"", name_ru:"", icon:"", sort_order:100, available_from:"", available_until:"", show_in_party_menu:true, staff_only:false, show_in_shop:false, show_in_paris_menu:false, is_active:true, description:"", description_en:"", description_ru:"", shop_tag:"", shop_tag_en:"", shop_tag_ru:""}); };
-  const openEditCat = (c) => { setCatModal({mode:"edit", data:c}); setCatForm({name:c.name||"", name_en:c.name_en||"", name_ru:c.name_ru||"", icon:c.icon||"", sort_order:c.sort_order||100, available_from:c.available_from||"", available_until:c.available_until||"", show_in_party_menu:c.show_in_party_menu!==false, staff_only:!!c.staff_only, show_in_shop:!!c.show_in_shop, show_in_paris_menu:!!c.show_in_paris_menu, parent_id:c.parent_id||"", is_active:c.is_active!==false, description:c.description||"", description_en:c.description_en||"", description_ru:c.description_ru||"", shop_tag:c.shop_tag||"", shop_tag_en:c.shop_tag_en||"", shop_tag_ru:c.shop_tag_ru||""}); };
+  const openNewCat = () => { setCatModal({mode:"new"}); setCatForm({name:"", name_en:"", name_ru:"", icon:"", sort_order:100, available_from:"", available_until:"", show_in_party_menu:true, staff_only:false, show_in_shop:false, show_in_paris_menu:false, is_active:true, description:"", description_en:"", description_ru:"", shop_tag:"", shop_tag_en:"", shop_tag_ru:"", prep_time_minutes:""}); };
+  const openEditCat = (c) => { setCatModal({mode:"edit", data:c}); setCatForm({name:c.name||"", name_en:c.name_en||"", name_ru:c.name_ru||"", icon:c.icon||"", sort_order:c.sort_order||100, available_from:c.available_from||"", available_until:c.available_until||"", show_in_party_menu:c.show_in_party_menu!==false, staff_only:!!c.staff_only, show_in_shop:!!c.show_in_shop, show_in_paris_menu:!!c.show_in_paris_menu, parent_id:c.parent_id||"", is_active:c.is_active!==false, description:c.description||"", description_en:c.description_en||"", description_ru:c.description_ru||"", shop_tag:c.shop_tag||"", shop_tag_en:c.shop_tag_en||"", shop_tag_ru:c.shop_tag_ru||"", prep_time_minutes:c.prep_time_minutes??""}); };
 
   const saveCat = async () => {
     if (busy) return;
@@ -75,6 +75,9 @@ export default function MenuMgmtPage() {
       shop_tag_en: catForm.shop_tag_en?.trim() || null,
       shop_tag_ru: catForm.shop_tag_ru?.trim() || null,
       is_active: catForm.is_active,
+      // Kategori varsayilani: urun kendi suresini girmediyse bu kullanilir.
+      prep_time_minutes: (catForm.prep_time_minutes === "" || catForm.prep_time_minutes == null)
+        ? null : parseInt(catForm.prep_time_minutes, 10),
     };
     // store_id ZORUNLU: RLS "store_id = ANY(user_store_ids())" istiyor.
     // Gonderilmezse NULL kalir ve "new row violates row-level security policy" hatasi doner.
@@ -367,6 +370,17 @@ export default function MenuMgmtPage() {
           <Field label="NAME (English)"><input value={catForm.name_en||""} onChange={e=>setCatForm({...catForm,name_en:e.target.value})} placeholder="Optional" style={inputS}/></Field>
           <Field label="НАЗВАНИЕ (Rusca)"><input value={catForm.name_ru||""} onChange={e=>setCatForm({...catForm,name_ru:e.target.value})} placeholder="Opsiyonel - RU secilince gorunur" style={inputS}/></Field>
           <Field label="IKON (emoji)"><input value={catForm.icon||""} onChange={e=>setCatForm({...catForm,icon:e.target.value})} placeholder="👕" style={inputS}/></Field>
+          {/* Urun basina 152 kayit yerine kategori basina bir varsayilan.
+              Musteri menusundeki "~8 dk" rozeti boylece calisir hale gelir. */}
+          <Field label="HAZIRLANMA SÜRESİ (dk — bu kategorinin varsayılanı)">
+            <input type="number" min="1" max="240" value={catForm.prep_time_minutes ?? ""}
+                   onChange={e=>setCatForm({...catForm,prep_time_minutes:e.target.value})}
+                   placeholder="örn: kahveler 4, kokteyller 7, mutfak 15" style={inputS}/>
+            <div style={{fontSize:12,color:"#8A8580",marginTop:5,lineHeight:1.5}}>
+              Ürünün kendi süresi girilmişse o kazanır. Boş bırakırsan o kategoride
+              hazırlanma süresi hiç gösterilmez.
+            </div>
+          </Field>
           <Field label="SIRA (kucuk=once)"><input type="number" value={catForm.sort_order||0} onChange={e=>setCatForm({...catForm,sort_order:e.target.value})} style={inputS}/></Field>
           <Field label="UST KATEGORI">
             <select value={catForm.parent_id||""} onChange={e=>setCatForm({...catForm,parent_id:e.target.value||null})} style={inputS}>

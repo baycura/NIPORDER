@@ -1904,7 +1904,15 @@ export default function CustomerMenu() {
                       : `${hhmm(blocked.end)} – ${hhmm(blocked.start)} ${t.order_between}`}
                   </div>
                 )}
-                {p.show_prep_time && p.prep_time_minutes && <div style={{fontSize:12,color:"#666666",marginTop:4,display:"flex",alignItems:"center",gap:5}}><Ikon ad="vardiya" boy={13}/><span>~{p.prep_time_minutes} {L("dk","min","мин")}</span></div>}
+                {(() => {
+                  // Sure once urunden, yoksa kategorisinden gelir. 152 urune tek
+                  // tek girmek yerine kategoriye bir varsayilan yazmak yetsin.
+                  if (!p.show_prep_time) return null;
+                  const dk = p.prep_time_minutes
+                    || categories.find(c => c.id === p.category_id)?.prep_time_minutes;
+                  if (!dk) return null;
+                  return <div style={{fontSize:12,color:"#666666",marginTop:4,display:"flex",alignItems:"center",gap:5}}><Ikon ad="vardiya" boy={13}/><span>~{dk} {L("dk","min","мин")}</span></div>;
+                })()}
                 {soldOut && <div style={{fontSize:11,color:"#A34A3A",marginTop:4,fontWeight:600}}>{p.unavailable_reason || t.sold_out}</div>}
                 {p.has_options && !soldOut && <div style={{fontSize:12,color:"#000000",marginTop:3,fontWeight:600,letterSpacing:"0.2px"}}>{t.optional}</div>}
                 <div style={{display:"flex",alignItems:"center",gap:10,marginTop:8}}>

@@ -127,28 +127,25 @@ export default function MembersPage() {
     setModal(null); setBusy(false); load();
   };
 
+  // Veresiye tahsilati da tek islemde: bakiye dusumu + payments satiri birlikte
+  // yazilir. payments satiri olmadan cekmeceye giren nakit hicbir yerde
+  // gorunmuyordu ve gun sonu kasa sayimi sistematik "fazla" verirdi.
   const recordPayment = async () => {
     const amt = Number(payAmount);
-    if (!amt || amt <= 0) { alert("Gecerli tutar gir"); return; }
+    if (!amt || amt <= 0) { alert("Geçerli tutar gir"); return; }
     if (busy) return;
     const newBalance = Math.max(0, Number(modal.data.outstanding_balance || 0) - amt);
-    if (!confirm('"' + modal.data.name + '" icin ₺' + amt + ' odeme alindi. Kalan borc: ₺' + newBalance)) return;
+    if (!confirm('"' + modal.data.name + '" için ₺' + amt + ' ödeme alındı. Kalan borç: ₺' + newBalance)) return;
     setBusy(true);
-    const { error } = await supabase.from("customers").update({ outstanding_balance: newBalance }).eq("id", modal.data.id);
-    if (error) { setBusy(false); alert("Hata: " + error.message); return; }
-    // Tahsilat payments'a da yazilir. Yoksa cekmeceye giren nakit hicbir
-    // yerde gorunmez ve gun sonu kasa sayimi her seferinde sistematik
-    // "fazla" verir — bu bilinen fazlanin altina gercek bir acik gizlenebilir.
-    // order_id NULL: bu tahsilat tek bir siparise degil, birikmis borca ait.
-    const { error: payErr } = await supabase.from("payments").insert({
-      order_id: null, amount: amt, method: payMethod,
-      store_id: staffUser?.store_ids?.[0], staff_id: staffUser?.id || null,
+    const { data, error } = await supabase.rpc("nip_borc_tahsil", {
+      p_customer_id: modal.data.id, p_amount: amt, p_method: payMethod,
     });
     setBusy(false);
-    if (payErr) alert("Uyarı: ödeme kaydı yazılamadı, kasa sayımında görünmeyecek — " + payErr.message);
+    if (error) { alert("Tahsilat yapılamadı: " + error.message); return; }
+    const kalan = Number(data ?? newBalance);
     setPayAmount("");
-    setForm({...form, outstanding_balance: newBalance});
-    alert("Odeme kaydedildi. Yeni borc: ₺" + newBalance);
+    setForm({ ...form, outstanding_balance: kalan });
+    alert("Ödeme kaydedildi. Yeni borç: ₺" + kalan);
     load();
   };
 
