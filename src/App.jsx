@@ -12,6 +12,7 @@ import PaymentPage from "./pages/staff/PaymentPage.jsx";
 import StockViewPage from "./pages/staff/StockViewPage.jsx";
 import MyShiftPage from "./pages/staff/MyShiftPage.jsx";
 import StockMgmtPage from "./pages/manager/StockMgmtPage.jsx";
+import StockCountPage from "./pages/manager/StockCountPage.jsx";
 import StaffMgmtPage from "./pages/manager/StaffMgmtPage.jsx";
 import HappyHourPage from "./pages/manager/HappyHourPage.jsx";
 import CategorySchedulePage from "./pages/manager/CategorySchedulePage.jsx";
@@ -76,6 +77,9 @@ function AppRoutes() {
         <Route path="stock"            element={<PrivateRoute deny={["parttime"]}><StockViewPage /></PrivateRoute>} />
         <Route path="myshift"          element={<PrivateRoute deny={["viewer","parttime"]}><MyShiftPage /></PrivateRoute>} />
         <Route path="stock-mgmt"       element={<PrivateRoute managerOnly><StockMgmtPage /></PrivateRoute>} />
+        {/* Sayim yoneticiye kilitli DEGIL: rafi fiilen sayan bar personeli.
+            Kapi nip_stok_sayimi_kaydet icinde de var (kitchen/viewer/parttime). */}
+        <Route path="stock-count"      element={<PrivateRoute deny={["viewer","kitchen","parttime"]}><StockCountPage /></PrivateRoute>} />
         <Route path="staff-mgmt"       element={<PrivateRoute adminOnly><StaffMgmtPage /></PrivateRoute>} />
         <Route path="happy-hour"       element={<PrivateRoute managerOnly><HappyHourPage /></PrivateRoute>} />
         <Route path="category-schedule" element={<PrivateRoute managerOnly><CategorySchedulePage /></PrivateRoute>} />

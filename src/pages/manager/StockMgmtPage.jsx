@@ -1,4 +1,5 @@
 import { useEffect, useState } from "react";
+import { useNavigate } from "react-router-dom";
 import { supabase } from "../../lib/supabase.js";
 import { useAuth } from "../../contexts/AuthContext.jsx";
 import Ikon from "../../components/Ikon.jsx";
@@ -9,6 +10,7 @@ const VOL_UNITS = ["ml","cl","l"];
 
 export default function StockMgmtPage() {
   const { staffUser } = useAuth();
+  const navigate = useNavigate();
   const [items, setItems] = useState([]);
   const [loading, setLoading] = useState(true);
   const [modal, setModal] = useState(null);
@@ -66,6 +68,18 @@ export default function StockMgmtPage() {
     <div style={{fontFamily:cv,color:"#F0EDE8"}}>
       <div style={{fontSize:24,fontWeight:800,marginBottom:4}}>Stok Yonetimi</div>
       <div style={{fontSize:11,color:"#888",letterSpacing:"1px",marginBottom:14}}>{items.length} HAMMADDE · {lowStock} AZALAN</div>
+
+      {/* Rafi saymak icin buraya gelinirdi: her malzeme tek tek acilir, sayi
+          ustune yazilirdi. Sayim ekrani ayni isi karsilastirarak ve kayit
+          birakarak yapiyor — dogru kapiya yonlendir. */}
+      <div onClick={()=>navigate("/stock-count")} style={{background:"#161616",border:"1px solid #2A2A2A",borderRadius:12,padding:"12px 14px",marginBottom:14,display:"flex",alignItems:"center",gap:10,cursor:"pointer"}}>
+        <Ikon ad="sayim" boy={18} style={{color:"#8A8580",flexShrink:0}}/>
+        <div style={{flex:1,minWidth:0}}>
+          <div style={{fontSize:14,fontWeight:700}}>Rafı mı sayacaksın?</div>
+          <div style={{fontSize:12,color:"#666",marginTop:2,lineHeight:1.5}}>Stok Sayımı ekranı beklenen ile saydığını yan yana gösterir, farkı kaydeder.</div>
+        </div>
+        <Ikon ad="oksag" boy={14} style={{color:"#666",flexShrink:0}}/>
+      </div>
 
       {totalValue > 0 && (
         <div style={{background:"#161616",border:"1px solid #FFFFFF",borderRadius:12,padding:14,marginBottom:14,display:"flex",justifyContent:"space-between",alignItems:"center"}}>
