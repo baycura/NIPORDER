@@ -2,6 +2,7 @@ import { useEffect, useMemo, useState } from "react";
 import { supabase } from "../../lib/supabase.js";
 import { useAuth } from "../../contexts/AuthContext.jsx";
 import Ikon from "../../components/Ikon.jsx";
+import { paketIkilemi, birimYaz } from "../../lib/birimMaliyet.js";
 
 const cv = "-apple-system,BlinkMacSystemFont,'Segoe UI',Roboto,sans-serif";
 const hv = "'Bebas Neue','Barlow Condensed','Coolvetica Condensed',sans-serif";
@@ -28,6 +29,7 @@ export default function CostsPage() {
   const [hata, setHata] = useState(null);
   const [degerler, setDegerler] = useState({});
   const [kaydedilen, setKaydedilen] = useState({});
+  const [paketler, setPaketler] = useState({});
   const [busy, setBusy] = useState(null);
 
   useEffect(() => {
@@ -44,7 +46,17 @@ export default function CostsPage() {
     setSatirlar(null); setHata(null);
     supabase.rpc("eksik_maliyetler", { p_store_id: storeId }).then(({ data, error }) => {
       if (error) { setHata(error.message); setSatirlar([]); return; }
-      setSatirlar(data || []);
+      const list = data || [];
+      setSatirlar(list);
+      // Paket adedi RPC'de yok ama paket/adet ikilemini gostermek icin lazim:
+      // ilk maliyet girisi tam da bu hatanin yapildigi yer (bkz. birimMaliyet.js).
+      const ids = list.filter(r => r.tip === "malzeme").map(r => r.kayit_id);
+      if (!ids.length) { setPaketler({}); return; }
+      supabase.from("ingredients").select("id,pack_qty").in("id", ids).then(({ data: ing }) => {
+        const m = {};
+        for (const i of ing || []) if (Number(i.pack_qty) > 1) m[i.id] = Number(i.pack_qty);
+        setPaketler(m);
+      });
     });
   };
   useEffect(yukle, [storeId]);
@@ -192,6 +204,18 @@ export default function CostsPage() {
                     }}>Kaydet</button>
                   </div>
                 )}
+
+                {/* Paketli malzemede paket fiyatini birim maliyet sanma tuzagi. */}
+                {!bitti && (() => {
+                  const ik = paketIkilemi(degerler[r.kayit_id], { pack_qty: paketler[r.kayit_id] });
+                  if (!ik) return null;
+                  return (
+                    <div style={{ fontSize: 11, color: C.faint, marginTop: 6, lineHeight: 1.5 }}>
+                      {ik.paket}'li paket olarak kayıtlı — girdiğin rakam paketin fiyatıysa
+                      birim maliyet <b style={{ color: C.ink }}>{birimYaz(ik.birim)}</b> olmalı.
+                    </div>
+                  );
+                })()}
               </div>
             );
           })}
