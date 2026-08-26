@@ -218,7 +218,7 @@ export default function PaymentPage() {
           <div key={o.id} style={{background:"#1A1A1A",border:"1px solid "+(eski?"#FFFFFF":"#2A2A2A"),borderRadius:10,padding:14,marginBottom:8,display:"flex",alignItems:"center",gap:12}}>
             <div style={{flex:1,minWidth:0}}>
               {storeBadge && <div style={{display:"inline-block",background:storeBadgeColor,color:"#000",padding:"2px 8px",borderRadius:6,fontSize:12,fontWeight:600,letterSpacing:"0.2px",marginBottom:4,marginRight:4}}>{storeBadge}</div>}
-              {o.customer_id && <div style={{display:"inline-block",background:"#000",color:"#8A8580",padding:"2px 8px",borderRadius:6,fontSize:12,fontWeight:600,letterSpacing:"0.2px",marginBottom:4,display:"inline-flex",alignItems:"center",gap:4}}><Ikon ad="yildiz" boy={11}/>ÜYE · puan kazanacak</div>}
+              {o.customer_id && <div style={{background:"#000",color:"#8A8580",padding:"2px 8px",borderRadius:6,fontSize:12,fontWeight:600,letterSpacing:"0.2px",marginBottom:4,display:"inline-flex",alignItems:"center",gap:4}}><Ikon ad="yildiz" boy={11}/>ÜYE · puan kazanacak</div>}
               <div style={{fontSize:14,fontWeight:700,color:"#F0EDE8"}}>{where}</div>
               <div style={{fontSize:11,color: eski ? "#FFFFFF" : "#888",marginTop:2}}>
                 {new Date(o.created_at).toLocaleTimeString("tr-TR", {hour:"2-digit", minute:"2-digit"})}

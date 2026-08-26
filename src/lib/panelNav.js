@@ -22,6 +22,7 @@ export const GRUPLAR = [
       { to: "/cash-count", icon: "nakit", label: "Kasa Sayımı", deny: ["viewer", "kitchen"] },
       { to: "/myshift",  icon: "vardiya", label: "Vardiyam",  deny: ["viewer", "parttime"] },
       { to: "/stock",    icon: "stok", label: "Stok",      deny: ["parttime"] },
+      { to: "/stock-count", icon: "sayim", label: "Stok Sayımı", deny: ["viewer", "kitchen", "parttime"] },
       { to: "/expenses", icon: "gider", label: "Giderler" },
       { to: "/invoices", icon: "fatura", label: "Faturalar", deny: ["viewer", "parttime"] },
       { to: "/tasks",    icon: "gorev", label: "Görevler",  deny: ["viewer", "parttime"] },
