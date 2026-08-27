@@ -106,7 +106,8 @@ export default function PaymentPage() {
       const o = Array.isArray(data) ? data[0] : data;
       if (!o?.isletme_gunu) return;
       supabase.from("cash_counts").select("id")
-        .eq("store_id", magaza).eq("business_day", o.isletme_gunu).limit(1)
+        .eq("store_id", magaza).eq("business_day", o.isletme_gunu)
+        .eq("tur", "kapanis").limit(1)
         .then(({ data: c }) => { if (!iptal) setSayimYok(!(c || []).length); });
     });
     return () => { iptal = true; };

@@ -27,17 +27,30 @@ export default function MyShiftPage(){
     const{data}=await supabase.from("shifts").update({status:"done",checked_out_at:new Date().toISOString()}).eq("staff_id",staffUser.id).eq("date",today).select().single();
     setShift(data);
     // KAPANIS KURALI: dukkani kapatan vardiyada kim varsa kasayi o sayar.
-    // Son cikan = kapanisci. Baska aktif vardiya kalmadiysa ve bu gunun kasasi
-    // sayilmadiysa sayima yonlendir. Cikisi bloke etmez — sadece yakalar;
-    // atlanirsa gece bekcisi (03:15) sahibe Telegram'dan haber verir.
+    // "Son cikan" tespiti BILEREK yok: part-time'in vardiyasi ilk siparisle
+    // otomatik acilir ve cikis ekranini goremedigi icin gece 03:00 cron'una
+    // kadar hep aktif kalir — aktif-vardiya-kalmadi sarti hic saglanmazdi
+    // (adversarial inceleme bulgusu). Bunun yerine: aksam cikisi + kapanis
+    // sayimi yok = sor. Cikisi bloke etmez; atlanirsa 04:30 bekcisi sahibe
+    // Telegram'dan haber verir.
     try{
-      const sid=staffUser?.store_ids?.length?staffUser.store_ids:["00000000-0000-0000-0000-000000000000"];
-      const[{count:aktifKalan},{count:sayim}]=await Promise.all([
-        supabase.from("shifts").select("id",{count:"exact",head:true}).eq("date",today).eq("status","active"),
-        supabase.from("cash_counts").select("id",{count:"exact",head:true}).eq("business_day",today).in("store_id",sid),
-      ]);
-      if((aktifKalan||0)===0&&(sayim||0)===0){
-        if(confirm("Sen son çıkansın ve bu gecenin kasası henüz sayılmadı.\nKapanışı yapan sayar — şimdi sayalım mı?"))navigate("/cash-count");
+      const saat=new Date().getHours();
+      if(saat>=20||saat<7){
+        const magaza=staffUser?.store_ids?.[0];
+        if(magaza){
+          // Gun sunucudan: 03:00-07:00 arasi gec kapanista "kasa gunu" dune kayar.
+          const{data:oz}=await supabase.rpc("kasa_gun_ozeti",{p_store_id:magaza});
+          const gun=(Array.isArray(oz)?oz[0]:oz)?.isletme_gunu;
+          if(gun){
+            // error kontrolu sart: supabase-js reject ETMEZ, hata {count:null}
+            // olarak doner — kontrolsuz birakilsa ag hatasi "sayilmamis"
+            // sanilip asilsiz uyari cikardi (inceleme bulgusu).
+            const{count:sayim,error:hata}=await supabase.from("cash_counts")
+              .select("id",{count:"exact",head:true})
+              .eq("store_id",magaza).eq("business_day",gun).eq("tur","kapanis");
+            if(!hata&&(sayim||0)===0&&confirm("Bu gecenin kapanış sayımı henüz yapılmadı.\nDükkanı kapatan sayar — şimdi sayalım mı?"))navigate("/cash-count");
+          }
+        }
       }
     }catch(e){/* kontrol basarisizsa cikis yine de tamamlanmis olsun */}
   };

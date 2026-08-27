@@ -48,7 +48,7 @@ export default function CashCountsPage() {
     return () => { iptal = true; };
   }, [storeId]);
 
-  // Gune gore grupla: her gun bir zincir (ilk kayit + duzeltmeler).
+  // Gune gore grupla: her gun bir zincir (devir sayimlari + kapanis + duzeltmeler).
   const gunler = useMemo(() => {
     const m = new Map();
     for (const k of kayitlar || []) {
@@ -57,15 +57,21 @@ export default function CashCountsPage() {
     }
     return [...m.entries()].map(([gun, zincir]) => {
       const duzeltilenler = new Set(zincir.map(z => z.supersedes).filter(Boolean));
-      const gecerli = zincir.find(z => !duzeltilenler.has(z.id)) || zincir[zincir.length - 1];
-      return { gun, zincir, gecerli };
+      const gecerliler = zincir.filter(z => !duzeltilenler.has(z.id));
+      // Gunun basligi KAPANIS sayimidir; devir varsa zincirde gorunur.
+      // Kapanis yoksa (yalniz devir yapilmis gece) son devir gosterilir.
+      const gecerli = gecerliler.find(z => z.tur !== "devir")
+                   || gecerliler[gecerliler.length - 1] || zincir[zincir.length - 1];
+      const kapanisVar = gecerliler.some(z => z.tur !== "devir");
+      return { gun, zincir, gecerli, kapanisVar };
     });
   }, [kayitlar]);
 
-  // Sayilmamis geceler: ilk sayimdan bugune kadar bosluklar.
+  // Sayilmamis geceler: ilk sayimdan bugune kadar bosluklar. Yalniz devir
+  // yapilmis bir gece "sayilmis" sayilmaz — kapanis sayimi sart.
   const eksikGunler = useMemo(() => {
     if (!gunler.length) return [];
-    const var_ = new Set(gunler.map(g => g.gun));
+    const var_ = new Set(gunler.filter(g => g.kapanisVar).map(g => g.gun));
     const enEski = gunler[gunler.length - 1].gun;
     const out = [];
     const d = new Date(enEski + "T12:00");
@@ -119,20 +125,27 @@ export default function CashCountsPage() {
         </div>
       )}
 
-      {gunler.map(({ gun, zincir, gecerli }) => {
+      {gunler.map(({ gun, zincir, gecerli, kapanisVar }) => {
         const acikBu = acik === gun;
-        const duzeltmeVar = zincir.length > 1;
+        const duzeltmeAdet = zincir.filter(z => z.supersedes).length;
+        const devirAdet = zincir.filter(z => z.tur === "devir" && !z.supersedes).length;
+        const duzeltmeVar = duzeltmeAdet > 0;
         return (
           <div key={gun} onClick={() => setAcik(acikBu ? null : gun)}
                style={{ ...kart, marginBottom: 8, cursor: "pointer" }}>
             <div style={{ display: "flex", alignItems: "center", gap: 10 }}>
               <div style={{ flex: 1, minWidth: 0 }}>
-                <div style={{ fontSize: 15, fontWeight: 700 }}>{gunAd(gun)}</div>
+                <div style={{ fontSize: 15, fontWeight: 700 }}>
+                  {gunAd(gun)}
+                  {!kapanisVar && <span style={{ fontSize: 11, fontWeight: 700, color: C.down,
+                    marginLeft: 8, letterSpacing: "0.3px" }}>KAPANIŞ YOK — sadece devir</span>}
+                </div>
                 <div style={{ fontSize: 12, color: C.faint, marginTop: 2 }}>
                   {gecerli.counted_by_person}
                   {gecerli.counted_by_name && gecerli.counted_by_name !== gecerli.counted_by_person
                     && ` · ${gecerli.counted_by_name} hesabından`}
-                  {duzeltmeVar && ` · ${zincir.length - 1} düzeltme`}
+                  {devirAdet > 0 && ` · ${devirAdet} devir sayımı`}
+                  {duzeltmeVar && ` · ${duzeltmeAdet} düzeltme`}
                 </div>
               </div>
               <div style={{ textAlign: "right" }}>
@@ -166,14 +179,17 @@ export default function CashCountsPage() {
                   </div>
                 )}
 
-                {/* Duzeltme zinciri: silinen yok, ustune yazilan var. */}
-                {duzeltmeVar && (
+                {/* Gunun tum kayitlari: devir sayimlari + duzeltme zinciri.
+                    Silinen yok, ustune yazilan var. */}
+                {(duzeltmeVar || devirAdet > 0) && (
                   <div style={{ marginTop: 12, paddingTop: 10, borderTop: `1px solid ${C.line}` }}>
-                    <div style={{ ...etiket, marginBottom: 6 }}>Düzeltme zinciri</div>
+                    <div style={{ ...etiket, marginBottom: 6 }}>Günün sayımları</div>
                     {zincir.map((z, i) => (
                       <div key={z.id} style={{ fontSize: 12, color: z.id === gecerli.id ? C.ink : C.faint,
                                                marginBottom: 4, lineHeight: 1.5 }}>
-                        {i + 1}. {fmtTL(z.counted_total)} · fark {Number(z.difference) > 0 ? "+" : ""}{fmtTL(z.difference)}
+                        {i + 1}. {z.tur === "devir" ? "DEVİR · " : ""}
+                        {new Date(z.created_at).toLocaleTimeString("tr-TR", { hour: "2-digit", minute: "2-digit" })}
+                        {" · "}{fmtTL(z.counted_total)} · fark {Number(z.difference) > 0 ? "+" : ""}{fmtTL(z.difference)}
                         {" · "}{z.counted_by_person}
                         {z.reason && <> — {z.reason}</>}
                         {z.id === gecerli.id && <span style={{ fontWeight: 700 }}> · geçerli</span>}
