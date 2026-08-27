@@ -3,7 +3,7 @@ import { useNavigate } from "react-router-dom";
 import { supabase } from "../../lib/supabase.js";
 import { useAuth } from "../../contexts/AuthContext.jsx";
 import Ikon from "../../components/Ikon.jsx";
-import { paketIkilemi, ikilemMetni, birimYaz } from "../../lib/birimMaliyet.js";
+import { paketIkilemi, ikilemMetni, birimYaz, anlasilirYaz } from "../../lib/birimMaliyet.js";
 
 const cv = "-apple-system,BlinkMacSystemFont,'Segoe UI',Roboto,sans-serif";
 const UNITS = ["ml","cl","l","g","kg","adet","şişe","porsiyon"];
@@ -153,6 +153,14 @@ export default function StockMgmtPage() {
           <Field label={"STOK MIKTARI (" + form.unit + ")"}><input type="number" step="0.01" value={form.stock_qty||0} onChange={e=>setForm({...form,stock_qty:e.target.value})} style={inputS}/></Field>
           <Field label={"BIRIM MALIYET (₺ / " + form.unit + ")"}>
             <input type="number" step="0.01" value={form.cost_per_unit||0} onChange={e=>setForm({...form,cost_per_unit:e.target.value})} style={inputS}/>
+            {/* Mililitre/gram maliyeti tek basina okunmaz; litre/kilo fiyatina
+                cevrilince yanlislik goze carpar (Sut ₺205/litre yaziyordu). */}
+            {anlasilirYaz(form.cost_per_unit, form.unit) && (
+              <div style={{fontSize:12,color:"#F0EDE8",marginTop:5,fontWeight:700}}>
+                = {anlasilirYaz(form.cost_per_unit, form.unit)}
+                <span style={{color:"#666",fontWeight:400}}> — aldigin fiyatla ayni mi?</span>
+              </div>
+            )}
             {/* Paketli malzemede iki okuma da mumkun; rakam yazilirken gorunsun. */}
             {(() => {
               const ik = paketIkilemi(form.cost_per_unit, { pack_qty: form.pack_qty, cost_per_unit: modal.data?.cost_per_unit });
