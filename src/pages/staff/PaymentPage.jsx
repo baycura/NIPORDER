@@ -92,12 +92,14 @@ export default function PaymentPage() {
   const ptsCover = (o) => Math.min(Number(memberPts?.points || 0), Math.floor(Number(o?.total || 0)));
 
   // Siparis ekranindaki "Odeme Al" butonundan gelindi: ?order=<id> ile modali direkt ac
-  // Gece 23:00'ten sonra kasa sayilmadiysa serit gosterilir. Sayimin en cok
-  // atlandigi an, kapanis telasi; giris kapisi kasanin kendisi olmali.
+  // Aksam 21:00'den itibaren kapanis sayimi yoksa "Dukkani kapat" seridi
+  // gosterilir. Kapanis SAATE bagli degil (bazen 00:30, bazen 01:30, bazen
+  // 03:00 sonrasi) — dugme kasada durur, kapatan kim olursa olsun oradan
+  // sayar. Sayim muhurlenince serit kaybolur.
   const [sayimYok, setSayimYok] = useState(false);
   useEffect(() => {
     const saat = new Date().getHours();
-    if (saat < 23 && saat >= 3) return;
+    if (saat < 21 && saat >= 7) return;
     const magaza = staffUser?.store_ids?.[0];
     if (!magaza) return;
     let iptal = false;
@@ -200,9 +202,12 @@ export default function PaymentPage() {
              style={{background:"#161616",border:"1px solid #FFFFFF",borderRadius:12,padding:"12px 14px",
                      marginBottom:12,cursor:"pointer",display:"flex",alignItems:"center",gap:10,fontSize:13}}>
           <Ikon ad="nakit" boy={17}/>
-          <span style={{flex:1}}>Bu gecenin kasası henüz sayılmadı</span>
+          <span style={{flex:1}}>
+            <b>Dükkanı kapatıyorsan buradan:</b> kasayı say, mühür dükkanı kapatır
+            <span style={{color:"#888",display:"block",fontSize:12,marginTop:2}}>Sayım ve vardiyalar tek dokunuşta kapanır — saat kaç olursa olsun</span>
+          </span>
           <span style={{fontWeight:800,whiteSpace:"nowrap",display:"flex",alignItems:"center",gap:4}}>
-            Say<Ikon ad="oksag" boy={13}/>
+            Kapat<Ikon ad="oksag" boy={13}/>
           </span>
         </div>
       )}
