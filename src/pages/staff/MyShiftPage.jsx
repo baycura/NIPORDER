@@ -1,9 +1,9 @@
-import{useState,useEffect}from"react";import{supabase}from"../../lib/supabase.js";import{useAuth}from"../../contexts/AuthContext.jsx";
+import{useState,useEffect}from"react";import{useNavigate}from"react-router-dom";import{supabase}from"../../lib/supabase.js";import{useAuth}from"../../contexts/AuthContext.jsx";
 import{businessDayStart,businessDayKey}from"../../lib/businessDay.js";
 import Ikon from "../../components/Ikon.jsx";
 const cv="'Coolvetica','Bebas Neue',sans-serif";const cvc="'Coolvetica Condensed','Barlow Condensed',sans-serif";
 export default function MyShiftPage(){
-  const{staffUser}=useAuth();const[orders,setOrders]=useState([]);const[shift,setShift]=useState(null);const[loading,setLoading]=useState(true);
+  const{staffUser}=useAuth();const navigate=useNavigate();const[orders,setOrders]=useState([]);const[shift,setShift]=useState(null);const[loading,setLoading]=useState(true);
   // Bu vardiyada SENIN verdigin ikramlar. Siparisi baskasi acmis olabilir, o
   // yuzden siparisin staff_id'sine degil kalemin treated_by alanina bakiyoruz.
   const[ikramlar,setIkramlar]=useState([]);
@@ -21,7 +21,39 @@ export default function MyShiftPage(){
   const workedMins=shift?.checked_in_at?Math.floor((Date.now()-new Date(shift.checked_in_at))/60000):0;
   const workedStr=workedMins>0?`${Math.floor(workedMins/60)}s ${workedMins%60}dk`:"—";
   const handleCheckIn=async()=>{const today=businessDayKey(new Date());const{data,error}=await supabase.from("shifts").upsert({staff_id:staffUser.id,date:today,checked_in_at:new Date().toISOString(),status:"active",store_id:staffUser?.store_ids?.[0]},{onConflict:"staff_id,date"}).select().single();if(error){alert("Vardiyaya girilemedi: "+error.message);return;}setShift(data);};
-  const handleCheckOut=async()=>{if(!confirm("Vardiyadan çıkış yapılsın mı? (Bildirimler kesilir)"))return;const today=businessDayKey(new Date());const{data}=await supabase.from("shifts").update({status:"done",checked_out_at:new Date().toISOString()}).eq("staff_id",staffUser.id).eq("date",today).select().single();setShift(data);};
+  const handleCheckOut=async()=>{
+    if(!confirm("Vardiyadan çıkış yapılsın mı? (Bildirimler kesilir)"))return;
+    const today=businessDayKey(new Date());
+    const{data}=await supabase.from("shifts").update({status:"done",checked_out_at:new Date().toISOString()}).eq("staff_id",staffUser.id).eq("date",today).select().single();
+    setShift(data);
+    // KAPANIS KURALI: dukkani kapatan vardiyada kim varsa kasayi o sayar.
+    // "Son cikan" tespiti BILEREK yok: part-time'in vardiyasi ilk siparisle
+    // otomatik acilir ve cikis ekranini goremedigi icin gece 03:00 cron'una
+    // kadar hep aktif kalir — aktif-vardiya-kalmadi sarti hic saglanmazdi
+    // (adversarial inceleme bulgusu). Bunun yerine: aksam cikisi + kapanis
+    // sayimi yok = sor. Cikisi bloke etmez; atlanirsa 04:30 bekcisi sahibe
+    // Telegram'dan haber verir.
+    try{
+      const saat=new Date().getHours();
+      if(saat>=20||saat<7){
+        const magaza=staffUser?.store_ids?.[0];
+        if(magaza){
+          // Gun sunucudan: 03:00-07:00 arasi gec kapanista "kasa gunu" dune kayar.
+          const{data:oz}=await supabase.rpc("kasa_gun_ozeti",{p_store_id:magaza});
+          const gun=(Array.isArray(oz)?oz[0]:oz)?.isletme_gunu;
+          if(gun){
+            // error kontrolu sart: supabase-js reject ETMEZ, hata {count:null}
+            // olarak doner — kontrolsuz birakilsa ag hatasi "sayilmamis"
+            // sanilip asilsiz uyari cikardi (inceleme bulgusu).
+            const{count:sayim,error:hata}=await supabase.from("cash_counts")
+              .select("id",{count:"exact",head:true})
+              .eq("store_id",magaza).eq("business_day",gun).eq("tur","kapanis");
+            if(!hata&&(sayim||0)===0&&confirm("Bu gecenin kapanış sayımı henüz yapılmadı.\nDükkanı kapatan sayar — şimdi sayalım mı?"))navigate("/cash-count");
+          }
+        }
+      }
+    }catch(e){/* kontrol basarisizsa cikis yine de tamamlanmis olsun */}
+  };
   return(<div>
     <div style={{display:"flex",justifyContent:"space-between",alignItems:"center",marginBottom:24}}>
       <h1 style={{color:"#F0EDE8",fontFamily:cv,fontSize:28,letterSpacing:"-0.5px",margin:0}}>Vardiyam</h1>
