@@ -107,7 +107,9 @@ export default function OrdersPage() {
   const createOrder = async () => {
     if (busy) return;
     if (newMode === "table" && !newTableId) { alert("Masa seç"); return; }
-    if (newMode === "walkin" && !newCustomerName.trim()) { alert("Misafir adı gerekli"); return; }
+    // Isim ZORUNLU DEGIL. Tezgahta siparisi alan, hazirlayan ve odemeyi alan
+    // ayni kisi; her musteride klavye acip isim yazdirmak siranin onunde
+    // kaybedilen saniye demek. Bos birakilirsa "Misafir" olarak acilir.
     setBusy(true);
     const table = newMode === "table" ? tables.find(t => t.id === newTableId) : null;
     const originStoreId = newMode === "table" ? table?.store_id : staffUser?.store_ids?.[0];
@@ -119,7 +121,7 @@ export default function OrdersPage() {
     const payload = {
       status: "open", subtotal: 0, total: 0,
       table_id: newMode === "table" ? newTableId : null,
-      customer_name: newMode === "walkin" ? newCustomerName.trim() : null,
+      customer_name: newMode === "walkin" ? (newCustomerName.trim() || "Misafir") : null,
       origin_store_id: originStoreId,
       staff_id: staffUser?.id,
     };
@@ -213,8 +215,8 @@ export default function OrdersPage() {
               </div>
             ) : (
               <div>
-                <div style={{fontSize:12,color:"#888",letterSpacing:"0.2px",fontWeight:600,marginBottom:6}}>Misafir adı</div>
-                <input value={newCustomerName} onChange={e=>setNewCustomerName(e.target.value)} placeholder="Örn: Efekan" style={{width:"100%",padding:"10px 12px",background:"#0C0C0C",border:"1px solid #2A2A2A",borderRadius:8,color:"#F0EDE8",fontSize:14,outline:"none",fontFamily:"inherit"}}/>
+                <div style={{fontSize:12,color:"#888",letterSpacing:"0.2px",fontWeight:600,marginBottom:6}}>Misafir adı <span style={{color:"#666",fontWeight:400}}>— boş bırakabilirsin</span></div>
+                <input value={newCustomerName} onChange={e=>setNewCustomerName(e.target.value)} onKeyDown={e=>e.key==="Enter"&&createOrder()} placeholder="Tanıdıksa adı, değilse boş geç" style={{width:"100%",padding:"10px 12px",background:"#0C0C0C",border:"1px solid #2A2A2A",borderRadius:8,color:"#F0EDE8",fontSize:14,outline:"none",fontFamily:"inherit"}}/>
               </div>
             )}
             <div style={{display:"flex",gap:8,marginTop:16}}>
