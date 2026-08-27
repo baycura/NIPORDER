@@ -1,14 +1,26 @@
-// Paket fiyatini birim maliyet zannetme tuzagi.
+// Birim maliyet hanesine yanlis rakam yazma tuzaklari.
 //
-// Pipet tam boyle girilmisti: 100'luk paketin fiyati (₺33,60) birim maliyet
-// hanesine yazilinca 21 urunun maliyeti sisti — Limonata'da kayitli maliyetin
-// %92'si tek bir pipetti, kar raporu o urunlerde anlamsizdi. Fatura kalem
-// kalem sisteme girmiyor (invoices tablosu yalniz baslik tutuyor), yani
-// capraz kontrol edecek bir kaynak yok. Tek savunma rakamin YAZILDIGI an.
+// Iki gercek vaka bu dosyayi dogurdu:
 //
-// OTOMATIK BOLMEK YANLIS OLUR. Bazi malzemede adet fiyati gercekten yuksektir:
-// Stella sisesi ₺138, Absolut ₺1.739. Ekranin isi karari vermek degil,
-// ikilemi gorunur kilmak.
+//   Pipet — 50'lik paketin fiyati (₺33) birim maliyet hanesine yazilmisti.
+//   21 urunun maliyeti sisti; Limonata'da kayitli maliyetin %92'si tek bir
+//   pipetti. Dogrusu ₺0,66.
+//
+//   Sut — mililitre maliyeti 0,20523375 yaziyordu. Rakam kendi halinde
+//   masum gorunuyor; litreye cevrilince ₺205 ediyordu, gercek fiyat ₺52,75.
+//   6 kahvenin maliyeti dort katina cikmisti.
+//
+// Fatura kalem kalem sisteme girmiyor (invoices tablosu yalniz baslik tutuyor),
+// yani capraz kontrol edecek bir kaynak yok. Tek savunma rakamin YAZILDIGI an.
+//
+// Bu yuzden iki ayri yardimci var:
+//   paketIkilemi  — paket/adet karisikligini yakalar (Pipet vakasi)
+//   anlasilirFiyat — mililitre/gram maliyetini litre/kilo fiyatina cevirir,
+//                    boylece goz kontrolu mumkun olur (Sut vakasi)
+//
+// OTOMATIK DUZELTMEK YANLIS OLUR. Bazi malzemede adet fiyati gercekten
+// yuksektir: Stella sisesi ₺138, Absolut ₺1.739. Ekranin isi karari vermek
+// degil, rakami insanin tanidigi olcuye getirip ikilemi gorunur kilmak.
 
 // Girilen rakam iki turlu okunabiliyorsa ikisini de dondurur, yoksa null.
 //
@@ -31,6 +43,24 @@ export function paketIkilemi(girilen, malzeme) {
 
 export const birimYaz = (n) =>
   "₺" + Number(n || 0).toLocaleString("tr-TR", { maximumFractionDigits: 4 });
+
+// Mililitre/gram maliyeti insanin kafasinda fiyati olan olcuye cevrilir.
+// "0,20523375 TL/ml" hicbir sey soylemez; "₺205/litre" yanlisligi bagirir.
+// Sut hatasi tam olarak boyle gorundu.
+export function anlasilirFiyat(birimMaliyet, unit) {
+  const n = Number(birimMaliyet);
+  if (!isFinite(n) || n <= 0) return null;
+  if (unit === "ml") return { tutar: n * 1000, olcu: "litre" };
+  if (unit === "g" || unit === "gr") return { tutar: n * 1000, olcu: "kilo" };
+  if (unit === "cl") return { tutar: n * 100, olcu: "litre" };
+  return null;   // adet/porsiyon zaten anlasilir, cevirmeye gerek yok
+}
+
+export function anlasilirYaz(birimMaliyet, unit) {
+  const a = anlasilirFiyat(birimMaliyet, unit);
+  if (!a) return null;
+  return "₺" + a.tutar.toLocaleString("tr-TR", { maximumFractionDigits: 2 }) + " / " + a.olcu;
+}
 
 // Iki okumayi da yazan tek cumle. Ayni metin hem uyari kutusunda hem alan
 // altindaki ipucunda kullanilir ki kullanici iki farkli anlatimla karsilasmasin.

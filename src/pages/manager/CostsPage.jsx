@@ -2,7 +2,7 @@ import { useEffect, useMemo, useState } from "react";
 import { supabase } from "../../lib/supabase.js";
 import { useAuth } from "../../contexts/AuthContext.jsx";
 import Ikon from "../../components/Ikon.jsx";
-import { paketIkilemi, birimYaz } from "../../lib/birimMaliyet.js";
+import { paketIkilemi, birimYaz, anlasilirYaz } from "../../lib/birimMaliyet.js";
 
 const cv = "-apple-system,BlinkMacSystemFont,'Segoe UI',Roboto,sans-serif";
 const hv = "'Bebas Neue','Barlow Condensed','Coolvetica Condensed',sans-serif";
@@ -202,6 +202,16 @@ export default function CostsPage() {
                       borderRadius: 10, fontSize: 13, fontWeight: 800, cursor: "pointer", fontFamily: cv,
                       opacity: busy === r.kayit_id ? 0.6 : 1, flexShrink: 0,
                     }}>Kaydet</button>
+                  </div>
+                )}
+
+                {/* Mililitre/gram maliyeti tek basina okunmaz — litre/kilo
+                    fiyatina cevrilince yanlislik goze carpar. r.alt malzemede
+                    birimi tasiyor. */}
+                {!bitti && r.tip === "malzeme" && anlasilirYaz(degerler[r.kayit_id], r.alt) && (
+                  <div style={{ fontSize: 12, color: C.ink, marginTop: 6, fontWeight: 700 }}>
+                    = {anlasilirYaz(degerler[r.kayit_id], r.alt)}
+                    <span style={{ color: C.faint, fontWeight: 400 }}> — aldığın fiyatla aynı mı?</span>
                   </div>
                 )}
 
