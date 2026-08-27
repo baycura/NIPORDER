@@ -3,6 +3,7 @@ import { useNavigate } from "react-router-dom";
 import { supabase } from "../../lib/supabase.js";
 import { useAuth } from "../../contexts/AuthContext.jsx";
 import Ikon from "../../components/Ikon.jsx";
+import { businessDayStart } from "../../lib/businessDay.js";
 
 const cv = "-apple-system,BlinkMacSystemFont,'Segoe UI',Roboto,sans-serif";
 
@@ -17,6 +18,13 @@ export default function TablesPage() {
   const [editName, setEditName] = useState("");
   const [walkinOpen, setWalkinOpen] = useState(false);
   const [walkinName, setWalkinName] = useState("");
+  // Tezgah servisi: siparisi alan, hazirlayan ve odemeyi alan ayni kisi.
+  // Her musteride isim yazdirmak siranin onunde kaybedilen saniyeler demek —
+  // bu yuzden isimsiz acmak TEK DOKUNUS, isim yazmak istege bagli.
+  const [uyeler, setUyeler] = useState([]);
+  const [sonrakiMisafir, setSonrakiMisafir] = useState(1);
+  const [secilenUye, setSecilenUye] = useState(null);
+  const [aciliyor, setAciliyor] = useState(false);
   // Ortak masada birden fazla hesap var; satira dokununca kisiler aciliyor.
   const [acikOrtak, setAcikOrtak] = useState({});
 
@@ -40,6 +48,45 @@ export default function TablesPage() {
   };
 
   useEffect(() => { load(); }, []);
+
+  // Uyeler bir kez cekilir (74 kayit): isim yazarken oneri cikar, secilince
+  // hesap bastan uyeye baglanir — puani kasada aramaya gerek kalmaz.
+  useEffect(() => {
+    supabase.from("customers").select("id,name,phone").order("name")
+      .then(r => setUyeler(r.data || []));
+  }, []);
+
+  // Misafir numarasi isletme gunu icinde artar. Numara etiketten ibaret ama
+  // tezgahta ise yarar: "3 numara hazir" diye seslenilebiliyor.
+  useEffect(() => {
+    const bas = businessDayStart().toISOString();
+    supabase.from("orders").select("customer_name")
+      .in("origin_store_id", staffUser?.store_ids?.length ? staffUser.store_ids : ["00000000-0000-0000-0000-000000000000"])
+      .gte("created_at", bas).like("customer_name", "Misafir %")
+      .then(({ data }) => {
+        const enBuyuk = (data || []).reduce((m, o) => {
+          const n = parseInt(String(o.customer_name).replace("Misafir ", ""), 10);
+          return isFinite(n) && n > m ? n : m;
+        }, 0);
+        setSonrakiMisafir(enBuyuk + 1);
+      });
+  }, [staffUser?.id]);
+
+  // TEK DOKUNUS: modal yok, klavye yok, isim yok. Tezgahtaki normal hal bu.
+  const misafirAc = async (table = null) => {
+    if (aciliyor) return;
+    setAciliyor(true);
+    const ad = "Misafir " + sonrakiMisafir;
+    const { data: newOrd, error } = await supabase.from("orders").insert({
+      table_id: table?.id || null, customer_name: ad,
+      origin_store_id: table?.store_id || staffUser?.store_ids?.[0],
+      staff_id: staffUser?.id, status: "open", subtotal: 0, total: 0, discount_amount: 0,
+    }).select().single();
+    setAciliyor(false);
+    if (error) { alert("Hata: " + error.message); return; }
+    setSonrakiMisafir(n => n + 1);
+    navigate("/orders/" + newOrd.id);
+  };
 
   const tableOrders = (tableId) => orders.filter(o => o.table_id === tableId);
   const tableHasOpenOrder = (tableId) => orders.find(o => o.table_id === tableId);
@@ -65,14 +112,27 @@ export default function TablesPage() {
 
   const createWalkinOrder = async () => {
     const name = walkinName.trim();
-    if (!name) { alert("İsim giriniz"); return; }
+    // Isim ARTIK ZORUNLU DEGIL: bos birakilirsa misafir olarak acilir.
+    // Eskiden burada "İsim giriniz" uyarisi cikip akisi kesiyordu.
+    if (!name) { setWalkinOpen(false); misafirAc(); return; }
     const { data: newOrd, error } = await supabase.from("orders").insert({
-      table_id: null, customer_name: name, origin_store_id: staffUser?.store_ids?.[0], staff_id: staffUser?.id, status: "open", subtotal: 0, total: 0, discount_amount: 0,
+      table_id: null, customer_name: name,
+      customer_id: secilenUye?.id || null,
+      origin_store_id: staffUser?.store_ids?.[0], staff_id: staffUser?.id,
+      status: "open", subtotal: 0, total: 0, discount_amount: 0,
     }).select().single();
     if (error) { alert("Hata: " + error.message); return; }
-    setWalkinOpen(false); setWalkinName("");
+    setWalkinOpen(false); setWalkinName(""); setSecilenUye(null);
     navigate("/orders/" + newOrd.id);
   };
+
+  // Yazdikca uye onerisi. Turkce karakter farki eslesmeyi bozmasin diye
+  // sadelestirilerek karsilastirilir; en fazla 5 oneri, digerleri gurultu.
+  const sadelestir = (s) => String(s || "")
+    .replace(/[ıiİI]/g, "i").replace(/[şŞ]/g, "s").replace(/[ğĞ]/g, "g")
+    .replace(/[üÜ]/g, "u").replace(/[öÖ]/g, "o").replace(/[çÇ]/g, "c").toLowerCase();
+  const oneriler = walkinName.trim().length < 2 ? [] :
+    uyeler.filter(u => sadelestir(u.name).includes(sadelestir(walkinName))).slice(0, 5);
 
   const saveTableName = async () => {
     if (!editTable) return;
@@ -128,9 +188,16 @@ export default function TablesPage() {
         </div>
       </div>
 
-      <button onClick={() => setWalkinOpen(true)} style={{width:"100%",padding:"14px",background:"#FFFFFF",color:"#000",border:"none",borderRadius:12,fontSize:15,fontWeight:800,marginBottom:16,cursor:"pointer",boxShadow:"0 2px 8px rgba(255,255,255,0.3)"}}>
-        + Yeni Hesap (Isimle)
-      </button>
+      {/* Sik olan is solda ve tek dokunus. Isim yazmak istege bagli bir yan
+          yol — tezgahta sira varken klavye acilmiyor. */}
+      <div style={{display:"flex",gap:8,marginBottom:16}}>
+        <button onClick={() => misafirAc()} disabled={aciliyor} style={{flex:2,padding:"16px 14px",background:"#FFFFFF",color:"#000",border:"none",borderRadius:12,fontSize:16,fontWeight:800,cursor:"pointer",boxShadow:"0 2px 8px rgba(255,255,255,0.3)",display:"flex",alignItems:"center",justifyContent:"center",gap:8,opacity:aciliyor?0.6:1}}>
+          <Ikon ad="ekle" boy={17}/>Misafir {sonrakiMisafir}
+        </button>
+        <button onClick={() => { setWalkinName(""); setSecilenUye(null); setWalkinOpen(true); }} style={{flex:1,padding:"16px 12px",background:"transparent",color:"#F0EDE8",border:"1px solid #2A2A2A",borderRadius:12,fontSize:14,fontWeight:700,cursor:"pointer",display:"flex",alignItems:"center",justifyContent:"center",gap:7}}>
+          <Ikon ad="kisi" boy={15}/>İsimle
+        </button>
+      </div>
 
       <div style={{display:"flex",gap:8,marginBottom:16,overflowX:"auto"}}>
         {[["all","TUMU"],["dis","DIŞ"],["cam","ÖN CAM"],["cowork","CO-WORK"]].map(([k,l]) => (
@@ -211,15 +278,39 @@ export default function TablesPage() {
       {walkinOpen && (
         <div onClick={() => setWalkinOpen(false)} style={{position:"fixed",inset:0,background:"rgba(0,0,0,0.7)",display:"flex",alignItems:"center",justifyContent:"center",zIndex:100,padding:20}}>
           <div onClick={e => e.stopPropagation()} style={{background:"#1A1A1A",border:"1px solid #2A2A2A",borderRadius:16,padding:24,width:"100%",maxWidth:400}}>
-            <div style={{fontSize:20,fontWeight:800,color:"#F0EDE8",marginBottom:6}}>Yeni Acik Hesap</div>
-            <div style={{fontSize:12,color:"#888",marginBottom:18}}>Musterinin adini gir (orn: "Efekan", "Sari sapkali abi")</div>
-            <input value={walkinName} onChange={e => setWalkinName(e.target.value)} autoFocus placeholder="Musteri adi..."
+            <div style={{fontSize:20,fontWeight:800,color:"#F0EDE8",marginBottom:6}}>İsimle Hesap Aç</div>
+            <div style={{fontSize:12,color:"#888",marginBottom:14}}>Tanıdığın biriyse adını yaz. Üyeyse listeden seç — puanı kasada aramana gerek kalmaz.</div>
+            <input value={walkinName} onChange={e => { setWalkinName(e.target.value); setSecilenUye(null); }} autoFocus placeholder="Müşteri adı..."
               onKeyDown={e => e.key === "Enter" && createWalkinOrder()}
-              style={{width:"100%",padding:"14px 16px",background:"#0C0C0C",border:"1px solid #FFFFFF",borderRadius:10,color:"#F0EDE8",fontSize:16,outline:"none",marginBottom:14}}/>
-            <div style={{display:"flex",gap:8}}>
-              <button onClick={() => setWalkinOpen(false)} style={{flex:1,padding:"12px",background:"transparent",color:"#888",border:"1px solid #333",borderRadius:10,fontSize:14,fontWeight:700,cursor:"pointer"}}>Iptal</button>
-              <button onClick={createWalkinOrder} style={{flex:2,padding:"12px",background:"#FFFFFF",color:"#000",border:"none",borderRadius:10,fontSize:14,fontWeight:800,cursor:"pointer"}}>Hesap Ac</button>
+              style={{width:"100%",padding:"14px 16px",background:"#0C0C0C",border:"1px solid "+(secilenUye?"#FFFFFF":"#2A2A2A"),borderRadius:10,color:"#F0EDE8",fontSize:16,outline:"none",marginBottom:10}}/>
+
+            {/* Uye onerileri: secilince hesap bastan uyeye baglanir. */}
+            {oneriler.length > 0 && !secilenUye && (
+              <div style={{display:"flex",flexDirection:"column",gap:6,marginBottom:12}}>
+                {oneriler.map(u => (
+                  <div key={u.id} onClick={() => { setSecilenUye(u); setWalkinName(u.name); }}
+                    style={{display:"flex",alignItems:"center",gap:8,padding:"11px 12px",background:"#0C0C0C",border:"1px solid #2A2A2A",borderRadius:9,cursor:"pointer"}}>
+                    <Ikon ad="yildiz" boy={13} style={{color:"#8A8580",flexShrink:0}}/>
+                    <span style={{fontSize:14,fontWeight:700,color:"#F0EDE8",flex:1,minWidth:0,overflow:"hidden",textOverflow:"ellipsis",whiteSpace:"nowrap"}}>{u.name}</span>
+                    {u.phone && <span style={{fontSize:11,color:"#666"}}>{u.phone}</span>}
+                  </div>
+                ))}
+              </div>
+            )}
+            {secilenUye && (
+              <div style={{fontSize:12,color:"#F0EDE8",marginBottom:12,display:"flex",alignItems:"center",gap:6}}>
+                <Ikon ad="onay" boy={13}/>Üye olarak açılacak · puan kazanacak
+              </div>
+            )}
+
+            <div style={{display:"flex",gap:8,marginBottom:10}}>
+              <button onClick={() => setWalkinOpen(false)} style={{flex:1,padding:"12px",background:"transparent",color:"#888",border:"1px solid #333",borderRadius:10,fontSize:14,fontWeight:700,cursor:"pointer"}}>İptal</button>
+              <button onClick={createWalkinOrder} style={{flex:2,padding:"12px",background:"#FFFFFF",color:"#000",border:"none",borderRadius:10,fontSize:14,fontWeight:800,cursor:"pointer"}}>Hesap Aç</button>
             </div>
+            {/* Kacis yolu: modal acildi ama isim gerekmiyorsa akis kesilmesin. */}
+            <button onClick={() => { setWalkinOpen(false); misafirAc(); }} style={{width:"100%",padding:"12px",background:"transparent",color:"#8A8580",border:"1px dashed #333",borderRadius:10,fontSize:13,fontWeight:700,cursor:"pointer",fontFamily:"inherit"}}>
+              İsim gerekmiyor — Misafir {sonrakiMisafir} olarak aç
+            </button>
           </div>
         </div>
       )}
