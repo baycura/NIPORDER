@@ -161,8 +161,13 @@ export default function CashCountPage() {
       <div style={{ fontFamily: cv, color: C.ink, maxWidth: 520, margin: "0 auto", padding: "40px 16px", textAlign: "center" }}>
         <Ikon ad="onayli" boy={64} kalin={1.3} style={{ display: "block", margin: "0 auto 16px" }} />
         <div style={{ fontSize: 22, fontWeight: 800, marginBottom: 6 }}>
-          {bitti.tur === "devir" ? "Devir sayımı kaydedildi" : "Kasa sayıldı"}
+          {bitti.tur === "devir" ? "Devir sayımı kaydedildi" : "Kasa kapandı"}
         </div>
+        {bitti.tur !== "devir" && (
+          <div style={{ fontSize: 13, color: C.muted, marginBottom: 8 }}>
+            Günün vardiyaları da kapatıldı. İyi geceler.
+          </div>
+        )}
         <div style={{ fontSize: 14, color: C.muted, lineHeight: 1.7 }}>
           Sayılan {fmtTL(bitti.counted_total)} · beklenen {fmtTL(bitti.expected_cash)}
           <br />
@@ -449,10 +454,12 @@ export default function CashCountPage() {
           }}>{busy ? "Kaydediliyor…"
               : acikVar && not.trim().length < 3
                 ? `Önce ${ozet.acik_bugun_adet} açık hesabı kapat — ya da açıklama yaz`
-                : kapanis ? "Kapanış sayımını mühürle" : "Devri mühürle"}</button>
+                : kapanis ? "Kasayı kapat — sayımı mühürle" : "Devri mühürle"}</button>
 
           <div style={{ fontSize: 12, color: C.faint, marginTop: 10, lineHeight: 1.6, textAlign: "center" }}>
-            Kaydedildikten sonra silinemez. Yanlış saydıysan üstüne gerekçeli düzeltme girilir.
+            {kapanis
+              ? "Bu düğme dükkanı kapatır: sayım mühürlenir, günün vardiyaları kapanır. Saat kaç olursa olsun — kapanışı sen yapıyorsan sayan sensin. Yanlış saydıysan üstüne gerekçeli düzeltme girilir."
+              : "Kaydedildikten sonra silinemez. Yanlış saydıysan üstüne gerekçeli düzeltme girilir."}
           </div>
         </>)}
       </>)}
