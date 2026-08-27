@@ -36,6 +36,9 @@ export default function CashCountPage() {
   const [not, setNot] = useState("");
   const [busy, setBusy] = useState(false);
   const [bitti, setBitti] = useState(null);
+  // Kapanis vardiyasi: "sayan kisi" tek dokunusla bu listeden secilir.
+  // Kural sahibin agzindan: dukkani kapatan vardiyada kim varsa o sayar.
+  const [vardiya, setVardiya] = useState([]);
 
   useEffect(() => {
     if (!storeIds.length) return;
@@ -55,6 +58,12 @@ export default function CashCountPage() {
       setOzet(Array.isArray(data) ? data[0] : data);
     });
     return () => { iptal = true; };
+  }, [storeId]);
+
+  useEffect(() => {
+    if (!storeId) return;
+    supabase.rpc("nip_kapanis_vardiyasi", { p_store_id: storeId })
+      .then(({ data }) => setVardiya(data || []));
   }, [storeId]);
 
   // Taslak: her tusa basista yazilir. Gece yarisi ekran kapanirsa sayim
@@ -86,7 +95,14 @@ export default function CashCountPage() {
   const beklenen = ozet ? Number(ozet.beklenen || 0) : null;
   const fark = beklenen === null ? null : sayilan - beklenen;
   const notGerekli = fark !== null && Math.abs(fark) > NOT_ESIGI;
-  const nakitsizGun = ozet && Number(ozet.nakit || 0) === 0
+  // KAPANIS SONRASI kurali: gunun acik hesabi varsa servis bitmemis demektir;
+  // o hesabin nakdi henuz kayitlarda olmadigi icin beklenen EKSIK hesaplanir.
+  // Sunucu da ayni kurali zorlar (fn_kasa_sayimi_doldur): gerekcesiz gecmez.
+  const acikVar = ozet ? Number(ozet.acik_bugun_adet || 0) > 0 : false;
+  // Acik hesap varken "nakitsiz gece" kestirmesi guvenilmez: o hesap nakit
+  // kapanabilirdi. Tam form acilir ki aciklama alanina erisilebilsin.
+  const nakitsizGun = ozet && !acikVar
+                          && Number(ozet.nakit || 0) === 0
                           && Number(ozet.nakit_gider || 0) === 0
                           && Number(ozet.acilis || 0) === 0;
 
@@ -94,6 +110,10 @@ export default function CashCountPage() {
     if (busy) return;
     if (!storeId) { alert("Önce mağaza seç"); return; }
     if (!sayan.trim() || sayan.trim().length < 2) { alert("Sayan kişinin adını yaz"); return; }
+    if (acikVar && not.trim().length < 3) {
+      alert(ozet.acik_bugun_adet + " hesap hâlâ açık — kapanıştan sonra sayılır.\nÖnce hesapları kapat; kapatamıyorsan (borçlu gitti vs.) sebebini açıklamaya yaz.");
+      return;
+    }
     if (!bosOnay && notGerekli && not.trim().length < 3) {
       alert("₺" + Math.round(Math.abs(fark)) + " fark var — kısa bir açıklama yaz");
       return;
@@ -149,7 +169,7 @@ export default function CashCountPage() {
       <div style={{ fontSize: 24, fontWeight: 800, marginBottom: 4 }}>Kasa Sayımı</div>
       <div style={{ fontSize: 12, color: C.faint, marginBottom: 14 }}>
         {gun ? new Date(gun + "T12:00").toLocaleDateString("tr-TR", { weekday: "long", day: "numeric", month: "long" }) : "…"}
-        {" · gün 03:00'te biter"}
+        {" · gün 03:00'te biter · kapanışı yapan sayar"}
       </div>
 
       {/* Magaza secimi: birden fazlaysa VARSAYILAN YOK. Yanlis cekmeceyi
@@ -299,16 +319,24 @@ export default function CashCountPage() {
             </div>
           )}
 
-          {(Number(ozet.acik_bugun_adet) > 0 || Number(ozet.acik_eski_adet) > 0) && (
+          {(acikVar || Number(ozet.acik_eski_adet) > 0) && (
             <div onClick={() => navigate("/payment")} style={{ ...kart, marginBottom: 10, cursor: "pointer",
-                          fontSize: 13, color: C.muted, lineHeight: 1.6, display: "flex", alignItems: "center", gap: 8 }}>
-              <Ikon ad="bekleme" boy={14} />
+                          borderColor: acikVar ? C.down : C.line,
+                          fontSize: 13, color: acikVar ? C.ink : C.muted, lineHeight: 1.6,
+                          display: "flex", alignItems: "center", gap: 8 }}>
+              <Ikon ad={acikVar ? "uyari" : "bekleme"} boy={14} style={acikVar ? { color: C.down } : undefined} />
               <span style={{ flex: 1 }}>
-                {Number(ozet.acik_bugun_adet) > 0 &&
-                  <>Bu gece {ozet.acik_bugun_adet} açık hesap · {fmtTL(ozet.acik_bugun_tutar)}</>}
-                {Number(ozet.acik_bugun_adet) > 0 && Number(ozet.acik_eski_adet) > 0 && <br />}
+                {acikVar && (<>
+                  <b>Bu gece {ozet.acik_bugun_adet} hesap hâlâ açık · {fmtTL(ozet.acik_bugun_tutar)}</b>
+                  <br />
+                  <span style={{ color: C.muted }}>
+                    Sayım kapanıştan sonra yapılır — önce bu hesapları kapat, yoksa
+                    beklenen tutar eksik çıkar. Kapatamıyorsan sebebini açıklamaya yaz.
+                  </span>
+                </>)}
+                {acikVar && Number(ozet.acik_eski_adet) > 0 && <br />}
                 {Number(ozet.acik_eski_adet) > 0 &&
-                  <span style={{ color: C.faint }}>Eskiden kalan {ozet.acik_eski_adet} hesap · {fmtTL(ozet.acik_eski_tutar)}</span>}
+                  <span style={{ color: C.faint }}>Eskiden kalan {ozet.acik_eski_adet} hesap · {fmtTL(ozet.acik_eski_tutar)} — farka karışmaz</span>}
               </span>
               <Ikon ad="oksag" boy={14} />
             </div>
@@ -342,7 +370,22 @@ export default function CashCountPage() {
           </div>
 
           <div style={{ ...kart, marginBottom: 10 }}>
-            <div style={{ ...etiket, marginBottom: 8 }}>Sayan kişi</div>
+            <div style={{ ...etiket, marginBottom: 8 }}>Sayan kişi — kapanışı yapan sayar</div>
+            {/* Gunun vardiyasi tek dokunusla secilir; aktif vardiyadakiler belirgin.
+                Yazmak serbest kalir: vardiya kaydi acilmamis biri de sayabilmeli. */}
+            {vardiya.length > 0 && (
+              <div style={{ display: "flex", gap: 7, flexWrap: "wrap", marginBottom: 10 }}>
+                {vardiya.map(v => (
+                  <button key={v.ad} onClick={() => setSayan(v.ad)} style={{
+                    minHeight: 38, padding: "8px 13px", borderRadius: 9, cursor: "pointer",
+                    fontFamily: cv, fontSize: 13, fontWeight: 700,
+                    background: sayan === v.ad ? C.accent : "transparent",
+                    color: sayan === v.ad ? "#000" : v.aktif ? C.ink : C.faint,
+                    border: `1px solid ${sayan === v.ad ? C.accent : C.line}`,
+                  }}>{v.ad}{v.aktif ? "" : " (çıktı)"}</button>
+                ))}
+              </div>
+            )}
             <input value={sayan} onChange={e => setSayan(e.target.value)}
                    placeholder="Adı soyadı" style={inputS} />
             <div style={{ fontSize: 12, color: C.faint, marginTop: 6, lineHeight: 1.5 }}>
@@ -357,10 +400,14 @@ export default function CashCountPage() {
           </div>
 
           <button onClick={() => kaydet(false)} disabled={busy} style={{
-            width: "100%", minHeight: 52, background: C.accent, color: "#000", border: "none",
-            borderRadius: 12, fontSize: 16, fontWeight: 800, cursor: "pointer", fontFamily: cv,
-            opacity: busy ? 0.6 : 1,
-          }}>{busy ? "Kaydediliyor…" : "Sayımı mühürle"}</button>
+            width: "100%", minHeight: 52, border: "none", borderRadius: 12, fontSize: 16,
+            fontWeight: 800, cursor: "pointer", fontFamily: cv, opacity: busy ? 0.6 : 1,
+            background: acikVar && not.trim().length < 3 ? "#242424" : C.accent,
+            color: acikVar && not.trim().length < 3 ? C.faint : "#000",
+          }}>{busy ? "Kaydediliyor…"
+              : acikVar && not.trim().length < 3
+                ? `Önce ${ozet.acik_bugun_adet} açık hesabı kapat — ya da açıklama yaz`
+                : "Sayımı mühürle"}</button>
 
           <div style={{ fontSize: 12, color: C.faint, marginTop: 10, lineHeight: 1.6, textAlign: "center" }}>
             Kaydedildikten sonra silinemez. Yanlış saydıysan üstüne gerekçeli düzeltme girilir.

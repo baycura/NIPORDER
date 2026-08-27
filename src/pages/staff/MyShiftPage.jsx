@@ -1,9 +1,9 @@
-import{useState,useEffect}from"react";import{supabase}from"../../lib/supabase.js";import{useAuth}from"../../contexts/AuthContext.jsx";
+import{useState,useEffect}from"react";import{useNavigate}from"react-router-dom";import{supabase}from"../../lib/supabase.js";import{useAuth}from"../../contexts/AuthContext.jsx";
 import{businessDayStart,businessDayKey}from"../../lib/businessDay.js";
 import Ikon from "../../components/Ikon.jsx";
 const cv="'Coolvetica','Bebas Neue',sans-serif";const cvc="'Coolvetica Condensed','Barlow Condensed',sans-serif";
 export default function MyShiftPage(){
-  const{staffUser}=useAuth();const[orders,setOrders]=useState([]);const[shift,setShift]=useState(null);const[loading,setLoading]=useState(true);
+  const{staffUser}=useAuth();const navigate=useNavigate();const[orders,setOrders]=useState([]);const[shift,setShift]=useState(null);const[loading,setLoading]=useState(true);
   // Bu vardiyada SENIN verdigin ikramlar. Siparisi baskasi acmis olabilir, o
   // yuzden siparisin staff_id'sine degil kalemin treated_by alanina bakiyoruz.
   const[ikramlar,setIkramlar]=useState([]);
@@ -21,7 +21,26 @@ export default function MyShiftPage(){
   const workedMins=shift?.checked_in_at?Math.floor((Date.now()-new Date(shift.checked_in_at))/60000):0;
   const workedStr=workedMins>0?`${Math.floor(workedMins/60)}s ${workedMins%60}dk`:"—";
   const handleCheckIn=async()=>{const today=businessDayKey(new Date());const{data,error}=await supabase.from("shifts").upsert({staff_id:staffUser.id,date:today,checked_in_at:new Date().toISOString(),status:"active",store_id:staffUser?.store_ids?.[0]},{onConflict:"staff_id,date"}).select().single();if(error){alert("Vardiyaya girilemedi: "+error.message);return;}setShift(data);};
-  const handleCheckOut=async()=>{if(!confirm("Vardiyadan çıkış yapılsın mı? (Bildirimler kesilir)"))return;const today=businessDayKey(new Date());const{data}=await supabase.from("shifts").update({status:"done",checked_out_at:new Date().toISOString()}).eq("staff_id",staffUser.id).eq("date",today).select().single();setShift(data);};
+  const handleCheckOut=async()=>{
+    if(!confirm("Vardiyadan çıkış yapılsın mı? (Bildirimler kesilir)"))return;
+    const today=businessDayKey(new Date());
+    const{data}=await supabase.from("shifts").update({status:"done",checked_out_at:new Date().toISOString()}).eq("staff_id",staffUser.id).eq("date",today).select().single();
+    setShift(data);
+    // KAPANIS KURALI: dukkani kapatan vardiyada kim varsa kasayi o sayar.
+    // Son cikan = kapanisci. Baska aktif vardiya kalmadiysa ve bu gunun kasasi
+    // sayilmadiysa sayima yonlendir. Cikisi bloke etmez — sadece yakalar;
+    // atlanirsa gece bekcisi (03:15) sahibe Telegram'dan haber verir.
+    try{
+      const sid=staffUser?.store_ids?.length?staffUser.store_ids:["00000000-0000-0000-0000-000000000000"];
+      const[{count:aktifKalan},{count:sayim}]=await Promise.all([
+        supabase.from("shifts").select("id",{count:"exact",head:true}).eq("date",today).eq("status","active"),
+        supabase.from("cash_counts").select("id",{count:"exact",head:true}).eq("business_day",today).in("store_id",sid),
+      ]);
+      if((aktifKalan||0)===0&&(sayim||0)===0){
+        if(confirm("Sen son çıkansın ve bu gecenin kasası henüz sayılmadı.\nKapanışı yapan sayar — şimdi sayalım mı?"))navigate("/cash-count");
+      }
+    }catch(e){/* kontrol basarisizsa cikis yine de tamamlanmis olsun */}
+  };
   return(<div>
     <div style={{display:"flex",justifyContent:"space-between",alignItems:"center",marginBottom:24}}>
       <h1 style={{color:"#F0EDE8",fontFamily:cv,fontSize:28,letterSpacing:"-0.5px",margin:0}}>Vardiyam</h1>
