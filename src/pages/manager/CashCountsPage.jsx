@@ -173,6 +173,32 @@ export default function CashCountsPage() {
                     <span style={{ color: C.ink, fontVariantNumeric: "tabular-nums" }}>{fmtTL(v)}</span>
                   </div>
                 ))}
+
+                {/* Kartin bagimsiz dogrulamasi: POS cihazinin gunsonu ile
+                    sistemin kart toplami. Girilmemisse hic gosterilmez. */}
+                {gecerli.pos_gunsonu != null && (() => {
+                  const f = Number(gecerli.pos_gunsonu) - Number(gecerli.kart_satis || 0);
+                  const tuttu = Math.abs(f) < 0.005;
+                  return (
+                    <div style={{ marginTop: 8, paddingTop: 8, borderTop: `1px solid ${C.line}` }}>
+                      <div style={{ display: "flex", justifyContent: "space-between" }}>
+                        <span>POS gün sonu</span>
+                        <span style={{ color: C.ink, fontVariantNumeric: "tabular-nums" }}>{fmtTL(gecerli.pos_gunsonu)}</span>
+                      </div>
+                      <div style={{ display: "flex", justifyContent: "space-between" }}>
+                        <span>Sistem kart tahsilatı</span>
+                        <span style={{ color: C.ink, fontVariantNumeric: "tabular-nums" }}>{fmtTL(gecerli.kart_satis)}</span>
+                      </div>
+                      <div style={{ display: "flex", justifyContent: "space-between", fontWeight: 800,
+                                    color: tuttu ? "#7FA88A" : C.down }}>
+                        <span>{tuttu ? "Kart tuttu" : "Kart farkı"}</span>
+                        <span style={{ fontVariantNumeric: "tabular-nums" }}>
+                          {tuttu ? "✓" : (f > 0 ? "+" : "") + fmtTL(f)}
+                        </span>
+                      </div>
+                    </div>
+                  );
+                })()}
                 {gecerli.note && (
                   <div style={{ marginTop: 8, color: C.ink }}>
                     <Ikon ad="not" boy={13} style={{ marginRight: 6 }} />{gecerli.note}

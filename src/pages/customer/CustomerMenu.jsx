@@ -1274,11 +1274,22 @@ export default function CustomerMenu() {
     setSubmitting(false);
   };
 
+  // Bayraklar kaldirilirken etiketlerin ILK HARFI de silinmis: TR/EN/RU
+  // yerine R/N/U yaziyordu. Kod dizisinden uretiliyor ki bir daha elle
+  // yazilan harf kaymasin — karsilama ekrani (asagida) da ayni deseni
+  // kullaniyor.
   const LangSwitcher = () => (
     <div style={{display:"flex",gap:4,background:"#f2f2f2",borderRadius:18,padding:3}}>
-      <button onClick={() => setLanguage("tr")} style={{padding:"10px 16px",minWidth:48,minHeight:36,background:lang==="tr"?"#000":"transparent",color:lang==="tr"?"#fff":"#666",border:"none",borderRadius:14,fontSize:11,fontWeight:700,cursor:"pointer"}}>R</button>
-      <button onClick={() => setLanguage("en")} style={{padding:"10px 16px",minWidth:48,minHeight:36,background:lang==="en"?"#000":"transparent",color:lang==="en"?"#fff":"#666",border:"none",borderRadius:14,fontSize:11,fontWeight:700,cursor:"pointer"}}>N</button>
-      <button onClick={() => setLanguage("ru")} style={{padding:"10px 16px",minWidth:48,minHeight:36,background:lang==="ru"?"#000":"transparent",color:lang==="ru"?"#fff":"#666",border:"none",borderRadius:14,fontSize:11,fontWeight:700,cursor:"pointer"}}>U</button>
+      {["tr","en","ru"].map(k => (
+        <button key={k} onClick={() => setLanguage(k)}
+          style={{padding:"10px 16px",minWidth:48,minHeight:36,
+                  background:lang===k?"#000":"transparent",
+                  color:lang===k?"#fff":"#666",
+                  border:"none",borderRadius:14,fontSize:11,fontWeight:700,
+                  letterSpacing:"0.06em",cursor:"pointer",fontFamily:"inherit"}}>
+          {k.toUpperCase()}
+        </button>
+      ))}
     </div>
   );
 

@@ -11,7 +11,7 @@ const hv = "'Bebas Neue','Barlow Condensed','Coolvetica Condensed',sans-serif";
 
 const C = {
   card: "#161616", line: "#2A2A2A", ink: "#F0EDE8", muted: "#8A8A86",
-  faint: "#666666", accent: "#FFFFFF", down: "#C87A6A",
+  faint: "#666666", accent: "#FFFFFF", down: "#C87A6A", up: "#7FA88A",
 };
 
 // Kasa Sayimi — kapanista cekmecedeki nakdi sayip "olmasi gereken" ile
@@ -32,6 +32,10 @@ export default function CashCountPage() {
   const [adetler, setAdetler] = useState({});
   const [bozukAcik, setBozukAcik] = useState(false);
   const [cekilen, setCekilen] = useState("");
+  // POS cihazinin gunsonu (Z) kart toplami — kartin BAGIMSIZ dogrulamasi.
+  // Kasa sayimi nakdi dogruluyor, stok sayimi tuketimi; kart tarafinda
+  // sistemin kendi kaydindan baska kaynak yoktu.
+  const [pos, setPos] = useState("");
   const [sayan, setSayan] = useState(staffUser?.name || "");
   const [not, setNot] = useState("");
   const [busy, setBusy] = useState(false);
@@ -139,9 +143,11 @@ export default function CashCountPage() {
       denoms: bosOnay ? {} : denomsTemizle(adetler),
       // Devirde para cekmecede kalir; "cekmeceden alinan" yalniz kapanista.
       withdrawn: kapanis ? Number(cekilen) || 0 : 0,
+      // POS gunsonu yalniz kapanista anlamli (Z raporu gun sonu isi).
+      pos_gunsonu: kapanis && pos !== "" && isFinite(Number(pos)) ? Number(pos) : null,
       counted_by_person: sayan.trim(),
       note: not.trim() || null,
-    }).select("counted_total,expected_cash,difference,business_day,tur").single();
+    }).select("counted_total,expected_cash,difference,business_day,tur,pos_gunsonu,kart_satis").single();
     setBusy(false);
     if (error) { alert("Kaydedilemedi: " + error.message); return; }
     try { localStorage.removeItem(TASLAK_KEY(storeId, gun)); } catch (e) { /* onemsiz */ }
@@ -401,6 +407,40 @@ export default function CashCountPage() {
                 <div style={{ color: C.faint }}>Bugün kart/online/borç/puan yok.</div>}
             </div>
           </div>
+
+          {/* POS gunsonu: kartin bagimsiz dogrulamasi. Istege bagli —
+              girilmezse kapanis engellenmez, yorgun geceyi kilitlemek
+              kurali oldurur. Girilirse fark aninda gorunur. */}
+          {kapanis && (
+            <div style={{ ...kart, marginBottom: 10 }}>
+              <div style={{ ...etiket, marginBottom: 8 }}>POS cihazı gün sonu (Z raporu)</div>
+              <input type="number" inputMode="decimal" min="0" value={pos}
+                     onChange={e => setPos(e.target.value)} placeholder="Cihazın yazdığı kart toplamı"
+                     style={inputS} />
+              <div style={{ display: "flex", justifyContent: "space-between", fontSize: 13,
+                            color: C.muted, marginTop: 9, lineHeight: 1.8 }}>
+                <span>Sistemdeki kart tahsilatı</span>
+                <span style={{ fontVariantNumeric: "tabular-nums" }}>{fmtTL(ozet.kart)}</span>
+              </div>
+              {pos !== "" && isFinite(Number(pos)) && (() => {
+                const f = Number(pos) - Number(ozet.kart || 0);
+                const tuttu = Math.abs(f) < 0.005;
+                return (
+                  <div style={{ display: "flex", justifyContent: "space-between", fontSize: 14,
+                                fontWeight: 800, marginTop: 4, color: tuttu ? C.up : C.down }}>
+                    <span>{tuttu ? "Tuttu" : "Fark"}</span>
+                    <span style={{ fontVariantNumeric: "tabular-nums" }}>
+                      {tuttu ? "✓" : (f > 0 ? "+" : "") + fmtTL(f)}
+                    </span>
+                  </div>
+                );
+              })()}
+              <div style={{ fontSize: 12, color: C.faint, marginTop: 8, lineHeight: 1.5 }}>
+                İstersen boş bırak. Girersen kart tarafı da bağımsız doğrulanmış olur —
+                cihazda görünüp sistemde olmayan tahsilat buradan çıkar.
+              </div>
+            </div>
+          )}
 
           {/* Cekmeceden para alma yalniz kapanista: devirde para cekmecede
               kalir, gelen vardiya sayilmis cekmeceyi teslim alir. */}
