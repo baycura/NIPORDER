@@ -26,6 +26,11 @@ export default function PaymentPage() {
   const [modal, setModal] = useState(null);
   const [method, setMethod] = useState("cash");
   const [amount, setAmount] = useState("");
+  // Tutar kilidi: hesap toplamindan farkli tutar ancak gerekceyle gecer.
+  // Canli olcum: ciro (orders.total) ile kasa (payments.amount) tum zamanlarda
+  // TL 5.370 ayrismis, 19 siparis. Atomik RPC odeme kaydinin KAYBOLMASINI
+  // cozdu ama tutar alani serbest kaldigi icin bu sinif devam ediyordu.
+  const [farkNedeni, setFarkNedeni] = useState("");
   const [customerId, setCustomerId] = useState(null);
   const [customerSearch, setCustomerSearch] = useState("");
   const [uyeAcik, setUyeAcik] = useState(false); // nakit/kartta uye secici kapali baslar
@@ -65,7 +70,7 @@ export default function PaymentPage() {
   const openPay = (o) => {
     setModal(o); setMethod("cash"); setAmount(String(o.total || 0));
     setCustomerId(null); setCustomerSearch(""); setUyeAcik(false);
-    setUsePoints(!!o.use_points); setMemberPts(null);
+    setUsePoints(!!o.use_points); setMemberPts(null); setFarkNedeni("");
     // Uyeye bagli siparis: cuzdan bakiyesi gosterilir, kasiyer puanla kapatabilir
     if (o.customer_id) {
       supabase.from("customers").select("name, points").eq("id", o.customer_id).maybeSingle()
@@ -77,6 +82,14 @@ export default function PaymentPage() {
   // ve kasiyer degistiremez; degilse kasiyer tahsilat aninda secebilir.
   const uyeId = modal?.customer_id || customerId;
   const uyeKilitli = !!modal?.customer_id;
+
+  // Fark tespiti sunucudaki kuralla BIREBIR ayni olmali, yoksa ekran "tamam"
+  // derken sunucu reddeder: karsilastirma hesap toplamiyla (puan dusumuyle
+  // degil), puanli odemede kural atlanir.
+  const farkTutari = modal ? Number(amount || 0) - Number(modal.total || 0) : 0;
+  const farkVar = !!modal && Number(amount || 0) > 0
+                  && !(usePoints && uyeId)
+                  && Math.abs(farkTutari) > 0.005;
 
   // Kasada secilen uyenin puani da cekilir ki "puanla ode" onun icin de calissin.
   const secUye = (id) => {
@@ -150,6 +163,10 @@ export default function PaymentPage() {
     // Puan tum tutari karsiliyorsa nakit 0 olabilir
     if ((!amt || amt <= 0) && !(usePoints && ptsCover(modal) >= Number(modal.total || 0))) { alert("Geçerli tutar gir"); return; }
     if (method === "debt" && !uyeId) { alert("Borç için müşteri seç"); return; }
+    if (farkVar && farkNedeni.trim().length < 2) {
+      alert("Girilen tutar hesaptan farklı — nedenini yaz (bahşiş, indirim, eksik tahsilat…)");
+      return;
+    }
 
     setBusy(true);
     const { data, error } = await supabase.rpc("nip_odeme_al", {
@@ -158,6 +175,7 @@ export default function PaymentPage() {
       p_amount: amt > 0 ? amt : 0,
       p_customer_id: customerId || null,
       p_use_points: !!(usePoints && uyeId),
+      p_fark_nedeni: farkVar ? farkNedeni.trim() : null,
     });
     setBusy(false);
     if (error) { alert("Tahsilat yapılamadı: " + error.message); return; }
@@ -349,18 +367,56 @@ export default function PaymentPage() {
                     ₺{v}
                   </button>
                 ))}
-                <button onClick={()=>setAmount(String(Math.max(0, Number(modal.total||0) - (usePoints && uyeId ? ptsCover(modal) : 0))))}
+                <button onClick={()=>{setAmount(String(Math.max(0, Number(modal.total||0) - (usePoints && uyeId ? ptsCover(modal) : 0)))); setFarkNedeni("");}}
                   style={{flex:1.3,padding:"12px 0",background:"#FFFFFF",color:"#0C0C0C",border:"1px solid #FFFFFF",
                           borderRadius:10,fontSize:14,fontWeight:700,cursor:"pointer",fontFamily:"inherit"}}>
                   Kalan
                 </button>
               </div>
+
+              {/* TUTAR KILIDI: hesaptan farkli tutar sessizce gecmez. Fark
+                  tespiti degil BEYAN istiyoruz — 40 lira fazlanin bahsis mi
+                  yanlis tus mu oldugunu ancak o an kasadaki kisi bilir. */}
+              {farkVar && (
+                <div style={{marginTop:10,padding:"11px 13px",background:"#0C0C0C",
+                             border:"1px solid #C87A6A",borderRadius:10}}>
+                  <div style={{fontSize:13,fontWeight:800,color:"#C87A6A",marginBottom:2}}>
+                    Hesap ₺{Math.round(Number(modal.total||0))} — {farkTutari > 0 ? "fazla" : "eksik"} ₺{Math.abs(Math.round(farkTutari))}
+                  </div>
+                  <div style={{fontSize:12,color:"#888",marginBottom:9,lineHeight:1.5}}>
+                    Yanlış yazdıysan "Kalan"a bas. Doğruysa nedenini yaz — kasa sayımında bu fark karşına çıkacak.
+                  </div>
+                  <div style={{display:"flex",gap:6,marginBottom:8,flexWrap:"wrap"}}>
+                    {(farkTutari > 0 ? ["Bahşiş","Üstü kalsın"] : ["İndirim","Eksik tahsilat"]).map(s => (
+                      <button key={s} onClick={()=>setFarkNedeni(s)}
+                        style={{minHeight:34,padding:"7px 12px",borderRadius:8,cursor:"pointer",fontFamily:"inherit",
+                                fontSize:12,fontWeight:700,
+                                background:farkNedeni===s?"#FFFFFF":"transparent",
+                                color:farkNedeni===s?"#000":"#aaa",
+                                border:"1px solid "+(farkNedeni===s?"#FFFFFF":"#333")}}>{s}</button>
+                    ))}
+                  </div>
+                  <input value={farkNedeni} onChange={e=>setFarkNedeni(e.target.value)}
+                         placeholder="Fark nedeni…"
+                         style={{width:"100%",padding:"11px 12px",background:"#161616",border:"1px solid #2A2A2A",
+                                 borderRadius:9,color:"#F0EDE8",fontSize:14,outline:"none",fontFamily:"inherit",
+                                 boxSizing:"border-box"}}/>
+                </div>
+              )}
             </div>
 
 
             <div style={{display:"flex",gap:8}}>
               <button onClick={() => setModal(null)} style={{flex:1,padding:"14px",background:"transparent",color:"#888",border:"1px solid #333",borderRadius:10,fontSize:14,fontWeight:700,cursor:"pointer"}}>Iptal</button>
-              <button onClick={completePayment} disabled={busy} style={{flex:2,padding:"14px",background:"#FFFFFF",color:"#000",border:"none",borderRadius:10,fontSize:14,fontWeight:800,cursor:"pointer",opacity:busy?0.6:1}}>{busy?"Kaydediliyor...":(method==="debt"?"Borca Yaz":"Tahsilat")}</button>
+              <button onClick={completePayment} disabled={busy || (farkVar && farkNedeni.trim().length < 2)}
+                style={{flex:2,padding:"14px",border:"none",borderRadius:10,fontSize:14,fontWeight:800,
+                        fontFamily:"inherit",opacity:busy?0.6:1,
+                        background:(farkVar && farkNedeni.trim().length < 2)?"#242424":"#FFFFFF",
+                        color:(farkVar && farkNedeni.trim().length < 2)?"#666":"#000",
+                        cursor:(farkVar && farkNedeni.trim().length < 2)?"default":"pointer"}}>
+                {busy?"Kaydediliyor..."
+                  :(farkVar && farkNedeni.trim().length < 2)?"Fark nedenini yaz"
+                  :(method==="debt"?"Borca Yaz":"Tahsilat")}</button>
             </div>
           </div>
         </div>
