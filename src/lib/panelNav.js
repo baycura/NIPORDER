@@ -32,6 +32,7 @@ export const GRUPLAR = [
     ad: "MENÜ & ÜRÜNLER", manager: true,
     items: [
       { to: "/menu-mgmt",         icon: "menu", label: "Menü Yönetimi" },
+      { to: "/party-menu",        icon: "kampanya", label: "Parti Menüsü" },
       { to: "/recipes",           icon: "recete", label: "Reçeteler" },
       { to: "/stock-mgmt",        icon: "arsiv", label: "Stok Yönetimi" },
       { to: "/costs",             icon: "gider", label: "Eksik Maliyetler" },

@@ -27,6 +27,7 @@ import MembersPage from "./pages/manager/MembersPage.jsx";
 import MerchMgmtPage from "./pages/manager/MerchMgmtPage.jsx";
 import SettingsPage from "./pages/manager/SettingsPage.jsx";
 import MenuMgmtPage from "./pages/manager/MenuMgmtPage.jsx";
+import PartyMenuPage from "./pages/manager/PartyMenuPage.jsx";
 import TasksPage from "./pages/manager/TasksPage.jsx";
 import ContentPage from "./pages/manager/ContentPage.jsx";
 import PollsPage from "./pages/manager/PollsPage.jsx";
@@ -95,6 +96,7 @@ function AppRoutes() {
         <Route path="polls"            element={<PrivateRoute managerOnly><PollsPage /></PrivateRoute>} />
         <Route path="settings"         element={<PrivateRoute managerOnly><SettingsPage /></PrivateRoute>} />
         <Route path="menu-mgmt"        element={<PrivateRoute managerOnly><MenuMgmtPage /></PrivateRoute>} />
+        <Route path="party-menu"       element={<PrivateRoute managerOnly><PartyMenuPage /></PrivateRoute>} />
         <Route path="tables-mgmt"      element={<PrivateRoute managerOnly><TablesMgmtPage /></PrivateRoute>} />
         <Route path="recipes"          element={<PrivateRoute managerOnly><RecipesMgmtPage /></PrivateRoute>} />
         <Route path="fixed-expenses"   element={<PrivateRoute adminOnly><FixedExpensesPage /></PrivateRoute>} />
