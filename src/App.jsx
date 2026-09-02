@@ -32,6 +32,7 @@ import TasksPage from "./pages/manager/TasksPage.jsx";
 import ContentPage from "./pages/manager/ContentPage.jsx";
 import PollsPage from "./pages/manager/PollsPage.jsx";
 import RidesPage from "./pages/manager/RidesPage.jsx";
+import ReservePage from "./pages/manager/ReservePage.jsx";
 import TablesMgmtPage from "./pages/manager/TablesMgmtPage.jsx";
 import RecipesMgmtPage from "./pages/manager/RecipesMgmtPage.jsx";
 import InvoicesPage from "./pages/manager/InvoicesPage.jsx";
@@ -96,6 +97,7 @@ function AppRoutes() {
         <Route path="content"          element={<PrivateRoute managerOnly><ContentPage /></PrivateRoute>} />
         <Route path="polls"            element={<PrivateRoute managerOnly><PollsPage /></PrivateRoute>} />
         <Route path="rides"            element={<PrivateRoute managerOnly><RidesPage /></PrivateRoute>} />
+        <Route path="reserve"          element={<PrivateRoute managerOnly><ReservePage /></PrivateRoute>} />
         <Route path="settings"         element={<PrivateRoute managerOnly><SettingsPage /></PrivateRoute>} />
         <Route path="menu-mgmt"        element={<PrivateRoute managerOnly><MenuMgmtPage /></PrivateRoute>} />
         <Route path="party-menu"       element={<PrivateRoute managerOnly><PartyMenuPage /></PrivateRoute>} />
