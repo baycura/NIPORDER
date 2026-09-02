@@ -5,6 +5,7 @@ import { happyHourPrices } from "../../lib/happyHour.js";
 import { optionsText, optionMod } from "../../lib/productOptions.js";
 import { useAuth } from "../../contexts/AuthContext.jsx";
 import Ikon from "../../components/Ikon.jsx";
+import { partiDurumOku } from "../../lib/parti.js";
 
 const cv = "-apple-system,BlinkMacSystemFont,'Segoe UI',Roboto,sans-serif";
 
@@ -173,6 +174,23 @@ export default function OrderDetailPage() {
   };
 
   // SIK EKLEDIKLERIN: bu garsonun son 30 gunde en cok ekledigi alti urun.
+  // Parti menusu acikken kasa listesi de kisilir. tumMenu = gecici cikis:
+  // musteri parti disi bir sey isterse satis engellenmesin.
+  const [partiAktif, setPartiAktif] = useState(false);
+  const [partiAdet, setPartiAdet] = useState(0);
+  const [tumMenu, setTumMenu] = useState(false);
+  useEffect(() => {
+    const magaza = staffUser?.store_ids?.[0];
+    if (!magaza) return;
+    let iptal = false;
+    supabase.rpc("nip_parti_durum", { p_store_id: magaza }).then(({ data, error }) => {
+      if (iptal) return;
+      const d = partiDurumOku(data, error);
+      setPartiAktif(d.aktif); setPartiAdet(d.urunSayisi);
+    });
+    return () => { iptal = true; };
+  }, [staffUser?.id]);
+
   // Aksam trafiginde "latte" yazip aramak yerine tek dokunus.
   const [sikUrunler, setSikUrunler] = useState([]);
   useEffect(() => {
@@ -333,21 +351,28 @@ export default function OrderDetailPage() {
   // basiyla eslesenler one gelir. Bossa secili kategorinin listesi.
   const trLow = (s) => String(s || "").toLocaleLowerCase("tr");
   const q = trLow(prodSearch.trim());
-  const filteredProducts = q
-    ? products
-        .filter(p => trLow(p.name).includes(q) || trLow(p.name_en).includes(q) || trLow(p.brand).includes(q))
-        .sort((a, b) => (trLow(a.name).startsWith(q) ? 0 : 1) - (trLow(b.name).startsWith(q) ? 0 : 1))
-    : products.filter(p => p.category_id === selectedCat);
+  // PARTI FILTRESI: gece 1'de 142 urun arasinda urun aramak servisi yavaslatan
+  // asil sey. Parti acikken liste parti urunlerine iner. "Tum menu" cikisi
+  // BILEREK duruyor — musteri parti disi bir sey isterse satis engellenmemeli.
+  const partiSuzulu = partiAktif && !tumMenu ? products.filter(p => p.show_in_party_menu) : products;
   const catNameOf = (p) => categories.find(c => c.id === p.category_id)?.name || "";
   // Kasada hiyerarsi yok: yalniz icinde urun olan kategoriler cip olarak cikar,
   // alt kategoriler ust kategorisinin hemen ardinda siralanir.
   const catChips = categories
-    .filter(c => products.some(p => p.category_id === c.id))
+    .filter(c => partiSuzulu.some(p => p.category_id === c.id))
     .map(c => {
       const par = c.parent_id ? categories.find(x => x.id === c.parent_id) : null;
       return { ...c, _key: (par ? (par.sort_order || 0) : (c.sort_order || 0)) * 1000 + (par ? (c.sort_order || 0) : 0) };
     })
     .sort((a, b) => a._key - b._key);
+  // Parti acilinca secili kategori listeden dusmus olabilir (o kategoride
+  // parti urunu yok). Bos ekran gostermek yerine ilk gecerli cipe kay.
+  const aktifCat = catChips.some(c => c.id === selectedCat) ? selectedCat : catChips[0]?.id;
+  const filteredProducts = q
+    ? partiSuzulu
+        .filter(p => trLow(p.name).includes(q) || trLow(p.name_en).includes(q) || trLow(p.brand).includes(q))
+        .sort((a, b) => (trLow(a.name).startsWith(q) ? 0 : 1) - (trLow(b.name).startsWith(q) ? 0 : 1))
+    : partiSuzulu.filter(p => p.category_id === aktifCat);
   const where = order.table_id ? (tables[order.table_id] || "Masa") : null;
 
   return (
@@ -507,10 +532,31 @@ export default function OrderDetailPage() {
                 </div>
               </div>
             )}
+            {/* Parti seridi: liste neden kisa, ve tam menuye nasil donulur. */}
+            {partiAktif && (
+              <div style={{display:"flex",alignItems:"center",gap:9,marginTop:10,padding:"9px 12px",
+                           background:tumMenu?"#161616":"#FFFFFF",borderRadius:10,
+                           border:"1px solid "+(tumMenu?"#2A2A2A":"#FFFFFF"),
+                           color:tumMenu?"#F0EDE8":"#000"}}>
+                <Ikon ad="kampanya" boy={15} style={{flexShrink:0}}/>
+                <span style={{flex:1,fontSize:12,fontWeight:700,lineHeight:1.4}}>
+                  {tumMenu
+                    ? `Tüm menü açık — parti listesi ${partiAdet} ürün`
+                    : `Parti menüsü · ${partiAdet} ürün`}
+                </span>
+                <button onClick={() => setTumMenu(v => !v)} style={{
+                  padding:"7px 11px",borderRadius:8,fontSize:11,fontWeight:800,cursor:"pointer",
+                  fontFamily:"inherit",whiteSpace:"nowrap",
+                  background:tumMenu?"#FFFFFF":"rgba(0,0,0,0.12)",
+                  color:tumMenu?"#000":"#000",
+                  border:"1px solid "+(tumMenu?"#FFFFFF":"rgba(0,0,0,0.25)"),
+                }}>{tumMenu ? "Partiye dön" : "Tüm menü"}</button>
+              </div>
+            )}
             {!q && (
             <div style={{display:"flex",gap:5,overflowX:"auto",marginTop:10,paddingBottom:4}}>
               {catChips.map(c => (
-                <button key={c.id} onClick={() => setSelectedCat(c.id)} style={{flexShrink:0,padding:"6px 10px",border:"1px solid "+(selectedCat===c.id?"#FFFFFF":"#333"),borderRadius:12,fontSize:12,fontWeight:600,background:selectedCat===c.id?"rgba(255,255,255,0.2)":"#1A1A1A",color:selectedCat===c.id?"#FFFFFF":"#aaa",cursor:"pointer",whiteSpace:"nowrap",letterSpacing:"0.2px"}}>
+                <button key={c.id} onClick={() => setSelectedCat(c.id)} style={{flexShrink:0,padding:"6px 10px",border:"1px solid "+(aktifCat===c.id?"#FFFFFF":"#333"),borderRadius:12,fontSize:12,fontWeight:600,background:aktifCat===c.id?"rgba(255,255,255,0.2)":"#1A1A1A",color:aktifCat===c.id?"#FFFFFF":"#aaa",cursor:"pointer",whiteSpace:"nowrap",letterSpacing:"0.2px"}}>
                   {c.icon}{c.name?.toUpperCase()}
                 </button>
               ))}

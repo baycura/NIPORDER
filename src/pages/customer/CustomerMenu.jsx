@@ -496,8 +496,16 @@ export default function CustomerMenu() {
   const audioUnlockedRef = useRef(false);
 
   const now = new Date();
-  const partyMode = settings && settings.party_mode_enabled &&
-    isInRange(now, settings.party_mode_from, settings.party_mode_until);
+  // PARTI MODU iki yoldan acilir:
+  //  1. MANUEL — vardiyadaki calisan Masalar ekranindaki dugmeye basar;
+  //     party_manual_until damgasi konur (sunucu saati, mutlak an).
+  //  2. PROGRAMLI — eski davranis: party_mode_enabled + gun + saat penceresi.
+  // Manuel yol mutlak zaman damgasi tasidigi icin cihaz saatinin kaymasindan
+  // saat penceresi kadar etkilenmez.
+  const partyManual = !!(settings && settings.party_manual_until &&
+    now < new Date(settings.party_manual_until));
+  const partyMode = partyManual || !!(settings && settings.party_mode_enabled &&
+    isInRange(now, settings.party_mode_from, settings.party_mode_until));
 
   // Uye sistemi: Google ile giren musteri + urun bazli sabit (₺) indirimleri
   const { customer, signInWithGoogle, signOut, loading: authLoading, refreshCustomer } = useAuth();
@@ -930,9 +938,18 @@ export default function CustomerMenu() {
   };
 
   // Menude gorunen tum kategoriler (ust + alt).
-  const menuCategories = useMemo(
-    () => categories.filter(c => !c.show_in_shop), // raf urunleri Menu'de degil Shop sekmesinde
-    [categories]);
+  // Parti gecesi: icinde parti urunu OLMAYAN kategori hic gosterilmez. Aksi
+  // halde musteri "Kahveler"e dokunup bos ekran gorurdu — sert filtre yalniz
+  // urun listesine uygulanip kategori serisi oldugu gibi kalirsa olan bu.
+  // Alt kategorisi olan ust kategoriler de korunur (kendi urunu olmayabilir).
+  const menuCategories = useMemo(() => {
+    const gorunur = categories.filter(c => !c.show_in_shop); // raf urunleri Shop sekmesinde
+    if (!partyMode) return gorunur;
+    const doluId = new Set(products.filter(p => p.show_in_party_menu).map(p => p.category_id));
+    const ustler = new Set(
+      gorunur.filter(c => c.parent_id && doluId.has(c.id)).map(c => c.parent_id));
+    return gorunur.filter(c => doluId.has(c.id) || ustler.has(c.id));
+  }, [categories, products, partyMode]);
 
   // SIPARIS SAATI: kategorinin available_from/until araligi. Kategori GIZLENMEZ —
   // menu her saat okunabilir; saat disinda urunler silik gorunur ve "+" calismaz.
@@ -1057,11 +1074,13 @@ export default function CustomerMenu() {
   // Urunler bolum bolum: [{ key, title, items }]. Alt kategori secilmisse tek
   // bolum (basliksiz), "Tumu" ise her alt kategori kendi basligiyla listelenir.
   const productSections = useMemo(() => {
-    const party = (list) => {
-      if (!partyMode) return list;
-      const only = list.filter(p => p.show_in_party_menu);
-      return only.length > 0 ? only : list;
-    };
+    // SERT FILTRE. Eskiden burada bir taviz vardi: "bu kategoride hic isaretli
+    // urun yoksa hepsini goster" (only.length > 0 ? only : list). O taviz,
+    // sahibin acik istegiyle celisiyordu — "normal menu gozukmesin" — cunku
+    // isaretlenmemis her kategori parti gecesi oldugu gibi aciliyordu.
+    // Menunun tamamen bosalma riski SUNUCUDA kapali: nip_parti_ac, satista
+    // isaretli urun yoksa partiyi acmayi reddediyor.
+    const party = (list) => partyMode ? list.filter(p => p.show_in_party_menu) : list;
     const inCat = (id) => party(products.filter(p => p.category_id === id));
 
     // hours: bolum basliginin altinda gorunen siparis saati araligi
