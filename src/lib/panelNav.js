@@ -47,6 +47,7 @@ export const GRUPLAR = [
       { to: "/members",    icon: "uye", label: "Üyeler & Borç" },
       { to: "/happy-hour", icon: "kampanya", label: "Happy Hour" },
       { to: "/polls",      icon: "oylama", label: "Oylamalar" },
+      { to: "/rides",      icon: "surus", label: "Sürüşler" },
       { to: "/content",    icon: "blog", label: "Vitrin & Blog" },
     ],
   },
