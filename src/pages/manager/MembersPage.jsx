@@ -159,7 +159,7 @@ export default function MembersPage() {
   const filtered = members.filter(m => {
     if (search) {
       const s = search.toLowerCase();
-      if (!m.name?.toLowerCase().includes(s) && !m.email?.toLowerCase().includes(s)) return false;
+      if (!m.name?.toLowerCase().includes(s) && !m.email?.toLowerCase().includes(s) && !m.member_code?.toLowerCase().includes(s)) return false;
     }
     if (filter === "debtors") return Number(m.outstanding_balance) > 0;
     if (filter === "members") return !!m.auth_user_id;
@@ -208,6 +208,9 @@ export default function MembersPage() {
                 <div style={{fontSize:14,fontWeight:700,color:"#F0EDE8"}}>{m.name}</div>
                 {m.admin_discount > 0 && <span style={{fontSize:9,padding:"2px 6px",background:"#2A2A2A",color:"#F0EDE8",borderRadius:6,fontWeight:700}}>-%{m.admin_discount}</span>}
                 {m.auth_user_id && <span style={{fontSize:9,padding:"2px 6px",background:"#222222",color:"#F0EDE8",borderRadius:6,fontWeight:700}}>Üye</span>}
+                {/* BIRLESTIRME ADIM 3: rezervasyon sitesinden gelen uye kodu. Kapida
+                    "kodun ne?" diye sorulan sey bu; arama da bu kodla calisiyor. */}
+                {m.member_code && <span style={{fontSize:9,padding:"2px 6px",background:"#1E2A1E",color:"#B8E0B8",borderRadius:6,fontWeight:700,letterSpacing:"0.5px"}}>{m.member_code}</span>}
                 {m.imported_from_old_system && <span style={{fontSize:9,padding:"2px 6px",background:"#2A2A2A",color:"#F0EDE8",borderRadius:6,fontWeight:700}}>Eski</span>}
               </div>
               {m.email && <div style={{fontSize:11,color:"#888",marginTop:2}}>{m.email}</div>}
@@ -230,6 +233,11 @@ export default function MembersPage() {
             <Field label="EMAIL"><input value={form.email||""} onChange={e=>setForm({...form,email:e.target.value})} style={inputS}/></Field>
           </div>
           <Field label="TELEFON"><input value={form.phone||""} onChange={e=>setForm({...form,phone:e.target.value})} style={inputS}/></Field>
+          {modal.mode === "edit" && modal.data?.member_code && (
+            // Salt okunur: kod rezervasyon sisteminden geliyor, elle degistirilmez.
+            // Veritabani tarafinda da kilitli (trg_customers_guard_identity).
+            <Field label="ÜYE KODU"><div style={{...inputS,color:"#B8E0B8",letterSpacing:"1px",fontWeight:700,userSelect:"all"}}>{modal.data.member_code}</div></Field>
+          )}
 
           {modal.mode === "edit" && stats && (
             <div style={{background:"#152015",border:"1px solid #2A2A2A",borderRadius:10,padding:12,marginBottom:12}}>
