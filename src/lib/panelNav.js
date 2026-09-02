@@ -48,6 +48,11 @@ export const GRUPLAR = [
       { to: "/happy-hour", icon: "kampanya", label: "Happy Hour" },
       { to: "/polls",      icon: "oylama", label: "Oylamalar" },
       { to: "/rides",      icon: "surus", label: "Sürüşler" },
+      // Rezervasyon sitesi ayri projede calismaya devam ediyor; bu sayfa ona
+      // sahibin kendi yetkisiyle baglanir (lib/reserve.js). Yazma yetkisi
+      // RESERVE'deki profiles.is_admin'e bagli — menu goruntusu manager, yetki
+      // o tarafta.
+      { to: "/reserve",    icon: "etkinlik", label: "Rezervasyon" },
       { to: "/content",    icon: "blog", label: "Vitrin & Blog" },
     ],
   },

@@ -1,7 +1,8 @@
 // Order -> Reservation tek giris koprusu.
 //
 // DIKKAT: Bu fonksiyon ORDER projesinde degil, NIP RESERVE projesinde
-// (diqparjrtvvfxvwxebov) calisir. Dosya surum takibi icin bu depoda durur.
+// (diqparjrtvvfxvwxebov) calisir. Dosya surum takibi icin NIPORDER deposunda
+// supabase/functions/order-sso/index.ts olarak durur.
 //
 // Neden: iki uygulama iki ayri Supabase projesi; Order'da giris yapmis uye
 // rezervasyon sitesine gecince "yeniden uye ol" duvariyla karsilasiyordu.
@@ -10,9 +11,20 @@
 // uretir. Rezervasyon uygulamasinin koduna ve verisine dokunulmaz —
 // supabase-js linkteki token'i zaten kendisi isler.
 //
+// v2 (2026-09-03): Order paneli rezervasyonu YONETMEK icin de ayni kopruyu
+// kullaniyor. Iki ek:
+//   - token_hash da donuyor: panel tarayicida verifyOtp ile oturuma cevirir,
+//     sayfa degistirmeden RESERVE'e baglanir. (url zaten ayni token'i tasiyor,
+//     yeni bir sir acilmiyor.)
+//   - no_create: true gelirse RESERVE'de hesap YOKSA acilmaz, code=no_account
+//     doner. Yonetim koprusunden gecen personel rezervasyon sitesinde "onayli
+//     uye" olarak belirmesin diye. Musteri koprusu (CustomerMenu) eskisi gibi
+//     acmaya devam eder.
+//
 // Guvenlik: e-posta istekten DEGIL, dogrulanmis Order token'indan gelir.
 // Gecerli bir Order oturumu olmayan kimse link alamaz; calinti bir Order
 // token'i zaten o hesabin oturumu demektir, kopru yetkiyi genisletmez.
+// Yonetim yetkisi de burada verilmez: RESERVE'de profiles.is_admin neyse odur.
 
 import { createClient } from "jsr:@supabase/supabase-js@2";
 
@@ -36,7 +48,9 @@ Deno.serve(async (req) => {
   if (req.method !== "POST") return json({ error: "POST bekleniyor" }, 405);
 
   try {
-    const { order_token } = await req.json().catch(() => ({}));
+    const body = await req.json().catch(() => ({}));
+    const order_token = body?.order_token;
+    const no_create = body?.no_create === true;
     if (!order_token || typeof order_token !== "string") {
       return json({ error: "order_token gerekli" }, 400);
     }
@@ -55,14 +69,18 @@ Deno.serve(async (req) => {
       Deno.env.get("SUPABASE_SERVICE_ROLE_KEY")!,
     );
 
-    // 2) Giris linki uret; kullanici burada yoksa once ac.
-    let link = await admin.auth.admin.generateLink({
+    const linkUret = () => admin.auth.admin.generateLink({
       type: "magiclink",
       email,
       options: { redirectTo: SITE },
     });
 
+    // 2) Giris linki uret; kullanici burada yoksa (izin varsa) once ac.
+    let link = await linkUret();
+
     if (link.error) {
+      if (no_create) return json({ error: "rezervasyon tarafinda hesap yok", code: "no_account" }, 404);
+
       // Musterinin adi/telefonu Order tarafinda: kendi token'iyla, kendi RLS
       // izniyle okunur (customers_read_own). Yeni profil bos acilmasin diye.
       let name = u?.user_metadata?.full_name || "";
@@ -96,15 +114,14 @@ Deno.serve(async (req) => {
           .eq("id", created.data.user.id).eq("status", "pending");
       }
 
-      link = await admin.auth.admin.generateLink({
-        type: "magiclink",
-        email,
-        options: { redirectTo: SITE },
-      });
+      link = await linkUret();
       if (link.error) return json({ error: "giris linki uretilemedi" }, 500);
     }
 
-    return json({ url: link.data.properties.action_link });
+    return json({
+      url: link.data.properties.action_link,
+      token_hash: link.data.properties.hashed_token,
+    });
   } catch (_e) {
     return json({ error: "beklenmeyen hata" }, 500);
   }
