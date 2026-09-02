@@ -4,6 +4,7 @@ import { supabase } from "../../lib/supabase.js";
 import { useAuth } from "../../contexts/AuthContext.jsx";
 import Ikon from "../../components/Ikon.jsx";
 import { businessDayStart } from "../../lib/businessDay.js";
+import { partiDurumOku, biterYazi } from "../../lib/parti.js";
 
 const cv = "-apple-system,BlinkMacSystemFont,'Segoe UI',Roboto,sans-serif";
 
@@ -25,6 +26,10 @@ export default function TablesPage() {
   const [sonrakiMisafir, setSonrakiMisafir] = useState(1);
   const [secilenUye, setSecilenUye] = useState(null);
   const [aciliyor, setAciliyor] = useState(false);
+  // Parti menusu: vardiyadaki calisan tek dokunusla acar. Ana ekranda duruyor
+  // cunku parttime'in /hub'i yok — Ayarlar'a hic ulasamiyor.
+  const [parti, setParti] = useState(null);
+  const [partiBusy, setPartiBusy] = useState(false);
   // Ortak masada birden fazla hesap var; satira dokununca kisiler aciliyor.
   const [acikOrtak, setAcikOrtak] = useState({});
 
@@ -71,6 +76,28 @@ export default function TablesPage() {
         setSonrakiMisafir(enBuyuk + 1);
       });
   }, [staffUser?.id]);
+
+  const partiMagaza = staffUser?.store_ids?.[0];
+  const partiOku = () => {
+    if (!partiMagaza) return;
+    supabase.rpc("nip_parti_durum", { p_store_id: partiMagaza })
+      .then(({ data, error }) => setParti(partiDurumOku(data, error)));
+  };
+  useEffect(partiOku, [partiMagaza]);
+
+  const partiDegistir = async () => {
+    if (partiBusy || !parti || !partiMagaza) return;
+    const ac = !parti.aktif;
+    if (ac && !confirm(
+      `Parti menüsüne geçilsin mi?\n\nMüşteri menüsünde ve sipariş ekranında sadece parti ürünleri (${parti.urunSayisi} ürün) görünecek.\nSabah 05:00'te kendiliğinden normale döner.`
+    )) return;
+    if (!ac && !confirm("Normal menüye dönülsün mü?")) return;
+    setPartiBusy(true);
+    const { data, error } = await supabase.rpc("nip_parti_ac", { p_store_id: partiMagaza, p_ac: ac });
+    setPartiBusy(false);
+    if (error) { alert(error.message); partiOku(); return; }
+    setParti(partiDurumOku(data, null));
+  };
 
   // TEK DOKUNUS: modal yok, klavye yok, isim yok. Tezgahtaki normal hal bu.
   const misafirAc = async (table = null) => {
@@ -187,6 +214,37 @@ export default function TablesPage() {
           {occupiedCount}/{tables.length} dolu{acikToplam > 0 ? " · ₺" + acikToplam.toLocaleString("tr-TR") : ""}
         </div>
       </div>
+
+      {/* PARTI DUGMESI. Acikken belirgin, kapaliyken sakin bir satir —
+          gece 22:00'de aranan sey bu, gunduz gozu tirmalamasin. */}
+      {parti && (
+        <div onClick={partiDegistir} style={{
+          display:"flex",alignItems:"center",gap:11,cursor:partiBusy?"default":"pointer",
+          padding:"12px 14px",borderRadius:12,marginBottom:12,opacity:partiBusy?0.6:1,
+          background: parti.aktif ? "#FFFFFF" : "#161616",
+          border: "1px solid " + (parti.aktif ? "#FFFFFF" : "#2A2A2A"),
+          color: parti.aktif ? "#000" : "#F0EDE8",
+        }}>
+          <Ikon ad="kampanya" boy={19} style={{flexShrink:0}}/>
+          <div style={{flex:1,minWidth:0}}>
+            <div style={{fontSize:15,fontWeight:800}}>
+              {parti.aktif ? "PARTİ MENÜSÜ AÇIK" : "Parti menüsü"}
+            </div>
+            <div style={{fontSize:12,marginTop:2,lineHeight:1.5,
+                         color: parti.aktif ? "#444" : "#888"}}>
+              {parti.aktif
+                ? `Sadece ${parti.urunSayisi} parti ürünü görünüyor${parti.kaynak === "manuel" && parti.biter ? ` · ${biterYazi(parti.biter)}'te normale döner` : ""}`
+                : parti.urunSayisi > 0
+                  ? `Dokun — menü ${parti.urunSayisi} parti ürününe iner`
+                  : "Önce Parti Menüsü ekranından ürün seç"}
+            </div>
+          </div>
+          <span style={{fontSize:12,fontWeight:800,whiteSpace:"nowrap",
+                        color: parti.aktif ? "#000" : "#FFFFFF"}}>
+            {partiBusy ? "…" : parti.aktif ? "Bitir" : "Başlat"}
+          </span>
+        </div>
+      )}
 
       {/* Sik olan is solda ve tek dokunus. Isim yazmak istege bagli bir yan
           yol — tezgahta sira varken klavye acilmiyor. */}
