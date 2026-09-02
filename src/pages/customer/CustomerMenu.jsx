@@ -700,11 +700,14 @@ export default function CustomerMenu() {
         .catch(() => setFeeds(f => ({ ...f, events: [] })));
     }
     if (custTab === "rides" && !feeds.rides) {
-      fetch(RESERVE_URL + "/rest/v1/ride_posts?select=title,ride_date,ride_time,pace,distance_km,elevation_m,meet_point,route_url,strava_event_id&ride_date=gte." + today + "&order=ride_date.asc&limit=12",
-        { headers: { apikey: RESERVE_KEY } })
-        .then(r => r.json())
-        .then(d => setFeeds(f => ({ ...f, rides: Array.isArray(d) ? d : [] })))
-        .catch(() => setFeeds(f => ({ ...f, rides: [] })));
+      // BIRLESTIRME ADIM 1 (2026-09-02): surusler artik Order'da. Eskiden
+      // RESERVE projesinden fetch ile cekiliyordu; o tablolara hicbir uygulama
+      // yazmiyordu, tek okuyan burasiydi — yani zaten Order'a aitti.
+      supabase.from("ride_posts")
+        .select("title,ride_date,ride_time,pace,distance_km,elevation_m,meet_point,route_url,strava_event_id")
+        .gte("ride_date", today).neq("status", "cancelled")
+        .order("ride_date", { ascending: true }).limit(12)
+        .then(({ data }) => setFeeds(f => ({ ...f, rides: data || [] })));
     }
     if (custTab === "vote" && !feeds.polls && currentStoreId) loadPolls();
     if ((custTab === "shop" || custTab === "blog") && !postFeeds[custTab]) {
