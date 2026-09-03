@@ -101,6 +101,28 @@ export default function ReservePage() {
   const uyar = (m, kotu = false) => { setMesaj({ m, kotu }); setTimeout(() => setMesaj(null), 3500); };
   const hazir = kopru.durum === "hazir";
 
+  // Uye senkronu (RESERVE -> Order customers): her 10 dakikada kendiliginden,
+  // buradan da elle. Son turun kaydi reserve_sync_log'da.
+  const [senkron, setSenkron] = useState(null);
+  const [senkronBusy, setSenkronBusy] = useState(false);
+  const senkronOku = () => supabase.from("reserve_sync_log").select("*").order("at", { ascending: false }).limit(1).maybeSingle()
+    .then(({ data }) => setSenkron(data || null));
+  useEffect(() => { senkronOku(); }, []);
+  const senkronSimdi = async () => {
+    if (senkronBusy) return; setSenkronBusy(true);
+    const { data, error } = await supabase.rpc("nip_reserve_senkron_simdi");
+    setSenkronBusy(false);
+    if (error) return uyar("Senkron çalışmadı: " + error.message, true);
+    setSenkron(data);
+    uyar(data?.ok ? `Senkron tamam: ${data.alinan} üye, ${data.eklenen} yeni, ${data.baglanan} bağlandı` : "Senkron hata verdi: " + (data?.hata || "?"), !data?.ok);
+  };
+  const senkronMetni = () => {
+    if (!senkron) return "henüz çalışmadı";
+    const dk = Math.round((Date.now() - new Date(senkron.at).getTime()) / 60000);
+    const ne = dk < 1 ? "az önce" : dk < 60 ? dk + " dk önce" : Math.round(dk / 60) + " sa önce";
+    return senkron.ok ? `${ne} · ${senkron.alinan} üye · ${senkron.eklenen} yeni · ${senkron.baglanan} bağlandı` : `${ne} · HATA: ${senkron.hata || senkron.http_status}`;
+  };
+
   return (
     <div style={{ padding: 16, maxWidth: 900, margin: "0 auto", fontFamily: cv, color: C.ink }}>
       <div style={{ display: "flex", alignItems: "baseline", gap: 12, flexWrap: "wrap", marginBottom: 6 }}>
@@ -117,6 +139,12 @@ export default function ReservePage() {
         <span style={{ flex: 1 }} />
         <button onClick={() => bagla(true)} style={btnS()}>Yeniden bağlan</button>
         {kopru.durum === "hazir" && <button onClick={async () => { await reserveCikis(); setKopru({ durum: "hata", hata: "Oturum kapatıldı." }); }} style={btnS("#0F0F0F", C.muted)}>Çık</button>}
+      </div>
+
+      <div style={{ display: "flex", gap: 10, alignItems: "center", fontSize: 11, color: senkron && !senkron.ok ? C.down : C.muted, marginBottom: 12, flexWrap: "wrap" }}>
+        <span>Üye senkronu (rezervasyon → Order müşterileri): {senkronMetni()}</span>
+        <span style={{ flex: 1 }} />
+        <button onClick={senkronSimdi} disabled={senkronBusy} style={{ ...btnS("#0F0F0F", C.muted), padding: "4px 8px", fontSize: 10 }}>{senkronBusy ? "…" : "Şimdi senkronla"}</button>
       </div>
 
       {mesaj && <div style={{ position: "fixed", bottom: 80, left: "50%", transform: "translateX(-50%)", background: mesaj.kotu ? C.down : C.ink, color: "#000", padding: "10px 16px", borderRadius: 10, fontSize: 13, fontWeight: 700, zIndex: 50 }}>{mesaj.m}</div>}
