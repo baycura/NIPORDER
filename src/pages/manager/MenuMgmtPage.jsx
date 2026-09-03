@@ -1,5 +1,6 @@
 import { useEffect, useState } from "react";
 import { supabase } from "../../lib/supabase.js";
+import { gorselYukle } from "../../lib/gorsel.js";
 import { useAuth } from "../../contexts/AuthContext.jsx";
 import { PARIS_STORE_ID, DONER_STORE_ID } from "../../lib/stores.js";
 import Ikon from "../../components/Ikon.jsx";
@@ -110,7 +111,7 @@ export default function MenuMgmtPage() {
       name:"", name_en:"", name_ru:"", brand:"", description:"", description_en:"", description_ru:"", price:'', cost_price:'', instant_discount_pct:'', hh_enabled:false, hh_price:'', hh_start:'', hh_end:'', hh_days:[0,1,2,3,4,5,6],
       sold_out_today:false, unavailable_reason:"",
       show_in_party_menu:false, kitchen_consignment:false, store_id:"", kitchen_destination_store_id:"", is_available:true, prep_time_minutes:null, show_prep_time:false,
-      currency:"TRY", price_eur:"", shop_group:"",
+      currency:"TRY", price_eur:"", shop_group:"", image_url:"",
       category_id: selectedCat,
       has_options:false,
       options_config:{groups:[]},
@@ -125,7 +126,7 @@ export default function MenuMgmtPage() {
       instant_discount_pct:Number(p.instant_discount_pct)||0,
       sold_out_today:!!p.sold_out_today,
       unavailable_reason:p.unavailable_reason||"",
-      currency: p.currency || "TRY", price_eur: p.price_eur ?? "", shop_group: p.shop_group || "",
+      currency: p.currency || "TRY", price_eur: p.price_eur ?? "", shop_group: p.shop_group || "", image_url: p.image_url || "",
       show_in_party_menu:!!p.show_in_party_menu, kitchen_consignment:!!p.kitchen_consignment, store_id:p.store_id||"", additional_store_ids:Array.isArray(p.additional_store_ids)?p.additional_store_ids:[], hh_enabled:!!p.hh_enabled, hh_price:p.hh_price??'', hh_start:p.hh_start||'', hh_end:p.hh_end||'', hh_days:Array.isArray(p.hh_days)?p.hh_days:[0,1,2,3,4,5,6], kitchen_destination_store_id:p.kitchen_destination_store_id||"",
       prep_time_minutes:p.prep_time_minutes||null,
       show_prep_time:!!p.show_prep_time,
@@ -134,6 +135,22 @@ export default function MenuMgmtPage() {
       has_options:!!p.has_options,
       options_config:p.options_config || {groups:[]},
     });
+  };
+
+  // Urun gorseli: QR menude 70 px'lik kucuk kare olarak gorunuyor (raf/Shop
+  // listesi). Telefondan secilen foto tarayicida 400 px'e kucultulup oyle
+  // yuklenir (~20-40 KB); menu yavaslamaz, depolama sismez.
+  const [gorselBusy, setGorselBusy] = useState(false);
+  const gorselSec = async (e) => {
+    const f = e.target.files?.[0];
+    e.target.value = "";
+    if (!f || gorselBusy) return;
+    setGorselBusy(true);
+    try {
+      const url = await gorselYukle(supabase, f, "urunler", { enUzun: 400, kalite: 0.8 });
+      setProdForm(pf => ({ ...pf, image_url: url }));
+    } catch (err) { alert("Görsel yüklenemedi: " + (err?.message || err)); }
+    setGorselBusy(false);
   };
 
   const saveProd = async () => {
@@ -165,6 +182,7 @@ export default function MenuMgmtPage() {
       currency: prodForm.currency === "EUR" ? "EUR" : "TRY",
       price_eur: prodForm.currency === "EUR" ? (Number(prodForm.price_eur)||0) : null,
       shop_group: prodForm.shop_group?.trim() || null,
+      image_url: prodForm.image_url?.trim() || null,
       instant_discount_pct: Number(prodForm.instant_discount_pct)||0,
       sold_out_today: prodForm.sold_out_today,
       unavailable_reason: prodForm.unavailable_reason?.trim() || null,
@@ -461,6 +479,23 @@ export default function MenuMgmtPage() {
             </datalist>
             <div style={{fontSize:10,color:"#888888",marginTop:4,lineHeight:1.5}}>
               Shop sekmesinde marka kutusu içinde bu grup bir seçenek olarak çıkar; müşteri dokununca grubun ürünleri açılır. Boş bırakırsan ürün "Diğer" altında görünür.
+            </div>
+          </Field>
+          <Field label="GÖRSEL (opsiyonel)">
+            <div style={{display:"flex",gap:10,alignItems:"center"}}>
+              {prodForm.image_url
+                ? <img src={prodForm.image_url} alt="" style={{width:56,height:56,objectFit:"cover",borderRadius:8,flexShrink:0,background:"#0C0C0C"}}/>
+                : <div style={{width:56,height:56,borderRadius:8,background:"#0C0C0C",border:"1px dashed #2A2A2A",flexShrink:0}}/>}
+              <label style={{padding:"8px 12px",background:"#222",color:"#F0EDE8",borderRadius:8,fontSize:12,fontWeight:700,cursor:gorselBusy?"default":"pointer",opacity:gorselBusy?0.6:1}}>
+                {gorselBusy ? "Yükleniyor…" : (prodForm.image_url ? "Değiştir" : "Fotoğraf seç")}
+                <input type="file" accept="image/*" onChange={gorselSec} disabled={gorselBusy} style={{display:"none"}}/>
+              </label>
+              {prodForm.image_url && !gorselBusy && (
+                <button type="button" onClick={()=>setProdForm({...prodForm,image_url:""})} style={{padding:"8px 10px",background:"transparent",color:"#888",border:"1px solid #2A2A2A",borderRadius:8,fontSize:12,cursor:"pointer"}}>Kaldır</button>
+              )}
+            </div>
+            <div style={{fontSize:10,color:"#888888",marginTop:4,lineHeight:1.5}}>
+              Müşteri menüsünde küçük kare olarak görünür. Telefondan çektiğin foto otomatik küçültülür (~30 KB), menüyü yavaşlatmaz.
             </div>
           </Field>
           <Field label={prodForm.currency === "EUR" ? "FİYAT (€)" : "FİYAT (₺)"}>
