@@ -1812,7 +1812,7 @@ export default function CustomerMenu() {
                                                   borderBottom: pi < dizi.length - 1 ? "1px solid #f0f0f0" : "none",
                                                   opacity:soldOut?0.4:1}}>
                             {p.image_url
-                              ? <img src={p.image_url} alt="" style={{width:70,height:70,objectFit:"cover",borderRadius:8,flexShrink:0}}/>
+                              ? <img src={p.image_url} alt="" loading="lazy" decoding="async" style={{width:70,height:70,objectFit:"cover",borderRadius:8,flexShrink:0}}/>
                               : <span style={{width:70,height:70,background:"#f2f2f2",borderRadius:8,flexShrink:0,display:"block"}}></span>}
                             <div style={{flex:1,minWidth:0}}>
                               <div style={{fontSize:15,fontWeight:700,lineHeight:1.3}}>{pName(p)}</div>
@@ -1863,8 +1863,10 @@ export default function CustomerMenu() {
                   style={{display:"block",textDecoration:"none",color:"#000",background:"#fafafa",border:"1px solid #eee",borderRadius:14,overflow:"hidden",marginBottom:14}}>
                   {(p.images || []).length > 0 && (
                     <div style={{display:"flex",gap:6,overflowX:"auto",padding:(p.images.length>1?"10px 10px 0":"0")}}>
+                      {/* loading=lazy: liste asagi kaydirilmadan gorseller inmez;
+                          Shop/Blog sekmesi acilinca tek seferde 10 foto yuklenmesin. */}
                       {p.images.map((u, i) => (
-                        <img key={i} src={u} alt="" style={p.images.length > 1
+                        <img key={i} src={u} alt="" loading="lazy" decoding="async" style={p.images.length > 1
                           ? {width:230,height:230,borderRadius:10,objectFit:"cover",flexShrink:0}
                           : {width:"100%",height:230,objectFit:"cover",display:"block"}}/>
                       ))}

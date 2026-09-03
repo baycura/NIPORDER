@@ -29,14 +29,41 @@ export default function ContentPage() {
   const openNew = () => { setModal({ mode: "new" }); setForm({ kind, title: "", body: "", title_en: "", body_en: "", title_ru: "", body_ru: "", images: [], is_active: true, sort_order: 0, link_url: "" }); };
   const openEdit = (p) => { setModal({ mode: "edit", data: p }); setForm({ kind: p.kind, title: p.title || "", body: p.body || "", title_en: p.title_en || "", body_en: p.body_en || "", title_ru: p.title_ru || "", body_ru: p.body_ru || "", images: p.images || [], is_active: p.is_active !== false, sort_order: p.sort_order || 0, link_url: p.link_url || "" }); };
 
+  // Telefon fotografi 3-6 MB gelir; musteri menusu bunu 230 px yukseklikte
+  // gosteriyor. Oldugu gibi yuklemek hem depolamayi sisirir hem QR menuyu
+  // yavaslatir. Yuklemeden once tarayicida kucult: en uzun kenar 1000 px,
+  // JPEG %82 -> tipik 80-150 KB. Kucultme basarisiz olursa (HEIC gibi
+  // tarayicinin cozemedigi bicim) dosya oldugu gibi gider — ozellik, kapi degil.
+  const kucult = (file) => new Promise((resolve) => {
+    if (!/^image\//.test(file.type) || file.size < 200 * 1024) return resolve(file);
+    const img = new Image();
+    const url = URL.createObjectURL(file);
+    img.onload = () => {
+      URL.revokeObjectURL(url);
+      const EN_UZUN = 1000;
+      const oran = Math.min(1, EN_UZUN / Math.max(img.width, img.height));
+      if (oran === 1) return resolve(file);
+      const c = document.createElement("canvas");
+      c.width = Math.round(img.width * oran); c.height = Math.round(img.height * oran);
+      c.getContext("2d").drawImage(img, 0, 0, c.width, c.height);
+      c.toBlob((blob) => {
+        if (!blob) return resolve(file);
+        resolve(new File([blob], file.name.replace(/\.[^.]+$/, "") + ".jpg", { type: "image/jpeg" }));
+      }, "image/jpeg", 0.82);
+    };
+    img.onerror = () => { URL.revokeObjectURL(url); resolve(file); };
+    img.src = url;
+  });
+
   const uploadPhotos = async (e) => {
     const files = Array.from(e.target.files || []);
     if (!files.length) return;
     setBusy(true);
     const urls = [...(form.images || [])];
-    for (const f of files) {
+    for (const ham of files) {
+      const f = await kucult(ham);
       const path = "posts/" + Date.now() + "_" + f.name.replace(/[^a-zA-Z0-9.]/g, "_");
-      const { error } = await supabase.storage.from("product-images").upload(path, f);
+      const { error } = await supabase.storage.from("product-images").upload(path, f, { contentType: f.type || undefined });
       if (error) { alert("Foto yükleme hatası: " + error.message); continue; }
       const { data } = supabase.storage.from("product-images").getPublicUrl(path);
       if (data?.publicUrl) urls.push(data.publicUrl);
