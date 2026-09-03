@@ -1,5 +1,5 @@
 import { useEffect, useState } from "react";
-import { supabase } from "../../lib/supabase.js";
+import { supabase, hataMetni } from "../../lib/supabase.js";
 import { useAuth } from "../../contexts/AuthContext.jsx";
 import Ikon from "../../components/Ikon.jsx";
 
@@ -114,7 +114,7 @@ export default function PollsPage() {
       const { data, error } = await supabase.functions.invoke("poll-write", {
         body: { brief: aiBrief, count: 4, store_id: staffUser?.store_ids?.[0] },
       });
-      if (error) throw new Error(error.message || "Sunucu hatasi");
+      if (error) throw new Error(hataMetni(error));
       if (data?.error) throw new Error(data.error);
       setAiPolls(data.polls || []);
     } catch (e) { alert("AI hatası: " + (e?.message || e)); }

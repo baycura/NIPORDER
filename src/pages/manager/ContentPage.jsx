@@ -1,5 +1,5 @@
 import { useEffect, useState } from "react";
-import { supabase } from "../../lib/supabase.js";
+import { supabase, hataMetni } from "../../lib/supabase.js";
 import Ikon from "../../components/Ikon.jsx";
 
 const cv = "-apple-system,BlinkMacSystemFont,'Segoe UI',Roboto,sans-serif";
@@ -78,7 +78,7 @@ export default function ContentPage() {
       const { data, error } = await supabase.functions.invoke("content-write", {
         body: { brief: aiBrief, kind: form.kind, image, media_type: "image/jpeg" },
       });
-      if (error) throw new Error(error.message || "Sunucu hatasi");
+      if (error) throw new Error(hataMetni(error));
       if (data?.error) throw new Error(data.error);
       setForm(f => ({
         ...f,

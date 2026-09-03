@@ -1,6 +1,6 @@
 import { useEffect, useMemo, useRef, useState } from "react";
 import { useParams, useNavigate, useSearchParams } from "react-router-dom";
-import { supabase } from "../../lib/supabase.js";
+import { supabase, hataMetni } from "../../lib/supabase.js";
 import { useAuth } from "../../contexts/AuthContext.jsx";
 import { happyHourPrices } from "../../lib/happyHour.js";
 import { optionMod } from "../../lib/productOptions.js";
@@ -1211,7 +1211,7 @@ export default function CustomerMenu() {
     setPayBusy(true);
     try {
       const { data, error } = await supabase.functions.invoke("paytr?action=token", { body: { order_id: successOrderId } });
-      if (error) throw error;
+      if (error) throw new Error(hataMetni(error));
       // Fonksiyonun kendi metni zaten musteri diliyle yazilmis (ornegin
       // "Puanların bu siparişi karşılıyor") — oldugu gibi gosterilir
       if (data?.error) { alert(data.error); setPayBusy(false); return; }

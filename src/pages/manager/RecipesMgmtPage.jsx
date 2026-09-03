@@ -1,5 +1,5 @@
 import { useEffect, useState, useMemo } from "react";
-import { supabase } from "../../lib/supabase.js";
+import { supabase, hataMetni } from "../../lib/supabase.js";
 import { useAuth } from "../../contexts/AuthContext.jsx";
 import Ikon from "../../components/Ikon.jsx";
 
@@ -146,7 +146,7 @@ export default function RecipesMgmtPage() {
       const { data, error } = await supabase.functions.invoke("recipe-parse", {
         body: { text: aiText, product_name: selectedProduct?.name || "" },
       });
-      if (error) throw new Error(error.message || "Sunucu hatasi");
+      if (error) throw new Error(hataMetni(error));
       if (data?.error) throw new Error(data.error);
       if (!data.lines?.length) { alert("Malzeme çıkarılamadı — biraz daha açık yaz."); setAiBusy(false); return; }
       setAiPreview(data.lines);
