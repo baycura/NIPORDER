@@ -1,5 +1,5 @@
 import { useEffect, useState } from "react";
-import { supabase } from "../../lib/supabase.js";
+import { supabase, hataMetni } from "../../lib/supabase.js";
 import { PARIS_STORE_ID } from "../../lib/stores.js";
 import Ikon from "../../components/Ikon.jsx";
 
@@ -36,7 +36,7 @@ export default function SettingsPage() {
     setEurBusy(true);
     try {
       const { data, error } = await supabase.functions.invoke("eur-rate-sync", { body: {} });
-      if (error) throw new Error(error.message || "Sunucu hatasi");
+      if (error) throw new Error(hataMetni(error));
       if (data?.error) throw new Error(data.error);
       alert("Kur cekildi: 1 € = ₺" + data.fetched + " (" + (data.source || "") + ")");
       load();
@@ -51,7 +51,7 @@ export default function SettingsPage() {
     setTrBusy(true);
     try {
       const { data, error } = await supabase.functions.invoke("ai-translate", { body: { text: src } });
-      if (error) throw new Error(error.message || "Sunucu hatasi");
+      if (error) throw new Error(hataMetni(error));
       if (data?.error) throw new Error(data.error);
       setSettings(s => ({ ...s, announcement_en: data.en || s.announcement_en, announcement_ru: data.ru || s.announcement_ru }));
     } catch (e) { alert("Ceviri hatasi: " + (e?.message || e)); }

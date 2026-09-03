@@ -1,6 +1,6 @@
 import { useEffect, useState } from "react";
 import { parseUblInvoice } from "../../lib/ublInvoice.js";
-import { supabase } from "../../lib/supabase.js";
+import { supabase, hataMetni } from "../../lib/supabase.js";
 import { useAuth } from "../../contexts/AuthContext.jsx";
 import Ikon from "../../components/Ikon.jsx";
 
@@ -170,7 +170,7 @@ export default function InvoicesPage() {
     try {
       const image = await resizeToBase64(photoFile);
       const { data, error } = await supabase.functions.invoke("invoice-ocr", { body: { image, media_type: "image/jpeg" } });
-      if (error) throw new Error(error.message || "Sunucu hatasi");
+      if (error) throw new Error(hataMetni(error));
       if (data?.error) throw new Error(data.error);
       setForm(f => ({
         ...f,

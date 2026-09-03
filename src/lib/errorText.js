@@ -72,11 +72,15 @@ const M = {
 
 const anahtar = (err) => {
   const kod = String(err?.code ?? err?.status ?? "");
-  const metin = [err?.message, err?.details, err?.hint, typeof err === "string" ? err : ""]
+  // err.context: Edge Function cagrilarinda supabase-js asil fetch hatasini
+  // sabit bir Ingilizce mesajin altina, context'e koyar — oradan da oku.
+  const metin = [err?.message, err?.details, err?.hint, err?.context?.message, typeof err === "string" ? err : ""]
     .filter(Boolean).join(" ").toLowerCase();
 
-  // Ag / erisim: fetch bunu TypeError olarak atar, kodu olmaz
-  if (/failed to fetch|networkerror|load failed|network request failed|err_internet|timeout|aborted/.test(metin)) {
+  // Ag / erisim: fetch bunu TypeError olarak atar, kodu olmaz.
+  // "cevap gelmedi / sinyal zayıf": lib/supabase.js'in zaman asimi mesaji.
+  // "failed to send a request": functions-js'in fetch hatasi sarmalayicisi.
+  if (/failed to fetch|networkerror|load failed|network request failed|err_internet|timeout|aborted|cevap gelmedi|sinyal zayıf|failed to send a request/.test(metin)) {
     return "baglanti_yok";
   }
   if (kod === "429" || /rate limit|too many requests/.test(metin)) return "cok_hizli";
