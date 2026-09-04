@@ -33,7 +33,10 @@ const urunSatirlari = (urunler) => {
   const out = [];
   for (const p of urunler || []) {
     const vs = Array.isArray(p.variants) ? p.variants.filter(v => v && v.name) : [];
-    const ortak = { urun: true, product_id: p.id, unit: "adet", cost_per_unit: p.cost_price, unit_volume_ml: null };
+    // name arama ve gecmis icin tam ad ("X · Small"); ekranda urunAdi + beden
+    // ayri satirlarda durur, telefonda ad kesilse bile beden gorunur.
+    const ortak = { urun: true, product_id: p.id, urunAdi: p.name, unit: "adet",
+                    cost_per_unit: p.cost_price, unit_volume_ml: null };
     if (vs.length) {
       for (const v of vs) {
         out.push({ ...ortak, id: `p:${p.id}:${v.name}`, variant: v.name,
@@ -241,7 +244,7 @@ export default function StockCountPage() {
     if (busy) return;
     if (!storeId) { alert("Önce mağaza seç"); return; }
     if (!sayan.trim() || sayan.trim().length < 2) { alert("Sayan kişinin adını yaz"); return; }
-    if (ozet.adet === 0) { alert("Hiç malzeme sayılmamış"); return; }
+    if (ozet.adet === 0) { alert("Hiçbir kalem sayılmamış"); return; }
 
     const yuk = [];
     for (const i of malzemeler || []) {
@@ -259,8 +262,8 @@ export default function StockCountPage() {
     }
 
     if (!confirm(
-      `${yuk.length} malzeme sayıldı, ${ozet.sapan} tanesinde fark var.\n` +
-      `Sayılmayan ${(malzemeler || []).length - yuk.length} malzemeye dokunulmayacak.\n\n` +
+      `${yuk.length} kalem sayıldı, ${ozet.sapan} tanesinde fark var.\n` +
+      `Sayılmayan ${(malzemeler || []).length - yuk.length} kaleme dokunulmayacak.\n\n` +
       `Kaydedilsin mi?`
     )) return;
 
@@ -302,7 +305,7 @@ export default function StockCountPage() {
         <Ikon ad="onayli" boy={64} kalin={1.3} style={{ display: "block", margin: "0 auto 16px" }} />
         <div style={{ fontSize: 22, fontWeight: 800, marginBottom: 6 }}>Sayım kaydedildi</div>
         <div style={{ fontSize: 14, color: C.muted, lineHeight: 1.7 }}>
-          {bitti.kalem} malzeme sayıldı
+          {bitti.kalem} kalem sayıldı
           <br />
           Fark <span style={{ color: farkRengi(bitti.fark_tutari), fontWeight: 800 }}>
             {Number(bitti.fark_tutari) > 0 ? "+" : ""}{fmtTL(bitti.fark_tutari)}
@@ -413,7 +416,7 @@ export default function StockCountPage() {
                 {ozet.adet} / {malzemeler.length}
               </div>
               <div style={{ fontSize: 12, color: C.muted, marginTop: 3 }}>
-                malzeme sayıldı{ozet.sapan > 0 ? ` · ${ozet.sapan} farklı` : ""}
+                kalem sayıldı{ozet.sapan > 0 ? ` · ${ozet.sapan} farklı` : ""}
               </div>
             </div>
             <div style={{ textAlign: "right" }}>
@@ -458,7 +461,7 @@ export default function StockCountPage() {
                   <div style={{ flex: 1, minWidth: 0 }}>
                     <div style={{ fontSize: 15, fontWeight: 700, overflow: "hidden",
                                   textOverflow: "ellipsis", whiteSpace: "nowrap" }}>
-                      {i.name}
+                      {i.urun ? i.urunAdi : i.name}
                       {i.urun && (
                         <span style={{ marginLeft: 7, fontSize: 10, fontWeight: 700, color: C.faint,
                                        border: `1px solid ${C.line}`, borderRadius: 5, padding: "1px 5px",
@@ -467,6 +470,9 @@ export default function StockCountPage() {
                     </div>
                     <div style={{ fontSize: 12, color: C.faint, marginTop: 2,
                                   fontVariantNumeric: "tabular-nums" }}>
+                      {i.variant && (
+                        <span style={{ color: C.ink, fontWeight: 800, marginRight: 6 }}>{i.variant}</span>
+                      )}
                       beklenen {fmtMiktar(h.beklenen)} {h.birimAdi}
                       {h.kap && <> · {fmtMiktar(i.unit_volume_ml)} {i.unit}</>}
                     </div>
@@ -532,8 +538,8 @@ export default function StockCountPage() {
           fontFamily: cv, opacity: busy ? 0.6 : 1,
         }}>
           {busy ? "Kaydediliyor…"
-                : ozet.adet === 0 ? "Önce bir malzeme say"
-                : `${ozet.adet} malzemeyi kaydet`}
+                : ozet.adet === 0 ? "Önce bir kalem say"
+                : `${ozet.adet} kalemi kaydet`}
         </button>
 
         <div style={{ fontSize: 12, color: C.faint, marginTop: 10, lineHeight: 1.7, textAlign: "center" }}>
