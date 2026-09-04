@@ -225,10 +225,17 @@ export default function OrderDetailPage() {
     if (vs.length) {
       const avail = vs.filter(v => Number(v.stock) > 0);
       if (!avail.length) { alert(p.name + " — tüm bedenler tükendi"); return; }
-      const pick = prompt("Beden seç — " + p.name + "\n" + avail.map(v => v.name + " (" + v.stock + " adet)").join(" · "), avail[0].name);
-      if (pick == null) return;
-      const hit = avail.find(v => v.name.toLowerCase() === String(pick).trim().toLowerCase());
-      if (!hit) { alert("Geçersiz beden: " + pick); return; }
+      // Secenek penceresinde beden zaten secildiyse (Shop tisortleri: "Beden"
+      // grubu ile variants ayni bedenleri tasir) ikinci kez sorulmaz. Secilen
+      // beden tukendiyse yine sorulur ki stokta olana yonlendirsin.
+      const secilenler = Object.values(selOpts || {}).flat().map(s => String(s ?? "").trim().toLowerCase());
+      let hit = avail.find(v => secilenler.includes(v.name.toLowerCase()));
+      if (!hit) {
+        const pick = prompt("Beden seç — " + p.name + "\n" + avail.map(v => v.name + " (" + v.stock + " adet)").join(" · "), avail[0].name);
+        if (pick == null) return;
+        hit = avail.find(v => v.name.toLowerCase() === String(pick).trim().toLowerCase());
+        if (!hit) { alert("Geçersiz beden: " + pick); return; }
+      }
       variantName = hit.name;
     } else if (p.track_stock && Number(p.retail_stock) <= 0) {
       if (!confirm(p.name + " stokta görünmüyor. Yine de eklensin mi?")) return;
