@@ -4,7 +4,7 @@ import { useAuth } from "../../contexts/AuthContext.jsx";
 import Ikon from "../../components/Ikon.jsx";
 import {
   fmtTL, fmtMiktar, kapVar, kapAdi, kabaCevir, kabaGeri, farkTutari,
-  farkRengi, ONEMSIZ, TASLAK_KEY, sadelestir,
+  farkRengi, ONEMSIZ, TASLAK_KEY, aramaUyar,
 } from "../../lib/stockCount.js";
 
 const cv = "-apple-system,BlinkMacSystemFont,'Segoe UI',Roboto,sans-serif";
@@ -204,10 +204,11 @@ export default function StockCountPage() {
   };
 
   const gosterilen = useMemo(() => {
-    const q = sadelestir(ara);
     return (malzemeler || []).filter(i => {
-      if (q && !sadelestir(i.name).includes(q)) return false;
-      if (birim === "urun" ? !i.urun : (birim !== "hepsi" && (i.unit || "") !== birim)) return false;
+      if (!aramaUyar(i.name, ara)) return false;
+      // Birim cipleri yalniz malzemeyi suzer: "adet" cipine basan kisi bardak
+      // ve pecete sayar, tisortler "Urunler" cipinde kalir.
+      if (birim === "urun" ? !i.urun : (birim !== "hepsi" && (i.urun || (i.unit || "") !== birim))) return false;
       if (sadeceSayilan && !satirHesap(i).girildi) return false;
       return true;
     });
@@ -434,17 +435,25 @@ export default function StockCountPage() {
         <div style={{ ...kart, padding: 0, overflow: "hidden", marginBottom: 12 }}>
           {gosterilen.length === 0 && (
             <div style={{ padding: 26, textAlign: "center", color: C.muted, fontSize: 13 }}>
-              Bu filtreye uyan malzeme yok.
+              Bu filtreye uyan malzeme ya da ürün yok.
             </div>
           )}
           {gosterilen.map((i, idx) => {
             const h = satirHesap(i);
             const farkli = h.girildi && Math.abs(h.farkTemel) > ONEMSIZ;
+            // Raf urunleri listenin sonunda; 132 malzemenin altinda kaybolmasin
+            // diye ilk urun satirinin ustune bolum basligi gelir.
+            const bolumBasi = i.urun && (idx === 0 || !gosterilen[idx - 1].urun);
             return (
               <div key={i.id} style={{
                 padding: "11px 14px", borderTop: idx === 0 ? "none" : `1px solid ${C.line}`,
                 background: h.girildi ? "#1A1A1A" : "transparent",
               }}>
+                {bolumBasi && (
+                  <div style={{ ...etiket, marginBottom: 10, color: C.ink }}>
+                    RAF ÜRÜNLERİ · adetle sayılır, bedenli ürün beden başına
+                  </div>
+                )}
                 <div style={{ display: "flex", alignItems: "center", gap: 10 }}>
                   <div style={{ flex: 1, minWidth: 0 }}>
                     <div style={{ fontSize: 15, fontWeight: 700, overflow: "hidden",
