@@ -64,7 +64,7 @@ export default function OrderDetailPage() {
       setSelectedCat((withProds || cats[0]).id);
     }
     if (o) { setCustomerNameEdit(o.customer_name || ""); setOrderNote(o.note || ""); }
-    if (o?.customer_id) loadMemberPrices(o.customer_id); else setMemberPrices({});
+    // Uye fiyatlari: order.customer_id'yi izleyen effect okur (asagida).
     setLoading(false);
   };
 
@@ -95,7 +95,7 @@ export default function OrderDetailPage() {
     if (error) { alert("Üye bağlanamadı: " + error.message); return; }
     setOrder(prev => prev ? { ...prev, ...patch } : prev);
     if (c?.name) setCustomerNameEdit(c.name);
-    if (custId) await loadMemberPrices(custId); else setMemberPrices({});
+    // Fiyatlar customer_id degisince effect'te yeniden okunur.
   };
 
   const loadOrderOnly = async () => {
@@ -119,13 +119,50 @@ export default function OrderDetailPage() {
     return () => { clearTimeout(t); supabase.removeChannel(ch); };
   }, [orderId]);
 
+  // Uye ozel fiyatlari CANLI. Eskiden yalniz ekran acilirken okunuyordu:
+  // sahip telefonundan Esra'ya 180'lik bira tanimlarken tablette siparis
+  // zaten acikti, kasa yeni fiyati duymadi ve 280 ekledi. Simdi bagli uyenin
+  // member_discounts satirlari dinlenir (Uyeler sayfasi sil+yaz yapar, ikisi
+  // de olay uretir) ve ekran one gelince de yeniden okunur. Uye
+  // baglanip cozulunce de (bu ya da baska cihazdan) buradan gecer.
+  useEffect(() => {
+    const cid = order?.customer_id;
+    if (!cid) { setMemberPrices({}); return; }
+    const yenile = () => loadMemberPrices(cid);
+    yenile();
+    const ch = supabase.channel("uye-fiyat-" + orderId)
+      .on("postgres_changes", { event: "*", schema: "public", table: "member_discounts", filter: "customer_id=eq." + cid }, yenile)
+      .subscribe();
+    const gorunur = () => { if (document.visibilityState === "visible") yenile(); };
+    document.addEventListener("visibilitychange", gorunur);
+    window.addEventListener("focus", yenile);
+    return () => {
+      supabase.removeChannel(ch);
+      document.removeEventListener("visibilitychange", gorunur);
+      window.removeEventListener("focus", yenile);
+    };
+  }, [order?.customer_id, orderId]);
+
   // Toplami yerel listeden hesapla, siparise arka planda yaz (UI beklemez)
   // Ikram: fiyat 0'a iner ama kalem/stok/mutfak izi durur. Geri alinirsa
-  // liste fiyatina doner (uye/kampanya indirimi vardiysa yeniden eklenerek
-  // degil — kasada fark edilip duzeltilebilir, nadir durum).
+  // fiyat o urunun BU hesaptaki gercek fiyatina doner (kampanya / uye
+  // fiyati) — eskiden liste fiyatina donuyordu, uyenin 180'lik birasi
+  // ikramdan cikinca 280 oluyordu.
   //
   // "Kim veriyor?" sorusu sart: sahipler (admin) siparis girmiyor ama kendi
   // misafirine ikram ediyor — cocuklar ikrami onlarin adina isaretleyebilsin.
+  const ikramsizFiyat = (it) => {
+    // product_price zaten happy hour ve secenek farkini icerir (addProduct);
+    // ustune kampanya yuzdesi ve uye fiyati, eklerken oldugu sirayla.
+    const p = products.find(x => x.id === it.product_id);
+    let fp = Number(it.product_price) || 0;
+    if (p) {
+      fp = fp * (100 - Number(p.instant_discount_pct || 0)) / 100;
+      const mp = memberPriceFor(p);
+      if (mp != null) fp = Math.min(fp, mp);
+    }
+    return Math.round(fp);
+  };
   const toggleTreat = (it) => {
     if (it.is_treat) { applyTreat(it, null); return; } // geri alma tek dokunus
     setTreatModal(it);
@@ -133,7 +170,7 @@ export default function OrderDetailPage() {
   const applyTreat = async (it, verenId) => {
     const patch = verenId
       ? { is_treat: true, final_price: 0, treated_by: verenId }
-      : { is_treat: false, final_price: Number(it.product_price) || 0, treated_by: null };
+      : { is_treat: false, final_price: ikramsizFiyat(it), treated_by: null };
     const next = items.map(i => i.id === it.id ? { ...i, ...patch } : i);
     setItems(next); syncTotal(next);
     const { error } = await supabase.from("order_items").update(patch).eq("id", it.id);
