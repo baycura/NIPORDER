@@ -21,6 +21,7 @@ export default function OrderDetailPage() {
   const [takeawayMode, setTakeawayMode] = useState(false);
   const [optModal, setOptModal] = useState(null); // {p, sel} — secenekli urun secimi
   const [treatModal, setTreatModal] = useState(null); // ikramda "kim veriyor?" secimi
+  const [indirimModal, setIndirimModal] = useState(null); // {it, tutar, not} — kalem indirimi (adet basina TL)
   const [staffList, setStaffList] = useState([]);
   const [customers, setCustomers] = useState([]);
   const [memberPrices, setMemberPrices] = useState({});
@@ -161,7 +162,26 @@ export default function OrderDetailPage() {
       const mp = memberPriceFor(p);
       if (mp != null) fp = Math.min(fp, mp);
     }
-    return Math.round(fp);
+    // Kasada verilmis kalem indirimi de geri gelir.
+    return Math.max(0, Math.round(fp) - Math.round(Number(it.manual_discount) || 0));
+  };
+
+  // Kalem indirimi: adet basina TL. Taban = indirimsiz fiyat (uye/kampanya/
+  // happy hour dahil), final = taban − indirim. Kim verdi ve neden kalemde
+  // kalir; sifir indirim kaydi temizler. Ikramli kalemde dugme yok (zaten 0).
+  const applyDiscount = async (it, tutar, not) => {
+    const taban = Math.max(0, Math.round(Number(it.final_price) + (Number(it.manual_discount) || 0)));
+    const ind = Math.min(taban, Math.max(0, Math.round(Number(tutar) || 0)));
+    const patch = {
+      manual_discount: ind,
+      final_price: Math.max(0, taban - ind),
+      discount_note: ind > 0 ? (String(not || "").trim() || null) : null,
+      discount_by: ind > 0 ? (staffUser?.id || null) : null,
+    };
+    const next = items.map(i => i.id === it.id ? { ...i, ...patch } : i);
+    setItems(next); syncTotal(next);
+    const { error } = await supabase.from("order_items").update(patch).eq("id", it.id);
+    if (error) { alert("İndirim kaydedilemedi: " + error.message); loadOrderOnly(); }
   };
   const toggleTreat = (it) => {
     if (it.is_treat) { applyTreat(it, null); return; } // geri alma tek dokunus
@@ -491,6 +511,11 @@ export default function OrderDetailPage() {
                   {it.is_treat
                     ? <span style={{color:"#F0EDE8",fontWeight:800}}><Ikon ad="hediye" boy={13} style={{marginRight:4}}/>İKRAM{verenAdi(it.treated_by) ? " — " + verenAdi(it.treated_by) : ""} · </span>
                     : <span style={{color:"#888"}}>₺{it.final_price} · </span>}
+                  {!it.is_treat && Number(it.manual_discount) > 0 && (
+                    <span style={{color:"#F0EDE8",fontWeight:700}}>
+                      −₺{Math.round(Number(it.manual_discount))} indirim{it.discount_note ? " · " + it.discount_note : ""} ·{" "}
+                    </span>
+                  )}
                   <span style={{color:statusColor,fontWeight:700,letterSpacing:"1px"}}>{it.kitchen_status?.toUpperCase()}</span>
                 </div>
                 <div style={{display:"flex",gap:6,flexWrap:"wrap"}}>
@@ -506,6 +531,17 @@ export default function OrderDetailPage() {
                           border:"1px solid "+(it.is_treat?"#F0EDE8":"#3A3A3A"),borderRadius:20,fontSize:11,fontWeight:700,cursor:"pointer",fontFamily:"inherit"}}>
                   {it.is_treat && <Ikon ad="onay" boy={12} style={{marginRight:4}}/>}<Ikon ad="hediye" boy={12} style={{marginRight:4}}/>İkram
                 </button>
+                {/* Kalem indirimi: adet basina TL. Ikramli kalemde anlamsiz, gizli. */}
+                {!it.is_treat && (() => {
+                  const ind = Math.round(Number(it.manual_discount) || 0);
+                  return (
+                    <button onClick={() => setIndirimModal({ it, tutar: ind > 0 ? String(ind) : "", not: it.discount_note || "" })}
+                      style={{marginTop:6,padding:"6px 12px",background:ind>0?"#F0EDE8":"transparent",color:ind>0?"#000":"#888",
+                              border:"1px solid "+(ind>0?"#F0EDE8":"#3A3A3A"),borderRadius:20,fontSize:11,fontWeight:700,cursor:"pointer",fontFamily:"inherit"}}>
+                      <Ikon ad="kampanya" boy={12} style={{marginRight:4}}/>{ind > 0 ? "−₺" + ind + " indirim" : "İndirim"}
+                    </button>
+                  );
+                })()}
                 </div>
               </div>
               <div style={{display:"flex",alignItems:"center",gap:6,background:"#0C0C0C",borderRadius:20,padding:"3px 5px"}}>
@@ -650,6 +686,62 @@ export default function OrderDetailPage() {
           </div>
         </div>
       )}
+
+      {indirimModal && (() => {
+        const it = indirimModal.it;
+        const taban = Math.max(0, Math.round(Number(it.final_price) + (Number(it.manual_discount) || 0)));
+        const tutar = Math.max(0, Math.round(Number(String(indirimModal.tutar).replace(",", ".")) || 0));
+        const asiyor = tutar > taban;
+        const yeni = Math.max(0, taban - tutar);
+        const uygula = (t) => { const m = indirimModal; setIndirimModal(null); applyDiscount(m.it, t, m.not); };
+        const kutu = {width:"100%",padding:"12px 14px",background:"#0C0C0C",border:"1px solid #2A2A2A",borderRadius:10,color:"#F0EDE8",fontSize:16,outline:"none",fontFamily:cv,boxSizing:"border-box"};
+        return (
+          <div onClick={() => setIndirimModal(null)} style={{position:"fixed",inset:0,background:"rgba(0,0,0,0.75)",display:"flex",alignItems:"flex-end",justifyContent:"center",zIndex:100}}>
+            <div onClick={e => e.stopPropagation()} style={{background:"#161616",border:"1px solid #2A2A2A",borderRadius:"16px 16px 0 0",padding:20,width:"100%",maxWidth:500}}>
+              <div style={{fontSize:16,fontWeight:800,color:"#F0EDE8",marginBottom:2}}>İndirim — {it.product_name}</div>
+              <div style={{fontSize:11,color:"#888",marginBottom:12}}>
+                Adet başına TL. Şu an ₺{taban}{it.quantity > 1 ? ` × ${it.quantity} adet` : ""}
+              </div>
+              <div style={{display:"flex",gap:6,flexWrap:"wrap",marginBottom:10}}>
+                {[10, 20, 50, 100].filter(v => v <= taban).map(v => (
+                  <button key={v} onClick={() => setIndirimModal(m => ({ ...m, tutar: String(v) }))}
+                    style={{padding:"8px 12px",background:tutar === v ? "#F0EDE8" : "transparent",color:tutar === v ? "#000" : "#aaa",
+                            border:"1px solid " + (tutar === v ? "#F0EDE8" : "#3A3A3A"),borderRadius:20,fontSize:12,fontWeight:700,cursor:"pointer",fontFamily:cv}}>
+                    −₺{v}
+                  </button>
+                ))}
+              </div>
+              <input type="number" inputMode="numeric" min="0" max={taban} step="1" autoFocus
+                value={indirimModal.tutar} onChange={e => setIndirimModal(m => ({ ...m, tutar: e.target.value }))}
+                placeholder="İndirim (₺)" style={{...kutu, marginBottom:8, fontWeight:800}} />
+              <input value={indirimModal.not} onChange={e => setIndirimModal(m => ({ ...m, not: e.target.value }))}
+                placeholder="Neden? (isteğe bağlı — hasar, gecikme, pazarlık…)" style={{...kutu, fontSize:13, marginBottom:12}} />
+              <div style={{fontSize:13,color:asiyor ? "#C87A6A" : "#aaa",marginBottom:14,fontVariantNumeric:"tabular-nums"}}>
+                {asiyor
+                  ? `İndirim fiyatı aşamaz (en fazla ₺${taban})`
+                  : <>₺{taban} → <b style={{color:"#F0EDE8"}}>₺{yeni}</b>{it.quantity > 1 ? ` · satır ₺${yeni * it.quantity}` : ""}</>}
+              </div>
+              <div style={{display:"flex",gap:8}}>
+                <button onClick={() => uygula(tutar)} disabled={tutar <= 0 || asiyor}
+                  style={{flex:2,padding:"13px",background:(tutar <= 0 || asiyor) ? "#333" : "#FFFFFF",color:(tutar <= 0 || asiyor) ? "#777" : "#000",
+                          border:"none",borderRadius:10,fontSize:14,fontWeight:800,cursor:(tutar <= 0 || asiyor) ? "not-allowed" : "pointer",fontFamily:cv}}>
+                  Uygula
+                </button>
+                {Number(it.manual_discount) > 0 && (
+                  <button onClick={() => uygula(0)}
+                    style={{flex:1,padding:"13px",background:"transparent",color:"#F0EDE8",border:"1px solid #3A3A3A",borderRadius:10,fontSize:13,fontWeight:700,cursor:"pointer",fontFamily:cv}}>
+                    Kaldır
+                  </button>
+                )}
+                <button onClick={() => setIndirimModal(null)}
+                  style={{flex:1,padding:"13px",background:"transparent",color:"#888",border:"1px solid #333",borderRadius:10,fontSize:13,fontWeight:700,cursor:"pointer",fontFamily:cv}}>
+                  Vazgeç
+                </button>
+              </div>
+            </div>
+          </div>
+        );
+      })()}
 
       {optModal && (() => {
         const gruplar = optModal.p.options_config?.groups || [];
