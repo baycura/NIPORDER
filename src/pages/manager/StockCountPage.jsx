@@ -4,7 +4,7 @@ import { useAuth } from "../../contexts/AuthContext.jsx";
 import Ikon from "../../components/Ikon.jsx";
 import {
   fmtTL, fmtMiktar, kapVar, kapAdi, kabaCevir, kabaGeri, farkTutari,
-  farkRengi, ONEMSIZ, TASLAK_KEY, sadelestir,
+  farkRengi, ONEMSIZ, TASLAK_KEY, aramaUyar,
 } from "../../lib/stockCount.js";
 
 const cv = "-apple-system,BlinkMacSystemFont,'Segoe UI',Roboto,sans-serif";
@@ -23,12 +23,43 @@ const sayiYaz = (n) => {
   return String(Math.round(x * 10000) / 10000);
 };
 
+// Raf urunlerini (tisort, sapka — products.track_stock) sayim satirina cevir.
+// Beden varyanti olan urun beden basina ayri satir olur ("Fethiye Lovers
+// Tisort · Small"), stogu o bedenin stogudur; varyantsiz urunun stogu
+// retail_stock. Satir id'si "p:" ile baslar ki malzeme uuid'leriyle
+// karismasin — taslak da bu id ile saklanir. cost_price, malzemedeki
+// cost_per_unit'in yerine gecer; bos ise ekran "maliyeti girilmemis" der.
+const urunSatirlari = (urunler) => {
+  const out = [];
+  for (const p of urunler || []) {
+    const vs = Array.isArray(p.variants) ? p.variants.filter(v => v && v.name) : [];
+    // name arama ve gecmis icin tam ad ("X · Small"); ekranda urunAdi + beden
+    // ayri satirlarda durur, telefonda ad kesilse bile beden gorunur.
+    const ortak = { urun: true, product_id: p.id, urunAdi: p.name, unit: "adet",
+                    cost_per_unit: p.cost_price, unit_volume_ml: null };
+    if (vs.length) {
+      for (const v of vs) {
+        out.push({ ...ortak, id: `p:${p.id}:${v.name}`, variant: v.name,
+                   name: `${p.name} · ${v.name}`, stock_qty: Number(v.stock) || 0 });
+      }
+    } else {
+      out.push({ ...ortak, id: `p:${p.id}`, variant: null, name: p.name,
+                 stock_qty: Number(p.retail_stock) || 0 });
+    }
+  }
+  return out;
+};
+
 // Stok Sayimi — rafta gordugunu yaz, ekran beklenenle karsilastirsin.
 //
 // Bu ekrandan once sayim, Stok Yonetimi'nde 128 malzemeyi tek tek acip
 // sayiyi USTUNE YAZMAKTI: karsilastirilacak bir sey yok, kayit da kalmiyor.
 // Artik stock_moves ne olmasi gerektigini biliyor, yani "beklenen" diye bir
 // sey var — sayim veri girisi olmaktan cikip kontrole donusuyor.
+//
+// Liste iki kaynaktan gelir: ingredients (bar/mutfak, kayit birimi ml/g/adet)
+// ve products.track_stock (raf urunu, hep adet). Ikisi ayni satir seklinde
+// akar; farki "urun" bayragi ve kayitta ingredient_id yerine product_id.
 //
 // IKI KURAL ekranin her yerinde gecerli:
 //   1. Bos birakilan malzemeye DOKUNULMAZ. Sayim kismi olabilir; bu gece
@@ -70,14 +101,19 @@ export default function StockCountPage() {
     if (!storeId) return;
     let iptal = false;
     setMalzemeler(null); setHata(null);
-    supabase.from("ingredients")
-      .select("id,name,unit,stock_qty,cost_per_unit,unit_volume_ml")
-      .eq("store_id", storeId).order("name")
-      .then(({ data, error }) => {
-        if (iptal) return;
-        if (error) { setHata(error.message); setMalzemeler([]); return; }
-        setMalzemeler(data || []);
-      });
+    Promise.all([
+      supabase.from("ingredients")
+        .select("id,name,unit,stock_qty,cost_per_unit,unit_volume_ml")
+        .eq("store_id", storeId).order("name"),
+      supabase.from("products")
+        .select("id,name,retail_stock,variants,cost_price")
+        .eq("store_id", storeId).eq("track_stock", true).order("name"),
+    ]).then(([m, u]) => {
+      if (iptal) return;
+      const error = m.error || u.error;
+      if (error) { setHata(error.message); setMalzemeler([]); return; }
+      setMalzemeler([...(m.data || []), ...urunSatirlari(u.data)]);
+    });
     return () => { iptal = true; };
   }, [storeId]);
 
@@ -96,7 +132,7 @@ export default function StockCountPage() {
     if (acikSayim === id) { setAcikSayim(null); return; }
     setAcikSayim(id); setAcikSatir(null);
     supabase.from("stock_count_lines")
-      .select("id,beklenen,sayilan,fark,unit_cost,ingredients(name,unit)")
+      .select("id,beklenen,sayilan,fark,unit_cost,variant_name,ingredients(name,unit),products(name)")
       .eq("count_id", id).order("id")
       .then(r => setAcikSatir((r.data || []).filter(l => Math.abs(Number(l.fark)) > ONEMSIZ)));
   };
@@ -171,19 +207,23 @@ export default function StockCountPage() {
   };
 
   const gosterilen = useMemo(() => {
-    const q = sadelestir(ara);
     return (malzemeler || []).filter(i => {
-      if (q && !sadelestir(i.name).includes(q)) return false;
-      if (birim !== "hepsi" && (i.unit || "") !== birim) return false;
+      if (!aramaUyar(i.name, ara)) return false;
+      // Birim cipleri yalniz malzemeyi suzer: "adet" cipine basan kisi bardak
+      // ve pecete sayar, tisortler "Urunler" cipinde kalir.
+      if (birim === "urun" ? !i.urun : (birim !== "hepsi" && (i.urun || (i.unit || "") !== birim))) return false;
       if (sadeceSayilan && !satirHesap(i).girildi) return false;
       return true;
     });
   }, [malzemeler, ara, birim, sadeceSayilan, sayimlar, kapModu]);
 
+  // Birim cipleri malzemeden turetilir; raf urunleri ayri bir cip alir ki
+  // "adet"li bir malzeme varsa ikisi birbirine karismasin.
   const birimler = useMemo(() => {
-    const set = new Set((malzemeler || []).map(i => i.unit).filter(Boolean));
+    const set = new Set((malzemeler || []).filter(i => !i.urun).map(i => i.unit).filter(Boolean));
     return [...set].sort();
   }, [malzemeler]);
+  const urunVar = useMemo(() => (malzemeler || []).some(i => i.urun), [malzemeler]);
 
   const ozet = useMemo(() => {
     let adet = 0, sapan = 0, net = 0, maliyetsiz = 0;
@@ -204,7 +244,7 @@ export default function StockCountPage() {
     if (busy) return;
     if (!storeId) { alert("Önce mağaza seç"); return; }
     if (!sayan.trim() || sayan.trim().length < 2) { alert("Sayan kişinin adını yaz"); return; }
-    if (ozet.adet === 0) { alert("Hiç malzeme sayılmamış"); return; }
+    if (ozet.adet === 0) { alert("Hiçbir kalem sayılmamış"); return; }
 
     const yuk = [];
     for (const i of malzemeler || []) {
@@ -214,12 +254,16 @@ export default function StockCountPage() {
       // bile veritabani mililitre gorur.
       const temel = kabaGeri(Number(sayimlar[i.id]), i);
       if (!isFinite(temel) || temel < 0) { alert(`${i.name}: geçersiz sayı`); return; }
-      yuk.push({ ingredient_id: i.id, sayilan: Math.round(temel * 1e6) / 1e6 });
+      // Raf urunu adetle sayilir; 1,5 tisort yok. Sunucu da ayni kurali kosar.
+      if (i.urun && !Number.isInteger(temel)) { alert(`${i.name}: adet tam sayı olmalı`); return; }
+      yuk.push(i.urun
+        ? { product_id: i.product_id, variant: i.variant, sayilan: temel }
+        : { ingredient_id: i.id, sayilan: Math.round(temel * 1e6) / 1e6 });
     }
 
     if (!confirm(
-      `${yuk.length} malzeme sayıldı, ${ozet.sapan} tanesinde fark var.\n` +
-      `Sayılmayan ${(malzemeler || []).length - yuk.length} malzemeye dokunulmayacak.\n\n` +
+      `${yuk.length} kalem sayıldı, ${ozet.sapan} tanesinde fark var.\n` +
+      `Sayılmayan ${(malzemeler || []).length - yuk.length} kaleme dokunulmayacak.\n\n` +
       `Kaydedilsin mi?`
     )) return;
 
@@ -261,7 +305,7 @@ export default function StockCountPage() {
         <Ikon ad="onayli" boy={64} kalin={1.3} style={{ display: "block", margin: "0 auto 16px" }} />
         <div style={{ fontSize: 22, fontWeight: 800, marginBottom: 6 }}>Sayım kaydedildi</div>
         <div style={{ fontSize: 14, color: C.muted, lineHeight: 1.7 }}>
-          {bitti.kalem} malzeme sayıldı
+          {bitti.kalem} kalem sayıldı
           <br />
           Fark <span style={{ color: farkRengi(bitti.fark_tutari), fontWeight: 800 }}>
             {Number(bitti.fark_tutari) > 0 ? "+" : ""}{fmtTL(bitti.fark_tutari)}
@@ -342,6 +386,9 @@ export default function StockCountPage() {
             {birimler.map(b => (
               <button key={b} onClick={() => setBirim(b)} style={cip(birim === b)}>{b}</button>
             ))}
+            {urunVar && (
+              <button onClick={() => setBirim("urun")} style={cip(birim === "urun")}>Ürünler</button>
+            )}
             <button onClick={() => setSadeceSayilan(v => !v)} style={cip(sadeceSayilan)}>
               Sadece sayılanlar{ozet.adet > 0 ? ` (${ozet.adet})` : ""}
             </button>
@@ -369,7 +416,7 @@ export default function StockCountPage() {
                 {ozet.adet} / {malzemeler.length}
               </div>
               <div style={{ fontSize: 12, color: C.muted, marginTop: 3 }}>
-                malzeme sayıldı{ozet.sapan > 0 ? ` · ${ozet.sapan} farklı` : ""}
+                kalem sayıldı{ozet.sapan > 0 ? ` · ${ozet.sapan} farklı` : ""}
               </div>
             </div>
             <div style={{ textAlign: "right" }}>
@@ -391,29 +438,47 @@ export default function StockCountPage() {
         <div style={{ ...kart, padding: 0, overflow: "hidden", marginBottom: 12 }}>
           {gosterilen.length === 0 && (
             <div style={{ padding: 26, textAlign: "center", color: C.muted, fontSize: 13 }}>
-              Bu filtreye uyan malzeme yok.
+              Bu filtreye uyan malzeme ya da ürün yok.
             </div>
           )}
           {gosterilen.map((i, idx) => {
             const h = satirHesap(i);
             const farkli = h.girildi && Math.abs(h.farkTemel) > ONEMSIZ;
+            // Raf urunleri listenin sonunda; 132 malzemenin altinda kaybolmasin
+            // diye ilk urun satirinin ustune bolum basligi gelir.
+            const bolumBasi = i.urun && (idx === 0 || !gosterilen[idx - 1].urun);
             return (
               <div key={i.id} style={{
                 padding: "11px 14px", borderTop: idx === 0 ? "none" : `1px solid ${C.line}`,
                 background: h.girildi ? "#1A1A1A" : "transparent",
               }}>
+                {bolumBasi && (
+                  <div style={{ ...etiket, marginBottom: 10, color: C.ink }}>
+                    RAF ÜRÜNLERİ · adetle sayılır, bedenli ürün beden başına
+                  </div>
+                )}
                 <div style={{ display: "flex", alignItems: "center", gap: 10 }}>
                   <div style={{ flex: 1, minWidth: 0 }}>
                     <div style={{ fontSize: 15, fontWeight: 700, overflow: "hidden",
-                                  textOverflow: "ellipsis", whiteSpace: "nowrap" }}>{i.name}</div>
+                                  textOverflow: "ellipsis", whiteSpace: "nowrap" }}>
+                      {i.urun ? i.urunAdi : i.name}
+                      {i.urun && (
+                        <span style={{ marginLeft: 7, fontSize: 10, fontWeight: 700, color: C.faint,
+                                       border: `1px solid ${C.line}`, borderRadius: 5, padding: "1px 5px",
+                                       verticalAlign: "middle", letterSpacing: "0.4px" }}>ÜRÜN</span>
+                      )}
+                    </div>
                     <div style={{ fontSize: 12, color: C.faint, marginTop: 2,
                                   fontVariantNumeric: "tabular-nums" }}>
+                      {i.variant && (
+                        <span style={{ color: C.ink, fontWeight: 800, marginRight: 6 }}>{i.variant}</span>
+                      )}
                       beklenen {fmtMiktar(h.beklenen)} {h.birimAdi}
                       {h.kap && <> · {fmtMiktar(i.unit_volume_ml)} {i.unit}</>}
                     </div>
                   </div>
                   <input
-                    type="number" inputMode="decimal" min="0" step="any"
+                    type="number" inputMode={i.urun ? "numeric" : "decimal"} min="0" step={i.urun ? "1" : "any"}
                     value={sayimlar[i.id] ?? ""}
                     onChange={e => setSayimlar(s => ({ ...s, [i.id]: e.target.value }))}
                     placeholder="—"
@@ -473,8 +538,8 @@ export default function StockCountPage() {
           fontFamily: cv, opacity: busy ? 0.6 : 1,
         }}>
           {busy ? "Kaydediliyor…"
-                : ozet.adet === 0 ? "Önce bir malzeme say"
-                : `${ozet.adet} malzemeyi kaydet`}
+                : ozet.adet === 0 ? "Önce bir kalem say"
+                : `${ozet.adet} kalemi kaydet`}
         </button>
 
         <div style={{ fontSize: 12, color: C.faint, marginTop: 10, lineHeight: 1.7, textAlign: "center" }}>
@@ -529,10 +594,11 @@ export default function StockCountPage() {
                       }}>
                         <span style={{ flex: 1, minWidth: 0, color: C.muted, overflow: "hidden",
                                        textOverflow: "ellipsis", whiteSpace: "nowrap" }}>
-                          {l.ingredients?.name || "—"}
+                          {l.ingredients?.name
+                            || (l.products?.name ? l.products.name + (l.variant_name ? " · " + l.variant_name : "") : "—")}
                         </span>
                         <span style={{ color: C.faint }}>
-                          {fmtMiktar(l.beklenen)} → {fmtMiktar(l.sayilan)} {l.ingredients?.unit || ""}
+                          {fmtMiktar(l.beklenen)} → {fmtMiktar(l.sayilan)} {l.ingredients?.unit || (l.products ? "adet" : "")}
                         </span>
                         <span style={{ color: farkRengi(l.fark), fontWeight: 800, minWidth: 74,
                                        textAlign: "right" }}>

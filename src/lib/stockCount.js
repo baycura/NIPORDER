@@ -51,3 +51,17 @@ const SADE = { ı: "i", i: "i", İ: "i", I: "i", ş: "s", Ş: "s", ğ: "g", Ğ: 
                ü: "u", Ü: "u", ö: "o", Ö: "o", ç: "c", Ç: "c" };
 export const sadelestir = (s) =>
   String(s || "").replace(/[ıiİIşŞğĞüÜöÖçÇ]/g, c => SADE[c]).toLowerCase();
+
+// Sayim aramasi bir adim daha gevsek: bosluk, tire, nokta atilir ki
+// "t shirt", "t-shirt" ve "tshirt" ayni seyi bulsun. Tisort iki dilde
+// yaziliyor — eski urunler "T-Shirt", yeniler "Tişört" — biri aranirken
+// oteki de cikmali; yoksa "tshirt" yazan kisi bos liste gorur.
+const ESANLAM = { tshirt: "tisort", tisort: "tshirt" };
+export const aramaAnahtari = (s) => sadelestir(s).replace(/[^a-z0-9]/g, "");
+export const aramaUyar = (ad, sorgu) => {
+  const q = aramaAnahtari(sorgu);
+  if (!q) return true;
+  const hedef = aramaAnahtari(ad);
+  if (hedef.includes(q)) return true;
+  return Object.entries(ESANLAM).some(([a, b]) => q.includes(a) && hedef.includes(q.replace(a, b)));
+};
