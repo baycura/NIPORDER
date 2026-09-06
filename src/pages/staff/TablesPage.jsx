@@ -3,6 +3,7 @@ import { useNavigate } from "react-router-dom";
 import { supabase } from "../../lib/supabase.js";
 import { useAuth } from "../../contexts/AuthContext.jsx";
 import Ikon from "../../components/Ikon.jsx";
+import HaftalikLig from "../../components/HaftalikLig.jsx";
 import { businessDayStart } from "../../lib/businessDay.js";
 import { partiDurumOku, biterYazi } from "../../lib/parti.js";
 
@@ -214,6 +215,10 @@ export default function TablesPage() {
           {occupiedCount}/{tables.length} dolu{acikToplam > 0 ? " · ₺" + acikToplam.toLocaleString("tr-TR") : ""}
         </div>
       </div>
+
+      {/* Haftalik lig, tek satir: herkesin ilk actigi ekran burasi. Dokununca
+          acilir; part-time'in Vardiyam sayfasi yok, ligi buradan gorur. */}
+      <HaftalikLig compact />
 
       {/* PARTI DUGMESI. Acikken belirgin, kapaliyken sakin bir satir —
           gece 22:00'de aranan sey bu, gunduz gozu tirmalamasin. */}

@@ -63,6 +63,7 @@ export const GRUPLAR = [
       { to: "/profit",         icon: "puan", label: "Ürün Kârlılığı" },
       { to: "/cash-history",   icon: "takvim", label: "Kasa Geçmişi" },
       { to: "/shifts",         icon: "takvim", label: "Vardiyalar" },
+      { to: "/discounts",      icon: "kampanya", label: "İndirimler" },
       { to: "/settlement",     icon: "mutfakodeme", label: "Mutfağa Ödenecek" },
       { to: "/fixed-expenses", icon: "kilit", label: "Sabit Giderler" },
       { to: "/staff-mgmt",     icon: "personel", label: "Personel" },

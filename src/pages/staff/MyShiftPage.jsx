@@ -1,6 +1,7 @@
 import{useState,useEffect}from"react";import{useNavigate}from"react-router-dom";import{supabase}from"../../lib/supabase.js";import{useAuth}from"../../contexts/AuthContext.jsx";
 import{businessDayStart,businessDayKey}from"../../lib/businessDay.js";
 import Ikon from "../../components/Ikon.jsx";
+import HaftalikLig from "../../components/HaftalikLig.jsx";
 const cv="'Coolvetica','Bebas Neue',sans-serif";const cvc="'Coolvetica Condensed','Barlow Condensed',sans-serif";
 export default function MyShiftPage(){
   const{staffUser}=useAuth();const navigate=useNavigate();const[orders,setOrders]=useState([]);const[shift,setShift]=useState(null);const[loading,setLoading]=useState(true);
@@ -77,6 +78,8 @@ export default function MyShiftPage(){
         <span style={{color:"#F0EDE8",fontFamily:cv,fontSize:18}}>{workedStr}</span>
       </div>
     )}
+    {/* Haftalik lig: herkesin satisi yan yana, tatli rekabet. */}
+    <HaftalikLig />
     {staffUser?.telegram_chat_id
       ? <div style={{background:"#161616",border:"1px solid #2A2A2A",borderRadius:10,padding:"10px 14px",marginBottom:16,color:"#FFFFFF",fontFamily:cvc,fontSize:12,fontWeight:700,letterSpacing:"0.5px"}}><Ikon ad="ucak" boy={13} style={{marginRight:6}}/>Telegram bildirimleri açık — vardiyadayken siparişler telefonuna gelir</div>
       : <a href={"https://t.me/BaycuraBot?start="+staffUser?.id} target="_blank" rel="noreferrer" style={{display:"block",background:"#1C2B3A",border:"1px solid #2E4A66",borderRadius:10,padding:"12px 14px",marginBottom:16,color:"#5FB0E8",fontFamily:cvc,fontSize:13,fontWeight:700,letterSpacing:"0.5px",textDecoration:"none",textAlign:"center"}}>✈️ Telegram bildirimlerini aç — sipariş geldiğinde telefonuna mesaj gelsin</a>}

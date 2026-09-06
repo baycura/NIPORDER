@@ -42,6 +42,7 @@ import FixedExpensesPage from "./pages/manager/FixedExpensesPage.jsx";
 import HubPage from "./pages/staff/HubPage.jsx";
 import TodayPage from "./pages/manager/TodayPage.jsx";
 import ShiftsOverviewPage from "./pages/manager/ShiftsOverviewPage.jsx";
+import DiscountsPage from "./pages/manager/DiscountsPage.jsx";
 
 function PrivateRoute({ children, managerOnly = false, adminOnly = false, allowViewer = false, deny = [] }) {
   const { session, staffUser, isManager, isAdmin, isViewer, loading } = useAuth();
@@ -110,6 +111,8 @@ function AppRoutes() {
         <Route path="hub"              element={<PrivateRoute><HubPage /></PrivateRoute>} />
         <Route path="today"            element={<PrivateRoute managerOnly><TodayPage /></PrivateRoute>} />
         <Route path="shifts"           element={<PrivateRoute adminOnly><ShiftsOverviewPage /></PrivateRoute>} />
+        {/* Kim ne kadar indirim yapti: yalniz sahip. RPC icinde de is_admin() var. */}
+        <Route path="discounts"        element={<PrivateRoute adminOnly><DiscountsPage /></PrivateRoute>} />
       </Route>
       <Route path="*" element={<Navigate to="/" replace />} />
     </Routes>
