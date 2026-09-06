@@ -8,7 +8,8 @@ const cvc = "'Coolvetica Condensed','Barlow Condensed',sans-serif";
 const tl = (n) => "₺" + Math.round(Number(n) || 0).toLocaleString("tr-TR");
 const gun = (d) => d ? new Date(d + "T00:00:00").toLocaleDateString("tr-TR", { day: "numeric", month: "short" }) : "";
 
-// Haftalik satis ligi — personel kendi arasinda gorsun diye. Kaynak
+// Haftalik kisisel satis — personel kendi arasinda gorsun diye. Ekranda
+// "lig" DENMEZ (sahip istegi: fazla yaristirir gibi), siralama durur. Kaynak
 // nip_haftalik_lig: kalemi kim ekledi (order_items.added_by), yoksa siparisi
 // kim acti. Yalniz odenmis hesaplar, ikram sayilmaz. Hafta Pazartesi 00:00
 // (Istanbul) baslar. compact: masalar sayfasinda tek satir, dokununca acilir.
@@ -51,7 +52,7 @@ export default function HaftalikLig({ compact = false }) {
       }}>
         <Ikon ad="yildiz" boy={15} style={{ color: "#F0EDE8", flexShrink: 0 }} />
         <span style={{ flex: 1, minWidth: 0, fontSize: 12, color: "#aaa", overflow: "hidden", textOverflow: "ellipsis", whiteSpace: "nowrap" }}>
-          <b style={{ color: "#F0EDE8", letterSpacing: "0.4px" }}>HAFTALIK LİG</b>
+          <b style={{ color: "#F0EDE8", letterSpacing: "0.4px" }}>HAFTALIK KİŞİSEL SATIŞ</b>
           {satirlar === null ? " · yükleniyor…"
             : liste.length === 0 ? " · bu hafta henüz satış yok — ilk sen ol"
             : " · " + liste.slice(0, 3).map((r, i) => `${i + 1}. ${(r.personel || "").split(" ")[0]} ${tl(r.ciro)}`).join(" · ")}
@@ -67,7 +68,7 @@ export default function HaftalikLig({ compact = false }) {
       <div style={{ display: "flex", alignItems: "center", gap: 10, marginBottom: 10 }}>
         <Ikon ad="yildiz" boy={16} style={{ color: "#F0EDE8" }} />
         <div style={{ flex: 1, minWidth: 0 }}>
-          <div style={{ color: "#F0EDE8", fontFamily: cv, fontSize: 17, letterSpacing: "0.3px" }}>Haftalık Lig</div>
+          <div style={{ color: "#F0EDE8", fontFamily: cv, fontSize: 17, letterSpacing: "0.3px" }}>Haftalık Kişisel Satış</div>
           <div style={{ color: "#8A8580", fontFamily: cvc, fontSize: 11 }}>{aralik || "Pazartesi'den bu yana"} · ödenen hesaplar, ikram hariç</div>
         </div>
         <div style={{ display: "flex", gap: 6 }}>
