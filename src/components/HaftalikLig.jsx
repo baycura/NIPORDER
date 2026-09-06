@@ -52,7 +52,7 @@ export default function HaftalikLig({ compact = false }) {
       }}>
         <Ikon ad="yildiz" boy={15} style={{ color: "#F0EDE8", flexShrink: 0 }} />
         <span style={{ flex: 1, minWidth: 0, fontSize: 12, color: "#aaa", overflow: "hidden", textOverflow: "ellipsis", whiteSpace: "nowrap" }}>
-          <b style={{ color: "#F0EDE8", letterSpacing: "0.4px" }}>HAFTALIK KİŞİSEL SATIŞ</b>
+          <b style={{ color: "#F0EDE8", letterSpacing: "0.4px" }}>HAFTALIK SATIŞ</b>
           {satirlar === null ? " · yükleniyor…"
             : liste.length === 0 ? " · bu hafta henüz satış yok — ilk sen ol"
             : " · " + liste.slice(0, 3).map((r, i) => `${i + 1}. ${(r.personel || "").split(" ")[0]} ${tl(r.ciro)}`).join(" · ")}
@@ -68,7 +68,7 @@ export default function HaftalikLig({ compact = false }) {
       <div style={{ display: "flex", alignItems: "center", gap: 10, marginBottom: 10 }}>
         <Ikon ad="yildiz" boy={16} style={{ color: "#F0EDE8" }} />
         <div style={{ flex: 1, minWidth: 0 }}>
-          <div style={{ color: "#F0EDE8", fontFamily: cv, fontSize: 17, letterSpacing: "0.3px" }}>Haftalık Kişisel Satış</div>
+          <div style={{ color: "#F0EDE8", fontFamily: cv, fontSize: 17, letterSpacing: "0.3px" }}>Haftalık Satış</div>
           <div style={{ color: "#8A8580", fontFamily: cvc, fontSize: 11 }}>{aralik || "Pazartesi'den bu yana"} · ödenen hesaplar, ikram hariç</div>
         </div>
         <div style={{ display: "flex", gap: 6 }}>
