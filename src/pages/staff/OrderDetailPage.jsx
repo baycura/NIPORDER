@@ -176,7 +176,9 @@ export default function OrderDetailPage() {
       manual_discount: ind,
       final_price: Math.max(0, taban - ind),
       discount_note: ind > 0 ? (String(not || "").trim() || null) : null,
-      discount_by: ind > 0 ? (staffUser?.id || null) : null,
+      // Kim verdi kalemde DURMAZ: order_items'i herkes okur. Izi sunucudaki
+      // tetik (trg_indirim_denetim) auth.uid()'den alip discount_audit'e
+      // yazar; onu yalniz sahip okur (20260906_indirim_denetimi).
     };
     const next = items.map(i => i.id === it.id ? { ...i, ...patch } : i);
     setItems(next); syncTotal(next);
@@ -332,6 +334,8 @@ export default function OrderDetailPage() {
       // "Paket" modu acikken eklenen icecekler gotur olarak isaretlenir
       is_takeaway: takeawayMode && canTakeaway(p),
       selected_options: selOpts || null,
+      // Haftalik lig: kalemi kim ekledi. Siparisi baskasi acmis olabilir.
+      added_by: staffUser?.id || null,
     };
     // Once ekranda goster (aninda tepki), sonra kaydet
     const tempId = "temp-" + Date.now();
