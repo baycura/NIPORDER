@@ -423,6 +423,11 @@ export default function OrderDetailPage() {
   // asil sey. Parti acikken liste parti urunlerine iner. "Tum menu" cikisi
   // BILEREK duruyor — musteri parti disi bir sey isterse satis engellenmemeli.
   const partiSuzulu = partiAktif && !tumMenu ? products.filter(p => p.show_in_party_menu) : products;
+  // Parti modunda ARAMA raf urunlerini de kapsar: tisort gece de satilir,
+  // "Tum menu"ye gecmeden bulunmali. Cipler dar kalir (hiz), arama genis.
+  const shopCatIds = new Set(categories.filter(c => c.show_in_shop).map(c => c.id));
+  const rafUrunu = (p) => !!p.track_stock || shopCatIds.has(p.category_id);
+  const aramaTabani = partiAktif && !tumMenu ? products.filter(p => p.show_in_party_menu || rafUrunu(p)) : products;
   const catNameOf = (p) => categories.find(c => c.id === p.category_id)?.name || "";
   // Kasada hiyerarsi yok: yalniz icinde urun olan kategoriler cip olarak cikar,
   // alt kategoriler ust kategorisinin hemen ardinda siralanir.
@@ -437,7 +442,7 @@ export default function OrderDetailPage() {
   // parti urunu yok). Bos ekran gostermek yerine ilk gecerli cipe kay.
   const aktifCat = catChips.some(c => c.id === selectedCat) ? selectedCat : catChips[0]?.id;
   const filteredProducts = q
-    ? partiSuzulu
+    ? aramaTabani
         .filter(p => trLow(p.name).includes(q) || trLow(p.name_en).includes(q) || trLow(p.brand).includes(q))
         .sort((a, b) => (trLow(a.name).startsWith(q) ? 0 : 1) - (trLow(b.name).startsWith(q) ? 0 : 1))
     : partiSuzulu.filter(p => p.category_id === aktifCat);
