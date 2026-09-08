@@ -2,6 +2,7 @@ import { useEffect, useState } from "react";
 import { supabase, hataMetni } from "../../lib/supabase.js";
 import { PARIS_STORE_ID } from "../../lib/stores.js";
 import Ikon from "../../components/Ikon.jsx";
+import ShopifyAyar from "../../components/ShopifyAyar.jsx";
 
 const cv = "-apple-system,BlinkMacSystemFont,'Segoe UI',Roboto,sans-serif";
 
@@ -187,6 +188,9 @@ export default function SettingsPage() {
         </Field>
         <div style={{fontSize:11,color:"#888",marginTop:6}}>NOT: Bir musteriye ozel "admin_discount" varsa, uye indirimi yerine o uygulanir.</div>
       </Section>
+
+      {/* Shopify baglantisi: yalniz sahip gorur, kendi kaydet dugmesi var */}
+      <ShopifyAyar />
 
       {/* Save button */}
       <button onClick={save} disabled={busy} style={{width:"100%",padding:"14px",background:"#FFFFFF",color:"#000",border:"none",borderRadius:12,fontSize:15,fontWeight:800,cursor:"pointer",marginTop:16,opacity:busy?0.6:1}}>{busy?"Kaydediliyor...":(saved?"✓ Kaydedildi":"Ayarlari Kaydet")}</button>
