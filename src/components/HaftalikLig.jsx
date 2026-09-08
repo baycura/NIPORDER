@@ -8,14 +8,15 @@ const cvc = "'Coolvetica Condensed','Barlow Condensed',sans-serif";
 const tl = (n) => "₺" + Math.round(Number(n) || 0).toLocaleString("tr-TR");
 const gun = (d) => d ? new Date(d + "T00:00:00").toLocaleDateString("tr-TR", { day: "numeric", month: "short" }) : "";
 
-// Haftalik kisisel satis — personel kendi arasinda gorsun diye. Ekranda
+// Haftalik / aylik kisisel satis — personel kendi arasinda gorsun diye. Ekranda
 // "lig" DENMEZ (sahip istegi: fazla yaristirir gibi), siralama durur. Kaynak
-// nip_haftalik_lig: kalemi kim ekledi (order_items.added_by), yoksa siparisi
+// nip_personel_satis: kalemi kim ekledi (order_items.added_by), yoksa siparisi
 // kim acti. Yalniz odenmis hesaplar, ikram sayilmaz. Hafta Pazartesi 00:00
 // (Istanbul) baslar. compact: masalar sayfasinda tek satir, dokununca acilir.
 export default function HaftalikLig({ compact = false }) {
   const { staffUser } = useAuth();
-  const [ofset, setOfset] = useState(0);           // 0 bu hafta, -1 gecen hafta
+  const [ofset, setOfset] = useState(0);           // 0 bu, -1 gecen
+  const [donem, setDonem] = useState("hafta");     // hafta | ay
   const [satirlar, setSatirlar] = useState(null);  // null = yukleniyor
   const [acik, setAcik] = useState(!compact);
   const storeId = staffUser?.store_ids?.[0];
@@ -24,16 +25,18 @@ export default function HaftalikLig({ compact = false }) {
     if (!storeId) return;
     let iptal = false;
     setSatirlar(null);
-    supabase.rpc("nip_haftalik_lig", { p_store_id: storeId, p_hafta_ofset: ofset })
+    supabase.rpc("nip_personel_satis", { p_store_id: storeId, p_donem: donem, p_ofset: ofset })
       .then(({ data, error }) => { if (!iptal) setSatirlar(error ? [] : (data || [])); });
     return () => { iptal = true; };
-  }, [storeId, ofset]);
+  }, [storeId, donem, ofset]);
 
   if (!storeId) return null;
   const liste = satirlar || [];
   const benIdx = liste.findIndex(r => r.personel_id === staffUser?.id);
   const lider = liste[0];
-  const aralik = lider ? `${gun(lider.hafta_basi)} – ${gun(lider.hafta_sonu)}` : "";
+  const aralik = lider ? `${gun(lider.baslangic)} – ${gun(lider.bitis)}` : "";
+  const baslik = donem === "ay" ? "Aylık Satış" : "Haftalık Satış";
+  const sec = (d, o) => { setDonem(d); setOfset(o); };
 
   const chip = (aktif) => ({
     padding: "6px 11px", borderRadius: 20, fontSize: 11, fontWeight: 700, cursor: "pointer", fontFamily: cvc,
@@ -52,7 +55,7 @@ export default function HaftalikLig({ compact = false }) {
       }}>
         <Ikon ad="yildiz" boy={15} style={{ color: "#F0EDE8", flexShrink: 0 }} />
         <span style={{ flex: 1, minWidth: 0, fontSize: 12, color: "#aaa", overflow: "hidden", textOverflow: "ellipsis", whiteSpace: "nowrap" }}>
-          <b style={{ color: "#F0EDE8", letterSpacing: "0.4px" }}>HAFTALIK SATIŞ</b>
+          <b style={{ color: "#F0EDE8", letterSpacing: "0.4px" }}>{baslik.toLocaleUpperCase("tr-TR")}</b>
           {satirlar === null ? " · yükleniyor…"
             : liste.length === 0 ? " · bu hafta henüz satış yok — ilk sen ol"
             : " · " + liste.slice(0, 3).map((r, i) => `${i + 1}. ${(r.personel || "").split(" ")[0]} ${tl(r.ciro)}`).join(" · ")}
@@ -68,12 +71,8 @@ export default function HaftalikLig({ compact = false }) {
       <div style={{ display: "flex", alignItems: "center", gap: 10, marginBottom: 10 }}>
         <Ikon ad="yildiz" boy={16} style={{ color: "#F0EDE8" }} />
         <div style={{ flex: 1, minWidth: 0 }}>
-          <div style={{ color: "#F0EDE8", fontFamily: cv, fontSize: 17, letterSpacing: "0.3px" }}>Haftalık Satış</div>
-          <div style={{ color: "#8A8580", fontFamily: cvc, fontSize: 11 }}>{aralik || "Pazartesi'den bu yana"} · ödenen hesaplar, ikram hariç</div>
-        </div>
-        <div style={{ display: "flex", gap: 6 }}>
-          <button onClick={() => setOfset(0)} style={chip(ofset === 0)}>Bu hafta</button>
-          <button onClick={() => setOfset(-1)} style={chip(ofset === -1)}>Geçen hafta</button>
+          <div style={{ color: "#F0EDE8", fontFamily: cv, fontSize: 17, letterSpacing: "0.3px" }}>{baslik}</div>
+          <div style={{ color: "#8A8580", fontFamily: cvc, fontSize: 11 }}>{aralik || (donem === "ay" ? "Ay başından bu yana" : "Pazartesi'den bu yana")} · ödenen hesaplar, ikram hariç</div>
         </div>
         {compact && (
           <button onClick={() => setAcik(false)} aria-label="Kapat"
@@ -83,10 +82,17 @@ export default function HaftalikLig({ compact = false }) {
         )}
       </div>
 
+      <div style={{ display: "flex", gap: 6, flexWrap: "wrap", marginBottom: 8 }}>
+        <button onClick={() => sec("hafta", 0)}  style={chip(donem === "hafta" && ofset === 0)}>Bu hafta</button>
+        <button onClick={() => sec("hafta", -1)} style={chip(donem === "hafta" && ofset === -1)}>Geçen hafta</button>
+        <button onClick={() => sec("ay", 0)}     style={chip(donem === "ay" && ofset === 0)}>Bu ay</button>
+        <button onClick={() => sec("ay", -1)}    style={chip(donem === "ay" && ofset === -1)}>Geçen ay</button>
+      </div>
+
       {satirlar === null && <div style={{ color: "#888", fontFamily: cvc, fontSize: 12, padding: "10px 0" }}>Yükleniyor…</div>}
       {satirlar !== null && liste.length === 0 && (
         <div style={{ color: "#888", fontFamily: cvc, fontSize: 12, padding: "10px 0" }}>
-          {ofset === 0 ? "Bu hafta henüz ödenmiş satış yok. İlk sırayı kapan sen ol." : "Geçen hafta kayıtlı satış yok."}
+          {ofset === 0 ? (donem === "ay" ? "Bu ay henüz ödenmiş satış yok." : "Bu hafta henüz ödenmiş satış yok. İlk sırayı kapan sen ol.") : "Bu dönemde kayıtlı satış yok."}
         </div>
       )}
       {liste.map((r, i) => {
