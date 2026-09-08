@@ -37,7 +37,9 @@ export const GRUPLAR = [
       { to: "/stock-mgmt",        icon: "arsiv", label: "Stok Yönetimi" },
       { to: "/costs",             icon: "gider", label: "Eksik Maliyetler" },
       { to: "/retail",            icon: "raf", label: "Ürünler (Raf)" },
-      { to: "/merch-mgmt",        icon: "merch", label: "Merch" },
+      // Merch sayfasi menuden kaldirildi: merch_products tisortlerin hicbir
+      // yere bagli olmayan kopyasiydi (kasa/Shop/sayim products'a bakar), oraya
+      // girilen stok kayboluyordu. Rota duruyor, menuden ulasilmiyor.
       { to: "/category-schedule", icon: "saat", label: "Kategori Saatleri" },
     ],
   },
