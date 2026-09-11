@@ -6,3 +6,6 @@ ride/dist/
 *.local
 .DS_Store
 *.log
+
+# isletme dagitimlari
+isletme/*/dist/

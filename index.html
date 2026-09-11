@@ -1,9 +1,12 @@
 <!doctype html>
-<html lang="en">
+<html lang="tr">
   <head>
     <meta charset="UTF-8" />
     <meta name="viewport" content="width=device-width, initial-scale=1.0" />
-    <title>Not In Paris</title>
+    <!-- %VITE_...% yer tutucularini Vite build aninda doldurur. Varsayilanlar
+         (Not in Paris) vite.config.js'de; baska isletme kurulumu
+         isletme/<slug>/vite.config.js icinde kendi degerlerini verir. -->
+    <title>%VITE_MARKA_AD%</title>
     <link rel="manifest" href="/manifest.json" />
     <meta name="theme-color" content="#0C0C0C" />
     <link rel="icon" type="image/png" sizes="32x32" href="/icons/favicon-32.png" />
@@ -13,21 +16,21 @@
     <!-- Link onizlemesi: WhatsApp/Instagram/Telegram'a adres yapistirilinca
          gorunen kart. Bunlar olmadan hicbir gorsel cikmiyordu. -->
     <meta property="og:type" content="website" />
-    <meta property="og:site_name" content="Not in Paris" />
-    <meta property="og:title" content="Not in Paris — Fethiye" />
-    <meta property="og:description" content="Masandan sipariş ver, hazır olunca haber verelim. Menü, etkinlikler, sürüşler ve mağaza." />
-    <meta property="og:url" content="https://order.notinparis.me/menu" />
-    <meta property="og:image" content="https://order.notinparis.me/icons/og.png" />
+    <meta property="og:site_name" content="%VITE_MARKA_AD%" />
+    <meta property="og:title" content="%VITE_MARKA_BASLIK%" />
+    <meta property="og:description" content="%VITE_MARKA_ACIKLAMA%" />
+    <meta property="og:url" content="%VITE_APP_URL%/menu" />
+    <meta property="og:image" content="%VITE_APP_URL%/icons/og.png" />
     <meta property="og:image:width" content="1200" />
     <meta property="og:image:height" content="630" />
     <meta property="og:locale" content="tr_TR" />
     <meta name="twitter:card" content="summary_large_image" />
-    <meta name="twitter:title" content="Not in Paris — Fethiye" />
-    <meta name="twitter:description" content="Masandan sipariş ver, hazır olunca haber verelim." />
-    <meta name="twitter:image" content="https://order.notinparis.me/icons/og.png" />
+    <meta name="twitter:title" content="%VITE_MARKA_BASLIK%" />
+    <meta name="twitter:description" content="%VITE_MARKA_ACIKLAMA_KISA%" />
+    <meta name="twitter:image" content="%VITE_APP_URL%/icons/og.png" />
     <meta name="apple-mobile-web-app-capable" content="yes" />
     <meta name="apple-mobile-web-app-status-bar-style" content="default" />
-    <meta name="apple-mobile-web-app-title" content="Not in Paris" />
+    <meta name="apple-mobile-web-app-title" content="%VITE_MARKA_AD%" />
     <link rel="preconnect" href="https://fonts.googleapis.com">
     <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
     <link href="https://fonts.googleapis.com/css2?family=Barlow+Condensed:wght@400;700;800;900&family=Bebas+Neue&display=swap" rel="stylesheet">

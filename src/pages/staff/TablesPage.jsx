@@ -6,6 +6,7 @@ import Ikon from "../../components/Ikon.jsx";
 import HaftalikLig from "../../components/HaftalikLig.jsx";
 import { businessDayStart } from "../../lib/businessDay.js";
 import { partiDurumOku, biterYazi } from "../../lib/parti.js";
+import { ozellik } from "../../lib/profil.js";
 
 const cv = "-apple-system,BlinkMacSystemFont,'Segoe UI',Roboto,sans-serif";
 
@@ -80,7 +81,7 @@ export default function TablesPage() {
 
   const partiMagaza = staffUser?.store_ids?.[0];
   const partiOku = () => {
-    if (!partiMagaza) return;
+    if (!partiMagaza || !ozellik("parti")) return;
     supabase.rpc("nip_parti_durum", { p_store_id: partiMagaza })
       .then(({ data, error }) => setParti(partiDurumOku(data, error)));
   };
@@ -222,7 +223,7 @@ export default function TablesPage() {
 
       {/* PARTI DUGMESI. Acikken belirgin, kapaliyken sakin bir satir —
           gece 22:00'de aranan sey bu, gunduz gozu tirmalamasin. */}
-      {parti && (
+      {parti && ozellik("parti") && (
         <div onClick={partiDegistir} style={{
           display:"flex",alignItems:"center",gap:11,cursor:partiBusy?"default":"pointer",
           padding:"12px 14px",borderRadius:12,marginBottom:12,opacity:partiBusy?0.6:1,

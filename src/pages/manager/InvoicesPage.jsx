@@ -2,6 +2,7 @@ import { useEffect, useState } from "react";
 import { parseUblInvoice } from "../../lib/ublInvoice.js";
 import { supabase, hataMetni } from "../../lib/supabase.js";
 import { useAuth } from "../../contexts/AuthContext.jsx";
+import { ozellik } from "../../lib/profil.js";
 import Ikon from "../../components/Ikon.jsx";
 
 const cv = "-apple-system,BlinkMacSystemFont,'Segoe UI',Roboto,sans-serif";
@@ -356,7 +357,7 @@ export default function InvoicesPage() {
     }
 
     setPriceAlerts(anomalies);
-    if (anomalies.length) {
+    if (anomalies.length && ozellik("telegram")) {
       // Sahibe Telegram uyarisi (arka planda; basarisiz olsa da kayit tamam)
       supabase.functions.invoke("telegram?action=price_alert", {
         body: { supplier: form.supplier_name.trim(), alerts: anomalies },
@@ -364,7 +365,7 @@ export default function InvoicesPage() {
     }
     setBusy(false); setModal(null); load();
     alert(anomalies.length
-      ? "Fatura kaydedildi. " + anomalies.length + " üründe anormal fiyat artışı (%" + PRICE_ALERT_PCT + "+) — sahibe Telegram uyarısı gönderildi."
+      ? "Fatura kaydedildi. " + anomalies.length + " üründe anormal fiyat artışı (%" + PRICE_ALERT_PCT + "+)" + (ozellik("telegram") ? " — sahibe Telegram uyarısı gönde" : ".") + "rildi."
       : "Fatura kaydedildi! Stok guncellendi.");
   };
 
@@ -459,7 +460,9 @@ export default function InvoicesPage() {
           </div>
           )}
 
-          {modal.mode !== "manual" && (
+          {/* Fotograftan AI ile okuma: profil moduludur (faturaOcr). Kapali
+              isletmede fatura elle ya da e-Fatura XML'iyle girilir. */}
+          {modal.mode !== "manual" && ozellik("faturaOcr") && (
           <div style={{marginBottom:14,background:"rgba(255,255,255,0.06)",border:"1px dashed #FFFFFF",borderRadius:10,padding:12}}>
             <div style={{fontSize:12,color:"#8A8580",letterSpacing:"0.2px",fontWeight:600,marginBottom:5,display:"flex",alignItems:"center",gap:6}}><Ikon ad="parlak" boy={13}/>FATURA FOTOSUNDAN OTOMATIK DOLDUR</div>
             <input type="file" accept="image/*" capture="environment" onChange={onPhoto} style={{...inputS, padding:"8px"}}/>

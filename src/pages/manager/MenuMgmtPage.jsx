@@ -2,7 +2,7 @@ import { useEffect, useState } from "react";
 import { supabase } from "../../lib/supabase.js";
 import { gorselYukle } from "../../lib/gorsel.js";
 import { useAuth } from "../../contexts/AuthContext.jsx";
-import { PARIS_STORE_ID, DONER_STORE_ID } from "../../lib/stores.js";
+import { PARIS_STORE_ID, DONER_STORE_ID, storeLabel } from "../../lib/stores.js";
 import Ikon from "../../components/Ikon.jsx";
 
 const cv = "-apple-system,BlinkMacSystemFont,'Segoe UI',Roboto,sans-serif";
@@ -607,14 +607,14 @@ export default function MenuMgmtPage() {
           <div style={{marginBottom:10}}>
             <label style={{display:"block",fontSize:11,color:"#888",marginBottom:4,fontWeight:600,letterSpacing:0.5}}>HANGİ MENÜDE GÖRÜNSÜN? (birden fazla seçilebilir)</label>
             <div style={{display:"flex",gap:6}}>
-              {[{id:PARIS_STORE_ID,label:"Not In Paris"},{id:DONER_STORE_ID,label:"Döner"}].map(s => { const sel = [prodForm.store_id,...(prodForm.additional_store_ids||[])].filter(Boolean).includes(s.id); return (<button key={s.id} type="button" onClick={()=>{const cur=[prodForm.store_id,...(prodForm.additional_store_ids||[])].filter(Boolean);const next=cur.includes(s.id)?cur.filter(x=>x!==s.id):[...cur,s.id];setProdForm({...prodForm,store_id:next[0]||"",additional_store_ids:next.slice(1)});}} style={{flex:1,padding:"8px",background:sel?"#FFFFFF":"#222",color:sel?"#000":"#888",border:"1px solid "+(sel?"#FFFFFF":"#333"),borderRadius:6,fontSize:13,fontWeight:700,cursor:"pointer"}}>{sel?"✓ ":""}{s.label}</button>); })}
+              {[{id:PARIS_STORE_ID,label:storeLabel(PARIS_STORE_ID)},...(DONER_STORE_ID ? [{id:DONER_STORE_ID,label:"Döner"}] : [])].map(s => { const sel = [prodForm.store_id,...(prodForm.additional_store_ids||[])].filter(Boolean).includes(s.id); return (<button key={s.id} type="button" onClick={()=>{const cur=[prodForm.store_id,...(prodForm.additional_store_ids||[])].filter(Boolean);const next=cur.includes(s.id)?cur.filter(x=>x!==s.id):[...cur,s.id];setProdForm({...prodForm,store_id:next[0]||"",additional_store_ids:next.slice(1)});}} style={{flex:1,padding:"8px",background:sel?"#FFFFFF":"#222",color:sel?"#000":"#888",border:"1px solid "+(sel?"#FFFFFF":"#333"),borderRadius:6,fontSize:13,fontWeight:700,cursor:"pointer"}}>{sel?"✓ ":""}{s.label}</button>); })}
             </div>
           </div>
 
           <div style={{marginBottom:10}}>
             <label style={{display:"block",fontSize:11,color:"#888",marginBottom:4,fontWeight:600,letterSpacing:0.5}}>BU ÜRÜNÜ KİM YAPIYOR? (mutfak)</label>
             <div style={{display:"flex",gap:6}}>
-              {[{id:PARIS_STORE_ID,label:"Kendi Mutfağımız"},{id:DONER_STORE_ID,label:"Döner Mutfağı"}].map(s => { const sel = prodForm.kitchen_destination_store_id === s.id; return (<button key={s.id} type="button" onClick={()=>setProdForm({...prodForm,kitchen_destination_store_id:s.id})} style={{flex:1,padding:"8px",background:sel?"#FFFFFF":"#222",color:sel?"#000":"#888",border:"1px solid "+(sel?"#FFFFFF":"#333"),borderRadius:6,fontSize:13,fontWeight:700,cursor:"pointer"}}>{sel?"✓ ":""}{s.label}</button>); })}
+              {[{id:PARIS_STORE_ID,label:"Kendi Mutfağımız"},...(DONER_STORE_ID ? [{id:DONER_STORE_ID,label:"Döner Mutfağı"}] : [])].map(s => { const sel = prodForm.kitchen_destination_store_id === s.id; return (<button key={s.id} type="button" onClick={()=>setProdForm({...prodForm,kitchen_destination_store_id:s.id})} style={{flex:1,padding:"8px",background:sel?"#FFFFFF":"#222",color:sel?"#000":"#888",border:"1px solid "+(sel?"#FFFFFF":"#333"),borderRadius:6,fontSize:13,fontWeight:700,cursor:"pointer"}}>{sel?"✓ ":""}{s.label}</button>); })}
             </div>
             {prodForm.kitchen_destination_store_id === DONER_STORE_ID && (
               <div style={{marginTop:6,fontSize:11,color:"#8A8580",background:"rgba(224,122,62,0.1)",border:"1px solid #2A2A2A",borderRadius:6,padding:"6px 8px",lineHeight:1.4}}>

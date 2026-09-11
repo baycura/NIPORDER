@@ -6,19 +6,27 @@ import { happyHourPrices } from "../../lib/happyHour.js";
 import { optionMod } from "../../lib/productOptions.js";
 import { PHONE_CODES, toE164 } from "../../lib/phoneCodes.js";
 import { errorText } from "../../lib/errorText.js";
+import { ozellik, MARKA, rezervasyonYerel, PROFIL } from "../../lib/profil.js";
+import { STORE_SLUG } from "../../lib/stores.js";
+import { RESERVE_URL, RESERVE_KEY, RESERVATION_URL } from "../../lib/reserve.js";
 import Ikon from "../../components/Ikon.jsx";
 
 const cv = "-apple-system,BlinkMacSystemFont,'Segoe UI',Roboto,sans-serif";
+// Yerel rezervasyon formu (profil "temel") girdi stilleri
+const rezInputS = {width:"100%",padding:"13px 14px",background:"#f7f7f7",border:"1px solid #eee",borderRadius:12,fontSize:15,outline:"none",fontFamily:"inherit",marginBottom:10,boxSizing:"border-box"};
+const rezStepS = {width:36,height:36,borderRadius:10,border:"1px solid #ddd",background:"#fff",fontSize:18,fontWeight:800,cursor:"pointer",fontFamily:"inherit"};
 
-// Alt sekmeler — QR menu ayni zamanda vitrin: etkinlik/rezervasyon, surusler, shop, blog
+// Alt sekmeler — QR menu ayni zamanda vitrin: etkinlik/rezervasyon, surusler, shop, blog.
+// Her sekme bir profil modulune bagli (lib/profil.js); kapali modulun sekmesi
+// hic cizilmez. Yalniz "menu" kalirsa alt bar da gizlenir.
 const CUST_TABS = [
   { key: "menu",   icon: "menu",     tr: "Menü",     en: "Menu",   ru: "Меню" },
-  { key: "events", icon: "etkinlik", tr: "Etkinlik", en: "Events", ru: "События" },
-  { key: "rides",  icon: "surus",    tr: "Sürüş",    en: "Rides",  ru: "Заезды" },
-  { key: "vote",   icon: "oylama",   tr: "Oyla",     en: "Vote",   ru: "Голос" },
-  { key: "shop",   icon: "merch",    tr: "Shop",     en: "Shop",   ru: "Шоп" },
-  { key: "blog",   icon: "blog",     tr: "Blog",     en: "Blog",   ru: "Блог" },
-];
+  { key: "events", icon: "etkinlik", tr: "Etkinlik", en: "Events", ru: "События", ozellik: "rezervasyon" },
+  { key: "rides",  icon: "surus",    tr: "Sürüş",    en: "Rides",  ru: "Заезды",  ozellik: "surus" },
+  { key: "vote",   icon: "oylama",   tr: "Oyla",     en: "Vote",   ru: "Голос",   ozellik: "oylama" },
+  { key: "shop",   icon: "merch",    tr: "Shop",     en: "Shop",   ru: "Шоп",     ozellik: "raf" },
+  { key: "blog",   icon: "blog",     tr: "Blog",     en: "Blog",   ru: "Блог",    ozellik: "icerik" },
+].filter(tab => ozellik(tab.ozellik));
 
 // Misafir de oy verebilsin: kimlik yerine telefonda saklanan anonim anahtar
 function getVoterKey() {
@@ -32,10 +40,9 @@ function getVoterKey() {
     return k;
   } catch (e) { return "anon-" + Math.random().toString(36).slice(2); }
 }
-// Etkinlik + surusler dogrudan rezervasyon sisteminin (NIP RESERVE) public verisinden okunur
-const RESERVE_URL = "https://diqparjrtvvfxvwxebov.supabase.co";
-const RESERVE_KEY = "eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJpc3MiOiJzdXBhYmFzZSIsInJlZiI6ImRpcXBhcmpydHZ2Znh2d3hlYm92Iiwicm9sZSI6ImFub24iLCJpYXQiOjE3NzM5Mzc3OTMsImV4cCI6MjA4OTUxMzc5M30.pNI2yU6LDG8583HBPq-5puxkpEVEAYwhGp9ibJ1WBsI";
-const RESERVATION_URL = "https://reservation.notinparis.me";
+// Etkinlikler NIP'te rezervasyon sisteminin (NIP RESERVE) public verisinden
+// okunur (adresler lib/reserve.js'de); yerel modda bu veritabanindaki
+// events tablosundan ve rezervasyon formu burada acilir.
 const RIDES_URL = "https://notinparis.me/pages/rides";
 const YOUTUBE_URL = "https://www.youtube.com/@notinparis";
 const STRAVA_URL = "https://www.strava.com/clubs/notinparis";
@@ -152,7 +159,7 @@ const T = {
     new_order: "Yeni sipariş ver",
     submit_failed: "Sipariş gönderilemedi: ",
     notif_title: "🔔 Siparişin hazır!",
-    notif_body: "Kasadan alabilirsin — Not In Paris",
+    notif_body: "Kasadan alabilirsin — " + MARKA.ad,
     happy_hour: "HAPPY HOUR",
   },
   en: {
@@ -233,7 +240,7 @@ const T = {
     new_order: "Place a new order",
     submit_failed: "Failed to send order: ",
     notif_title: "🔔 Your order is ready!",
-    notif_body: "Pick it up from the cashier — Not In Paris",
+    notif_body: "Pick it up from the cashier — " + MARKA.ad,
     happy_hour: "HAPPY HOUR",
   },
   ru: {
@@ -314,7 +321,7 @@ const T = {
     new_order: "Новый заказ",
     submit_failed: "Не удалось отправить заказ: ",
     notif_title: "🔔 Ваш заказ готов!",
-    notif_body: "Заберите на кассе — Not In Paris",
+    notif_body: "Заберите на кассе — " + MARKA.ad,
     happy_hour: "HAPPY HOUR",
   }
 };
@@ -573,6 +580,29 @@ export default function CustomerMenu() {
   // (order-sso) tek kullanimlik giris linki uretir, oraya oturumla inilir.
   // Oturum yoksa ya da kopru duserse duz link — sayfa asla kilitlenmez.
   const resvBusy = useRef(false);
+  // Yerel rezervasyon formu (profil "temel"): etkinlige dokununca acilir,
+  // talep anon INSERT ile reservations'a duser (status pending), personel
+  // Rezervasyon sayfasindan onaylar. Kod musteriye ekranda gosterilir.
+  const [rezForm, setRezForm] = useState(null);      // { ev, name, phone, guest_count, note, busy, sonuc }
+  const rezAc = (ev) => setRezForm({ ev, name: customer?.name || "", phone: customer?.phone || "", guest_count: 2, note: "", busy: false, sonuc: null });
+  const rezGonder = async () => {
+    if (!rezForm || rezForm.busy) return;
+    const ad = String(rezForm.name || "").trim();
+    if (ad.length < 2) { alert(L("Adını yaz", "Enter your name", "Введите имя")); return; }
+    const tel = String(rezForm.phone || "").trim();
+    if (tel.length < 7) { alert(L("Telefonunu yaz — onayı oradan ileteceğiz", "Enter your phone — we'll confirm there", "Введите телефон — подтвердим по нему")); return; }
+    setRezForm(f => ({ ...f, busy: true }));
+    const b = new Uint8Array(3); crypto.getRandomValues(b);
+    const kod = MARKA.kisa.replace(/[^A-Z0-9]/gi, "").toUpperCase().slice(0, 4) + "-" + Array.from(b, x => x.toString(16).padStart(2, "0")).join("").toUpperCase();
+    const { error } = await supabase.from("reservations").insert({
+      event_id: rezForm.ev.id, event_name: rezForm.ev.name, event_date: rezForm.ev.date, event_time: rezForm.ev.time || null,
+      name: ad, phone: tel, guest_count: Math.max(1, Math.min(20, Number(rezForm.guest_count) || 1)),
+      note: String(rezForm.note || "").trim().slice(0, 300) || null, status: "pending", qr_id: kod,
+      customer_id: customer?.id || null,
+    });
+    if (error) { setRezForm(f => ({ ...f, busy: false })); alert(L("Talep gönderilemedi: ", "Could not send: ", "Не удалось отправить: ") + errorText(error)); return; }
+    setRezForm(f => ({ ...f, busy: false, sonuc: kod }));
+  };
   const openReservation = async (e) => {
     if (e) e.preventDefault();
     if (resvBusy.current) return;
@@ -693,11 +723,20 @@ export default function CustomerMenu() {
   useEffect(() => {
     const today = new Date(Date.now() + 3 * 3600 * 1000).toISOString().slice(0, 10); // TR gunu
     if (custTab === "events" && !feeds.events) {
-      fetch(RESERVE_URL + "/rest/v1/events?select=name,subtitle,date,time,genre,access_type&status=eq.active&date=gte." + today + "&order=date.asc&limit=12",
-        { headers: { apikey: RESERVE_KEY } })
-        .then(r => r.json())
-        .then(d => setFeeds(f => ({ ...f, events: Array.isArray(d) ? d : [] })))
-        .catch(() => setFeeds(f => ({ ...f, events: [] })));
+      if (rezervasyonYerel) {
+        // Yerel: bu veritabanindaki events tablosu (anon yalniz aktif olanlari gorur)
+        supabase.from("events")
+          .select("id,name,subtitle,date,time,genre,access_type,capacity,approved_count")
+          .eq("status", "active").gte("date", today)
+          .order("date", { ascending: true }).limit(12)
+          .then(({ data }) => setFeeds(f => ({ ...f, events: data || [] })));
+      } else {
+        fetch(RESERVE_URL + "/rest/v1/events?select=name,subtitle,date,time,genre,access_type&status=eq.active&date=gte." + today + "&order=date.asc&limit=12",
+          { headers: { apikey: RESERVE_KEY } })
+          .then(r => r.json())
+          .then(d => setFeeds(f => ({ ...f, events: Array.isArray(d) ? d : [] })))
+          .catch(() => setFeeds(f => ({ ...f, events: [] })));
+      }
     }
     if (custTab === "rides" && !feeds.rides) {
       // BIRLESTIRME ADIM 1 (2026-09-02): surusler artik Order'da. Eskiden
@@ -792,8 +831,8 @@ export default function CustomerMenu() {
         storeId = storeRow?.id || null;
       }
       if (!storeId) {
-        // Fallback: paris
-        const { data: parisRow } = await supabase.from("stores").select("id").eq("slug", "paris").maybeSingle();
+        // Fallback: isletmenin ana magazasi (NIP'te "paris"; lib/stores.js STORE_SLUG)
+        const { data: parisRow } = await supabase.from("stores").select("id").eq("slug", STORE_SLUG).maybeSingle();
         storeId = parisRow?.id || null;
       }
       setCurrentStoreId(storeId);
@@ -1365,7 +1404,9 @@ export default function CustomerMenu() {
     // Karsilama: beyaz zemin, kucuk siyah bisiklet, tek buyuk cumle.
     // Vurgulanan kelime Fransiz bayragi mavisi (#000000) — "Not in Paris"
     // adiyla oynayan tek seferlik bir saka, o yuzden altin degil.
-    const W = {
+    // Metin NIP'e ozel (surusler, shop, uyelik). Baska profilde genel kafe
+    // metni: yalniz siparis + (varsa) etkinlik rezervasyonu anlatilir.
+    const W = (PROFIL === "nip" ? {
       tr: { h: ["BU SADECE", "BİR MENÜ", "DEĞİL."],
             p1: "Sürüşleri görebilir, etkinlikler için rezervasyon yapabilir, yarının kahve çekirdeğini seçebilir ve mağazadaki ürünler hakkında bilgi alabilirsin.",
             p2: "Üye olup puan biriktirebilir, üyelere özel happy hour indirimlerinden yararlanabilirsin.",
@@ -1378,7 +1419,20 @@ export default function CustomerMenu() {
             p1: "Смотрите заезды, бронируйте места на события, выбирайте кофе на завтра и узнавайте о товарах магазина.",
             p2: "Станьте участником: копите баллы и пользуйтесь скидками happy hour.",
             go: "Начать" },
-    }[lang] || {};
+    } : {
+      tr: { h: ["SİPARİŞİN", "BİR DOKUNUŞ", "UZAKTA."],
+            p1: "Menüye göz at, siparişini masandan ver. Hazır olunca haber veririz.",
+            p2: ozellik("rezervasyon") ? "Etkinlikler için yerini buradan ayırtabilirsin." : "Afiyet olsun.",
+            go: "Başla" },
+      en: { h: ["YOUR ORDER", "IS ONE TAP", "AWAY."],
+            p1: "Browse the menu and order from your table. We'll let you know when it's ready.",
+            p2: ozellik("rezervasyon") ? "You can also book a spot at our events right here." : "Enjoy.",
+            go: "Start" },
+      ru: { h: ["ЗАКАЗ", "В ОДНО", "КАСАНИЕ."],
+            p1: "Посмотрите меню и закажите прямо со стола. Сообщим, когда будет готово.",
+            p2: ozellik("rezervasyon") ? "Здесь же можно забронировать место на события." : "Приятного аппетита.",
+            go: "Начать" },
+    })[lang] || {};
     // Baslik marka yazi tipiyle: Coolvetica Heavy Compressed'te hem Turkce
     // hem Kiril harfler var (790 glif), yani uc dil de ayni yuzle yaziliyor.
     // Rusca kelimeler uzun oldugu icin punto bir tik dusuruluyor.
@@ -1393,7 +1447,7 @@ export default function CustomerMenu() {
     };
     return (
       <div className="nip-customer" style={{fontFamily:cv,background:"#fff",color:"#101214",minHeight:"100vh",display:"flex",flexDirection:"column",justifyContent:"space-between",padding:"34px 28px",maxWidth:520,margin:"0 auto"}}>
-        <img src="/icons/logo-mark.png" alt="Not in Paris" style={{width:38,height:"auto"}}/>
+        <img src={MARKA.logoYolu} alt={MARKA.ad} style={{width:38,height:"auto"}}/>
 
         <div>
           <div style={headFont}>
@@ -1425,7 +1479,7 @@ export default function CustomerMenu() {
     // Animasyon prefers-reduced-motion'da durur (index.css).
     return (
       <div className="nip-customer" style={{fontFamily:cv,background:"#fff",minHeight:"100vh",display:"flex",alignItems:"center",justifyContent:"center"}}>
-        <img src="/icons/logo-mark.png" alt="Not in Paris" className="nip-splash-mark"
+        <img src={MARKA.logoYolu} alt={MARKA.ad} className="nip-splash-mark"
              style={{width:120,height:"auto",opacity:0.9}}/>
       </div>
     );
@@ -1494,12 +1548,16 @@ export default function CustomerMenu() {
                 )}
               </div>
               <PayBlock/>
+              {CUST_TABS.length > 1 && (<>
               <button onClick={() => setBrowsing(true)} style={{padding:"12px 24px",background:orderPaid?"#000":"#f2f2f2",color:orderPaid?"#fff":"#333",border:"none",borderRadius:12,fontSize:13,fontWeight:700,cursor:"pointer"}}>
                 {L("Beklerken göz at","Browse while you wait","Полистайте, пока ждёте")}<Ikon ad="oksag" boy={14} style={{marginLeft:6}}/>
               </button>
               <div style={{fontSize:11,color:"#666666",marginTop:10,lineHeight:1.5}}>
-                {L("Etkinlikler, sürüşler, shop & blog — hazır olunca zili çalarız","Events, rides, shop & blog — we'll ring when it's ready","События, заезды, шоп и блог — позвоним, когда будет готово")}
+                {PROFIL === "nip"
+                  ? L("Etkinlikler, sürüşler, shop & blog — hazır olunca zili çalarız","Events, rides, shop & blog — we'll ring when it's ready","События, заезды, шоп и блог — позвоним, когда будет готово")
+                  : L("Etkinlikler — hazır olunca zili çalarız","Events — we'll ring when it's ready","События — позвоним, когда будет готово")}
               </div>
+              </>)}
             </>
           )}
         </div>
@@ -1525,7 +1583,7 @@ export default function CustomerMenu() {
         <div style={{padding:"20px 16px 10px"}}>
         <div style={{display:"flex",alignItems:"center",justifyContent:"space-between"}}>
           <div>
-            <div style={{fontSize:24,fontWeight:400,letterSpacing:"0.005em",fontFamily:"'Coolvetica Heavy','Coolvetica Condensed','Barlow Condensed',sans-serif",textTransform:"uppercase"}}>Not in Paris</div>
+            <div style={{fontSize:24,fontWeight:400,letterSpacing:"0.005em",fontFamily:"'Coolvetica Heavy','Coolvetica Condensed','Barlow Condensed',sans-serif",textTransform:"uppercase"}}>{MARKA.ad}</div>
             <div style={{fontSize:12,color:"#666666",letterSpacing:"0.2px",marginTop:2}}>
               {custTab !== "menu" ? (CUST_TABS.find(x=>x.key===custTab)?.[["en","ru"].includes(lang)?lang:"tr"] || "").toUpperCase() : (table ? table.name?.toUpperCase() : t.menu)}
               {partyMode && custTab === "menu" && <span style={{marginLeft:6,color:"#000000",fontWeight:700}}>· {t.partyMode}</span>}
@@ -1597,24 +1655,31 @@ export default function CustomerMenu() {
             </span>
             <span style={{fontSize:11,fontWeight:800,whiteSpace:"nowrap"}}>{L("Profilim","My profile","Профиль")}<Ikon ad="oksag" boy={12} style={{marginLeft:4}}/></span>
           </button>
-        ) : (
+        ) : ozellik("uyelik") ? (
           <>
             <span style={{fontSize:12,color:"#5A5348"}}><Ikon ad="yildiz" boy={13} style={{marginRight:5}}/>{L("Üye misin?","Member?","Участник клуба?")}</span>
             <button onClick={() => setLoginSheet(true)} style={{padding:"6px 12px",background:"#000",color:"#fff",border:"none",borderRadius:10,fontSize:11,fontWeight:700,cursor:"pointer",whiteSpace:"nowrap"}}>
               {t.login_cta}
             </button>
           </>
+        ) : (
+          <span style={{fontSize:12,color:"#5A5348"}}>{table ? table.name : t.menu}</span>
         )}
       </div>
       )}
 
       {custTab !== "menu" && (
         <div style={{padding:"14px 16px"}}>
-          {custTab === "events" && (
+          {custTab === "events" && !rezervasyonYerel && (
             <a href={RESERVATION_URL} onClick={openReservation} rel="noreferrer" style={{display:"flex",justifyContent:"space-between",alignItems:"center",padding:"16px 18px",background:"#000",color:"#fff",borderRadius:14,textDecoration:"none",marginBottom:14}}>
               <span style={{fontSize:14,fontWeight:800,display:"flex",alignItems:"center",gap:8}}><Ikon ad="etkinlik" boy={17}/>{L("Rezervasyon yap","Make a reservation","Забронировать")}</span>
               <Ikon ad="oksag" boy={16}/>
             </a>
+          )}
+          {custTab === "events" && rezervasyonYerel && (
+            <div style={{fontSize:12,color:"#666666",marginBottom:10,lineHeight:1.5}}>
+              {L("Etkinliğe dokun, yerini ayırt. Onayı telefonundan iletiriz.","Tap an event to book a spot. We confirm by phone.","Нажмите на событие, чтобы забронировать. Подтвердим по телефону.")}
+            </div>
           )}
           {custTab === "events" && (
             <>
@@ -1625,7 +1690,9 @@ export default function CustomerMenu() {
                 </div>
               )}
               {(feeds.events || []).map((ev, i) => (
-                <a key={i} href={RESERVATION_URL} onClick={openReservation} rel="noreferrer" style={{display:"flex",alignItems:"center",gap:10,padding:"14px 2px",borderBottom:"1px solid #f0f0f0",textDecoration:"none",color:"#000"}}>
+                <a key={ev.id || i} href={rezervasyonYerel ? "#rezervasyon" : RESERVATION_URL}
+                   onClick={rezervasyonYerel ? (e) => { e.preventDefault(); rezAc(ev); } : openReservation}
+                   rel="noreferrer" style={{display:"flex",alignItems:"center",gap:10,padding:"14px 2px",borderBottom:"1px solid #f0f0f0",textDecoration:"none",color:"#000"}}>
                   <div style={{flex:1,minWidth:0}}>
                     <div style={{fontSize:15,fontWeight:800,lineHeight:1.3}}>
                       {ev.name}
@@ -1641,10 +1708,12 @@ export default function CustomerMenu() {
                   <span style={{fontSize:12,fontWeight:700,flexShrink:0}}>{L("Rezerve","Reserve","Бронь")}<Ikon ad="oksag" boy={12} style={{marginLeft:4}}/></span>
                 </a>
               ))}
+              {!rezervasyonYerel && (
               <a href={YOUTUBE_URL} target="_blank" rel="noreferrer" style={{display:"flex",justifyContent:"space-between",alignItems:"center",padding:"14px 16px",background:"#fafafa",border:"1px solid #eee",borderRadius:14,textDecoration:"none",color:"#000",marginTop:14}}>
                 <span style={{fontSize:13,fontWeight:800}}>Dance Till They Come — YouTube</span>
                 <Ikon ad="disari" boy={15}/>
               </a>
+              )}
             </>
           )}
           {custTab === "rides" && (
@@ -1889,9 +1958,9 @@ export default function CustomerMenu() {
                 </Card>
                 );
               })}
-              {custTab === "shop" && (
-                <a href={INSTAGRAM_URL} target="_blank" rel="noreferrer" style={{display:"flex",justifyContent:"space-between",alignItems:"center",padding:"14px 16px",background:"#fafafa",border:"1px solid #eee",borderRadius:14,textDecoration:"none",color:"#000",marginTop:4}}>
-                  <span style={{fontSize:13,fontWeight:800,display:"flex",alignItems:"center",gap:8}}><Ikon ad="kamera" boy={16}/>Instagram — @notinparis.me</span>
+              {custTab === "shop" && MARKA.instagram && (
+                <a href={MARKA.instagram} target="_blank" rel="noreferrer" style={{display:"flex",justifyContent:"space-between",alignItems:"center",padding:"14px 16px",background:"#fafafa",border:"1px solid #eee",borderRadius:14,textDecoration:"none",color:"#000",marginTop:4}}>
+                  <span style={{fontSize:13,fontWeight:800,display:"flex",alignItems:"center",gap:8}}><Ikon ad="kamera" boy={16}/>Instagram — @{MARKA.instagram.replace(/^https?:\/\/(www\.)?instagram\.com\//, "").replace(/\/$/, "")}</span>
                   <Ikon ad="disari" boy={15}/>
                 </a>
               )}
@@ -1996,6 +2065,7 @@ export default function CustomerMenu() {
         </button>
       )}
 
+      {CUST_TABS.length > 1 && (
       <nav style={{position:"fixed",bottom:0,left:0,right:0,background:"#fff",borderTop:"1px solid #eee",display:"flex",justifyContent:"space-around",padding:"8px 0 16px",zIndex:50,boxShadow:"0 -2px 12px rgba(0,0,0,0.06)"}}>
         {CUST_TABS.map(tab => (
           <button key={tab.key} onClick={() => setCustTab(tab.key)} style={{display:"flex",flexDirection:"column",alignItems:"center",gap:2,background:"none",border:"none",cursor:"pointer",color:custTab===tab.key?"#000":"#999",padding:"4px 8px",minWidth:52}}>
@@ -2004,6 +2074,42 @@ export default function CustomerMenu() {
           </button>
         ))}
       </nav>
+      )}
+
+      {rezForm && (
+        <div onClick={() => !rezForm.busy && setRezForm(null)} style={{position:"fixed",inset:0,background:"rgba(0,0,0,0.5)",display:"flex",alignItems:"flex-end",justifyContent:"center",zIndex:120}}>
+          <div onClick={e=>e.stopPropagation()} style={{background:"#fff",borderRadius:"18px 18px 0 0",padding:"22px 20px 30px",width:"100%",maxWidth:520}}>
+            {rezForm.sonuc ? (
+              <>
+                <div style={{fontSize:18,fontWeight:800,marginBottom:6}}>{L("Talebin alındı","Request received","Заявка принята")}</div>
+                <div style={{fontSize:13,color:"#444",lineHeight:1.6,marginBottom:14}}>
+                  {rezForm.ev.name} · {fmtDay(rezForm.ev.date)}{rezForm.ev.time ? " · " + rezForm.ev.time : ""}<br/>
+                  {L("Onaylanınca telefonundan haber vereceğiz. Kapıda bu kodu göster:","We'll confirm by phone. Show this code at the door:","Подтвердим по телефону. Покажите этот код на входе:")}
+                </div>
+                <div style={{fontSize:26,fontWeight:900,letterSpacing:"3px",textAlign:"center",padding:"14px",background:"#f5f5f5",borderRadius:12,marginBottom:14}}>{rezForm.sonuc}</div>
+                <button onClick={() => setRezForm(null)} style={{width:"100%",padding:"14px",background:"#000",color:"#fff",border:"none",borderRadius:12,fontSize:14,fontWeight:800,cursor:"pointer",fontFamily:"inherit"}}>{L("Tamam","Done","Готово")}</button>
+              </>
+            ) : (
+              <>
+                <div style={{fontSize:18,fontWeight:800,marginBottom:2}}>{rezForm.ev.name}</div>
+                <div style={{fontSize:12.5,color:"#666666",marginBottom:16}}>{fmtDay(rezForm.ev.date)}{rezForm.ev.time ? " · " + rezForm.ev.time : ""}{rezForm.ev.genre ? " · " + rezForm.ev.genre : ""}</div>
+                <input value={rezForm.name} onChange={e=>setRezForm(f=>({...f,name:e.target.value}))} placeholder={L("Ad Soyad","Full name","Имя и фамилия")} autoComplete="name" style={rezInputS}/>
+                <input value={rezForm.phone} onChange={e=>setRezForm(f=>({...f,phone:e.target.value}))} placeholder={L("Telefon","Phone","Телефон")} type="tel" inputMode="tel" autoComplete="tel" style={rezInputS}/>
+                <div style={{display:"flex",alignItems:"center",gap:10,marginBottom:10}}>
+                  <span style={{fontSize:13,fontWeight:700,flex:1}}>{L("Kişi sayısı","Guests","Гостей")}</span>
+                  <button onClick={()=>setRezForm(f=>({...f,guest_count:Math.max(1,(Number(f.guest_count)||1)-1)}))} style={rezStepS} aria-label="-">−</button>
+                  <span style={{fontSize:16,fontWeight:800,minWidth:24,textAlign:"center"}}>{rezForm.guest_count}</span>
+                  <button onClick={()=>setRezForm(f=>({...f,guest_count:Math.min(20,(Number(f.guest_count)||1)+1)}))} style={rezStepS} aria-label="+">+</button>
+                </div>
+                <input value={rezForm.note} onChange={e=>setRezForm(f=>({...f,note:e.target.value}))} placeholder={L("Not (isteğe bağlı)","Note (optional)","Примечание (необязательно)")} style={rezInputS}/>
+                <button onClick={rezGonder} disabled={rezForm.busy} style={{width:"100%",padding:"14px",background:rezForm.busy?"#DDDDDD":"#000",color:rezForm.busy?"#666":"#fff",border:"none",borderRadius:12,fontSize:14,fontWeight:800,cursor:rezForm.busy?"default":"pointer",fontFamily:"inherit"}}>
+                  {rezForm.busy ? "…" : L("Rezervasyon iste","Request a reservation","Отправить заявку")}
+                </button>
+              </>
+            )}
+          </div>
+        </div>
+      )}
 
       {profileOpen && customer && (
         <div onClick={() => setProfileOpen(false)} style={{position:"fixed",inset:0,background:"rgba(0,0,0,0.55)",display:"flex",alignItems:"flex-end",justifyContent:"center",zIndex:120}}>
