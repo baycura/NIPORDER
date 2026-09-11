@@ -1,0 +1,9 @@
+{
+  "name": "kafe-order",
+  "private": true,
+  "description": "Vercel Root Directory bu klasor. Bagimliliklar repo kokunde; komutlar vercel.json'da.",
+  "scripts": {
+    "build": "cd ../.. && npx vite build --config isletme/kafe/vite.config.js",
+    "dev": "cd ../.. && npx vite --config isletme/kafe/vite.config.js --port 3002"
+  }
+}

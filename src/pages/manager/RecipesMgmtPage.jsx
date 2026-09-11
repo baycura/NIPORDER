@@ -1,6 +1,7 @@
 import { useEffect, useState, useMemo } from "react";
 import { supabase, hataMetni } from "../../lib/supabase.js";
 import { useAuth } from "../../contexts/AuthContext.jsx";
+import { ozellik } from "../../lib/profil.js";
 import Ikon from "../../components/Ikon.jsx";
 
 const cv = "-apple-system,BlinkMacSystemFont,'Segoe UI',Roboto,sans-serif";
@@ -265,7 +266,8 @@ export default function RecipesMgmtPage() {
           )}
         </div>
 
-        {/* AI ile reçete kur */}
+        {/* AI ile reçete kur — profil modulu (yapayZeka) */}
+        {ozellik("yapayZeka") && (
         <div style={{ background: "#161616", border: "1px solid #2A2A2A", borderRadius: 12, padding: 12, marginBottom: 12 }}>
           <div style={{ fontSize:12, color: "#F0EDE8", letterSpacing:"0.2px", fontWeight:600, marginBottom: 8, display: "flex", alignItems: "center", gap: 6 }}><Ikon ad="parlak" boy={13}/>REÇETEYİ YAZ, AI KURSUN</div>
           <textarea
@@ -296,6 +298,7 @@ export default function RecipesMgmtPage() {
             </div>
           )}
         </div>
+        )}
 
         {/* Başka üründen kopyala */}
         {products.filter(p => p.id !== selectedProduct.id && productRecipes(p.id).length > 0).length > 0 && (

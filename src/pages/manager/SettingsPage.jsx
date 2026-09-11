@@ -1,6 +1,7 @@
 import { useEffect, useState } from "react";
 import { supabase, hataMetni } from "../../lib/supabase.js";
 import { PARIS_STORE_ID } from "../../lib/stores.js";
+import { ozellik } from "../../lib/profil.js";
 import Ikon from "../../components/Ikon.jsx";
 import ShopifyAyar from "../../components/ShopifyAyar.jsx";
 
@@ -89,7 +90,8 @@ export default function SettingsPage() {
       <div style={{fontSize:24,fontWeight:800,marginBottom:4}}>Ayarlar</div>
       <div style={{fontSize:11,color:"#888",letterSpacing:"1px",marginBottom:18}}>Sistem ayarları</div>
 
-      {/* Parti modu */}
+      {/* Parti modu — profil modulu (parti) */}
+      {ozellik("parti") && (
       <Section icon="kampanya" title="Parti Gecesi" desc="Seçtiğin gün ve saatlerde parti menüsü açılır. Ayrıca reçetede &quot;sadece parti gecesi&quot; işaretli malzemeler (PET bardak gibi) yalnız bu pencerede stoktan düşer.">
         <Toggle checked={partyEnabled} onChange={v=>setKey("party_mode_enabled", v)} label="Parti menüsü aktif"/>
         <Field label="PARTİ GÜNLERİ">
@@ -113,6 +115,7 @@ export default function SettingsPage() {
           <br/>Gece yarısını aşan saatlerde parti, <b>başladığı güne</b> sayılır: Cuma 23:00 ve Cumartesi 02:00 aynı partidir.
         </div>
       </Section>
+      )}
 
       {/* Bar standart olcusu */}
       <Section icon="bira" title="Standart Ölçü" desc="Barda tek ölçünün kaç cl olduğu. Reçete sayfasındaki hazır düğmeler (Tek / Duble / Yarım) buna göre üretilir.">
@@ -122,7 +125,8 @@ export default function SettingsPage() {
         <div style={{fontSize:11,color:"#888",marginTop:6}}>NOT: Bu yalniz kisayol dugmelerini etkiler; recetede istedigin miktari her zaman elle yazabilirsin.</div>
       </Section>
 
-      {/* Euro kuru */}
+      {/* Euro kuru — profil modulu (eur) */}
+      {ozellik("eur") && (
       <Section icon="puan" title="Euro Kuru" desc="Fiyatini EURO olarak girdigin urunlerin TL karsiligi bu kurla hesaplanir. Kur degisince o urunlerin TL fiyati kendiliginden guncellenir. Siparis, odeme ve raporlar her zaman TL kalir.">
         <Toggle checked={settings.eur_rate_auto !== false && settings.eur_rate_auto !== "false"}
           onChange={v=>setKey("eur_rate_auto", v)} label="Kuru otomatik guncelle (her is gunu 17:00 — TCMB doviz satis)"/>
@@ -154,6 +158,7 @@ export default function SettingsPage() {
           <br/>GUVENLIK BANDI: kur bu yuzdeden fazla sicrarsa otomatik YAZILMAZ, burada uyari cikar — elle onaylarsin.
         </div>
       </Section>
+      )}
 
       {/* Duyuru seridi */}
       <Section icon="duyuru" title="Duyuru Seridi (QR Menu)" desc="QR menunun en ustunde ince siyah bir serit olarak gorunur. Kampanya/duyuru icin — Instagram'a ya da tahtaya yazmaya gerek kalmaz.">
@@ -161,9 +166,11 @@ export default function SettingsPage() {
         <Field label="DUYURU (TURKCE)">
           <input value={settings.announcement_tr || ""} onChange={e=>setKey("announcement_tr", e.target.value)} placeholder="Orn: Pazar gunleri fici bira 150 TL!" style={inputS}/>
         </Field>
+        {ozellik("yapayZeka") && (
         <button onClick={translateAnnouncement} disabled={trBusy} style={{width:"100%",padding:"10px",background:trBusy?"#555":"#2A2A2A",color:"#F0EDE8",border:"1px solid #2A2A2A",borderRadius:8,fontSize:12,fontWeight:800,cursor:trBusy?"wait":"pointer",margin:"4px 0 8px"}}>
           {trBusy ? "AI çeviriyor..." : <><Ikon ad="parlak" boy={14} style={{marginRight:6}}/>EN + RU otomatik çevir (AI)</>}
         </button>
+        )}
         <div style={{display:"flex",gap:8}}>
           <Field label="ENGLISH (BOSSA TR GOSTERILIR)" style={{flex:1}}>
             <input value={settings.announcement_en || ""} onChange={e=>setKey("announcement_en", e.target.value)} placeholder="e.g. Sunday draft beer 150 TL!" style={inputS}/>
@@ -174,13 +181,16 @@ export default function SettingsPage() {
         </div>
       </Section>
 
-      {/* Online odeme (PayTR) */}
+      {/* Online odeme (PayTR) — profil modulu (paytr) */}
+      {ozellik("paytr") && (
       <Section icon="kart" title="Online Odeme (PayTR)" desc="Musteri siparis verdikten sonra telefonundan kartla odeyebilir. Kapatirsan buton musteri ekranindan kaybolur; kasa akisi degismez.">
         <Toggle checked={settings.online_payment_enabled === true || settings.online_payment_enabled === "true"} onChange={v=>setKey("online_payment_enabled", v)} label="Online odeme aktif"/>
         <div style={{fontSize:11,color:"#888",marginTop:6}}>NOT: Odeme PayTR guvenli sayfasinda gerceklesir; onay PayTR'den gelince siparis otomatik "odendi" olur ve kasadan duser.</div>
       </Section>
+      )}
 
-      {/* Member indirimi */}
+      {/* Member indirimi — profil modulu (uyelik) */}
+      {ozellik("uyelik") && (
       <Section icon="uye" title="Uye Indirimi" desc="Sisteme kayitli musterilerin Google ile giris yapip otomatik indirim almalari icin.">
         <Toggle checked={memberEnabled} onChange={v=>setKey("member_discount_enabled", v)} label="Uye indirimi aktif"/>
         <Field label={"INDIRIM ORANI (%) - su an: %" + memberDiscount}>
@@ -188,9 +198,10 @@ export default function SettingsPage() {
         </Field>
         <div style={{fontSize:11,color:"#888",marginTop:6}}>NOT: Bir musteriye ozel "admin_discount" varsa, uye indirimi yerine o uygulanir.</div>
       </Section>
+      )}
 
-      {/* Shopify baglantisi: yalniz sahip gorur, kendi kaydet dugmesi var */}
-      <ShopifyAyar />
+      {/* Shopify baglantisi: yalniz sahip gorur, kendi kaydet dugmesi var — profil modulu (shopify) */}
+      {ozellik("shopify") && <ShopifyAyar />}
 
       {/* Save button */}
       <button onClick={save} disabled={busy} style={{width:"100%",padding:"14px",background:"#FFFFFF",color:"#000",border:"none",borderRadius:12,fontSize:15,fontWeight:800,cursor:"pointer",marginTop:16,opacity:busy?0.6:1}}>{busy?"Kaydediliyor...":(saved?"✓ Kaydedildi":"Ayarlari Kaydet")}</button>

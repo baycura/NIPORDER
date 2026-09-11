@@ -1,8 +1,14 @@
 import { useEffect, useMemo, useState } from "react";
 import { supabase } from "../../lib/supabase.js";
 import { reserve, reserveOturumAl, reserveCikis, RESERVATION_URL } from "../../lib/reserve.js";
+import { rezervasyonYerel, MARKA } from "../../lib/profil.js";
 import { useAuth } from "../../contexts/AuthContext.jsx";
 import Ikon from "../../components/Ikon.jsx";
+
+// YEREL MOD (profil "temel"): ayri rezervasyon projesi yok; events/reservations
+// bu veritabaninda (migration 20260911_yerel_etkinlik_rezervasyon). reserve
+// istemcisi Order istemcisinin kendisi, yetki personel rolu. Uyelik, itibar
+// puani, uye senkronu yok — o parcalar cizilmez, misafir akisi kalir.
 
 // ============================================================================
 // REZERVASYON — rezervasyon sitesinin yonetimi, Order panelinden.
@@ -107,7 +113,7 @@ export default function ReservePage() {
   const [senkronBusy, setSenkronBusy] = useState(false);
   const senkronOku = () => supabase.from("reserve_sync_log").select("*").order("at", { ascending: false }).limit(1).maybeSingle()
     .then(({ data }) => setSenkron(data || null));
-  useEffect(() => { senkronOku(); }, []);
+  useEffect(() => { if (!rezervasyonYerel) senkronOku(); }, []);
   const senkronSimdi = async () => {
     if (senkronBusy) return; setSenkronBusy(true);
     const { data, error } = await supabase.rpc("nip_reserve_senkron_simdi");
@@ -127,10 +133,18 @@ export default function ReservePage() {
     <div style={{ padding: 16, maxWidth: 900, margin: "0 auto", fontFamily: cv, color: C.ink }}>
       <div style={{ display: "flex", alignItems: "baseline", gap: 12, flexWrap: "wrap", marginBottom: 6 }}>
         <h1 style={{ fontFamily: hv, fontSize: 30, letterSpacing: "2px", margin: 0 }}>REZERVASYON</h1>
-        <a href={RESERVATION_URL} target="_blank" rel="noreferrer" style={{ fontSize: 11, color: C.muted }}>reservation.notinparis.me ↗</a>
+        {!rezervasyonYerel && <a href={RESERVATION_URL} target="_blank" rel="noreferrer" style={{ fontSize: 11, color: C.muted }}>reservation.notinparis.me ↗</a>}
       </div>
 
       {/* Kopru durumu — her zaman gorunur, kullanici neyle konustugunu bilsin */}
+      {rezervasyonYerel ? (
+        kopru.durum === "admin-degil" && (
+          <div style={{ background: C.card, border: "1px solid " + C.line, borderRadius: 10, padding: "10px 12px", marginBottom: 14, fontSize: 12 }}>
+            <span style={{ color: C.warn, fontWeight: 700 }}>● Yalnız görüntüleme</span>
+            <span style={{ color: C.muted }}> — etkinlik açmak ve düzenlemek yönetici yetkisi ister.</span>
+          </div>
+        )
+      ) : (
       <div style={{ background: C.card, border: "1px solid " + C.line, borderRadius: 10, padding: "10px 12px", marginBottom: 14, display: "flex", gap: 10, alignItems: "center", flexWrap: "wrap", fontSize: 12 }}>
         {kopru.durum === "yukleniyor" && <span style={{ color: C.muted }}>Rezervasyon tarafına bağlanılıyor…</span>}
         {kopru.durum === "hazir" && <><span style={{ color: C.up, fontWeight: 700 }}>● Bağlı</span><span style={{ color: C.muted }}>{kopru.email} — rezervasyon tarafında admin</span></>}
@@ -140,29 +154,35 @@ export default function ReservePage() {
         <button onClick={() => bagla(true)} style={btnS()}>Yeniden bağlan</button>
         {kopru.durum === "hazir" && <button onClick={async () => { await reserveCikis(); setKopru({ durum: "hata", hata: "Oturum kapatıldı." }); }} style={btnS("#0F0F0F", C.muted)}>Çık</button>}
       </div>
+      )}
 
+      {!rezervasyonYerel && (
       <div style={{ display: "flex", gap: 10, alignItems: "center", fontSize: 11, color: senkron && !senkron.ok ? C.down : C.muted, marginBottom: 12, flexWrap: "wrap" }}>
         <span>Üye senkronu (rezervasyon → Order müşterileri): {senkronMetni()}</span>
         <span style={{ flex: 1 }} />
         <button onClick={senkronSimdi} disabled={senkronBusy} style={{ ...btnS("#0F0F0F", C.muted), padding: "4px 8px", fontSize: 10 }}>{senkronBusy ? "…" : "Şimdi senkronla"}</button>
       </div>
+      )}
 
       {mesaj && <div style={{ position: "fixed", bottom: 80, left: "50%", transform: "translateX(-50%)", background: mesaj.kotu ? C.down : C.ink, color: "#000", padding: "10px 16px", borderRadius: 10, fontSize: 13, fontWeight: 700, zIndex: 50 }}>{mesaj.m}</div>}
 
       <div style={{ display: "flex", gap: 6, marginBottom: 14 }}>
         <Cip aktif={sekme === "rez"} onClick={() => setSekme("rez")}>Rezervasyonlar</Cip>
         <Cip aktif={sekme === "etk"} onClick={() => setSekme("etk")}>Etkinlikler</Cip>
-        <Cip aktif={sekme === "uye"} onClick={() => setSekme("uye")}>Üyeler</Cip>
+        {!rezervasyonYerel && <Cip aktif={sekme === "uye"} onClick={() => setSekme("uye")}>Üyeler</Cip>}
       </div>
 
-      {!hazir && kopru.durum !== "yukleniyor" && (
+      {/* Yerelde personel (is_staff) rezervasyonlari okur/onaylar; etkinlik
+          yazmak yonetici ister (RLS: nip_yonetici_mi). Kopru modunda hazir
+          olmadan hicbir liste gelmez. */}
+      {!rezervasyonYerel && !hazir && kopru.durum !== "yukleniyor" && (
         <div style={{ color: C.muted, fontSize: 13, padding: 20, textAlign: "center" }}>
           Bağlantı kurulunca liste burada görünür.
         </div>
       )}
-      {hazir && sekme === "rez" && <Rezervasyonlar uyar={uyar} />}
-      {hazir && sekme === "etk" && <Etkinlikler uyar={uyar} />}
-      {hazir && sekme === "uye" && <Uyeler uyar={uyar} staffUser={staffUser} />}
+      {(hazir || rezervasyonYerel) && sekme === "rez" && <Rezervasyonlar uyar={uyar} />}
+      {(hazir || rezervasyonYerel) && sekme === "etk" && <Etkinlikler uyar={uyar} />}
+      {hazir && !rezervasyonYerel && sekme === "uye" && <Uyeler uyar={uyar} staffUser={staffUser} />}
     </div>
   );
 }
@@ -297,7 +317,7 @@ function Rezervasyonlar({ uyar }) {
     <div>
       {/* Kapi: kod ile giris */}
       <div style={{ display: "flex", gap: 8, marginBottom: 12 }}>
-        <input value={qr} onChange={e => setQr(e.target.value)} placeholder="Kapıda: QR kodu (NIP-…)" style={{ ...inputS, textTransform: "uppercase", letterSpacing: "1px" }} onKeyDown={e => e.key === "Enter" && girisYap(null)} />
+        <input value={qr} onChange={e => setQr(e.target.value)} placeholder={"Kapıda: rezervasyon kodu (" + (rezervasyonYerel ? MARKA.kisa.replace(/[^A-Z0-9]/gi, "").toUpperCase().slice(0, 4) : "NIP") + "-…)"} style={{ ...inputS, textTransform: "uppercase", letterSpacing: "1px" }} onKeyDown={e => e.key === "Enter" && girisYap(null)} />
         <button onClick={() => girisYap(null)} disabled={busy} style={btnS(C.ink, "#000")}>GİRİŞ</button>
       </div>
 
@@ -317,7 +337,7 @@ function Rezervasyonlar({ uyar }) {
           <div style={{ display: "flex", gap: 8, alignItems: "center", flexWrap: "wrap" }}>
             <div style={{ fontWeight: 700, fontSize: 14 }}>{r.name || "—"}</div>
             <Durum tablo={REZ_DURUM} kod={r.status} />
-            {!r.profile_id && <span style={{ fontSize: 10, color: C.muted }}>MİSAFİR</span>}
+            {!r.profile_id && !rezervasyonYerel && <span style={{ fontSize: 10, color: C.muted }}>MİSAFİR</span>}
             <span style={{ flex: 1 }} />
             <span style={{ fontSize: 12, color: C.muted }}>{r.guest_count || 1} kişi</span>
           </div>
@@ -433,9 +453,11 @@ function Etkinlikler({ uyar }) {
           <Field label="KAPASİTE"><input type="number" min="1" {...F("capacity")} /></Field>
           <Field label="BAŞLANGIÇ"><input type="time" {...F("time")} /></Field>
           <Field label="BİTİŞ"><input type="time" {...F("time_end")} /></Field>
+          {!rezervasyonYerel && <>
           <Field label="ERİŞİM"><select {...F("access_type")}><option value="open">Herkese açık</option><option value="members_only">Yalnız üyeler</option></select></Field>
           <Field label="EN DÜŞÜK SEVİYE"><select {...F("min_tier")}>{Object.entries(SEVIYE).map(([k, v]) => <option key={k} value={k}>{v}</option>)}</select></Field>
           <Field label="EN DÜŞÜK GÜVEN PUANI"><input type="number" min="0" {...F("min_trust")} /></Field>
+          </>}
           <Field label="RENK (isteğe bağlı)"><input {...F("color")} placeholder="#C9A84C" /></Field>
           <Field label="ISINMA ADI"><input {...F("warmup_name")} placeholder="Warm-up DJ" /></Field>
           <div style={{ display: "grid", gridTemplateColumns: "1fr 1fr", gap: 8 }}>
@@ -444,7 +466,7 @@ function Etkinlikler({ uyar }) {
           </div>
         </div>
         <Field label="KURALLAR"><textarea rows={3} {...F("rules")} style={{ ...inputS, resize: "vertical" }} /></Field>
-        <div style={{ fontSize: 11, color: C.faint, marginBottom: 8 }}>Afiş yükleme şimdilik rezervasyon panelinden; burada gösterilir, değiştirilmez.</div>
+        {!rezervasyonYerel && <div style={{ fontSize: 11, color: C.faint, marginBottom: 8 }}>Afiş yükleme şimdilik rezervasyon panelinden; burada gösterilir, değiştirilmez.</div>}
         <div style={{ display: "flex", gap: 8 }}>
           <button disabled={busy} onClick={kaydet} style={btnS(C.ink, "#000")}>{duzenlenen ? "GÜNCELLE" : "OLUŞTUR"}</button>
           {duzenlenen && <button onClick={iptal} style={btnS()}>Vazgeç</button>}
@@ -457,7 +479,7 @@ function Etkinlikler({ uyar }) {
 
       {gecmis.length > 0 && (
         <button onClick={() => setGecmisAcik(a => !a)} style={{ ...btnS("#0F0F0F", C.muted), width: "100%", marginTop: 8 }}>
-          {gecmisAcik ? "Geçmişi gizle" : "Geçmiş (" + gecmis.length + ") — son iki hafta; eskiler her gece arşive gider"}
+          {gecmisAcik ? "Geçmişi gizle" : "Geçmiş (" + gecmis.length + ")" + (rezervasyonYerel ? "" : " — son iki hafta; eskiler her gece arşive gider")}
         </button>
       )}
       {gecmisAcik && gecmis.map(e => <EtkinlikKart key={e.id} e={e} duzenle={duzenle} sil={sil} busy={busy} gecmis />)}

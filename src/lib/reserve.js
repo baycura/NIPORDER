@@ -1,5 +1,6 @@
 import { createClient } from "@supabase/supabase-js";
 import { supabase } from "./supabase.js";
+import { rezervasyonYerel } from "./profil.js";
 
 // ============================================================================
 // REZERVASYON KOPRUSU
@@ -19,16 +20,24 @@ import { supabase } from "./supabase.js";
 // Kimin admin oldugu RESERVE'de profiles.is_admin ile belirlenir (su an Omer ve
 // Ceren). Baska bir yoneticiye yetki vermek icin o kisinin RESERVE'de hesabi
 // olmali ve is_admin=true yapilmali — bu ekran onu yapmaz, yalniz soyler.
+//
+// YEREL MOD (profil "temel", lib/profil.js REZERVASYON_KAYNAK = "yerel"):
+// Ayri proje yok; events / reservations tablolari bu veritabasinda
+// (migration 20260911_yerel_etkinlik_rezervasyon). "reserve" istemcisi
+// dogrudan Order istemcisidir, yetki Order'daki personel rolunden gelir
+// (nip_yonetici_mi). Kopru, SSO, uye senkronu hicbiri calismaz.
 // ============================================================================
 
-export const RESERVE_URL = "https://diqparjrtvvfxvwxebov.supabase.co";
+const env = (typeof import.meta !== "undefined" && import.meta.env) || {};
+
+export const RESERVE_URL = env.VITE_RESERVE_URL || "https://diqparjrtvvfxvwxebov.supabase.co";
 // RESERVE'in public anon anahtari — gizli degil, rezervasyon sitesinin HTML'inde
 // de acikta duruyor. Yetki anahtardan degil oturumdan gelir.
-export const RESERVE_KEY = "eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJpc3MiOiJzdXBhYmFzZSIsInJlZiI6ImRpcXBhcmpydHZ2Znh2d3hlYm92Iiwicm9sZSI6ImFub24iLCJpYXQiOjE3NzM5Mzc3OTMsImV4cCI6MjA4OTUxMzc5M30.pNI2yU6LDG8583HBPq-5puxkpEVEAYwhGp9ibJ1WBsI";
-export const RESERVATION_URL = "https://reservation.notinparis.me";
+export const RESERVE_KEY = env.VITE_RESERVE_ANON_KEY || "eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJpc3MiOiJzdXBhYmFzZSIsInJlZiI6ImRpcXBhcmpydHZ2Znh2d3hlYm92Iiwicm9sZSI6ImFub24iLCJpYXQiOjE3NzM5Mzc3OTMsImV4cCI6MjA4OTUxMzc5M30.pNI2yU6LDG8583HBPq-5puxkpEVEAYwhGp9ibJ1WBsI";
+export const RESERVATION_URL = env.VITE_RESERVATION_URL || "https://reservation.notinparis.me";
 
 // Ayri storageKey sart: varsayilan anahtar Order oturumunun uzerine yazardi.
-export const reserve = createClient(RESERVE_URL, RESERVE_KEY, {
+export const reserve = rezervasyonYerel ? supabase : createClient(RESERVE_URL, RESERVE_KEY, {
   auth: {
     storageKey: "nip-reserve-auth",
     persistSession: true,
@@ -54,6 +63,13 @@ export async function reserveOturumAl({ zorla = false } = {}) {
     const tok = orderSess?.access_token;
     const orderEmail = String(orderSess?.user?.email || "").toLowerCase();
     if (!tok) return { ok: false, admin: false, email: "", hata: "Order oturumu yok" };
+
+    if (rezervasyonYerel) {
+      // Yerel: kopru yok, yetki bu veritabanindaki personel rolu.
+      const { data, error } = await supabase.rpc("nip_yonetici_mi");
+      if (error) return { ok: false, admin: false, email: orderEmail, hata: error.message };
+      return { ok: true, admin: !!data, email: orderEmail };
+    }
 
     if (!zorla) {
       const { data: { session } } = await reserve.auth.getSession();
@@ -92,5 +108,6 @@ export async function reserveOturumAl({ zorla = false } = {}) {
 }
 
 export async function reserveCikis() {
+  if (rezervasyonYerel) return; // Order oturumu kapatilmaz; kopru yok
   try { await reserve.auth.signOut(); } catch (_) { /* oturum zaten yoksa sorun degil */ }
 }

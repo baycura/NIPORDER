@@ -3,6 +3,7 @@ import { APP_HOST } from "../../lib/appUrl.js";
 import { useState, useEffect, useRef } from "react";
 import { useAuth } from "../../contexts/AuthContext.jsx";
 import { gorunurGruplar, altBar } from "../../lib/panelNav.js";
+import { MARKA } from "../../lib/profil.js";
 import Ikon from "../../components/Ikon.jsx";
 
 const roleColor = {admin:"#FFFFFF", manager:"#FFFFFF", owner:"#FFFFFF", waiter:"#FFFFFF", kitchen:"#FFFFFF", cashier:"#8A8580", viewer:"#8A8580", parttime:"#8A8580"};
@@ -69,9 +70,9 @@ export default function StaffLayout() {
   const Sidebar = () => (
     <div style={{width:240,background:"#161616",height:"100vh",display:"flex",flexDirection:"column",borderRight:"1px solid #2A2A2A",overflowY:"auto"}}>
       <div style={{padding:"18px 16px 14px",borderBottom:"1px solid #2A2A2A",display:"flex",alignItems:"center",gap:10}}>
-        <div style={{width:38,height:38,borderRadius:10,background:"#FFFFFF",display:"flex",alignItems:"center",justifyContent:"center",fontSize:20,color:"#000",fontWeight:900,fontFamily:cv}}>N</div>
+        <div style={{width:38,height:38,borderRadius:10,background:"#FFFFFF",display:"flex",alignItems:"center",justifyContent:"center",fontSize:20,color:"#000",fontWeight:900,fontFamily:cv}}>{MARKA.harf}</div>
         <div>
-          <div style={{color:"#F0EDE8",fontSize:16,fontWeight:400,fontFamily:"'Coolvetica Heavy',"+cv,textTransform:"uppercase",letterSpacing:"0.005em"}}>Not in Paris</div>
+          <div style={{color:"#F0EDE8",fontSize:16,fontWeight:400,fontFamily:"'Coolvetica Heavy',"+cv,textTransform:"uppercase",letterSpacing:"0.005em"}}>{MARKA.ad}</div>
           <div style={{color:"#888",fontSize:10,fontFamily:cv}}>{APP_HOST}</div>
         </div>
       </div>
@@ -126,8 +127,8 @@ export default function StaffLayout() {
   return (<div style={{background:"#0C0C0C",minHeight:"100vh",fontFamily:cv}} onTouchStart={onTouchStart} onTouchEnd={onTouchEnd}>
     <header style={{display:"flex",alignItems:"center",justifyContent:"space-between",padding:"10px 14px",background:"#161616",borderBottom:"1px solid #2A2A2A",position:"sticky",top:0,zIndex:40}}>
       <div style={{display:"flex",alignItems:"center",gap:8}}>
-        <div style={{width:30,height:30,borderRadius:8,background:"#FFFFFF",display:"flex",alignItems:"center",justifyContent:"center",fontSize:16,color:"#000",fontWeight:900}}>N</div>
-        <div style={{color:"#F0EDE8",fontSize:15,fontWeight:400,fontFamily:"'Coolvetica Heavy',"+cv,textTransform:"uppercase",letterSpacing:"0.005em"}}>Not in Paris</div>
+        <div style={{width:30,height:30,borderRadius:8,background:"#FFFFFF",display:"flex",alignItems:"center",justifyContent:"center",fontSize:16,color:"#000",fontWeight:900}}>{MARKA.harf}</div>
+        <div style={{color:"#F0EDE8",fontSize:15,fontWeight:400,fontFamily:"'Coolvetica Heavy',"+cv,textTransform:"uppercase",letterSpacing:"0.005em"}}>{MARKA.ad}</div>
       </div>
       <div onClick={avatarTikla} title={avatarTikla ? "Vardiyam" : undefined}
            style={{width:30,height:30,borderRadius:"50%",background:color+"33",display:"flex",alignItems:"center",justifyContent:"center",color,fontSize:13,fontWeight:700,cursor:avatarTikla?"pointer":"default"}}>

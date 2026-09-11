@@ -10,6 +10,11 @@
 // icon: components/Ikon.jsx setindeki ad. Emoji YAZMA — emoji her cihazda
 // baska cizilir ve paletin disina duser. Yeni bir ad gerekiyorsa once
 // Ikon.jsx'e cizimi eklenir.
+//
+// ozellik: sayfa bir modulun parcasiysa modulun adi (lib/profil.js). Kapali
+// profilde menuden dusmesi icin — baska isletme kurulumunda Shopify, parti,
+// surus gibi NIP'e ozel sayfalar gorunmez.
+import { ozellik } from "./profil.js";
 
 export const GRUPLAR = [
   {
@@ -32,11 +37,11 @@ export const GRUPLAR = [
     ad: "MENÜ & ÜRÜNLER", manager: true,
     items: [
       { to: "/menu-mgmt",         icon: "menu", label: "Menü Yönetimi" },
-      { to: "/party-menu",        icon: "kampanya", label: "Parti Menüsü" },
+      { to: "/party-menu",        icon: "kampanya", label: "Parti Menüsü", ozellik: "parti" },
       { to: "/recipes",           icon: "recete", label: "Reçeteler" },
       { to: "/stock-mgmt",        icon: "arsiv", label: "Stok Yönetimi" },
       { to: "/costs",             icon: "gider", label: "Eksik Maliyetler" },
-      { to: "/retail",            icon: "raf", label: "Ürünler (Raf)" },
+      { to: "/retail",            icon: "raf", label: "Ürünler (Raf)", ozellik: "raf" },
       // Merch sayfasi menuden kaldirildi: merch_products tisortlerin hicbir
       // yere bagli olmayan kopyasiydi (kasa/Shop/sayim products'a bakar), oraya
       // girilen stok kayboluyordu. Rota duruyor, menuden ulasilmiyor.
@@ -46,16 +51,16 @@ export const GRUPLAR = [
   {
     ad: "ÜYELER & KAMPANYA", manager: true,
     items: [
-      { to: "/members",    icon: "uye", label: "Üyeler & Borç" },
-      { to: "/happy-hour", icon: "kampanya", label: "Happy Hour" },
-      { to: "/polls",      icon: "oylama", label: "Oylamalar" },
-      { to: "/rides",      icon: "surus", label: "Sürüşler" },
+      { to: "/members",    icon: "uye", label: "Üyeler & Borç", ozellik: "uyeBorc" },
+      { to: "/happy-hour", icon: "kampanya", label: "Happy Hour", ozellik: "happyHour" },
+      { to: "/polls",      icon: "oylama", label: "Oylamalar", ozellik: "oylama" },
+      { to: "/rides",      icon: "surus", label: "Sürüşler", ozellik: "surus" },
       // Rezervasyon sitesi ayri projede calismaya devam ediyor; bu sayfa ona
       // sahibin kendi yetkisiyle baglanir (lib/reserve.js). Yazma yetkisi
       // RESERVE'deki profiles.is_admin'e bagli — menu goruntusu manager, yetki
       // o tarafta.
-      { to: "/reserve",    icon: "etkinlik", label: "Rezervasyon" },
-      { to: "/content",    icon: "blog", label: "Vitrin & Blog" },
+      { to: "/reserve",    icon: "etkinlik", label: "Rezervasyon", ozellik: "rezervasyon" },
+      { to: "/content",    icon: "blog", label: "Vitrin & Blog", ozellik: "icerik" },
     ],
   },
   {
@@ -66,7 +71,7 @@ export const GRUPLAR = [
       { to: "/cash-history",   icon: "takvim", label: "Kasa Geçmişi" },
       { to: "/shifts",         icon: "takvim", label: "Vardiyalar" },
       { to: "/discounts",      icon: "kampanya", label: "İndirimler" },
-      { to: "/settlement",     icon: "mutfakodeme", label: "Mutfağa Ödenecek" },
+      { to: "/settlement",     icon: "mutfakodeme", label: "Mutfağa Ödenecek", ozellik: "mutfakHakedis" },
       { to: "/fixed-expenses", icon: "kilit", label: "Sabit Giderler" },
       { to: "/staff-mgmt",     icon: "personel", label: "Personel" },
     ],
@@ -87,24 +92,26 @@ const VIEWER_GRUP = [{
   ad: "GÖRÜNÜM",
   items: [
     { to: "/reports",    icon: "rapor", label: "Raporlar" },
-    { to: "/settlement", icon: "mutfakodeme", label: "Mutfağa Ödenecek" },
+    { to: "/settlement", icon: "mutfakodeme", label: "Mutfağa Ödenecek", ozellik: "mutfakHakedis" },
     { to: "/expenses",   icon: "gider", label: "Giderler" },
     { to: "/stock",      icon: "stok", label: "Stok" },
   ],
 }];
 
+const profildeVar = (i) => ozellik(i.ozellik);
+
 export function gorunurGruplar({ role, isManager, isAdmin, isViewer }) {
-  if (isViewer) return VIEWER_GRUP;
+  if (isViewer) return VIEWER_GRUP.map(g => ({ ...g, items: g.items.filter(profildeVar) }));
   return GRUPLAR
     .filter(g => (!g.manager || isManager) && (!g.admin || isAdmin))
-    .map(g => ({ ...g, items: g.items.filter(i => !(i.deny || []).includes(role)) }))
+    .map(g => ({ ...g, items: g.items.filter(i => !(i.deny || []).includes(role)).filter(profildeVar) }))
     .filter(g => g.items.length > 0);
 }
 
 // Alt bar: 5 yuva. BUGUN ve MENU sabit fikirdir; aradakiler rol varsayilani.
 // (Kisisellestirme — basili tutup sabitleme — bilerek sonraki surume birakildi.)
 export function altBar({ isManager, isAdmin, isViewer, isParttime }) {
-  if (isViewer) return VIEWER_GRUP[0].items;
+  if (isViewer) return VIEWER_GRUP[0].items.filter(profildeVar);
   if (isParttime) return [
     { to: "/tables",   icon: "masa", label: "Masalar" },
     { to: "/orders",   icon: "siparis", label: "Sipariş" },

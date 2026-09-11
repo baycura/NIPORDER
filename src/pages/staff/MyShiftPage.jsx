@@ -2,6 +2,7 @@ import{useState,useEffect}from"react";import{useNavigate}from"react-router-dom";
 import{businessDayStart,businessDayKey}from"../../lib/businessDay.js";
 import Ikon from "../../components/Ikon.jsx";
 import HaftalikLig from "../../components/HaftalikLig.jsx";
+import { ozellik } from "../../lib/profil.js";
 const cv="'Coolvetica','Bebas Neue',sans-serif";const cvc="'Coolvetica Condensed','Barlow Condensed',sans-serif";
 export default function MyShiftPage(){
   const{staffUser}=useAuth();const navigate=useNavigate();const[orders,setOrders]=useState([]);const[shift,setShift]=useState(null);const[loading,setLoading]=useState(true);
@@ -80,9 +81,9 @@ export default function MyShiftPage(){
     )}
     {/* Haftalik lig: herkesin satisi yan yana, tatli rekabet. */}
     <HaftalikLig />
-    {staffUser?.telegram_chat_id
+    {ozellik("telegram") && (staffUser?.telegram_chat_id
       ? <div style={{background:"#161616",border:"1px solid #2A2A2A",borderRadius:10,padding:"10px 14px",marginBottom:16,color:"#FFFFFF",fontFamily:cvc,fontSize:12,fontWeight:700,letterSpacing:"0.5px"}}><Ikon ad="ucak" boy={13} style={{marginRight:6}}/>Telegram bildirimleri açık — vardiyadayken siparişler telefonuna gelir</div>
-      : <a href={"https://t.me/BaycuraBot?start="+staffUser?.id} target="_blank" rel="noreferrer" style={{display:"block",background:"#1C2B3A",border:"1px solid #2E4A66",borderRadius:10,padding:"12px 14px",marginBottom:16,color:"#5FB0E8",fontFamily:cvc,fontSize:13,fontWeight:700,letterSpacing:"0.5px",textDecoration:"none",textAlign:"center"}}>✈️ Telegram bildirimlerini aç — sipariş geldiğinde telefonuna mesaj gelsin</a>}
+      : <a href={"https://t.me/BaycuraBot?start="+staffUser?.id} target="_blank" rel="noreferrer" style={{display:"block",background:"#1C2B3A",border:"1px solid #2E4A66",borderRadius:10,padding:"12px 14px",marginBottom:16,color:"#5FB0E8",fontFamily:cvc,fontSize:13,fontWeight:700,letterSpacing:"0.5px",textDecoration:"none",textAlign:"center"}}>✈️ Telegram bildirimlerini aç — sipariş geldiğinde telefonuna mesaj gelsin</a>)}
     {ikramlar.length>0&&(
       <div style={{background:"#1A1A1A",border:"1px solid #2A2A2A",borderRadius:12,padding:"13px 15px",marginBottom:16}}>
         <div style={{display:"flex",justifyContent:"space-between",alignItems:"baseline",gap:10}}>
@@ -97,7 +98,7 @@ export default function MyShiftPage(){
     <div style={{display:"grid",gridTemplateColumns:"repeat(3,1fr)",gap:12,marginBottom:24}}>
       {[["BUGÜNKÜ CİRO",`₺${Math.round(revenue).toLocaleString()}`,"#FFFFFF","kasa"],["SİPARİŞ",orderCount.toString(),"#FFFFFF","siparis"],["ORT. SEPET",`₺${avg.toLocaleString()}`,"#F0EDE8","oylama"]].map(([l,v,c,icon])=>(<div key={l} style={{background:"#1E1E1E",border:"1px solid #2A2A2A",borderRadius:12,padding:16}}><div style={{display:"flex",justifyContent:"space-between"}}><div><div style={{color:"#888",fontFamily:cvc,fontSize:12,letterSpacing:"0.2px",marginBottom:4}}>{l}</div><div style={{color:c,fontFamily:cv,fontSize:26}}>{v}</div></div><Ikon ad={icon} boy={22} style={{opacity:.5}}/></div></div>))}
     </div>
-    {!staffUser?.telegram_chat_id&&(
+    {ozellik("telegram")&&!staffUser?.telegram_chat_id&&(
       <a href={"https://t.me/BaycuraBot?start="+staffUser?.id} target="_blank" rel="noreferrer" style={{display:"flex",alignItems:"center",gap:10,background:"#1C2733",border:"1px solid #2AABEE",borderRadius:12,padding:"14px 16px",marginBottom:24,textDecoration:"none"}}>
         <Ikon ad="ucak" boy={21} style={{color:"#2AABEE"}}/>
         <div style={{flex:1}}>
@@ -107,6 +108,7 @@ export default function MyShiftPage(){
         <Ikon ad="sag" boy={16} style={{color:"#2AABEE"}}/>
       </a>
     )}
+    {ozellik("telegram") && (
     <a href={"https://t.me/BaycuraBot?start="+staffUser?.id} target="_blank" rel="noreferrer" style={{display:"flex",alignItems:"center",gap:10,background:"#17212B",border:"1px solid #2AABEE",borderRadius:12,padding:"12px 16px",marginBottom:24,textDecoration:"none"}}>
       <Ikon ad="ucak" boy={21} style={{color:"#2AABEE"}}/>
       <div>
@@ -114,6 +116,7 @@ export default function MyShiftPage(){
         <div style={{color:"#888",fontFamily:cvc,fontSize:11,marginTop:2}}>Vardiyadayken yeni sipariş ve "hazır" bildirimleri telefonuna gelsin</div>
       </div>
     </a>
+    )}
     <div style={{background:"#1E1E1E",border:"1px solid #2A2A2A",borderRadius:12,padding:18,marginBottom:24}}>
       <div style={{color:"#F0EDE8",fontFamily:cv,fontSize:18,marginBottom:14}}>Vardiya Bilgisi</div>
       <div style={{display:"grid",gridTemplateColumns:"repeat(3,1fr)",gap:12}}>

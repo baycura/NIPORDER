@@ -207,7 +207,7 @@ export default function ReportsPage() {
               ["Ortalama fiş", fmtTL(data.avgTicket), C.ink],
               ["Son 7 gün", fmtTL(data.weekTotal), C.ink],
               ...(data.kitchenToday > 0 ? [
-                ["NIP Kitchen payı", fmtTL(data.kitchenToday), C.muted],
+                ["Mutfak payı", fmtTL(data.kitchenToday), C.muted],
                 ["Bize kalan", fmtTL(data.today - data.kitchenToday), C.accent],
               ] : []),
             ].map(([l, v, col]) => (
