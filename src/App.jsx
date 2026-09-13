@@ -43,6 +43,7 @@ import HubPage from "./pages/staff/HubPage.jsx";
 import TodayPage from "./pages/manager/TodayPage.jsx";
 import ShiftsOverviewPage from "./pages/manager/ShiftsOverviewPage.jsx";
 import DiscountsPage from "./pages/manager/DiscountsPage.jsx";
+import MutfakRaporPage from "./pages/MutfakRaporPage.jsx";
 
 function PrivateRoute({ children, managerOnly = false, adminOnly = false, allowViewer = false, deny = [] }) {
   const { session, staffUser, isManager, isAdmin, isViewer, loading } = useAuth();
@@ -68,6 +69,8 @@ function AppRoutes() {
       <Route path="/login" element={session && staffUser ? (<Navigate to={defaultRoute} replace />) : (<LoginPage />)}/>
       <Route path="/menu/:qrToken" element={<CustomerMenu />} />
       <Route path="/menu" element={<CustomerMenu />} />
+      {/* Doner mutfaginin hakedis ekrani: kendi girisi, kendi istemcisi; PrivateRoute/StaffLayout disinda */}
+      <Route path="/mutfak-rapor" element={<MutfakRaporPage />} />
       <Route path="/kitchen-display" element={<PrivateRoute><KitchenDisplayPage /></PrivateRoute>} />
       <Route path="/" element={<PrivateRoute><StaffLayout /></PrivateRoute>}>
         <Route index element={<Navigate to={defaultRoute} replace />} />

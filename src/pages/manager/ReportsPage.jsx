@@ -1,7 +1,11 @@
 import { useEffect, useRef, useState } from "react";
+import { Link } from "react-router-dom";
 import { supabase } from "../../lib/supabase.js";
 import { useAuth } from "../../contexts/AuthContext.jsx";
 import { businessDayStart, businessDayKey, BUSINESS_HOURS } from "../../lib/businessDay.js";
+import { DONER_STORE_ID, storeLabel } from "../../lib/stores.js";
+import { guncelAy, hakedisRaporu } from "../../lib/hakedis.js";
+import HakedisOzeti from "../../components/HakedisOzeti.jsx";
 import Ikon from "../../components/Ikon.jsx";
 
 const cv = "-apple-system,BlinkMacSystemFont,'Segoe UI',Roboto,sans-serif";
@@ -41,6 +45,14 @@ export default function ReportsPage() {
   const [updatedAt, setUpdatedAt] = useState(null);
   const timer = useRef(null);
 
+  // Doner sekmesi: doner magazasinin KENDI siparisi yok, orders sorgusu hep
+  // ₺0 verirdi ("gunun ozetinde doner kazanci bos"). Sekme artik NIP'in
+  // mutfaga borcunu gosterir — ayni RPC, ayni bilesen (Mutfaga Odenecek).
+  const mutfakBakisi = !!DONER_STORE_ID && selectedStore === DONER_STORE_ID;
+  const [hkAy, setHkAy] = useState(guncelAy());
+  const [hkTik, setHkTik] = useState(0);   // yenile dugmesi
+  const [hk, setHk] = useState({ rapor: null, yukleniyor: true, hata: null, guncelleme: null });
+
   useEffect(() => {
     if (DEMO) { setData(demoData()); setLoading(false); setUpdatedAt(new Date()); return; }
     if (storeIds.length === 0) return;
@@ -53,11 +65,22 @@ export default function ReportsPage() {
 
   // Load on store change + quiet auto-refresh every 60s so the number is always live.
   useEffect(() => {
-    if (DEMO || !selectedStore) return;
+    if (DEMO || !selectedStore || mutfakBakisi) return;
     loadData();
     timer.current = setInterval(() => loadData(true), 60_000);
     return () => clearInterval(timer.current);
-  }, [selectedStore]);
+  }, [selectedStore, mutfakBakisi]);
+
+  useEffect(() => {
+    if (DEMO || !mutfakBakisi) return undefined;
+    let canli = true;
+    setHk(h => ({ ...h, yukleniyor: true }));
+    hakedisRaporu(supabase, hkAy).then(r => {
+      if (!canli) return;
+      setHk({ rapor: r.rapor, yukleniyor: false, hata: r.hata, guncelleme: r.rapor ? new Date() : null });
+    });
+    return () => { canli = false; };
+  }, [mutfakBakisi, hkAy, hkTik]);
 
   async function loadData(silent) {
     if (!silent) setLoading(true);
@@ -154,7 +177,7 @@ export default function ReportsPage() {
         <div style={{ fontSize: 12, color: C.faint }}>
           {new Date().toLocaleDateString("tr-TR", { weekday: "long", day: "numeric", month: "long" })}
           {updatedAt && <> · <span style={{ color: C.muted }}>{updatedAt.toLocaleTimeString("tr-TR", { hour: "2-digit", minute: "2-digit" })}</span></>}
-          <button onClick={() => loadData()} title="Yenile" style={{ marginLeft: 8, background: "none", border: `1px solid ${C.cardLine}`, color: C.muted, borderRadius: 6, padding: "4px 8px", cursor: "pointer", display: "inline-flex" }}><Ikon ad="yenile" boy={13}/></button>
+          <button onClick={() => (mutfakBakisi ? setHkTik(t => t + 1) : loadData())} title="Yenile" style={{ marginLeft: 8, background: "none", border: `1px solid ${C.cardLine}`, color: C.muted, borderRadius: 6, padding: "4px 8px", cursor: "pointer", display: "inline-flex" }}><Ikon ad="yenile" boy={13}/></button>
         </div>
       </div>
 
@@ -167,13 +190,31 @@ export default function ReportsPage() {
               color: selectedStore === s.id ? "#000" : C.muted,
               border: `1px solid ${selectedStore === s.id ? C.accent : C.cardLine}`,
             }}>
-              {s.name}
+              {storeLabel(s.id) !== "—" ? storeLabel(s.id) : s.name}
             </button>
           ))}
         </div>
       )}
 
-      {loading ? (
+      {mutfakBakisi ? (
+        <div style={{ marginTop: 14 }}>
+          <HakedisOzeti
+            rapor={hk.rapor} ay={hkAy} onAy={setHkAy} yukleniyor={hk.yukleniyor} hata={hk.hata}
+            onYenile={() => setHkTik(t => t + 1)} taraf="nip" guncelleme={hk.guncelleme} kompakt
+          />
+          <Link to={"/settlement" + (hkAy !== guncelAy() ? "?ay=" + hkAy : "")} style={{
+            ...card, marginTop: 10, display: "flex", justifyContent: "space-between", alignItems: "center", gap: 8,
+            color: C.ink, textDecoration: "none", fontSize: 14, fontWeight: 700,
+          }}>
+            <span>Fiş dökümü ve WhatsApp mutabakat metni</span>
+            <span style={{ color: C.muted, display: "inline-flex", alignItems: "center", gap: 6, fontWeight: 400, fontSize: 13 }}>Mutfağa Ödenecek <Ikon ad="oksag" boy={14} /></span>
+          </Link>
+          <div style={{ fontSize: 11, color: C.faint, marginTop: 10, lineHeight: 1.6 }}>
+            Gün Özeti işletme günüyle (03:00) sayar, hakediş takvim ayıyla; gece satışları iki ekranda farklı güne düşebilir.
+            Bugünün mutfak payı Not in Paris sekmesindeki "Mutfak payı" kartında.
+          </div>
+        </div>
+      ) : loading ? (
         <div style={{ padding: 60, textAlign: "center", color: C.muted }}>Yükleniyor…</div>
       ) : (
         <>

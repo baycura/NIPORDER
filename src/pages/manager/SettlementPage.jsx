@@ -1,136 +1,100 @@
-import { useEffect, useState } from "react";
+import { useCallback, useEffect, useRef, useState } from "react";
+import { useSearchParams } from "react-router-dom";
 import { supabase } from "../../lib/supabase.js";
-import { useAuth } from "../../contexts/AuthContext.jsx";
-import { PARIS_STORE_ID, DONER_STORE_ID } from "../../lib/stores.js";
+import { ayGecerli, ayKaydir, guncelAy, hakedisRaporu, mutfakRaporUrl, panoyaKopyala } from "../../lib/hakedis.js";
+import HakedisOzeti, { PaylasSatiri, C, cv, hv, kart } from "../../components/HakedisOzeti.jsx";
 import Ikon from "../../components/Ikon.jsx";
 
-const cv = "-apple-system,BlinkMacSystemFont,'Segoe UI',Roboto,sans-serif";
-const hv = "'Bebas Neue','Barlow Condensed',sans-serif";
-
-// NIP kendi menusunden doner (mutfak) urunlerini de satar. Bir urunun mutfak
-// hedefi Doner ise, o urunun NIP'te satilan cirosu ay sonu mutfaga odenir.
-// inter_company_settlement view'i bu cross-store (paid) siparisleri toplar:
-//   origin_store_id             = kasayi/parayi alan magaza (NIP = Paris)
-//   kitchen_destination_store_id = urunu yapan mutfak (Doner)
-//   total_amount, order_count, week_start, month_start
-// Not: iki magaza adi da "Paris" icerdigi icin isim degil ID ile eslestiriyoruz.
+// Mutfaga Odenecek — NIP sahibinin hakedis ekrani.
+//
+// NIP kendi menusunden doner mutfaginin urunlerini de satar; o urunlerin
+// cirosu ay sonu mutfaga odenir. Rakam nip_mutfak_hakedis_raporu RPC'sinden
+// gelir (lib/hakedis.js); mutfak ayni raporu /mutfak-rapor'da kendi pano
+// hesabiyla gorur. Eski inter_company_settlement okumasi ve haftalik gorunum
+// kalkti: mutabakat birimi takvim ayidir, ay sonu odeme aylik.
+//
+// Hizli yol: ac -> rakam -> "WhatsApp'a gonder". Ay ?ay=YYYY-MM ile URL'de
+// durur; "gecen ay" baglantisi paylasilabilir.
 
 export default function SettlementPage() {
-  const { staffUser } = useAuth();
-  const [rows, setRows] = useState([]);
-  const [loading, setLoading] = useState(true);
-  const [period, setPeriod] = useState("month");
+  const [params, setParams] = useSearchParams();
+  const buAy = guncelAy();
+  const ayParam = params.get("ay");
+  const ay = ayGecerli(ayParam) && ayParam <= buAy ? ayParam : buAy;
+  const setAy = (a) => setParams(a === buAy ? {} : { ay: a }, { replace: true });
 
-  useEffect(() => { load(); }, []);
+  const [rapor, setRapor] = useState(null);
+  const [yukleniyor, setYukleniyor] = useState(true);
+  const [hata, setHata] = useState(null);
+  const [guncelleme, setGuncelleme] = useState(null);
+  const [linkDurum, setLinkDurum] = useState("");
+  // Aylar arasinda hizli gecerken eski cevap yeninin ustune yazmasin
+  const istekNo = useRef(0);
 
-  const load = async () => {
-    setLoading(true);
-    const { data, error } = await supabase.from("inter_company_settlement").select("*");
-    if (error) console.error(error);
-    setRows(data || []);
-    setLoading(false);
-  };
+  const yukle = useCallback(async () => {
+    const no = ++istekNo.current;
+    setYukleniyor(true);
+    const r = await hakedisRaporu(supabase, ay);
+    if (no !== istekNo.current) return;
+    setRapor(r.rapor);
+    setHata(r.hata);
+    if (r.rapor) setGuncelleme(new Date());
+    setYukleniyor(false);
+  }, [ay]);
+  useEffect(() => { yukle(); }, [yukle]);
 
-  const periodKey = period === "week" ? "week_start" : "month_start";
-  const grouped = {};
-  rows.forEach(r => {
-    const pk = r[periodKey];
-    if (!pk) return;
-    if (!grouped[pk]) grouped[pk] = { period: pk, items: [] };
-    grouped[pk].items.push(r);
-  });
-  const sortedPeriods = Object.values(grouped).sort((a, b) => b.period.localeCompare(a.period));
+  useEffect(() => {
+    if (!linkDurum) return undefined;
+    const t = setTimeout(() => setLinkDurum(""), 2000);
+    return () => clearTimeout(t);
+  }, [linkDurum]);
 
-  const fmt = (n) => Number(n || 0).toLocaleString("tr-TR", { minimumFractionDigits: 2, maximumFractionDigits: 2 });
-  const dateLabel = (ds) => new Date(ds).toLocaleDateString("tr-TR",
-    period === "week"
-      ? { day: "numeric", month: "long" }
-      : { year: "numeric", month: "long" });
+  const mutfakLink = mutfakRaporUrl(ay);
+  const cip = (a, l) => (
+    <button key={a} type="button" onClick={() => setAy(a)} style={{
+      padding: "7px 14px", borderRadius: 999, cursor: "pointer", fontWeight: 700, fontSize: 12, fontFamily: cv,
+      background: ay === a ? C.accent : "transparent", color: ay === a ? "#000" : C.muted,
+      border: `1px solid ${ay === a ? C.accent : C.cardLine}`,
+    }}>{l}</button>
+  );
 
   return (
-    <div style={{ padding: 20, fontFamily: cv, color: "#F0EDE8", maxWidth: 900, margin: "0 auto", paddingBottom: 80 }}>
-      <h1 style={{ fontFamily: hv, fontWeight: 900, fontSize: 34, marginBottom: 6, letterSpacing: 1 }}>
-        <Ikon ad="mutfakodeme" boy={22} style={{ marginRight: 10 }}/>MUTFAĞA ÖDENECEK
-      </h1>
-      <p style={{ fontSize: 13, color: "#888", marginBottom: 18, lineHeight: 1.5 }}>
-        NIP'te satılan <strong>mutfak (döner) ürünlerinin</strong> cirosu.
-        Bu tutar ay sonunda döner mutfağına ödenir.
+    <div style={{ padding: 16, fontFamily: cv, color: C.ink, maxWidth: 900, margin: "0 auto", paddingBottom: 80 }}>
+      <div style={{ display: "flex", justifyContent: "space-between", alignItems: "baseline", flexWrap: "wrap", gap: 8 }}>
+        <h1 style={{ fontFamily: hv, fontWeight: 900, fontSize: 34, margin: 0, letterSpacing: 1 }}>
+          <Ikon ad="mutfakodeme" boy={22} style={{ marginRight: 10 }} />MUTFAĞA ÖDENECEK
+        </h1>
+        <button type="button" onClick={yukle} title="Yenile" style={{ background: "none", border: `1px solid ${C.cardLine}`, color: C.muted, borderRadius: 6, padding: "4px 8px", cursor: "pointer", display: "inline-flex" }}><Ikon ad="yenile" boy={13} /></button>
+      </div>
+      <p style={{ fontSize: 13, color: C.muted, margin: "6px 0 14px", lineHeight: 1.5 }}>
+        NIP'te satılan döner mutfağı ürünlerinin ay sonu ödenecek tutarı. Mutfak aynı raporu kendi pano hesabıyla görür.
       </p>
 
-      <div style={{ display: "flex", gap: 8, marginBottom: 20 }}>
-        {[{ k: "month", l: "Aylık" }, { k: "week", l: "Haftalık" }].map(p => (
-          <button key={p.k} onClick={() => setPeriod(p.k)} style={{
-            padding: "10px 20px", borderRadius: 8, cursor: "pointer",
-            background: period === p.k ? "#FFFFFF" : "#222",
-            color: period === p.k ? "#000" : "#888",
-            border: "1px solid " + (period === p.k ? "#FFFFFF" : "#333"),
-            fontWeight: 700, fontSize: 13
-          }}>{p.l}</button>
-        ))}
+      <div style={{ display: "flex", gap: 8, marginBottom: 14, flexWrap: "wrap" }}>
+        {cip(buAy, "Bu ay")}
+        {cip(ayKaydir(buAy, -1), "Geçen ay")}
       </div>
 
-      {loading && <div style={{ padding: 24, textAlign: "center", color: "#888" }}>Yükleniyor...</div>}
+      <HakedisOzeti
+        rapor={rapor} ay={ay} onAy={setAy} yukleniyor={yukleniyor} hata={hata} onYenile={yukle}
+        taraf="nip" guncelleme={guncelleme}
+        aksiyonlar={<PaylasSatiri rapor={rapor} />}
+      />
 
-      {!loading && sortedPeriods.length === 0 && (
-        <div style={{ padding: 32, background: "#1A1A1A", borderRadius: 12, textAlign: "center", color: "#888" }}>
-          <Ikon ad="parlak" boy={46} kalin={1.3} style={{ display: "block", margin: "0 auto 12px" }}/>
-          <div style={{ fontSize: 15, marginBottom: 8 }}>Henüz mutfak ürünü satışı yok</div>
-          <div style={{ fontSize: 12, color: "#888888" }}>
-            Menüde "mutfak ürünü" (döner mutfağı) olarak işaretlenmiş bir ürün<br />
-            satıldığında, mutfağa ödenecek tutar burada birikecek.
-          </div>
+      {/* Mutfagin girisi: NIP hesabi degil, kendi pano hesabi. /login'e degil bu adrese girsinler. */}
+      <div style={{ ...kart, marginTop: 14, display: "flex", justifyContent: "space-between", alignItems: "center", gap: 10, flexWrap: "wrap" }}>
+        <div style={{ minWidth: 0 }}>
+          <div style={{ fontSize: 11, color: C.muted, letterSpacing: 1.2, textTransform: "uppercase", fontWeight: 600 }}>Mutfağın raporu</div>
+          <div style={{ fontSize: 13, marginTop: 4, overflow: "hidden", textOverflow: "ellipsis", whiteSpace: "nowrap" }}>{mutfakLink.replace(/^https?:\/\//, "")}</div>
+          <div style={{ fontSize: 12, color: C.faint, marginTop: 2 }}>Pano hesabıyla girerler; NIP personel girişi gerekmez.</div>
         </div>
-      )}
-
-      {!loading && sortedPeriods.map(({ period: ps, items }) => {
-        // NIP kasasi aldi, doner mutfagi yapti => mutfaga odenecek
-        const toKitchen = items.filter(r => r.origin_store_id === PARIS_STORE_ID && r.kitchen_destination_store_id === DONER_STORE_ID);
-        // Doner tarafi sattikca NIP mutfagi yapti => mutfak bize borclu (nadir)
-        const fromKitchen = items.filter(r => r.origin_store_id === DONER_STORE_ID && r.kitchen_destination_store_id === PARIS_STORE_ID);
-        const payable = toKitchen.reduce((s, r) => s + Number(r.total_amount || 0), 0);
-        const receivable = fromKitchen.reduce((s, r) => s + Number(r.total_amount || 0), 0);
-        const net = payable - receivable;
-        const payableOrders = toKitchen.reduce((s, r) => s + Number(r.order_count || 0), 0);
-
-        return (
-          <div key={ps} style={{ marginBottom: 14, padding: 16, background: "#1A1A1A", borderRadius: 12, border: "1px solid #2A2A2A" }}>
-            <h3 style={{ fontSize: 15, marginBottom: 14, color: "#FFFFFF", fontWeight: 700, textTransform: "capitalize" }}>
-              <Ikon ad="takvim" boy={13} style={{ marginRight: 6 }}/>{dateLabel(ps)}
-            </h3>
-
-            <div style={{ padding: 16, background: "#161616", borderRadius: 10, border: "1px solid #2A2A2A", marginBottom: receivable > 0.01 ? 10 : 0 }}>
-              <div style={{ fontSize: 11, color: "#8A8580", marginBottom: 6, letterSpacing: 0.5, fontWeight: 600 }}>
-                MUTFAĞA ÖDENECEK CİRO
-              </div>
-              <div style={{ fontSize: 34, fontWeight: 900, color: "#8A8580", lineHeight: 1, fontFamily: hv }}>
-                ₺{fmt(payable)}
-              </div>
-              <div style={{ fontSize: 11, color: "#888888", marginTop: 6 }}>{payableOrders} sipariş · mutfak ürünleri</div>
-            </div>
-
-            {receivable > 0.01 && (
-              <>
-                <div style={{ padding: 12, background: "#161616", borderRadius: 8, border: "1px solid #2A2A2A", marginBottom: 10 }}>
-                  <div style={{ fontSize: 10, color: "#8A8580", marginBottom: 4, letterSpacing: 0.5, fontWeight: 600 }}>
-                    MUTFAK BİZE BORÇLU (bizim yaptığımız)
-                  </div>
-                  <div style={{ fontSize: 18, fontWeight: 800, color: "#8A8580" }}>₺{fmt(receivable)}</div>
-                </div>
-                <div style={{ padding: 12, background: "#0A0A0A", borderRadius: 8, textAlign: "center" }}>
-                  <div style={{ fontSize: 11, color: "#888", marginBottom: 4, letterSpacing: 0.5 }}>NET</div>
-                  {Math.abs(net) < 0.01 ? (
-                    <div style={{ fontSize: 14, color: "#888" }}>Eşit — ödeme gerekmez</div>
-                  ) : net > 0 ? (
-                    <div style={{ fontSize: 16, color: "#8A8580", fontWeight: 800 }}>Mutfağa <strong>₺{fmt(net)}</strong> ödenecek</div>
-                  ) : (
-                    <div style={{ fontSize: 16, color: "#8A8580", fontWeight: 800 }}>Mutfak bize <strong>₺{fmt(Math.abs(net))}</strong> borçlu</div>
-                  )}
-                </div>
-              </>
-            )}
-          </div>
-        );
-      })}
+        <button type="button" onClick={async () => setLinkDurum((await panoyaKopyala(mutfakLink)) ? "ok" : "yok")} style={{
+          minHeight: 40, padding: "0 14px", borderRadius: 8, cursor: "pointer", fontWeight: 700, fontSize: 13, fontFamily: cv,
+          background: "transparent", color: C.ink, border: `1px solid ${C.cardLine}`, display: "inline-flex", alignItems: "center", gap: 6,
+        }}>
+          <Ikon ad="kopyala" boy={14} />{linkDurum === "ok" ? "Kopyalandı" : linkDurum === "yok" ? "Kopyalanamadı" : "Bağlantıyı kopyala"}
+        </button>
+      </div>
     </div>
   );
 }

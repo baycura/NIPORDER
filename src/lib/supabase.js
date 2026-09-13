@@ -39,7 +39,10 @@ const zamanAsimiSinyali = (ms) => {
 // yolunda supabase-js bunu "<name>: <message>" olarak error.message'a tasir;
 // Edge Function yolunda ise sabit bir Ingilizce mesajin altina, error.context'e
 // koyar — o yuzden ekranlar asagidaki hataMetni() ile okur.
-const zamanAsimiliFetch = async (url, options = {}) => {
+// Disari acik: mutfak sayfasinin ayri istemcisi (lib/mutfakSupabase.js) ayni
+// zaman asimi davranisini kullanir — zayif sinyalde iki istemci ayni sekilde
+// davranmali.
+export const zamanAsimiliFetch = async (url, options = {}) => {
   // Cagiran kendi sinyalini verdiyse (iptal edilebilir istek) ona karisma.
   if (options.signal || dosyaIstegi(url)) return fetch(url, options);
   const ms = fonksiyonIstegi(url) ? ZAMAN_ASIMI_FONKSIYON_MS : ZAMAN_ASIMI_VERI_MS;
