@@ -40,6 +40,7 @@ export const GRUPLAR = [
       { to: "/party-menu",        icon: "kampanya", label: "Parti Menüsü", ozellik: "parti" },
       { to: "/recipes",           icon: "recete", label: "Reçeteler" },
       { to: "/stock-mgmt",        icon: "arsiv", label: "Stok Yönetimi" },
+      { to: "/product-stock",     icon: "stok", label: "Ürün Stoku" },
       { to: "/costs",             icon: "gider", label: "Eksik Maliyetler" },
       { to: "/retail",            icon: "raf", label: "Ürünler (Raf)", ozellik: "raf" },
       // Merch sayfasi menuden kaldirildi: merch_products tisortlerin hicbir

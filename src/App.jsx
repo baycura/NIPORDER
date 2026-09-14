@@ -20,6 +20,7 @@ import QRCodesPage from "./pages/manager/QRCodesPage.jsx";
 import ReportsPage from "./pages/manager/ReportsPage.jsx";
 import ProfitPage from "./pages/manager/ProfitPage.jsx";
 import SalesPage from "./pages/manager/SalesPage.jsx";
+import ProductStockPage from "./pages/manager/ProductStockPage.jsx";
 import CostsPage from "./pages/manager/CostsPage.jsx";
 import CashCountPage from "./pages/staff/CashCountPage.jsx";
 import CashCountsPage from "./pages/manager/CashCountsPage.jsx";
@@ -85,6 +86,7 @@ function AppRoutes() {
         <Route path="stock"            element={<PrivateRoute deny={["parttime"]}><StockViewPage /></PrivateRoute>} />
         <Route path="myshift"          element={<PrivateRoute deny={["viewer","parttime"]}><MyShiftPage /></PrivateRoute>} />
         <Route path="stock-mgmt"       element={<PrivateRoute managerOnly><StockMgmtPage /></PrivateRoute>} />
+        <Route path="product-stock"    element={<PrivateRoute managerOnly><ProductStockPage /></PrivateRoute>} />
         {/* Sayim yoneticiye kilitli DEGIL: rafi fiilen sayan bar personeli.
             Kapi nip_stok_sayimi_kaydet icinde de var (kitchen/viewer/parttime). */}
         <Route path="stock-count"      element={<PrivateRoute deny={["viewer","kitchen","parttime"]}><StockCountPage /></PrivateRoute>} />
