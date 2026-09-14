@@ -182,10 +182,13 @@ export default function TablesPage() {
   // dolu masalar bos masalarla ayni izgarada duruyordu; garson servis sirasinda
   // hangi hesabin acik oldugunu izgarayi tarayarak buluyordu.
   const acikSatirlar = [];
+  // (+) = acik hesaba urun ekle: siparis ekrani "Urun Ekle" alt sayfasi acik
+  // gelir (?ekle=1). Satirin geri kalani eskisi gibi hesabi acar.
+  const ekleGit = (id) => navigate("/orders/" + id + "?ekle=1");
   orders.filter(o => !o.table_id).forEach(o => acikSatirlar.push({
     key: "o" + o.id, ad: (o.customer_name || "İsimsiz"),
     alt: "Masasız · " + sure(o.created_at), tutar: Number(o.total || 0),
-    magaza: o.stores?.slug, git: () => navigate("/orders/" + o.id),
+    magaza: o.stores?.slug, git: () => navigate("/orders/" + o.id), ekle: () => ekleGit(o.id),
   }));
   filtered.forEach(t => {
     const ords = tableOrders(t.id);
@@ -197,7 +200,7 @@ export default function TablesPage() {
       acikSatirlar.push({
         key: "t" + t.id, ad: t.name, tutar: toplam, magaza: o.stores?.slug,
         alt: [sure(o.created_at), o.staff?.name, adet ? adet + " ürün" : null].filter(Boolean).join(" · "),
-        git: () => navigate("/orders/" + o.id),
+        git: () => navigate("/orders/" + o.id), ekle: () => ekleGit(o.id),
       });
     } else {
       acikSatirlar.push({
@@ -290,6 +293,15 @@ export default function TablesPage() {
                     <div style={{fontSize:12,color:"#888",marginTop:3,overflow:"hidden",textOverflow:"ellipsis",whiteSpace:"nowrap"}}>{s.alt}</div>
                   </div>
                   <span style={{fontSize:18,fontWeight:800,fontVariantNumeric:"tabular-nums"}}>₺{s.tutar.toLocaleString("tr-TR")}</span>
+                  {/* Sahadaki en sik is: acik masaya bir urun daha. Tek dokunusla
+                      ekleme katmani acik gelir; karta dokunmayi bozmaz. */}
+                  {s.ekle && (
+                    <button onClick={(e) => { e.stopPropagation(); s.ekle(); }} aria-label={"Ürün ekle: " + s.ad} title="Ürün ekle"
+                      style={{width:44,height:44,flexShrink:0,background:"#FFFFFF",color:"#000",border:"none",borderRadius:"50%",cursor:"pointer",
+                              display:"flex",alignItems:"center",justifyContent:"center",fontFamily:"inherit"}}>
+                      <Ikon ad="ekle" boy={18} kalin={2.4}/>
+                    </button>
+                  )}
                   <span style={{color:"#888888",display:"flex"}}><Ikon ad={ortak && acik ? "asagi" : "sag"} boy={14}/></span>
                 </div>
                 {acik && (
@@ -298,8 +310,14 @@ export default function TablesPage() {
                       <div key={o.id} onClick={() => navigate("/orders/" + o.id)}
                         style={{display:"flex",justifyContent:"space-between",alignItems:"center",background:"#0C0C0C",
                                 border:"1px solid #2A2A2A",borderRadius:8,padding:"10px 12px",cursor:"pointer"}}>
-                        <span style={{fontSize:13,fontWeight:700,color:"#F0EDE8"}}>{o.customer_name || "İsimsiz"}</span>
-                        <span style={{fontSize:13,fontWeight:800,fontVariantNumeric:"tabular-nums"}}>₺{o.total || 0} ›</span>
+                        <span style={{fontSize:13,fontWeight:700,color:"#F0EDE8",flex:1,minWidth:0,overflow:"hidden",textOverflow:"ellipsis",whiteSpace:"nowrap"}}>{o.customer_name || "İsimsiz"}</span>
+                        <span style={{fontSize:13,fontWeight:800,fontVariantNumeric:"tabular-nums"}}>₺{o.total || 0}</span>
+                        <button onClick={(e) => { e.stopPropagation(); ekleGit(o.id); }} aria-label={"Ürün ekle: " + (o.customer_name || "İsimsiz")} title="Ürün ekle"
+                          style={{width:44,height:44,marginLeft:8,flexShrink:0,background:"#FFFFFF",color:"#000",border:"none",borderRadius:"50%",cursor:"pointer",
+                                  display:"flex",alignItems:"center",justifyContent:"center",fontFamily:"inherit"}}>
+                          <Ikon ad="ekle" boy={16} kalin={2.4}/>
+                        </button>
+                        <span style={{color:"#888888",display:"flex",marginLeft:6}}><Ikon ad="sag" boy={13}/></span>
                       </div>
                     ))}
                     <button onClick={() => openOrderForTable(s.masa)}

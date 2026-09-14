@@ -1,10 +1,11 @@
-import { useEffect, useState } from "react";
-import { useParams, useNavigate } from "react-router-dom";
+import { useEffect, useRef, useState } from "react";
+import { useParams, useNavigate, useLocation } from "react-router-dom";
 import { supabase } from "../../lib/supabase.js";
 import { happyHourPrices } from "../../lib/happyHour.js";
 import { optionsText, optionMod } from "../../lib/productOptions.js";
 import { useAuth } from "../../contexts/AuthContext.jsx";
 import Ikon from "../../components/Ikon.jsx";
+import UrunSecici from "../../components/UrunSecici.jsx";
 import { partiDurumOku } from "../../lib/parti.js";
 
 const cv = "-apple-system,BlinkMacSystemFont,'Segoe UI',Roboto,sans-serif";
@@ -12,6 +13,7 @@ const cv = "-apple-system,BlinkMacSystemFont,'Segoe UI',Roboto,sans-serif";
 export default function OrderDetailPage() {
   const { orderId } = useParams();
   const navigate = useNavigate();
+  const location = useLocation();
   const { staffUser } = useAuth(); // ikramda "kim verdi" kaydi icin
 
   const [order, setOrder] = useState(null);
@@ -30,10 +32,21 @@ export default function OrderDetailPage() {
   const [selectedCat, setSelectedCat] = useState(null);
   const [prodSearch, setProdSearch] = useState("");
   const [hhPrices, setHhPrices] = useState({}); // happy hour: { urun_id: fiyat }
-  const [menuOpen, setMenuOpen] = useState(true);
   const [sonEklenen, setSonEklenen] = useState(null); // { id, ad, adet } — "Geri al" icin
   const [customerNameEdit, setCustomerNameEdit] = useState("");
   const [orderNote, setOrderNote] = useState("");
+  // URUN EKLE alt sayfasi. Menu eskiden sayfanin EN ALTINDA duruyordu: 6 kalemli
+  // masaya bir urun eklemek icin uye kutusu, not, kalemler ve geri al seridi
+  // gecilip listeye iniliyor, eklenen satir ve toplam 800px yukarida kaliyordu.
+  // Simdi ekleme kendi katmaninda: acikken toplam ve son eklenen parmagin
+  // dibinde. Ekledikten sonra KAPANMAZ (bir masaya art arda 3 urun girilir).
+  const [ekleAcik, setEkleAcik] = useState(false);
+  // Uye kutusu + siparis notu katlanir: kalemler basliga yaklassin. Bos
+  // hesapta acik baslar — uye fiyati urun eklenmeden ONCE baglanmali.
+  const [detayAcik, setDetayAcik] = useState(false);
+  // Dokunusun alindigini gostermek icin eklenen urun satiri 150ms yanar.
+  const [parlayan, setParlayan] = useState(null);
+  const otoAcildi = useRef(false); // bos hesapta otomatik acilis TEK sefer
 
   // Sabit veriler (menü, kategoriler, masalar) yalniz ilk aciliste yuklenir;
   // siparis verisi hafif sorguyla tazelenir — her dokunusta tam yukleme YOK.
@@ -109,6 +122,37 @@ export default function OrderDetailPage() {
   };
 
   useEffect(() => { load(); }, [orderId]);
+
+  // Derin baglanti: Masalar'daki (+) ve baska girisler ?ekle=1 ile gelir. Yalniz
+  // mount'ta okunur ve URL'den silinir — odeme sayfasindan geri donuste
+  // alt sayfa yeniden acilmasin.
+  useEffect(() => {
+    const params = new URLSearchParams(location.search);
+    if (params.get("ekle") === "1") {
+      setEkleAcik(true);
+      otoAcildi.current = true;
+      navigate(location.pathname, { replace: true });
+    }
+  }, []);
+
+  // Bos acik hesapta (masadan yeni acildi) alt sayfa kendiliginden acilir; bir
+  // kez. Realtime tazelemesi items'i yeniden bos getirse bile acmaz.
+  useEffect(() => {
+    if (loading || !order || otoAcildi.current) return;
+    otoAcildi.current = true;
+    if (items.length === 0 && order.status !== "paid" && order.status !== "cancelled") {
+      setEkleAcik(true);
+      setDetayAcik(true);
+    }
+  }, [loading]);
+
+  // Alt sayfa acikken arkadaki sayfa kaymasin (iOS backdrop'tan kaydiriyor).
+  useEffect(() => {
+    if (!ekleAcik) return;
+    const onceki = document.body.style.overflow;
+    document.body.style.overflow = "hidden";
+    return () => { document.body.style.overflow = onceki; };
+  }, [ekleAcik]);
 
   useEffect(() => {
     let t = null;
@@ -415,38 +459,71 @@ export default function OrderDetailPage() {
   const totalItems = items.reduce((s,i) => s + (i.quantity||0), 0);
   const anyPending = items.some(i => i.kitchen_status === "pending" || i.kitchen_status === "preparing");
   const allReady = items.length > 0 && items.every(i => i.kitchen_status === "ready" || i.kitchen_status === "served");
-  // Arama doluysa kategori fark etmeksizin TUM urunlerde arar (TR harf uyumlu);
-  // basiyla eslesenler one gelir. Bossa secili kategorinin listesi.
-  const trLow = (s) => String(s || "").toLocaleLowerCase("tr");
-  const q = trLow(prodSearch.trim());
-  // PARTI FILTRESI: gece 1'de 142 urun arasinda urun aramak servisi yavaslatan
-  // asil sey. Parti acikken liste parti urunlerine iner. "Tum menu" cikisi
-  // BILEREK duruyor — musteri parti disi bir sey isterse satis engellenmemeli.
-  const partiSuzulu = partiAktif && !tumMenu ? products.filter(p => p.show_in_party_menu) : products;
-  // Parti modunda ARAMA raf urunlerini de kapsar: tisort gece de satilir,
-  // "Tum menu"ye gecmeden bulunmali. Cipler dar kalir (hiz), arama genis.
-  const shopCatIds = new Set(categories.filter(c => c.show_in_shop).map(c => c.id));
-  const rafUrunu = (p) => !!p.track_stock || shopCatIds.has(p.category_id);
-  const aramaTabani = partiAktif && !tumMenu ? products.filter(p => p.show_in_party_menu || rafUrunu(p)) : products;
-  const catNameOf = (p) => categories.find(c => c.id === p.category_id)?.name || "";
-  // Kasada hiyerarsi yok: yalniz icinde urun olan kategoriler cip olarak cikar,
-  // alt kategoriler ust kategorisinin hemen ardinda siralanir.
-  const catChips = categories
-    .filter(c => partiSuzulu.some(p => p.category_id === c.id))
-    .map(c => {
-      const par = c.parent_id ? categories.find(x => x.id === c.parent_id) : null;
-      return { ...c, _key: (par ? (par.sort_order || 0) : (c.sort_order || 0)) * 1000 + (par ? (c.sort_order || 0) : 0) };
-    })
-    .sort((a, b) => a._key - b._key);
-  // Parti acilinca secili kategori listeden dusmus olabilir (o kategoride
-  // parti urunu yok). Bos ekran gostermek yerine ilk gecerli cipe kay.
-  const aktifCat = catChips.some(c => c.id === selectedCat) ? selectedCat : catChips[0]?.id;
-  const filteredProducts = q
-    ? aramaTabani
-        .filter(p => trLow(p.name).includes(q) || trLow(p.name_en).includes(q) || trLow(p.brand).includes(q))
-        .sort((a, b) => (trLow(a.name).startsWith(q) ? 0 : 1) - (trLow(b.name).startsWith(q) ? 0 : 1))
-    : partiSuzulu.filter(p => p.category_id === aktifCat);
+  // Filtreleme/arama turetimi UrunSecici'de (prop'lardan saf uretim).
   const where = order.table_id ? (tables[order.table_id] || "Masa") : null;
+  const kapali = order.status === "paid" || order.status === "cancelled";
+  // Masaustu: StaffLayout kenar menusu 240px ve alt tab bar yok. Mobilde sabit
+  // cubuk tab barin USTUNE oturur (nav ~74px), icerigi ve sekmeleri ortmez.
+  const masaustu = typeof window !== "undefined" && window.matchMedia("(min-width:900px)").matches;
+  const cubukAlt = masaustu ? 14 : 78;
+  const uyeAdi = order.customer_id
+    ? (customers.find(c => c.id === order.customer_id)?.name || order.customer_name || "Üye")
+    : null;
+  const ozelFiyatSayisi = Object.keys(memberPrices).length;
+
+  // Dokunus geri bildirimi: satir 150ms beyaz yanar, titresim. Veri degismez;
+  // addProduct oldugu gibi cagrilir (secenek penceresi acilirsa da yanar).
+  const urunEkle = (p) => {
+    setParlayan(p.id);
+    setTimeout(() => setParlayan(cur => cur === p.id ? null : cur), 150);
+    try { navigator.vibrate?.(10); } catch (e) { /* yoksay */ }
+    addProduct(p);
+  };
+
+  // Son eklenen kalemin canli hali: adet kontrolu ve sifira inince geri al.
+  // sonEklenen yalniz insert KAYDEDILDIKTEN sonra set edilir (saved.id), bu
+  // yuzden buradaki −/+ ve Geri al hic temp id'ye gitmez.
+  const sonKalem = sonEklenen ? items.find(i => i.id === sonEklenen.id) : null;
+  const sonAdet = (delta) => {
+    if (!sonKalem) return;
+    if (sonKalem.quantity + delta <= 0) { sonEklenenGeriAl(); return; }
+    changeQty(sonKalem.id, delta);
+  };
+
+  // GERI AL SERIDI — sayfada ve alt sayfanin altliginda ayni sey. Alt sayfada
+  // yeni TOPLAM ve adet kontrolu de var: garsonun dogrulamak istedigi sey
+  // hesabin degistigi; ikinci latte icin alt sayfayi kapatip kaleme inmesin.
+  // Bilesen degil duz fonksiyon: render icinde tanimli bir bilesen her cizimde
+  // yeni tip sayilir ve React alt agaci yeniden kurar.
+  const geriAlSeridi = (sheet = false) => {
+    if (!sonEklenen || kapali) return null;
+    return (
+      <div style={{background:"#161616",border:sheet?"none":"1px solid #2A2A2A",borderTop:sheet?"1px solid #2A2A2A":undefined,
+                   borderRadius:sheet?0:12,padding:sheet?"10px 14px":"11px 14px",marginBottom:sheet?0:10,
+                   display:"flex",alignItems:"center",gap:10,flexWrap:"wrap"}}>
+        <span style={{flex:1,minWidth:120,fontSize:12,color:"#F0EDE8",overflow:"hidden",textOverflow:"ellipsis",whiteSpace:"nowrap",display:"inline-flex",alignItems:"center",gap:5}}>
+          {sheet && <Ikon ad="onay" boy={13}/>}
+          {sheet ? <>{sonEklenen.ad} eklendi · Toplam <b>₺{order.total || 0}</b></> : <>Son eklenen: {sonEklenen.ad}{(sonKalem?.quantity || sonEklenen.adet) > 1 ? " ×" + (sonKalem?.quantity || sonEklenen.adet) : ""}</>}
+        </span>
+        {sheet && sonKalem && (
+          <div style={{display:"flex",alignItems:"center",gap:4,background:"#0C0C0C",borderRadius:20,padding:"2px 4px",flexShrink:0}}>
+            <button onClick={() => sonAdet(-1)} aria-label="Azalt" style={{width:40,height:40,background:"#2A2A2A",color:"#fff",border:"none",borderRadius:"50%",fontSize:18,cursor:"pointer",fontWeight:700}}>−</button>
+            <div style={{minWidth:18,textAlign:"center",fontSize:13,fontWeight:800}}>{sonKalem.quantity}</div>
+            <button onClick={() => sonAdet(+1)} aria-label="Artır" style={{width:40,height:40,background:"#2A2A2A",color:"#fff",border:"none",borderRadius:"50%",fontSize:18,cursor:"pointer",fontWeight:700}}>+</button>
+          </div>
+        )}
+        <button onClick={sonEklenenGeriAl}
+          style={{fontSize:11,fontWeight:700,border:"1px solid #2A2A2A",background:"transparent",color:"#F0EDE8",
+                  padding:"7px 11px",minHeight:36,borderRadius:8,cursor:"pointer",fontFamily:"inherit",flexShrink:0}}>
+          Geri al
+        </button>
+        {!sheet && (
+          <button onClick={() => setSonEklenen(null)} aria-label="Kapat"
+            style={{background:"none",border:"none",color:"#888888",fontSize:16,lineHeight:1,cursor:"pointer",padding:0,flexShrink:0,fontFamily:"inherit"}}>×</button>
+        )}
+      </div>
+    );
+  };
 
   return (
     <div style={{fontFamily:cv,color:"#F0EDE8",paddingBottom:100}}>
@@ -473,34 +550,50 @@ export default function OrderDetailPage() {
           )}
           <div style={{fontSize:12,padding:"3px 8px",background:"#2A2A2A",color:"#aaa",borderRadius:6,fontWeight:600,letterSpacing:"0.2px"}}>{order.status?.toUpperCase()}</div>
         </div>
-        <div style={{fontSize:11,color:"#888",marginTop:4}}>{totalItems} urun · ₺{order.total || 0}</div>
+        <div style={{fontSize:11,color:"#888",marginTop:4}}>{totalItems} ürün · ₺{order.total || 0}</div>
       </div>
 
-      {/* Uye bagla: bagli uyenin ozel fiyatlari eklenen urunlere otomatik uygulanir */}
-      <div style={{marginBottom:14,background:"#161616",border:"1px solid "+(order?.customer_id?"#FFFFFF":"#2A2A2A"),borderRadius:10,padding:10}}>
-        <div style={{fontSize:12,color:order?.customer_id?"#FFFFFF":"#888",letterSpacing:"0.2px",fontWeight:600,marginBottom:6}}>
-          <span style={{display:"inline-flex",alignItems:"center",gap:5}}><Ikon ad="kisi" boy={13}/>{order?.customer_id ? "ÜYE HESABI BAĞLI" : "ÜYE HESABI"}</span>
-        </div>
-        <select value={order?.customer_id || ""} onChange={e => linkCustomer(e.target.value || null)}
-          style={{width:"100%",padding:"10px 12px",background:"#0C0C0C",border:"1px solid "+(order?.customer_id?"#FFFFFF":"#2A2A2A"),borderRadius:8,color:"#F0EDE8",fontSize:14,outline:"none",fontFamily:"inherit"}}>
-          <option value="">— Üye değil (misafir) —</option>
-          {customers.map(c => (<option key={c.id} value={c.id}>{c.name}{c.phone ? " · " + c.phone : ""}</option>))}
-        </select>
-        <div style={{fontSize:10,color:"#888888",marginTop:6,lineHeight:1.5}}>
-          {order?.customer_id
-            ? (Object.keys(memberPrices).length > 0
-                ? "Bu üyenin " + Object.keys(memberPrices).length + " özel fiyatı var — eklediğin ürünlere otomatik uygulanır (kampanya daha ucuzsa kampanya)."
-                : "Bu üyeye tanımlı özel fiyat yok; liste fiyatı geçerli.")
-            : "Üye seçersen özel fiyatları eklenen ürünlere otomatik iner."}
-        </div>
+      {/* UYE + NOT, KATLANIR. Kapaliyken tek ozet satiri; uye bagliysa beyaz
+          kenar (eski sinyal). Icerik ayni JSX — uye kutusu ve not silinmedi. */}
+      <div style={{marginBottom:14,background:"#161616",border:"1px solid "+(order?.customer_id?"#FFFFFF":"#2A2A2A"),borderRadius:10}}>
+        <button onClick={() => setDetayAcik(v => !v)}
+          style={{width:"100%",display:"flex",alignItems:"center",gap:8,padding:"11px 12px",minHeight:44,background:"transparent",border:"none",
+                  color:"#F0EDE8",cursor:"pointer",fontFamily:"inherit",textAlign:"left"}}>
+          <Ikon ad="kisi" boy={14} style={{flexShrink:0,color:order?.customer_id?"#FFFFFF":"#888"}}/>
+          <span style={{flex:1,minWidth:0,fontSize:12.5,overflow:"hidden",textOverflow:"ellipsis",whiteSpace:"nowrap"}}>
+            <b style={{color:order?.customer_id?"#FFFFFF":"#F0EDE8"}}>Üye: {uyeAdi || "—"}</b>
+            {order?.customer_id && <span style={{color:"#888"}}> · {ozelFiyatSayisi > 0 ? ozelFiyatSayisi + " özel fiyat" : "özel fiyat yok"}</span>}
+            <span style={{color:"#888"}}> · Not: {order?.note ? order.note : "—"}</span>
+          </span>
+          <span style={{color:"#888888",display:"flex",flexShrink:0}}><Ikon ad={detayAcik ? "yukari" : "asagi"} boy={14}/></span>
+        </button>
+        {detayAcik && (
+          <div style={{padding:"0 10px 10px"}}>
+            {/* Uye bagla: bagli uyenin ozel fiyatlari eklenen urunlere otomatik uygulanir */}
+            <div style={{fontSize:12,color:order?.customer_id?"#FFFFFF":"#888",letterSpacing:"0.2px",fontWeight:600,marginBottom:6}}>
+              <span style={{display:"inline-flex",alignItems:"center",gap:5}}>{order?.customer_id ? "ÜYE HESABI BAĞLI" : "ÜYE HESABI"}</span>
+            </div>
+            <select value={order?.customer_id || ""} onChange={e => linkCustomer(e.target.value || null)}
+              style={{width:"100%",padding:"10px 12px",background:"#0C0C0C",border:"1px solid "+(order?.customer_id?"#FFFFFF":"#2A2A2A"),borderRadius:8,color:"#F0EDE8",fontSize:14,outline:"none",fontFamily:"inherit"}}>
+              <option value="">— Üye değil (misafir) —</option>
+              {customers.map(c => (<option key={c.id} value={c.id}>{c.name}{c.phone ? " · " + c.phone : ""}</option>))}
+            </select>
+            <div style={{fontSize:10,color:"#888888",marginTop:6,lineHeight:1.5}}>
+              {order?.customer_id
+                ? (ozelFiyatSayisi > 0
+                    ? "Bu üyenin " + ozelFiyatSayisi + " özel fiyatı var — eklediğin ürünlere otomatik uygulanır (kampanya daha ucuzsa kampanya)."
+                    : "Bu üyeye tanımlı özel fiyat yok; liste fiyatı geçerli.")
+                : "Üye seçersen özel fiyatları eklenen ürünlere otomatik iner. Ürünleri eklemeden ÖNCE bağla — eski kalemler yeniden fiyatlanmaz."}
+            </div>
+            <div style={{marginTop:10}}>
+              <input value={orderNote} onChange={e=>setOrderNote(e.target.value)} onBlur={saveOrderNote} placeholder="+ Sipariş notu ekle (mutfak görecek)" style={{width:"100%",boxSizing:"border-box",padding:"10px 14px",background:"transparent",border:"1px dashed #444",color:"#ddd",borderRadius:10,fontSize:13,outline:"none",fontFamily:"inherit"}}/>
+            </div>
+          </div>
+        )}
       </div>
 
       <div style={{marginBottom:14}}>
-        <input value={orderNote} onChange={e=>setOrderNote(e.target.value)} onBlur={saveOrderNote} placeholder="+ Sipariş notu ekle (mutfak görecek)" style={{width:"100%",padding:"10px 14px",background:"transparent",border:"1px dashed #444",color:"#ddd",borderRadius:10,fontSize:13,outline:"none",fontFamily:"inherit"}}/>
-      </div>
-
-      <div style={{marginBottom:14}}>
-        {items.length === 0 && <div style={{color:"#888888",fontSize:12,textAlign:"center",padding:20}}>Henüz ürün yok. Aşağıdan ekle.</div>}
+        {items.length === 0 && <div style={{color:"#888888",fontSize:12,textAlign:"center",padding:20}}>Henüz ürün yok. Aşağıdaki <b style={{color:"#F0EDE8"}}>+ Ürün Ekle</b>'ye dokun.</div>}
         {items.map(it => {
           const opts = optionsText(it.selected_options);
           const prod = products.find(p => p.id === it.product_id);
@@ -563,119 +656,82 @@ export default function OrderDetailPage() {
         })}
       </div>
 
-      {/* Son eklenen kalem — yanlis eklenen urun tek dokunusla geri aliniyor. */}
-      {sonEklenen && order.status !== "paid" && order.status !== "cancelled" && (
-        <div style={{background:"#161616",border:"1px solid #2A2A2A",borderRadius:12,padding:"11px 14px",marginBottom:10,display:"flex",alignItems:"center",gap:12}}>
-          <span style={{flex:1,minWidth:0,fontSize:12,color:"#F0EDE8",overflow:"hidden",textOverflow:"ellipsis",whiteSpace:"nowrap"}}>
-            Son eklenen: {sonEklenen.ad}{sonEklenen.adet > 1 ? " ×" + sonEklenen.adet : ""}
-          </span>
-          <button onClick={sonEklenenGeriAl}
-            style={{fontSize:11,fontWeight:700,border:"1px solid #2A2A2A",background:"transparent",color:"#F0EDE8",
-                    padding:"7px 11px",borderRadius:8,cursor:"pointer",fontFamily:"inherit",flexShrink:0}}>
-            Geri al
-          </button>
-          <button onClick={() => setSonEklenen(null)} aria-label="Kapat"
-            style={{background:"none",border:"none",color:"#888888",fontSize:16,lineHeight:1,cursor:"pointer",padding:0,flexShrink:0,fontFamily:"inherit"}}>×</button>
-        </div>
-      )}
+      {/* Son eklenen kalem — yanlis eklenen urun tek dokunusla geri aliniyor.
+          Alt sayfa kapatildiysa ayni isi bu serit yapar. */}
+      {geriAlSeridi()}
 
-      {items.length > 0 && order.status !== "paid" && order.status !== "cancelled" && (
-        <div style={{position:"fixed",bottom:14,left:14,right:14,zIndex:40}}>
-          <button onClick={goToPayment} style={{width:"100%",padding:"14px",background:allReady?"#FFFFFF":"#2A2A2A",color:allReady?"#000":"#F0EDE8",border:"none",borderRadius:12,fontSize:14,fontWeight:800,cursor:"pointer",boxShadow:"0 4px 16px rgba(0,0,0,0.4)"}}>
-            {allReady && <><Ikon ad="onay" boy={14} style={{marginRight:5}}/>Servis tamamlandı · </>}<Ikon ad="kasa" boy={15} style={{marginRight:6}}/>Ödeme Al · ₺{order.total || 0}
-          </button>
-        </div>
-      )}
-
-      <div style={{background:"#161616",border:"1px solid #2A2A2A",borderRadius:10,padding:10,marginBottom:10}}>
-        <button onClick={() => setMenuOpen(!menuOpen)} style={{width:"100%",padding:"6px",background:"transparent",color:"#aaa",border:"none",fontSize:12,cursor:"pointer",fontWeight:700}}>
-          {menuOpen
-            ? <>Menüyü Gizle<Ikon ad="yukari" boy={13} style={{marginLeft:5}}/></>
-            : <>Ürün Ekle<Ikon ad="asagi" boy={13} style={{marginLeft:5}}/></>}
-        </button>
-        {menuOpen && (
-          <>
-            <button onClick={() => setTakeawayMode(!takeawayMode)}
-              style={{width:"100%",marginTop:10,padding:"12px",background:takeawayMode?"#FFFFFF":"#1A1A1A",color:takeawayMode?"#000":"#999",
-                      border:"1px solid "+(takeawayMode?"#FFFFFF":"#333"),borderRadius:10,fontSize:13,fontWeight:800,cursor:"pointer",fontFamily:"inherit"}}>
-              {takeawayMode && <Ikon ad="onay" boy={14} style={{marginRight:5}}/>}<Ikon ad="bardak" boy={14} style={{marginRight:5}}/>{takeawayMode ? "PAKET MODU AÇIK — eklenen içecekler götür" : "Paket (take away)"}
+      {/* SABIT ALT CUBUK: sol "+ Urun Ekle" (birincil), sag "Odeme Al". Kalem
+          yokken odeme yerine soluk "Sepet bos" — bos hesap yanlislikla kasaya
+          gitmesin. Mobilde tab barin ustunde, masaustunde kenar menunun saginda. */}
+      {!kapali && (
+        <div style={{position:"fixed",bottom:cubukAlt,left:masaustu?240:0,right:0,zIndex:40,padding:"0 14px",pointerEvents:"none"}}>
+          <div style={{display:"flex",gap:8,maxWidth:masaustu?500:undefined,margin:"0 auto",pointerEvents:"auto"}}>
+            <button onClick={() => setEkleAcik(true)}
+              style={{flex:3,minWidth:0,padding:"14px 10px",minHeight:50,background:"#FFFFFF",color:"#000",border:"none",borderRadius:12,fontSize:14,fontWeight:800,cursor:"pointer",
+                      boxShadow:"0 4px 16px rgba(0,0,0,0.5)",display:"inline-flex",alignItems:"center",justifyContent:"center",gap:6,fontFamily:"inherit",whiteSpace:"nowrap"}}>
+              <Ikon ad="ekle" boy={16}/>Ürün Ekle
             </button>
-            <div style={{position:"relative",marginTop:10}}>
-              <input value={prodSearch} onChange={e=>setProdSearch(e.target.value)} placeholder="Ürün ara (tüm kategorilerde) — örn: latte, efes, şapka"
-                style={{width:"100%",padding:"12px 40px 12px 14px",background:"#0C0C0C",border:"1px solid "+(q?"#FFFFFF":"#2A2A2A"),borderRadius:10,color:"#F0EDE8",fontSize:14,outline:"none",fontFamily:"inherit"}}/>
-              {q && (
-                <button onClick={() => setProdSearch("")} style={{position:"absolute",right:8,top:"50%",transform:"translateY(-50%)",width:44,height:44,background:"#2A2A2A",color:"#aaa",border:"none",borderRadius:8,fontSize:14,cursor:"pointer",lineHeight:1}}>×</button>
-              )}
-            </div>
-            {!q && sikUrunler.length > 0 && (
-              <div style={{marginTop:12,display:"flex",flexDirection:"column",gap:9}}>
-                <div style={{fontSize:12,color:"#8A8580",letterSpacing:"0.2px",fontWeight:600,textTransform:"uppercase"}}>Sık eklediklerin</div>
-                <div style={{display:"flex",gap:8,flexWrap:"wrap"}}>
-                  {sikUrunler.map(p => (
-                    <button key={p.id} onClick={() => addProduct(p)}
-                      style={{fontSize:12.5,fontWeight:700,border:"1px solid #2A2A2A",background:"transparent",color:"#F0EDE8",
-                              borderRadius:20,padding:"10px 14px",cursor:"pointer",fontFamily:"inherit"}}>
-                      {p.name}
-                    </button>
-                  ))}
-                </div>
+            {items.length > 0 ? (
+              <button onClick={goToPayment}
+                style={{flex:2,minWidth:0,padding:"14px 10px",minHeight:50,background:allReady?"#FFFFFF":"#2A2A2A",color:allReady?"#000":"#F0EDE8",border:"none",borderRadius:12,fontSize:13.5,fontWeight:800,cursor:"pointer",
+                        boxShadow:"0 4px 16px rgba(0,0,0,0.5)",display:"inline-flex",alignItems:"center",justifyContent:"center",gap:5,fontFamily:"inherit",whiteSpace:"nowrap",overflow:"hidden",textOverflow:"ellipsis"}}>
+                <Ikon ad={allReady ? "onay" : "kasa"} boy={15}/>Ödeme · ₺{order.total || 0}
+              </button>
+            ) : (
+              <div style={{flex:2,minWidth:0,padding:"14px 10px",minHeight:50,boxSizing:"border-box",background:"#161616",color:"#666",border:"1px solid #2A2A2A",borderRadius:12,fontSize:12.5,fontWeight:700,
+                           display:"inline-flex",alignItems:"center",justifyContent:"center",whiteSpace:"nowrap"}}>
+                Sepet boş · ₺0
               </div>
             )}
-            {/* Parti seridi: liste neden kisa, ve tam menuye nasil donulur. */}
-            {partiAktif && (
-              <div style={{display:"flex",alignItems:"center",gap:9,marginTop:10,padding:"9px 12px",
-                           background:tumMenu?"#161616":"#FFFFFF",borderRadius:10,
-                           border:"1px solid "+(tumMenu?"#2A2A2A":"#FFFFFF"),
-                           color:tumMenu?"#F0EDE8":"#000"}}>
-                <Ikon ad="kampanya" boy={15} style={{flexShrink:0}}/>
-                <span style={{flex:1,fontSize:12,fontWeight:700,lineHeight:1.4}}>
-                  {tumMenu
-                    ? `Tüm menü açık — parti listesi ${partiAdet} ürün`
-                    : `Parti menüsü · ${partiAdet} ürün`}
-                </span>
-                <button onClick={() => setTumMenu(v => !v)} style={{
-                  padding:"7px 11px",borderRadius:8,fontSize:11,fontWeight:800,cursor:"pointer",
-                  fontFamily:"inherit",whiteSpace:"nowrap",
-                  background:tumMenu?"#FFFFFF":"rgba(0,0,0,0.12)",
-                  color:tumMenu?"#000":"#000",
-                  border:"1px solid "+(tumMenu?"#FFFFFF":"rgba(0,0,0,0.25)"),
-                }}>{tumMenu ? "Partiye dön" : "Tüm menü"}</button>
-              </div>
-            )}
-            {!q && (
-            <div style={{display:"flex",gap:5,overflowX:"auto",marginTop:10,paddingBottom:4}}>
-              {catChips.map(c => (
-                <button key={c.id} onClick={() => setSelectedCat(c.id)} style={{flexShrink:0,padding:"6px 10px",border:"1px solid "+(aktifCat===c.id?"#FFFFFF":"#333"),borderRadius:12,fontSize:12,fontWeight:600,background:aktifCat===c.id?"rgba(255,255,255,0.2)":"#1A1A1A",color:aktifCat===c.id?"#FFFFFF":"#aaa",cursor:"pointer",whiteSpace:"nowrap",letterSpacing:"0.2px"}}>
-                  {c.icon}{c.name?.toUpperCase()}
-                </button>
-              ))}
-            </div>
-            )}
-            {q && <div style={{fontSize:11,color:"#888",marginTop:8}}>{filteredProducts.length} sonuç{filteredProducts.length===0?" — yazımı kontrol et":""}</div>}
-            <div style={{marginTop:10,maxHeight:380,overflowY:"auto"}}>
-              {filteredProducts.map(p => (
-                <div key={p.id} style={{display:"flex",alignItems:"center",justifyContent:"space-between",padding:"12px 8px",borderBottom:"1px solid #222",gap:10}}>
-                  <div>
-                    <div style={{fontSize:15,fontWeight:700}}>{p.name}{p.brand && <span style={{color:"#888",fontWeight:600}}> · {p.brand}</span>}</div>
-                    {q && <div style={{fontSize:12,color:"#888888",marginTop:1,letterSpacing:"0.2px"}}>{catNameOf(p)}</div>}
-                    {p.track_stock && <div style={{fontSize:11,color:Number(p.retail_stock)>0?"#8A8580":"#C87A6A",marginTop:2,fontWeight:600}}>Stok: {p.retail_stock||0} adet{Array.isArray(p.variants)&&p.variants.length?" · "+p.variants.filter(v=>Number(v.stock)>0).map(v=>v.name).join("/"):""}</div>}
-                    <div style={{fontSize:13,color:"#FFFFFF",fontWeight:700,marginTop:2}}>
-                      {hhPrices[p.id] != null && Number(p.price) > 0 ? (
-                        <>
-                          <span style={{color:"#888888",textDecoration:"line-through",fontWeight:600,marginRight:6}}>₺{Math.round(Number(p.price))}</span>
-                          <span>₺{Math.round(Number(hhPrices[p.id]))}</span>
-                          <span style={{marginLeft:6,fontSize:12,padding:"2px 6px",background:"#FFFFFF",color:"#000",borderRadius:5,letterSpacing:"0.2px"}}>Happy hour</span>
-                        </>
-                      ) : (Number(p.price) > 0 ? "₺" + p.price : "Serbest tutar")}
-                    </div>
-                  </div>
-                  <button onClick={() => addProduct(p)} style={{width:46,height:46,background:"#FFFFFF",color:"#000",border:"none",borderRadius:"50%",fontSize:24,fontWeight:800,cursor:"pointer",flexShrink:0,display:"flex",alignItems:"center",justifyContent:"center",lineHeight:1}}>+</button>
+          </div>
+        </div>
+      )}
+
+      {/* URUN EKLE ALT SAYFASI (z90). Secenek/ikram/indirim pencereleri z100'de
+          ustune biner; ic tiklamalar stopPropagation ile kapatmayi tetiklemez.
+          Ekledikten sonra ACIK KALIR; Bitti ya da backdrop kapatir. Baslik canli
+          (ayni order/items state), altlik = son eklenen + geri al + adet. */}
+      {ekleAcik && (
+        <div onClick={() => setEkleAcik(false)}
+          style={{position:"fixed",top:0,bottom:0,right:0,left:masaustu?240:0,background:"rgba(0,0,0,0.75)",display:"flex",alignItems:"flex-end",justifyContent:"center",zIndex:90}}>
+          <div onClick={e => e.stopPropagation()}
+            style={{background:"#161616",border:"1px solid #2A2A2A",borderBottom:"none",borderRadius:"16px 16px 0 0",width:"100%",maxWidth:masaustu?500:undefined,
+                    maxHeight:"88vh",display:"flex",flexDirection:"column",color:"#F0EDE8",fontFamily:cv}}>
+            <div style={{display:"flex",alignItems:"center",gap:10,padding:"12px 14px",borderBottom:"1px solid #2A2A2A",flexShrink:0}}>
+              <div style={{flex:1,minWidth:0}}>
+                <div style={{fontSize:15,fontWeight:800,overflow:"hidden",textOverflow:"ellipsis",whiteSpace:"nowrap"}}>
+                  {where || order.customer_name || "Hesap"} · {totalItems} ürün · ₺{order.total || 0}
                 </div>
-              ))}
+                <div style={{fontSize:11,color:order.customer_id?"#FFFFFF":"#888",marginTop:2,overflow:"hidden",textOverflow:"ellipsis",whiteSpace:"nowrap"}}>
+                  Üye: {uyeAdi || "—"}{order.customer_id && ozelFiyatSayisi > 0 ? " · " + ozelFiyatSayisi + " özel fiyat" : ""}{kapali ? " · " + String(order.status).toUpperCase() : ""}
+                </div>
+              </div>
+              <button onClick={() => setEkleAcik(false)}
+                style={{flexShrink:0,minHeight:44,padding:"0 14px",background:"#FFFFFF",color:"#000",border:"none",borderRadius:10,fontSize:13,fontWeight:800,cursor:"pointer",fontFamily:"inherit",display:"inline-flex",alignItems:"center",gap:5}}>
+                <Ikon ad="onay" boy={14}/>Bitti
+              </button>
             </div>
-          </>
-        )}
-      </div>
+            <div style={{flex:1,minHeight:0,overflowY:"auto",overscrollBehavior:"contain",padding:"0 14px 14px",WebkitOverflowScrolling:"touch"}}>
+              <UrunSecici
+                products={products} categories={categories} hhPrices={hhPrices} sikUrunler={sikUrunler}
+                partiAktif={partiAktif} partiAdet={partiAdet} tumMenu={tumMenu} onTumMenu={setTumMenu}
+                takeawayMode={takeawayMode} onTakeaway={setTakeawayMode}
+                prodSearch={prodSearch} onSearch={setProdSearch}
+                selectedCat={selectedCat} onCat={setSelectedCat}
+                onAdd={urunEkle} kapali={kapali} parlayanId={parlayan}
+              />
+            </div>
+            {/* Hesap baska cihazdan odendiyse (realtime orders kanali) ekleme durur. */}
+            {kapali ? (
+              <div style={{padding:"12px 14px",borderTop:"1px solid #2A2A2A",fontSize:12,color:"#C87A6A",fontWeight:700,textAlign:"center",flexShrink:0}}>
+                Bu hesap kapandı ({order.status.toUpperCase()}) — ürün eklenemez.
+              </div>
+            ) : (
+              <div style={{flexShrink:0}}>{geriAlSeridi(true)}</div>
+            )}
+          </div>
+        </div>
+      )}
 
       {treatModal && (
         <div onClick={() => setTreatModal(null)} style={{position:"fixed",inset:0,background:"rgba(0,0,0,0.75)",display:"flex",alignItems:"flex-end",justifyContent:"center",zIndex:100}}>
