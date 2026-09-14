@@ -31,7 +31,16 @@ export default function PaymentPage() {
   // TL 5.370 ayrismis, 19 siparis. Atomik RPC odeme kaydinin KAYBOLMASINI
   // cozdu ama tutar alani serbest kaldigi icin bu sinif devam ediyordu.
   const [farkNedeni, setFarkNedeni] = useState("");
+  // Farkin NE oldugu: 'indirim' hesabi gercekten dusurur (kalemlere dagitilir,
+  // orders.total odenen olur); 'eksik'/'bahsis'/'diger' hesabi dokunmaz, yalniz
+  // not duser. Canli veride notlarin cogu indirimdi ama "Euro alindi",
+  // "210t odendi" gibi indirim OLMAYANLAR da vardi — ayrim kasiyerden alinir.
+  const [farkTuru, setFarkTuru] = useState(null);
   const [customerId, setCustomerId] = useState(null);
+  // Uyesiz borc: bazi komsular uye degil ama hesabi borca yaziliyor. Ad yeter;
+  // telefon istege bagli. Satir customers'a provider 'kasa' ile girer.
+  const [yeniKisi, setYeniKisi] = useState(null); // null | {ad, tel}
+  const [yeniBusy, setYeniBusy] = useState(false);
   const [customerSearch, setCustomerSearch] = useState("");
   const [uyeAcik, setUyeAcik] = useState(false); // nakit/kartta uye secici kapali baslar
   const [customers, setCustomers] = useState([]);
@@ -70,7 +79,8 @@ export default function PaymentPage() {
   const openPay = (o) => {
     setModal(o); setMethod("cash"); setAmount(String(o.total || 0));
     setCustomerId(null); setCustomerSearch(""); setUyeAcik(false);
-    setUsePoints(!!o.use_points); setMemberPts(null); setFarkNedeni("");
+    setUsePoints(!!o.use_points); setMemberPts(null); setFarkNedeni(""); setFarkTuru(null);
+    setYeniKisi(null);
     // Uyeye bagli siparis: cuzdan bakiyesi gosterilir, kasiyer puanla kapatabilir
     if (o.customer_id) {
       supabase.from("customers").select("name, points").eq("id", o.customer_id).maybeSingle()
@@ -90,6 +100,28 @@ export default function PaymentPage() {
   const farkVar = !!modal && Number(amount || 0) > 0
                   && !(usePoints && uyeId)
                   && Math.abs(farkTutari) > 0.005;
+  // Tur secenekleri farkin yonune bagli; secim yonle uyusmuyorsa (tutar
+  // degistirildi) ilk secenek varsayilir — sunucu da ayni varsayimi yapar.
+  const farkTurleri = farkTutari < 0
+    ? [["indirim", "İndirim"], ["eksik", "Eksik tahsilat / diğer"]]
+    : [["bahsis", "Bahşiş"], ["diger", "Diğer"]];
+  const farkTuruEtkin = farkTurleri.some(([k]) => k === farkTuru) ? farkTuru : farkTurleri[0][0];
+  const farkMutlak = Math.abs(Math.round(farkTutari));
+  const hesapTL = Math.round(Number(modal?.total || 0));
+  const odenenTL = Math.round(Number(amount || 0));
+  const farkOnizleme = farkTuruEtkin === "indirim"
+    ? `Hesap ₺${hesapTL} → ₺${odenenTL} yazılacak · −₺${farkMutlak} indirim (ürünlere dağıtılır)`
+    : farkTuruEtkin === "eksik"
+      ? `Hesap ₺${hesapTL} kalır, ₺${farkMutlak} açık not düşülür`
+      : farkTuruEtkin === "bahsis"
+        ? `Hesap ₺${hesapTL}, ₺${farkMutlak} bahşiş`
+        : `Hesap ₺${hesapTL} kalır, ₺${farkMutlak} fark not düşülür`;
+  const farkHizliNedenler = {
+    indirim: ["Happy hour", "Komşu", "Hasar", "Pazarlık"],
+    eksik:   ["Eksik tahsilat", "Kur farkı"],
+    bahsis:  ["Bahşiş", "Üstü kalsın"],
+    diger:   ["Kur farkı", "Yuvarlama"],
+  }[farkTuruEtkin] || [];
 
   // Kasada secilen uyenin puani da cekilir ki "puanla ode" onun icin de calissin.
   const secUye = (id) => {
@@ -98,6 +130,62 @@ export default function PaymentPage() {
     if (!yeni) { setMemberPts(null); setUsePoints(false); return; }
     const c = customers.find(x => x.id === yeni);
     setMemberPts(c ? { name: c.name, points: Number(c.points || 0) } : null);
+  };
+  // Yeni acilan ya da telefondan bulunan kisiyi listeye koyup dogrudan secer
+  // (secUye toggle'dir; burada "kaldir" anlami istenmez).
+  const kisiSecDirekt = (row) => {
+    setCustomers(prev => prev.some(c => c.id === row.id) ? prev : [...prev, row].sort((a, b) => String(a.name).localeCompare(String(b.name), "tr")));
+    setCustomerId(row.id);
+    setMemberPts({ name: row.name, points: Number(row.points || 0) });
+    setYeniKisi(null); setCustomerSearch("");
+  };
+
+  // Telefonu uyelerle ayni bicime getir (+90…): uye kaydi E.164 tutar
+  // (save_member_profile). Kasada "0555 123 45 67" yazilip sonra ayni kisi
+  // uye olursa iki kayit olusmasin. Kisa/anlamsiz giris oldugu gibi kalir.
+  const telefonNormalize = (s) => {
+    const d = String(s || "").replace(/\D/g, "");
+    if (!d) return "";
+    if (d.length === 10 && d.startsWith("5")) return "+90" + d;
+    if (d.length === 11 && d.startsWith("05")) return "+9" + d;
+    if (d.length === 12 && d.startsWith("90")) return "+" + d;
+    return String(s || "").trim().startsWith("+") ? "+" + d : d;
+  };
+
+  const yeniKisiAc = () => {
+    // Arama kutusuna yazilan sey forma tasinir: ad ise ad, tam bir numara ise
+    // telefon. "Son 4 hane" araması telefon sanilip kaydedilmesin.
+    const q = customerSearch.trim();
+    const rakam = q.replace(/\D/g, "");
+    const numaraMi = rakam && rakam.length === q.replace(/[\s+()-]/g, "").length;
+    setYeniKisi(numaraMi ? { ad: "", tel: rakam.length >= 10 ? q : "" } : { ad: q, tel: "" });
+  };
+
+  const kisiEkle = async () => {
+    if (yeniBusy || !yeniKisi) return;
+    const ad = yeniKisi.ad.trim();
+    const tel = telefonNormalize(yeniKisi.tel);
+    if (ad.length < 2) { alert("Ad gir (en az 2 harf)"); return; }
+    if (tel && tel.replace(/\D/g, "").length < 10) { alert("Telefon eksik görünüyor — boş bırak ya da tam numarayı yaz"); return; }
+    setYeniBusy(true);
+    const { data, error } = await supabase.from("customers")
+      .insert({ name: ad, phone: tel || null, provider: "kasa", store_id: staffUser?.store_ids?.[0] })
+      .select("id, name, phone, points, outstanding_balance").single();
+    if (error) {
+      // Telefon UNIQUE: numara zaten kayitliysa yeni satir yerine o kisi secilir.
+      if (error.code === "23505" && tel) {
+        const { data: mevcut } = await supabase.from("customers")
+          .select("id, name, phone, points, outstanding_balance").eq("phone", tel).maybeSingle();
+        setYeniBusy(false);
+        if (mevcut) { kisiSecDirekt(mevcut); alert("Bu numara zaten kayıtlı: " + mevcut.name); return; }
+      } else {
+        setYeniBusy(false);
+      }
+      alert("Kişi eklenemedi: " + error.message);
+      return;
+    }
+    setYeniBusy(false);
+    kisiSecDirekt(data);
   };
 
   // Puan onizlemesi: dusum sunucuda (tetikleyici) yapilir, bu yalnizca kasiyerin
@@ -162,7 +250,7 @@ export default function PaymentPage() {
     const amt = Number(amount);
     // Puan tum tutari karsiliyorsa nakit 0 olabilir
     if ((!amt || amt <= 0) && !(usePoints && ptsCover(modal) >= Number(modal.total || 0))) { alert("Geçerli tutar gir"); return; }
-    if (method === "debt" && !uyeId) { alert("Borç için müşteri seç"); return; }
+    if (method === "debt" && !uyeId) { alert("Borç için kişi seç — üye olması gerekmez, ad yeter"); return; }
     if (farkVar && farkNedeni.trim().length < 2) {
       alert("Girilen tutar hesaptan farklı — nedenini yaz (bahşiş, indirim, eksik tahsilat…)");
       return;
@@ -176,18 +264,26 @@ export default function PaymentPage() {
       p_customer_id: customerId || null,
       p_use_points: !!(usePoints && uyeId),
       p_fark_nedeni: farkVar ? farkNedeni.trim() : null,
+      p_fark_turu: farkVar ? farkTuruEtkin : null,
     });
     setBusy(false);
     if (error) { alert("Tahsilat yapılamadı: " + error.message); return; }
 
     const sonuc = Array.isArray(data) ? data[0] : data;
+    // Indirimde hesap odenen tutara iner; puan da o tutardan hesaplanir.
+    const indirimli = farkVar && farkTuruEtkin === "indirim";
+    const hesap = indirimli ? amt : Number(modal.total || 0);
+    const indirimNotu = indirimli
+      ? "\n· ₺" + farkMutlak + " indirim yazıldı — hesap ₺" + Math.round(hesap) + " oldu (" + farkNedeni.trim() + ")"
+      : "";
     if (method === "debt") {
-      alert("Borç kaydedildi: ₺" + amt + " (Kalan: ₺" + Math.round(Number(sonuc?.kalan_borc || 0)) + ")");
+      alert("Borç kaydedildi: ₺" + amt + " (Kalan: ₺" + Math.round(Number(sonuc?.kalan_borc || 0)) + ")" + indirimNotu);
     } else {
       const kazanilan = uyeId
-        ? Math.floor((Number(modal.total || 0) - Number(sonuc?.puan || 0)) / 20)
+        ? Math.floor((hesap - Number(sonuc?.puan || 0)) / 20)
         : 0;
       alert((method === "cash" ? "Nakit tahsil edildi" : "Kart ile tahsil edildi")
+        + indirimNotu
         + (uyeId ? "\n· " + (memberPts?.name || "Üye") + " · +" + kazanilan + " puan" : ""));
     }
     setModal(null); load();
@@ -307,9 +403,41 @@ export default function PaymentPage() {
               </div>
             ) : (method === "debt" || uyeAcik) ? (
               <div style={{marginBottom:12,background:method==="debt"?"#161616":"#0C0C0C",border:"1px solid "+"#2A2A2A",borderRadius:10,padding:12}}>
-                <div style={{fontSize:12,color:method==="debt"?"#C87A6A":"#888",letterSpacing:"0.2px",fontWeight:600,marginBottom:8}}>
-                  {method==="debt" ? "MÜŞTERİ SEÇ · ZORUNLU" : "ÜYE SEÇ · İSTEĞE BAĞLI"}
+                <div style={{display:"flex",alignItems:"center",justifyContent:"space-between",gap:8,marginBottom:8}}>
+                  <div style={{fontSize:12,color:method==="debt"?"#C87A6A":"#888",letterSpacing:"0.2px",fontWeight:600}}>
+                    {method==="debt" ? "KİŞİ SEÇ · ZORUNLU" : "ÜYE SEÇ · İSTEĞE BAĞLI"}
+                  </div>
+                  {method==="debt" && !yeniKisi && (
+                    <button onClick={yeniKisiAc}
+                      style={{padding:"6px 10px",background:"transparent",color:"#F0EDE8",border:"1px solid #3A3A3A",
+                              borderRadius:8,fontSize:12,fontWeight:700,cursor:"pointer",fontFamily:"inherit",whiteSpace:"nowrap"}}>
+                      + Yeni kişi
+                    </button>
+                  )}
                 </div>
+                {method==="debt" && (
+                  <div style={{fontSize:11,color:"#888",marginBottom:8,lineHeight:1.4}}>
+                    Üye olması gerekmez — borç kaydı için ad yeter.
+                  </div>
+                )}
+                {/* Uyesiz kisi formu: ad zorunlu, telefon istege bagli. Telefon
+                    UNIQUE oldugu icin var olan numarada o kisi secilir. */}
+                {method==="debt" && yeniKisi && (
+                  <div style={{marginBottom:10,padding:"10px 12px",background:"#0C0C0C",border:"1px solid #3A3A3A",borderRadius:10}}>
+                    <div style={{fontSize:11,color:"#888",fontWeight:600,letterSpacing:"0.2px",marginBottom:6}}>YENİ KİŞİ</div>
+                    <input value={yeniKisi.ad} onChange={e=>setYeniKisi({...yeniKisi, ad:e.target.value})} placeholder="Ad (zorunlu)" autoFocus
+                           style={{width:"100%",padding:"10px 12px",background:"#161616",border:"1px solid #2A2A2A",borderRadius:8,color:"#F0EDE8",fontSize:14,outline:"none",marginBottom:6,fontFamily:"inherit",boxSizing:"border-box"}}/>
+                    <input value={yeniKisi.tel} onChange={e=>setYeniKisi({...yeniKisi, tel:e.target.value.replace(/[^\d+ ]/g, "")})} placeholder="Telefon (isteğe bağlı)" inputMode="tel"
+                           style={{width:"100%",padding:"10px 12px",background:"#161616",border:"1px solid #2A2A2A",borderRadius:8,color:"#F0EDE8",fontSize:14,outline:"none",marginBottom:8,fontFamily:"inherit",boxSizing:"border-box"}}/>
+                    <div style={{display:"flex",gap:6}}>
+                      <button onClick={()=>setYeniKisi(null)} style={{flex:1,padding:"10px",background:"transparent",color:"#888",border:"1px solid #333",borderRadius:8,fontSize:12,fontWeight:700,cursor:"pointer",fontFamily:"inherit"}}>Vazgeç</button>
+                      <button onClick={kisiEkle} disabled={yeniBusy || yeniKisi.ad.trim().length < 2}
+                        style={{flex:2,padding:"10px",background:yeniKisi.ad.trim().length < 2?"#242424":"#FFFFFF",color:yeniKisi.ad.trim().length < 2?"#666":"#000",border:"none",borderRadius:8,fontSize:12,fontWeight:800,cursor:"pointer",fontFamily:"inherit",opacity:yeniBusy?0.6:1}}>
+                        {yeniBusy ? "Kaydediliyor..." : "Kaydet ve seç"}
+                      </button>
+                    </div>
+                  </div>
+                )}
                 <input value={customerSearch} onChange={e=>setCustomerSearch(e.target.value)} placeholder="İsim ya da telefonun son haneleri..." style={{width:"100%",padding:"10px 12px",background:"#0C0C0C",border:"1px solid #2A2A2A",borderRadius:8,color:"#F0EDE8",fontSize:13,outline:"none",marginBottom:8,fontFamily:"inherit"}}/>
                 <div style={{maxHeight:160,overflowY:"auto"}}>
                   {filteredCustomers.slice(0,30).map(c => (
@@ -321,11 +449,18 @@ export default function PaymentPage() {
                       </div>
                     </div>
                   ))}
-                  {filteredCustomers.length === 0 && <div style={{fontSize:12,color:"#888888",padding:"10px 2px"}}>Eşleşen üye yok</div>}
+                  {filteredCustomers.length === 0 && (
+                    method==="debt"
+                      ? <div style={{fontSize:12,color:"#888888",padding:"10px 2px",display:"flex",alignItems:"center",gap:8,flexWrap:"wrap"}}>
+                          <span>Eşleşen kişi yok —</span>
+                          <button onClick={yeniKisiAc} style={{padding:"6px 10px",background:"#FFFFFF",color:"#000",border:"none",borderRadius:8,fontSize:12,fontWeight:800,cursor:"pointer",fontFamily:"inherit"}}>+ Yeni kişi</button>
+                        </div>
+                      : <div style={{fontSize:12,color:"#888888",padding:"10px 2px"}}>Eşleşen üye yok</div>
+                  )}
                 </div>
                 <div style={{fontSize:10,color:"#888",marginTop:6}}>
                   {method==="debt"
-                    ? "NOT: Odeme yapilmaz, bu tutar musterinin borc hesabina eklenir."
+                    ? "NOT: Ödeme alınmaz, tutar bu kişinin borç hesabına yazılır. Tahsilatı Üyeler & Borçlular ekranından yaparsın."
                     : "Üye seçilirse bu hesap ona yazılır ve puan kazanır. En hızlısı: “telefonunuzun son 4 hanesi?”"}
                 </div>
               </div>
@@ -367,7 +502,7 @@ export default function PaymentPage() {
                     ₺{v}
                   </button>
                 ))}
-                <button onClick={()=>{setAmount(String(Math.max(0, Number(modal.total||0) - (usePoints && uyeId ? ptsCover(modal) : 0)))); setFarkNedeni("");}}
+                <button onClick={()=>{setAmount(String(Math.max(0, Number(modal.total||0) - (usePoints && uyeId ? ptsCover(modal) : 0)))); setFarkNedeni(""); setFarkTuru(null);}}
                   style={{flex:1.3,padding:"12px 0",background:"#FFFFFF",color:"#0C0C0C",border:"1px solid #FFFFFF",
                           borderRadius:10,fontSize:14,fontWeight:700,cursor:"pointer",fontFamily:"inherit"}}>
                   Kalan
@@ -384,10 +519,25 @@ export default function PaymentPage() {
                     Hesap ₺{Math.round(Number(modal.total||0))} — {farkTutari > 0 ? "fazla" : "eksik"} ₺{Math.abs(Math.round(farkTutari))}
                   </div>
                   <div style={{fontSize:12,color:"#888",marginBottom:9,lineHeight:1.5}}>
-                    Yanlış yazdıysan "Kalan"a bas. Doğruysa nedenini yaz — kasa sayımında bu fark karşına çıkacak.
+                    Yanlış yazdıysan "Kalan"a bas. Doğruysa bu fark ne? Seç ve nedenini yaz.
+                  </div>
+                  {/* Farkin turu: indirim hesabi gercekten dusurur (rapor, karlilik,
+                      lig, hakedis ayni sayiyi gorur); digerleri yalniz not duser. */}
+                  <div style={{display:"flex",gap:6,marginBottom:8}}>
+                    {farkTurleri.map(([k, l]) => (
+                      <button key={k} onClick={()=>setFarkTuru(k)}
+                        style={{flex:1,minHeight:40,padding:"8px 10px",borderRadius:9,cursor:"pointer",fontFamily:"inherit",
+                                fontSize:13,fontWeight:800,
+                                background:farkTuruEtkin===k?"#FFFFFF":"#161616",
+                                color:farkTuruEtkin===k?"#000":"#aaa",
+                                border:"1px solid "+(farkTuruEtkin===k?"#FFFFFF":"#333")}}>{l}</button>
+                    ))}
+                  </div>
+                  <div style={{fontSize:12,color:"#F0EDE8",marginBottom:9,lineHeight:1.5,fontVariantNumeric:"tabular-nums"}}>
+                    {farkOnizleme}
                   </div>
                   <div style={{display:"flex",gap:6,marginBottom:8,flexWrap:"wrap"}}>
-                    {(farkTutari > 0 ? ["Bahşiş","Üstü kalsın"] : ["İndirim","Eksik tahsilat"]).map(s => (
+                    {farkHizliNedenler.map(s => (
                       <button key={s} onClick={()=>setFarkNedeni(s)}
                         style={{minHeight:34,padding:"7px 12px",borderRadius:8,cursor:"pointer",fontFamily:"inherit",
                                 fontSize:12,fontWeight:700,
@@ -397,7 +547,7 @@ export default function PaymentPage() {
                     ))}
                   </div>
                   <input value={farkNedeni} onChange={e=>setFarkNedeni(e.target.value)}
-                         placeholder="Fark nedeni…"
+                         placeholder="Neden? (hh, komşu, hasar, pazarlık…)"
                          style={{width:"100%",padding:"11px 12px",background:"#161616",border:"1px solid #2A2A2A",
                                  borderRadius:9,color:"#F0EDE8",fontSize:14,outline:"none",fontFamily:"inherit",
                                  boxSizing:"border-box"}}/>
