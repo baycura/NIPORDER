@@ -67,6 +67,7 @@ export const GRUPLAR = [
     ad: "PARA & PERSONEL", admin: true, sari: true,
     items: [
       { to: "/reports",        icon: "rapor", label: "Raporlar" },
+      { to: "/sales",          icon: "sepet", label: "Satış Raporu" },
       { to: "/profit",         icon: "puan", label: "Ürün Kârlılığı" },
       { to: "/cash-history",   icon: "takvim", label: "Kasa Geçmişi" },
       { to: "/shifts",         icon: "takvim", label: "Vardiyalar" },
@@ -92,6 +93,7 @@ const VIEWER_GRUP = [{
   ad: "GÖRÜNÜM",
   items: [
     { to: "/reports",    icon: "rapor", label: "Raporlar" },
+    { to: "/sales",      icon: "sepet", label: "Satış Raporu" },
     { to: "/settlement", icon: "mutfakodeme", label: "Mutfağa Ödenecek", ozellik: "mutfakHakedis" },
     { to: "/expenses",   icon: "gider", label: "Giderler" },
     { to: "/stock",      icon: "stok", label: "Stok" },
