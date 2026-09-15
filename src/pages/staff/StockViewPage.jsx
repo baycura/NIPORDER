@@ -4,6 +4,7 @@ import { useAuth } from "../../contexts/AuthContext.jsx";
 import Ikon from "../../components/Ikon.jsx";
 import StokEkleSheet from "../../components/StokEkleSheet.jsx";
 import { raflaraAyir, siseKarsiligi, trKucuk } from "../../lib/malzemeGrup.js";
+import { ozellik } from "../../lib/profil.js";
 
 const cv = "'Coolvetica','Bebas Neue',sans-serif";
 const cvc = "'Coolvetica Condensed','Barlow Condensed',sans-serif";
@@ -124,7 +125,9 @@ export default function StockViewPage() {
         <StokEkleSheet
           kalem={{ tur: "malzeme", id: entry.id, ad: entry.name, birim: entry.unit, stok: Number(entry.stock_qty) || 0, pack_qty: Number(entry.pack_qty) || 1, storeId: entry.store_id }}
           storeId={staffUser?.store_ids?.[0]}
-          ipucu="Faturayla gelen mallar için Faturalar ekranını kullan — maliyet de oradan güncellenir. Burası elden alınan mal ve düzeltme içindir."
+          ipucu={ozellik("faturaStok")
+            ? "Faturayla gelen mallar için Faturalar ekranını kullan — maliyet de oradan güncellenir. Burası elden alınan mal ve düzeltme içindir."
+            : "Faturayla gelen mal dahil TÜM stok girişi buradan yapılır — fatura kaydı stoğa dokunmuyor."}
           onKapat={() => setEntry(null)}
           onBitti={(s) => { setEntry(null); setSonGiris(s); load(); }}
         />

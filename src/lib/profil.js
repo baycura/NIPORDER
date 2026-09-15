@@ -31,6 +31,14 @@ const MODULLER = {
   surus:          nip,  // Strava kulup surusleri (Surusler sayfasi + musteri sekmesi)
   parti:          nip,  // parti menusu / parti modu
   faturaOcr:      nip,  // faturayi fotograftan AI ile okuma (kapaliyken elle giris)
+  // ASKIDA (16.09.2026, sahip karari): fatura kaydi STOGA VE MALIYETE
+  // dokunmaz. Sebep: kalemler cogu faturada yanlis okunmus — koli/adet ve
+  // sise icerigi karismis, stoklar sise hacmiyle carpilmis girilmis, tedarikci
+  // adi tutmayinca ikiz malzeme acilmis. Yanlis okunan fatura stogu bozuyordu.
+  // Fatura yine kaydedilir (gider ve kalem dokumu durur), stok sayimla
+  // duzeltilir. TURMOB/Luca entegrasyonu baglandiktan sonra acilacak:
+  // burayi true yap ya da VITE_OZELLIK_ACIK=faturaStok ile ac.
+  faturaStok:     false, // fatura -> stok/maliyet yazimi
   yapayZeka:      nip,  // recete ayristirma, ceviri, icerik yazma
   reserveKoprusu: nip,  // RESERVE projesine kopru (uye senkronu, SSO)
   mutfakHakedis:  nip,  // doner mutfagi / "Mutfaga Odenecek"

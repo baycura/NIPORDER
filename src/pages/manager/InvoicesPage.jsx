@@ -11,6 +11,15 @@ const cv = "-apple-system,BlinkMacSystemFont,'Segoe UI',Roboto,sans-serif";
 // "anormal fiyat" uyarisi verilir (sahip icin kacak/israf kontrolu).
 const PRICE_ALERT_PCT = 10;
 
+// ASKIDA (16.09.2026, sahip karari): fatura kaydi STOGA VE MALIYETE DOKUNMAZ.
+// Sebep: kalemler cogu faturada yanlis okundu — koli/adet karisti, stoklar sise
+// hacmiyle carpilarak girildi, tedarikci adi tutmayinca ikiz hammadde acildi.
+// Askidayken: fatura + kalem dokumu kaydedilir (gider takibi surer), yeni
+// hammadde ACILMAZ, ambalaj bilgisi yazilmaz, stok ve maliyet degismez.
+// Stok sayimla girilir. TURMOB/Luca entegrasyonundan sonra profil.js'te
+// faturaStok acilir; kod yerinde duruyor, tek bayrakla geri gelir.
+const STOK_YAZ = ozellik("faturaStok");
+
 // Sise/paket icerigi: hammadde birimi cinsinden (70cl sise + ml birim = 700)
 const contentDefault = (ing, unit) => {
   const ml = Number(ing?.unit_volume_ml) || 0;
@@ -283,7 +292,7 @@ export default function InvoicesPage() {
       if (v && !confirm(
         `"${faturaNo}" numarali fatura zaten kayitli:\n` +
         `${v.supplier_name} · ${v.invoice_date} · ₺${Math.round(Number(v.total_amount) || 0).toLocaleString("tr-TR")}\n\n` +
-        `Yine de kaydedilsin mi? (Gider ve stok iki kez sayilir.)`
+        `Yine de kaydedilsin mi? (Gider${STOK_YAZ ? " ve stok" : ""} iki kez sayilir.)`
       )) return;
     }
 
@@ -304,10 +313,12 @@ export default function InvoicesPage() {
     const anomalies = [];
     // Ayni faturada ayni yeni hammadde iki satirda gecerse tek kayit acilsin
     const createdThisRun = {};
-    const runningStock = {};   // ingredient_id -> bu fatura sonundaki stok
     const costAcc = {};        // ingredient_id -> {cost, qty} agirlikli ortalama icin
     for (const l of lines) {
       let ingId = l.ingredient_id;
+      // Faturada yazan ad: hammaddeye baglanmayan kalem gider dokumunde
+      // bu adla gorunur (yoksa listede "?" yaziyordu).
+      const kalemAdi = (l.hamAd || (l.isNew ? l.newName : "") || "").trim() || null;
       if (l.isNew) {
         const nm = l.newName?.trim();
         if (!nm) continue;
@@ -319,6 +330,12 @@ export default function InvoicesPage() {
           const existing = ingredients.find(i => i.name?.trim().toLocaleLowerCase("tr") === key);
           if (existing) {
             ingId = existing.id;
+            createdThisRun[key] = ingId;
+          } else if (!STOK_YAZ) {
+            // ASKIDA: eslesmeyen kalem yeni hammadde ACMAZ. Ikizler boyle
+            // dogmustu ("CORONA KL 33CL 4X6" -> ayri kayit). Kalem yine
+            // kaydedilir, yalnizca fatura adiyla.
+            ingId = null;
           } else {
             const { data: newIng, error: e } = await supabase.from("ingredients").insert({
               store_id: staffUser?.store_ids?.[0],
@@ -326,14 +343,17 @@ export default function InvoicesPage() {
             }).select().single();
             if (e) { alert("Ingredient hatasi: " + e.message); continue; }
             ingId = newIng.id;
+            createdThisRun[key] = ingId;
           }
-          createdThisRun[key] = ingId;
         }
       }
-      if (!ingId) continue;
+      // Ne eslesme ne ad varsa yazacak bir sey yok. Stok acikken eski davranis
+      // aynen korunur: hammaddesiz kalem kaydedilmez.
+      if (!ingId && (STOK_YAZ || !kalemAdi)) continue;
       // TEDARIKCI ADINI OGREN: "CORONA KL 33CL 4X6 (İTHAL)" bu malzemeye
       // baglandiysa bir dahaki faturada eslesir, ikiz kayit acilmaz.
-      if (l.hamAd) {
+      // (Askidayken de ogrenilir — stoga dokunmaz, Luca'dan sonra hazir olur.)
+      if (l.hamAd && ingId) {
         const ing0 = ingredients.find(x => x.id === ingId);
         const adlar = ing0?.fatura_adlari || [];
         const ham = l.hamAd.trim();
@@ -346,10 +366,14 @@ export default function InvoicesPage() {
       const qty = calc.usable || Number(l.qty)||0;          // stoga eklenecek NET miktar (fire dusulmus)
       const unitCost = calc.costPerUnit || Number(l.unit_cost)||0;  // gercek birim maliyet
       await supabase.from("supplier_invoice_items").insert({
-        invoice_id: inv.id, store_id: inv.store_id, ingredient_id: ingId, qty, unit_cost: unitCost, total_cost: calc.total,
+        invoice_id: inv.id, store_id: inv.store_id, ingredient_id: ingId || null,
+        kalem_adi: kalemAdi, qty, unit_cost: unitCost, total_cost: calc.total,
       });
-      // Ambalaj bilgisini hammaddeye ogret (bir sonraki faturada hazir gelsin)
-      if (!l.isNew && (Number(l.pack_qty) > 1 || Number(l.content) > 1)) {
+      if (!ingId) continue;   // askidaki eslesmemis kalem: gider yazildi, gerisi yok
+      // Ambalaj bilgisini hammaddeye ogret (bir sonraki faturada hazir gelsin).
+      // ASKIDA: yazilmaz — sise icerigi yanlis okunan faturalarda stoklari
+      // hacimle carpip sisiren bilgi buydu.
+      if (STOK_YAZ && !l.isNew && (Number(l.pack_qty) > 1 || Number(l.content) > 1)) {
         const patch = {};
         if (Number(l.pack_qty) > 1) patch.pack_qty = Number(l.pack_qty);
         if (Number(l.content) > 1 && ["ml","cl","l"].includes(calc.unit)) {
@@ -369,14 +393,14 @@ export default function InvoicesPage() {
       // acildiginda okudugu stogu bellekte toplayip MUTLAK deger yaziyordu;
       // arada baska biri "+ Stok" ile mal girdiyse ya da satis olduysa o kayit
       // siliniyordu. Ayni hammadde iki satirda gecerse iki kez eklenir, dogru.
-      if (qty > 0) {
+      // ASKIDA: RPC hic cagrilmaz — stok yalnizca elle sayimla degisir.
+      if (STOK_YAZ && qty > 0) {
         const { error: stokHata } = await supabase.rpc("nip_stok_ekle", {
           p_store_id: inv.store_id,
           p_kalemler: [{ ingredient_id: ingId, miktar: qty }],
           p_not: "Fatura" + (faturaNo ? " " + faturaNo : "") + " · " + form.supplier_name.trim(),
         });
         if (stokHata) { alert("Stok islenemedi (" + (ing?.name || "kalem") + "): " + stokHata.message); }
-        else runningStock[ingId] = (runningStock[ingId] || 0) + qty;
       }
       // MALIYET stogun disinda: ayni hammadde birden fazla satirda geciyorsa
       // AGIRLIKLI ORTALAMA olmali. Aksi halde son satir kazanir; bedelsiz
@@ -387,8 +411,10 @@ export default function InvoicesPage() {
       acc.qty += qty;
       costAcc[ingId] = acc;
       const avgCost = acc.qty > 0 ? acc.cost / acc.qty : 0;
-      // Maliyet 0 girildiyse mevcut maliyet korunur (manuel sayimda fiyat zorunlu degil)
-      if (avgCost > 0 && avgCost !== prevCost) {
+      // Maliyet 0 girildiyse mevcut maliyet korunur (manuel sayimda fiyat zorunlu degil).
+      // ASKIDA: yazilmaz — miktari yanlis okunan kalem birim maliyeti de bozuyordu
+      // (bir fatura "bitter" birim maliyetini 100 katina cikarmisti).
+      if (STOK_YAZ && avgCost > 0 && avgCost !== prevCost) {
         await supabase.from("ingredients").update({ cost_per_unit: avgCost }).eq("id", ingId);
       }
     }
@@ -403,11 +429,13 @@ export default function InvoicesPage() {
     setBusy(false); setModal(null); load();
     alert(anomalies.length
       ? "Fatura kaydedildi. " + anomalies.length + " üründe anormal fiyat artışı (%" + PRICE_ALERT_PCT + "+)" + (ozellik("telegram") ? " — sahibe Telegram uyarısı gönde" : ".") + "rildi."
-      : "Fatura kaydedildi! Stok guncellendi.");
+      : STOK_YAZ ? "Fatura kaydedildi! Stok guncellendi."
+                 : "Fatura kaydedildi (gider). Stok ve maliyet DEĞİŞMEDİ — stoğu Stok Yönetimi'nden gir.");
   };
 
   const del = async (inv) => {
-    if (!confirm("Fatura silinsin mi? (Stok geri alinmaz)")) return;
+    if (!confirm(STOK_YAZ ? "Fatura silinsin mi? (Stok geri alinmaz)"
+                          : "Fatura silinsin mi? (Bu fatura stoğa zaten dokunmadı)")) return;
     await supabase.from("supplier_invoices").delete().eq("id", inv.id);
     load();
   };
@@ -423,8 +451,27 @@ export default function InvoicesPage() {
 
       <div style={{display:"flex",gap:8,marginBottom:14,flexWrap:"wrap"}}>
         <button onClick={openNew} style={{padding:"10px 16px",background:"#FFFFFF",color:"#000",border:"none",borderRadius:10,fontSize:13,fontWeight:800,cursor:"pointer"}}>+ Yeni Fatura</button>
-        <button onClick={openManualStock} style={{padding:"10px 16px",background:"transparent",color:"#FFFFFF",border:"1px solid #FFFFFF",borderRadius:10,fontSize:13,fontWeight:800,cursor:"pointer",display:"inline-flex",alignItems:"center",gap:7}}><Ikon ad="stok" boy={15}/>Manuel Stok Girişi</button>
+        {/* Manuel stok girisi bu ekrandan kalkti: stok girisi tek kapidan
+            (Stok Yonetimi / Stok "+ Stok") yapiliyor, defterine yaziliyor. */}
+        {STOK_YAZ && (
+          <button onClick={openManualStock} style={{padding:"10px 16px",background:"transparent",color:"#FFFFFF",border:"1px solid #FFFFFF",borderRadius:10,fontSize:13,fontWeight:800,cursor:"pointer",display:"inline-flex",alignItems:"center",gap:7}}><Ikon ad="stok" boy={15}/>Manuel Stok Girişi</button>
+        )}
       </div>
+
+      {/* Faturanin stoga dokunmadigi askiya alma donemi ekranda yazili olmali:
+          yoksa fatura girildiginde stok dustu/arttti saniliyor. */}
+      {!STOK_YAZ && (
+        <div style={{background:"#161616",border:"1px solid #2A2A2A",borderRadius:10,padding:12,marginBottom:12,display:"flex",gap:9,alignItems:"flex-start"}}>
+          <Ikon ad="uyari" boy={14} style={{color:"#8A8580",flexShrink:0,marginTop:2}}/>
+          <div style={{fontSize:11,color:"#8A8580",lineHeight:1.6}}>
+            <b style={{color:"#F0EDE8"}}>Fatura artık stoğa dokunmuyor.</b> Fatura ve kalem dökümü gider için kaydedilir;
+            stok, maliyet ve yeni hammadde <b>oluşmaz</b>. Sebep: kalemler çoğu faturada yanlış okundu (koli/adet karıştı,
+            stoklar şişe hacmiyle çarpıldı, tedarikçi adı tutmayınca ikiz malzeme açıldı).
+            <br/>Stok girişi <b style={{color:"#F0EDE8"}}>Stok Yönetimi → “+ Stok”</b>, sayım <b style={{color:"#F0EDE8"}}>Stok Sayımı</b> ekranından yapılır.
+            TÜRMOB/Luca entegrasyonundan sonra otomatik stok yeniden açılacak.
+          </div>
+        </div>
+      )}
 
       {priceAlerts.length > 0 && (
         <div style={{background:"#161616",border:"1px solid #2A2A2A",borderRadius:10,padding:12,marginBottom:12}}>
@@ -437,7 +484,11 @@ export default function InvoicesPage() {
               <b>{a.name}</b>: ₺{a.prev.toFixed(2)} → <b style={{color:"#C87A6A"}}>₺{a.now.toFixed(2)}</b>{a.unit ? " /"+a.unit : ""} <span style={{color:"#C87A6A",fontWeight:700}}>(+%{a.pct.toFixed(0)})</span>
             </div>
           ))}
-          <div style={{fontSize:11,color:"#C87A6A",marginTop:6}}>Bu artışlar kaydedildi ve sahibe Telegram'dan iletildi.</div>
+          <div style={{fontSize:11,color:"#C87A6A",marginTop:6}}>
+            {STOK_YAZ
+              ? "Bu artışlar kaydedildi ve sahibe Telegram'dan iletildi."
+              : "Sahibe Telegram'dan iletildi. Karşılaştırma son kayıtlı maliyetle yapıldı; fatura askıda olduğu için maliyet güncellenmedi."}
+          </div>
         </div>
       )}
 
@@ -454,7 +505,7 @@ export default function InvoicesPage() {
               </div>
               {inv.supplier_invoice_items?.length > 0 && (
                 <div style={{fontSize:11,color:"#888888",marginTop:4}}>
-                  {inv.supplier_invoice_items.map(it => (it.ingredients?.name || "?") + " " + it.qty + (it.ingredients?.unit||"")).join(" · ")}
+                  {inv.supplier_invoice_items.map(it => (it.ingredients?.name || it.kalem_adi || "?") + " " + it.qty + (it.ingredients?.unit||"")).join(" · ")}
                 </div>
               )}
             </div>
@@ -512,6 +563,14 @@ export default function InvoicesPage() {
             <div style={{fontSize:10,color:"#888",marginTop:6}}>Fotograf saklanmaz. Birim fiyatlar KDV DAHIL hesaplanir (satirdaki KDV orani uygulanir). Okunan kalemleri kontrol edip kaydet.</div>
           </div>
           )}
+          {!STOK_YAZ && (
+            <div style={{marginBottom:14,background:"#0C0C0C",border:"1px dashed #8A8580",borderRadius:10,padding:10,fontSize:11,color:"#8A8580",lineHeight:1.6}}>
+              <Ikon ad="uyari" boy={13} style={{marginRight:5}}/>
+              Bu kayıt <b style={{color:"#F0EDE8"}}>yalnızca gider</b> olarak işlenir: stok, maliyet ve yeni hammadde oluşmaz.
+              Kalemi doğru hammaddeye bağlarsan tedarikçi adı öğrenilir — Luca entegrasyonundan sonra eşleşme hazır gelir.
+              Stoğu <b style={{color:"#F0EDE8"}}>Stok Yönetimi → “+ Stok”</b> ekranından gir.
+            </div>
+          )}
           {modal.mode === "manual" && (
             <div style={{marginBottom:14,background:"rgba(111,179,192,0.08)",border:"1px dashed #8A8580",borderRadius:10,padding:10,fontSize:11,color:"#F0EDE8",lineHeight:1.5}}>
               <Ikon ad="stok" boy={13} style={{marginRight:5}}/>Eldeki mevcut stogu sayip giriyorsun — fatura gerekmez. Birim maliyeti bos (0) birakirsan urunun mevcut maliyeti korunur; biliyorsan girmen maliyet hesaplarini iyilestirir.
@@ -524,7 +583,9 @@ export default function InvoicesPage() {
               <div key={idx} style={{background:"#0C0C0C",border:"1px solid #2A2A2A",borderRadius:8,padding:10,marginBottom:6}}>
                 <div style={{display:"flex",gap:6,marginBottom:6}}>
                   <button onClick={()=>updateLine(idx, "isNew", false)} style={{flex:1,padding:"6px",background:!l.isNew?"#FFFFFF":"#222",color:!l.isNew?"#000":"#888",border:"none",borderRadius:6,fontSize:10,fontWeight:700,cursor:"pointer"}}>Mevcut</button>
-                  <button onClick={()=>updateLine(idx, "isNew", true)} style={{flex:1,padding:"6px",background:l.isNew?"#FFFFFF":"#222",color:l.isNew?"#000":"#888",border:"none",borderRadius:6,fontSize:10,fontWeight:700,cursor:"pointer"}}>Yeni</button>
+                  <button onClick={()=>updateLine(idx, "isNew", true)}
+                    title={STOK_YAZ ? "" : "Hammadde açılmaz — kalem faturadaki adıyla gidere yazılır"}
+                    style={{flex:1,padding:"6px",background:l.isNew?"#FFFFFF":"#222",color:l.isNew?"#000":"#888",border:"none",borderRadius:6,fontSize:10,fontWeight:700,cursor:"pointer"}}>{STOK_YAZ ? "Yeni" : "Yeni (sadece ad)"}</button>
                 </div>
                 {l.isNew ? (
                   <div style={{display:"flex",gap:6,marginBottom:6}}>
@@ -586,7 +647,8 @@ export default function InvoicesPage() {
                         {c.content > 1 && <> × {c.content} {c.unit} = <b style={{color:"#F0EDE8"}}>{c.gross.toLocaleString("tr-TR")} {c.unit}</b></>}
                         {c.waste > 0 && <> · fire −{c.waste.toLocaleString("tr-TR")} {c.unit}</>}
                         <br/>
-                        Stoğa eklenecek: <b style={{color:"#F0EDE8"}}>{c.usable.toLocaleString("tr-TR")} {c.unit}</b>
+                        {STOK_YAZ ? "Stoğa eklenecek: " : "Gelen miktar (stoğa eklenmez): "}
+                        <b style={{color:"#F0EDE8"}}>{c.usable.toLocaleString("tr-TR")} {c.unit}</b>
                         {" · "}Birim maliyet: <b style={{color:"#FFFFFF"}}>₺{c.costPerUnit.toFixed(4)}/{c.unit}</b>
                         {" · "}Toplam: <b style={{color:"#FFFFFF"}}>₺{c.total.toFixed(2)}</b>
                         {Number(l.discount_pct) > 0 && (

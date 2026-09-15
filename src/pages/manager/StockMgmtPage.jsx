@@ -6,6 +6,7 @@ import Ikon from "../../components/Ikon.jsx";
 import StokEkleSheet, { stokGeriAl } from "../../components/StokEkleSheet.jsx";
 import { paketIkilemi, ikilemMetni, birimYaz, anlasilirYaz } from "../../lib/birimMaliyet.js";
 import { GRUP_SIRASI, GRUPSUZ, RAF_URUN, raflaraAyir, siseKarsiligi, trKucuk } from "../../lib/malzemeGrup.js";
+import { ozellik } from "../../lib/profil.js";
 
 const cv = "-apple-system,BlinkMacSystemFont,'Segoe UI',Roboto,sans-serif";
 const UNITS = ["ml","cl","l","g","kg","adet","şişe","porsiyon"];
@@ -404,7 +405,9 @@ export default function StockMgmtPage() {
 
       {ekle && (
         <StokEkleSheet kalem={ekle} storeId={staffUser?.store_ids?.[0]}
-          ipucu="Faturayla gelen malda maliyet de güncellensin diye Faturalar ekranını kullan; burası elden alınan mal, düzeltme ve fire içindir."
+          ipucu={ozellik("faturaStok")
+            ? "Faturayla gelen malda maliyet de güncellensin diye Faturalar ekranını kullan; burası elden alınan mal, düzeltme ve fire içindir."
+            : "Fatura kaydı stoğa dokunmuyor (TÜRMOB/Luca'ya kadar askıda) — faturayla gelen mal dahil tüm giriş burada. Maliyeti Düzenle'den güncelle."}
           onKapat={()=>setEkle(null)} onBitti={girisBitti}/>
       )}
     </div>
