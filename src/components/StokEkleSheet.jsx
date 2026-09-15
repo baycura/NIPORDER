@@ -52,8 +52,12 @@ export default function StokEkleSheet({ kalem, storeId, ipucu, onKapat, onBitti 
   const kayitBirim = urunMu ? "adet" : (kalem?.birim || "adet");
   // Fici: ekranda her sey (mevcut, girilen, sonuc) FICI cinsinden; sunucuya
   // giden delta ml'ye cevrilir. Esik stockCount.js'teki FICI_ML ile ayni.
-  const kapMl = urunMu ? 0 : Number(kalem?.kapMl) || 0;
+  // Kap cevrimi yalniz HACIMLE tutulan malzemede: adetle tutulan sise bira
+  // zaten sayilacak seydir, 330'a bolunmez.
+  const mlKat = urunMu ? 0 : ({ ml: 1, cl: 10, l: 1000 }[kayitBirim] || 0);
+  const kapMl = mlKat ? Number(kalem?.kapMl) || 0 : 0;
   const ficiMi = kapMl >= 20000;
+  const kapKayit = ficiMi ? kapMl / mlKat : 1;   // bir ficinin kayit birimindeki boyu
   const birim = ficiMi ? "fıçı" : kayitBirim;
   const kapYaz = ficiMi ? (kapMl >= 1000 ? fmt(kapMl / 1000) + " L" : fmt(kapMl) + " ml") : "";
 
@@ -63,13 +67,13 @@ export default function StokEkleSheet({ kalem, storeId, ipucu, onKapat, onBitti 
   const mevcut = useMemo(() => {
     if (bedenGerekli) return beden ? (Number(bedenler.find(v => v.name === beden)?.stock) || 0) : null;
     const t = Number(kalem?.stok) || 0;
-    return ficiMi ? t / kapMl : t;
-  }, [bedenGerekli, bedenler, beden, kalem, ficiMi, kapMl]);
+    return ficiMi ? t / kapKayit : t;
+  }, [bedenGerekli, bedenler, beden, kalem, ficiMi, kapKayit]);
 
   const n = sayiya(miktar);
   const delta = n == null ? null : (yon === "dus" ? -Math.abs(n) : Math.abs(n));
   // Sunucuya giden miktar HER ZAMAN kayit birimindedir (ml), ekran fici gosterse de.
-  const deltaTemel = delta == null ? null : (ficiMi ? delta * kapMl : delta);
+  const deltaTemel = delta == null ? null : (ficiMi ? delta * kapKayit : delta);
   const sonuc = delta == null || mevcut == null ? null : mevcut + delta;
   // Neden kapali oldugu kullaniciya yazilir; sessiz gri dugme "bozuk" sanilyordu
   const engel = bedenGerekli && !beden ? "Önce beden seç."

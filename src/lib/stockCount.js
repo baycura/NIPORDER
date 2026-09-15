@@ -8,16 +8,24 @@ export const fmtTL = (n) =>
 export const fmtMiktar = (n) =>
   Number(n || 0).toLocaleString("tr-TR", { maximumFractionDigits: 3 });
 
+// Kayit birimi mililitre cinsinden kac ml? Kap cevrimi YALNIZ hacim birimiyle
+// tutulan malzemede anlamli.
+const HACIM = { ml: 1, cl: 10, l: 1000 };
+export const hacimBirimi = (i) => HACIM[i?.unit] || 0;
+
 // Bir malzeme "kap" (sise / kutu / kegi) olarak sayilabilir mi?
-// unit_volume_ml dolu ve 1'den buyukse evet: raftaki fiziksel nesne o.
-// Yoksa satir kendi biriminde kalir — tahmin YAPILMAZ.
-export const kapVar = (i) => Number(i?.unit_volume_ml) > 1;
+// SART: malzeme hacimle tutuluyor (ml/cl/l) VE bir kabin hacmi yazili.
+// SAHIP: "Sise biralarda ml, koli vb. hesaplara gerek yok; adet fiyatiyla
+// alip adet fiyatiyla satiyoruz." Zaten adetle tutulan malzemede kap cevrimi
+// hem gereksiz hem YANLIS: 38 adet Heineken, 330'a bolunup "0,115 sise"
+// gorunuyordu. Adetle tutulan sey zaten sayilacak seydir.
+export const kapVar = (i) => hacimBirimi(i) > 0 && Number(i?.unit_volume_ml) > 1;
 
 // FICI ESIGI: 20 litre ve ustu kap ficidir. Fici hacmi sabittir (30 ya da
 // 50 L) ve kimse depoda mililitre saymaz — fici HER ZAMAN adetle sayilir,
 // ekranin sayim birimi ne olursa olsun (sahip karari, 16.09.2026).
 export const FICI_ML = 20000;
-export const ficiMi = (i) => Number(i?.unit_volume_ml) >= FICI_ML;
+export const ficiMi = (i) => kapVar(i) && Number(i?.unit_volume_ml) >= FICI_ML;
 
 // Kabin adi hacimden turetilir. Amac dogru terminoloji degil, sayan kisinin
 // eline aldigi seyi tanimasi: 50 L'lik sey fici, 750 ml'lik sey sise.
@@ -40,11 +48,13 @@ export function kapBoyu(i) {
 // Kayit biriminden kap birimine ve geri. Cevrim TEK YONLU degil: ekranda ne
 // gosterirsek onun tersiyle kaydediyoruz, yoksa 750 ml'lik siseyi "1" diye
 // sayan kisi stoga 1 ml yazmis olur.
+// Kayit birimi cl ya da l olabilir: 70 cl'lik sise, cl tutulan malzemede 70
+// birimdir, 700 degil. Once ml'ye cevrilir, sonra kap hacmine bolunur.
 export const kabaCevir = (miktar, i) =>
-  kapVar(i) ? Number(miktar) / Number(i.unit_volume_ml) : Number(miktar);
+  kapVar(i) ? Number(miktar) * hacimBirimi(i) / Number(i.unit_volume_ml) : Number(miktar);
 
 export const kabaGeri = (miktar, i) =>
-  kapVar(i) ? Number(miktar) * Number(i.unit_volume_ml) : Number(miktar);
+  kapVar(i) ? Number(miktar) * Number(i.unit_volume_ml) / hacimBirimi(i) : Number(miktar);
 
 // Fark tutari: eksi = kayip. Maliyeti girilmemis malzeme 0 doner — sayim yine
 // yapilir, sadece parasal karsiligi bilinmez.
