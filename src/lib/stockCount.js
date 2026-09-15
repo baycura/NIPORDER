@@ -36,13 +36,29 @@ export function kapAdi(i) {
   return "şişe";
 }
 
-// Kap boyu okunur yazi: 50.000 ml degil "50 L". Sayan kisi elindeki fıçının
-// ustundeki yaziyla karsilastiracak.
-export function kapBoyu(i) {
-  const ml = Number(i?.unit_volume_ml) || 0;
-  if (!ml) return "";
-  if (ml >= 1000) return fmtMiktar(ml / 1000) + " L";
-  return fmtMiktar(ml) + " ml";
+// Kap boyu okunur yazi: 50.000 ml degil "50 L", 700 ml degil "70 cl".
+// Sayan kisi elindeki sisenin/ficinin ustundeki yaziyla karsilastiracak.
+export function boyYaz(ml) {
+  const n = Number(ml) || 0;
+  if (!n) return "";
+  if (n >= FICI_ML) return fmtMiktar(n / 1000) + " L";
+  if (n % 10 === 0) return fmtMiktar(n / 10) + " cl";
+  return fmtMiktar(n) + " ml";
+}
+export const kapBoyu = (i) => boyYaz(i?.unit_volume_ml);
+
+// SAHIP: "Sise agir alkoller — cin, viski, votka — 50, 70 ve 100 cl'lik
+// versiyonlarla satiliyor; bunlarda boy secenegi olsun."
+// Ayni malzeme bazen 70, bazen 100 cl gelir. Kayitli boy varsayilan kalir;
+// sayarken/girerken elindeki sisenin boyu tek dokunusla secilir. Kayitli boy
+// listeye her zaman eklenir (75 cl sarap, 33 cl sise gibi).
+export const SISE_BOYLARI = [500, 700, 1000];
+export const FICI_BOYLARI = [30000, 50000];
+export function boySecenekleri(i) {
+  if (!kapVar(i)) return [];
+  const kendi = Number(i.unit_volume_ml) || 0;
+  const temel = ficiMi(i) ? FICI_BOYLARI : SISE_BOYLARI;
+  return [...new Set([...temel, kendi])].filter(x => x > 0).sort((a, b) => a - b);
 }
 
 // Kayit biriminden kap birimine ve geri. Cevrim TEK YONLU degil: ekranda ne
@@ -50,11 +66,14 @@ export function kapBoyu(i) {
 // sayan kisi stoga 1 ml yazmis olur.
 // Kayit birimi cl ya da l olabilir: 70 cl'lik sise, cl tutulan malzemede 70
 // birimdir, 700 degil. Once ml'ye cevrilir, sonra kap hacmine bolunur.
-export const kabaCevir = (miktar, i) =>
-  kapVar(i) ? Number(miktar) * hacimBirimi(i) / Number(i.unit_volume_ml) : Number(miktar);
+// boyMl verilirse kayitli boy yerine o kullanilir (elindeki sisenin boyu).
+export const kapMl = (i, boyMl) => Number(boyMl) > 0 ? Number(boyMl) : Number(i?.unit_volume_ml);
 
-export const kabaGeri = (miktar, i) =>
-  kapVar(i) ? Number(miktar) * Number(i.unit_volume_ml) / hacimBirimi(i) : Number(miktar);
+export const kabaCevir = (miktar, i, boyMl) =>
+  kapVar(i) ? Number(miktar) * hacimBirimi(i) / kapMl(i, boyMl) : Number(miktar);
+
+export const kabaGeri = (miktar, i, boyMl) =>
+  kapVar(i) ? Number(miktar) * kapMl(i, boyMl) / hacimBirimi(i) : Number(miktar);
 
 // Fark tutari: eksi = kayip. Maliyeti girilmemis malzeme 0 doner — sayim yine
 // yapilir, sadece parasal karsiligi bilinmez.
