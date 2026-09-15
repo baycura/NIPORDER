@@ -2,6 +2,7 @@ import { useMemo, useState } from "react";
 import { NavLink, useNavigate } from "react-router-dom";
 import { useAuth } from "../../contexts/AuthContext.jsx";
 import { gorunurGruplar } from "../../lib/panelNav.js";
+import { sikKullanilanlar, kullanimYaz, acikGruplarOku, acikGruplarYaz } from "../../lib/panelKullanim.js";
 import Ikon from "../../components/Ikon.jsx";
 
 const cv = "-apple-system,BlinkMacSystemFont,'Segoe UI',Roboto,sans-serif";
@@ -11,6 +12,16 @@ const tr = (s) => String(s || "").toLocaleLowerCase("tr-TR");
 
 // MENU merkezi: eski 25 kalemlik cekmecenin yerini alan gruplu, aramali sayfa.
 // Cikis butonu da burada — cekmece emekli olunca tek kayip o olurdu.
+//
+// SAHIP: "Alt menuler cok komplike, kafa karistirici; daha kolaya
+// indirgeyebiliriz." Sahip hesabinda 38 karo alt alta 3000 piksel suruyordu;
+// aranan sayfayi bulmak icin parmakla tarama gerekiyordu. Uc degisiklik:
+//   1. "Sik kullandiklarin" en ustte — hangi sayfaya kac kez girildigi bu
+//      cihazda sayiliyor (lib/panelKullanim.js), liste kendi oturuyor.
+//   2. Gruplar katlanir; acik/kapali secimi hatirlaniyor. Ilk acilista yalniz
+//      gunluk isler acik.
+//   3. Arama zaten hepsini tariyordu, yerinde duruyor — kapali grup sayfayi
+//      saklamiyor.
 export default function HubPage() {
   const { staffUser, isManager, isAdmin, isViewer, signOut } = useAuth();
   const navigate = useNavigate();
@@ -20,6 +31,17 @@ export default function HubPage() {
     () => gorunurGruplar({ role: staffUser?.role, isManager, isAdmin, isViewer }),
     [staffUser?.role, isManager, isAdmin, isViewer]
   );
+
+  // Sik kullanilanlar yalniz sayfa acilirken hesaplanir: karoya basinca liste
+  // gozunun onunde yer degistirmesin.
+  const sik = useMemo(() => (gruplar.length > 1 ? sikKullanilanlar(gruplar, 6) : []), [gruplar]);
+
+  // Ilk acilista: sik kullanilanlar varsa hepsi kapali (ust sira zaten isi
+  // goruyor), yoksa yalniz gunluk isler acik — ekran bos kalmasin.
+  const [acik, setAcik] = useState(() =>
+    acikGruplarOku(Object.fromEntries(gruplar.map((g, i) => [g.ad, sik.length === 0 && i === 0])))
+  );
+  const grupAc = (ad) => setAcik(v => { const y = { ...v, [ad]: !v[ad] }; acikGruplarYaz(y); return y; });
 
   const sorgu = tr(q.trim());
   const sonuc = sorgu
@@ -40,8 +62,16 @@ export default function HubPage() {
     if (item.external) {
       return (<a href={item.to} target="_blank" rel="noreferrer" style={stil}>{ic}</a>);
     }
-    return (<NavLink to={item.to} style={stil}>{ic}</NavLink>);
+    return (<NavLink to={item.to} onClick={() => kullanimYaz(item.to)} style={stil}>{ic}</NavLink>);
   };
+
+  const Izgara = ({ items }) => (
+    <div style={{ display: "grid", gridTemplateColumns: "1fr 1fr", gap: 8 }}>
+      {items.map(i => <Karo key={i.to} item={i} />)}
+    </div>
+  );
+
+  const baslik = { fontSize: 12, letterSpacing: "0.2px", fontWeight: 600, color: "#8A8580" };
 
   return (
     <div style={{ fontFamily: cv, color: "#F0EDE8", maxWidth: 560, margin: "0 auto" }}>
@@ -52,30 +82,44 @@ export default function HubPage() {
                        color: "#8A8580", pointerEvents: "none" }}><Ikon ad="ara" boy={16}/></span>
         <input
           value={q} onChange={e => setQ(e.target.value)} placeholder="Sayfa ara…"
-          style={{ width: "100%", padding: "12px 14px 12px 38px", background: "#0F0F0F", border: "1px solid #2A2A2A",
+          style={{ width: "100%", boxSizing: "border-box", padding: "12px 14px 12px 38px", background: "#0F0F0F", border: "1px solid #2A2A2A",
                    borderRadius: 12, color: "#F0EDE8", fontSize: 14, outline: "none", fontFamily: cv }}
         />
       </div>
 
       {sonuc ? (
-        <div style={{ display: "grid", gridTemplateColumns: "1fr 1fr", gap: 8 }}>
-          {sonuc.length === 0
-            ? <div style={{ gridColumn: "1/-1", color: "#888888", fontSize: 13, padding: 8 }}>Eşleşen sayfa yok.</div>
-            : sonuc.map(i => <Karo key={i.to} item={i} />)}
-        </div>
-      ) : (
-        gruplar.map(g => (
-          <div key={g.ad} style={{ marginBottom: 18 }}>
-            <div style={{ fontSize:12, letterSpacing:"0.2px", fontWeight:600, marginBottom: 8,
-                          color: "#8A8580" }}>
-              {g.ad}{g.sari ? " — SAHİP" : ""}
-            </div>
-            <div style={{ display: "grid", gridTemplateColumns: "1fr 1fr", gap: 8 }}>
-              {g.items.map(i => <Karo key={i.to} item={i} />)}
-            </div>
+        sonuc.length === 0
+          ? <div style={{ color: "#888888", fontSize: 13, padding: 8 }}>Eşleşen sayfa yok.</div>
+          : <Izgara items={sonuc} />
+      ) : (<>
+        {sik.length > 0 && (
+          <div style={{ marginBottom: 18 }}>
+            <div style={{ ...baslik, marginBottom: 8 }}>SIK KULLANDIKLARIN</div>
+            <Izgara items={sik} />
           </div>
-        ))
-      )}
+        )}
+
+        {gruplar.map(g => {
+          const ac = !!acik[g.ad];
+          return (
+            <div key={g.ad} style={{ marginBottom: 10 }}>
+              <button onClick={() => grupAc(g.ad)} style={{
+                width: "100%", display: "flex", alignItems: "center", gap: 8, padding: "12px 4px",
+                background: "transparent", border: "none", borderBottom: "1px solid #1E1E1E",
+                cursor: "pointer", fontFamily: cv, textAlign: "left",
+              }}>
+                <span style={baslik}>{g.ad}{g.sari ? " — SAHİP" : ""}</span>
+                <span style={{ fontSize: 11, color: "#555" }}>{g.items.length}</span>
+                <span style={{ marginLeft: "auto", color: "#8A8580", display: "flex",
+                               transform: ac ? "rotate(90deg)" : "none", transition: "transform .15s" }}>
+                  <Ikon ad="oksag" boy={14}/>
+                </span>
+              </button>
+              {ac && <div style={{ marginTop: 8 }}><Izgara items={g.items} /></div>}
+            </div>
+          );
+        })}
+      </>)}
 
       <div style={{ marginTop: 26, paddingTop: 16, borderTop: "1px solid #2A2A2A",
                     display: "flex", alignItems: "center", gap: 12 }}>

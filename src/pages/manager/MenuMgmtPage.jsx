@@ -22,6 +22,9 @@ export default function MenuMgmtPage() {
   const [busy, setBusy] = useState(false);
   const [dragSrc, setDragSrc] = useState(null);
   const [dragOver, setDragOver] = useState(null);
+  // Siralama ayri bir mod: gunluk isin (fiyat, tukendi) yaninda her kartta
+  // surukleme kolu ve ok dugmeleri durmasin.
+  const [sirala, setSirala] = useState(false);
 
   const load = async () => {
     setLoading(true);
@@ -315,71 +318,98 @@ export default function MenuMgmtPage() {
       {selectedCat && (() => {
         const cat = categories.find(c => c.id === selectedCat);
         return (
-          <div style={{background:"#1A1A1A",border:"1px solid #2A2A2A",borderRadius:10,padding:12,marginBottom:14,display:"flex",justifyContent:"space-between",alignItems:"center"}}>
-            <div>
-              <div style={{fontSize:14,fontWeight:700}}>{cat?.icon} {cat?.name}</div>
-              {cat?.available_from && <div style={{fontSize:10,color:"#888",marginTop:3}}>Saat: {cat.available_from?.substring(0,5)}-{cat.available_until?.substring(0,5)}</div>}
+          // Tek satir: kategori adi, varsa saati ve tek dugme. Silme kategori
+          // penceresinin icinde.
+          <div style={{display:"flex",alignItems:"center",gap:10,marginBottom:12,padding:"0 2px"}}>
+            <div style={{fontSize:12,color:"#8A8580",flex:1,minWidth:0,overflow:"hidden",textOverflow:"ellipsis",whiteSpace:"nowrap"}}>
+              {cat?.icon} {cat?.name}
+              {cat?.available_from && <> · {cat.available_from?.substring(0,5)}–{cat.available_until?.substring(0,5)}</>}
+              {cat?.is_active === false && <> · kapalı</>}
             </div>
-            <div style={{display:"flex",gap:6}}>
-              <button onClick={()=>openEditCat(cat)} style={{padding:"5px 9px",background:"#222",color:"#aaa",border:"1px solid #333",borderRadius:6,fontSize:10,cursor:"pointer"}}>Düzenle</button>
-              <button onClick={()=>delCat(cat)} style={{padding:"5px 9px",background:"transparent",color:"#C87A6A",border:"1px solid #2A2A2A",borderRadius:6,fontSize:10,cursor:"pointer"}}>Sil</button>
-            </div>
+            <button onClick={()=>openEditCat(cat)} style={{padding:"6px 10px",background:"transparent",color:"#8A8580",border:"1px solid #2A2A2A",borderRadius:8,fontSize:11,fontWeight:700,cursor:"pointer",flexShrink:0}}>Kategoriyi düzenle</button>
           </div>
         );
       })()}
 
-      <button onClick={openNewProd} style={{padding:"10px 16px",background:"#FFFFFF",color:"#000",border:"none",borderRadius:10,fontSize:13,fontWeight:800,cursor:"pointer",marginBottom:14}}>+ Yeni Ürün</button>
+      {/* SAHIP: "Urun kartlari cok komplike, kafa karistirici." Kartta eskiden
+          ayni anda uc siralama yolu (surukle, dokun-surukle, ok dugmeleri),
+          Duzenle, Sil ve bes rozet vardi. Artik: karta dokun = duzenle, silme
+          duzenleme penceresinde, siralama ayri bir mod. Gunluk is (fiyat
+          degistir, tukendi isaretle) tek dokunusa indi. */}
+      <div style={{display:"flex",gap:8,marginBottom:14,flexWrap:"wrap"}}>
+        <button onClick={openNewProd} style={{padding:"10px 16px",background:"#FFFFFF",color:"#000",border:"none",borderRadius:10,fontSize:13,fontWeight:800,cursor:"pointer"}}>+ Yeni Ürün</button>
+        {visibleProducts.length > 1 && (
+          <button onClick={()=>setSirala(v=>!v)} style={{padding:"10px 16px",background:sirala?"#FFFFFF":"transparent",color:sirala?"#000":"#8A8580",border:"1px solid "+(sirala?"#FFFFFF":"#2A2A2A"),borderRadius:10,fontSize:13,fontWeight:800,cursor:"pointer"}}>
+            {sirala ? "Sıralamayı bitir" : "Sırala"}
+          </button>
+        )}
+      </div>
+      {sirala && (
+        <div style={{fontSize:11,color:"#8A8580",marginBottom:10,lineHeight:1.6}}>
+          Sıralama modu: satırı ⋮⋮ ile sürükle ya da ok tuşlarıyla taşı. Bitirince kartlar yine düzenlemeye açılır.
+        </div>
+      )}
 
       {visibleProducts.length === 0 && <div style={{textAlign:"center",padding:30,color:"#888888",fontSize:12}}>Bu kategoride ürün yok</div>}
 
-      {visibleProducts.map((p, idx) => (
+      {visibleProducts.map((p, idx) => {
+        // Rozet enflasyonu yerine tek silik satir: gunluk bakista onemli olan
+        // "Tukendi" ve kac kisinin sordugu; gerisi bilgi notu.
+        const notlar = [
+          p.show_in_party_menu && "Parti",
+          p.has_options && "Seçenekli",
+          p.kitchen_consignment && "Mutfak",
+          p.instant_discount_pct > 0 && ("−%" + p.instant_discount_pct),
+          p.is_available === false && "Kapalı",
+        ].filter(Boolean);
+        return (
         <div
           key={p.id}
-          draggable={true}
-          onDragStart={(e) => { e.dataTransfer.effectAllowed = "move"; setDragSrc(idx); }}
-          onDragOver={(e) => { e.preventDefault(); if (dragOver !== idx) setDragOver(idx); }}
-          onDrop={(e) => { e.preventDefault(); reorderProducts(dragSrc, idx); setDragSrc(null); setDragOver(null); }}
+          draggable={sirala}
+          onDragStart={(e) => { if (!sirala) return; e.dataTransfer.effectAllowed = "move"; setDragSrc(idx); }}
+          onDragOver={(e) => { if (!sirala) return; e.preventDefault(); if (dragOver !== idx) setDragOver(idx); }}
+          onDrop={(e) => { if (!sirala) return; e.preventDefault(); reorderProducts(dragSrc, idx); setDragSrc(null); setDragOver(null); }}
           onDragEnd={() => { setDragSrc(null); setDragOver(null); }}
+          onClick={() => { if (!sirala) openEditProd(p); }}
           style={{
             background: dragOver === idx && dragSrc !== idx ? "#2A2A2A" : "#1A1A1A",
             border: dragOver === idx && dragSrc !== idx ? "2px dashed #FFFFFF" : "1px solid #2A2A2A",
             borderRadius: 10,
-            padding: 12,
+            padding: "12px 14px",
             marginBottom: 8,
-            cursor: dragSrc === idx ? "grabbing" : "grab",
-            opacity: dragSrc === idx ? 0.4 : (p.is_available === false ? 0.5 : 1),
-            transition: "all 0.15s"
+            cursor: sirala ? (dragSrc === idx ? "grabbing" : "grab") : "pointer",
+            opacity: dragSrc === idx ? 0.4 : (p.is_available === false ? 0.55 : 1),
+            transition: "all 0.15s",
+            display: "flex", alignItems: "center", gap: 10,
           }}>
-          <div style={{display:"flex",justifyContent:"space-between",alignItems:"flex-start",gap:10}}>
-            <div style={{flex:1,minWidth:0}}>
-              <div style={{display:"flex",alignItems:"center",gap:6,flexWrap:"wrap"}}>
-                <div style={{color:"#888888",fontSize:22,marginRight:6,userSelect:"none",lineHeight:1,touchAction:"none",cursor:"grab",padding:"6px 4px"}} title="Sürükleyerek sırala"
-                onTouchStart={(e)=>{ e.preventDefault(); setDragSrc(idx); }}
-                onTouchMove={(e)=>{ e.preventDefault(); const t=e.touches[0]; const el=document.elementFromPoint(t.clientX,t.clientY); const card=el?.closest('[draggable="true"]'); if(card){ const all=Array.from(document.querySelectorAll('[draggable="true"]')); const other=all.indexOf(card); if(other>=0 && other!==dragOver) setDragOver(other); } }}
-                onTouchEnd={async()=>{ if(dragSrc==null||dragOver==null||dragSrc===dragOver){ setDragSrc(null); setDragOver(null); return; } const reordered=[...visibleProducts]; const [moved]=reordered.splice(dragSrc,1); reordered.splice(dragOver,0,moved); setDragSrc(null); setDragOver(null); await Promise.all(reordered.map((prod,i)=>supabase.from("products").update({sort_order:(i+1)*10}).eq("id",prod.id))); load(); }}
-              >⋮⋮</div>
-                <div style={{display:"flex",flexDirection:"column",gap:2,marginRight:8}}>
-                <button onClick={()=>moveProduct(p,"up")} style={{background:"#333",color:"#fff",border:"none",borderRadius:4,padding:"2px 8px",fontSize:11,cursor:"pointer",lineHeight:1}}>▲</button>
-                <button onClick={()=>moveProduct(p,"down")} style={{background:"#333",color:"#fff",border:"none",borderRadius:4,padding:"2px 8px",fontSize:11,cursor:"pointer",lineHeight:1}}>▼</button>
-              </div>
-              <div style={{fontSize:14,fontWeight:700,color:"#F0EDE8"}}>{p.name}</div>
-                {p.sold_out_today && <span style={{fontSize:9,padding:"2px 6px",background:"#2A2A2A",color:"#C87A6A",borderRadius:6,fontWeight:700}}>Tükendi</span>}
-                {p.sold_out_today && talepler[p.id] > 0 && <span style={{fontSize:9,padding:"2px 6px",background:"#FFFFFF",color:"#0C0C0C",borderRadius:6,fontWeight:800}}>{talepler[p.id]} KİŞİ SORUYOR</span>}
-                {p.show_in_party_menu && <span style={{fontSize:9,padding:"2px 6px",background:"#2A2A2A",color:"#F0EDE8",borderRadius:6,fontWeight:700}}>Parti</span>}
-                {p.has_options && <span style={{fontSize:9,padding:"2px 6px",background:"#2A2A2A",color:"#F0EDE8",borderRadius:6,fontWeight:700}}>Seçenekli</span>}
-                {p.kitchen_consignment && <span style={{fontSize:9,padding:"2px 6px",background:"#2A2A2A",color:"#F0EDE8",borderRadius:6,fontWeight:700}}>Mutfak</span>}
-                {p.instant_discount_pct > 0 && <span style={{fontSize:9,padding:"2px 6px",background:"#2A2A2A",color:"#F0EDE8",borderRadius:6,fontWeight:700}}>-%{p.instant_discount_pct}</span>}
-              </div>
-              {p.description && <div style={{fontSize:11,color:"#888",marginTop:3}}>{p.description}</div>}
-              <div style={{fontSize:13,color:"#FFFFFF",fontWeight:700,marginTop:4}}>₺{p.price}</div>
+          {sirala && (<>
+            <div style={{color:"#888888",fontSize:20,userSelect:"none",lineHeight:1,touchAction:"none",cursor:"grab",padding:"6px 2px"}} title="Sürükleyerek sırala"
+              onTouchStart={(e)=>{ e.preventDefault(); setDragSrc(idx); }}
+              onTouchMove={(e)=>{ e.preventDefault(); const t=e.touches[0]; const el=document.elementFromPoint(t.clientX,t.clientY); const card=el?.closest('[draggable="true"]'); if(card){ const all=Array.from(document.querySelectorAll('[draggable="true"]')); const other=all.indexOf(card); if(other>=0 && other!==dragOver) setDragOver(other); } }}
+              onTouchEnd={async()=>{ if(dragSrc==null||dragOver==null||dragSrc===dragOver){ setDragSrc(null); setDragOver(null); return; } const reordered=[...visibleProducts]; const [moved]=reordered.splice(dragSrc,1); reordered.splice(dragOver,0,moved); setDragSrc(null); setDragOver(null); await Promise.all(reordered.map((prod,i)=>supabase.from("products").update({sort_order:(i+1)*10}).eq("id",prod.id))); load(); }}
+            >⋮⋮</div>
+            <div style={{display:"flex",flexDirection:"column",gap:3}}>
+              <button onClick={(e)=>{e.stopPropagation();moveProduct(p,"up");}} aria-label="Yukarı taşı" style={{background:"#2A2A2A",color:"#F0EDE8",border:"none",borderRadius:5,padding:"4px 9px",fontSize:11,cursor:"pointer",lineHeight:1}}>▲</button>
+              <button onClick={(e)=>{e.stopPropagation();moveProduct(p,"down");}} aria-label="Aşağı taşı" style={{background:"#2A2A2A",color:"#F0EDE8",border:"none",borderRadius:5,padding:"4px 9px",fontSize:11,cursor:"pointer",lineHeight:1}}>▼</button>
             </div>
-            <div style={{display:"flex",flexDirection:"column",gap:4}}>
-              <button onClick={()=>openEditProd(p)} style={{padding:"5px 9px",background:"#222",color:"#aaa",border:"1px solid #333",borderRadius:6,fontSize:10,cursor:"pointer"}}>Düzenle</button>
-              <button onClick={()=>delProd(p)} style={{padding:"5px 9px",background:"transparent",color:"#C87A6A",border:"1px solid #2A2A2A",borderRadius:6,fontSize:10,cursor:"pointer"}}>Sil</button>
+          </>)}
+          <div style={{flex:1,minWidth:0}}>
+            <div style={{display:"flex",alignItems:"baseline",gap:8}}>
+              <div style={{fontSize:15,fontWeight:700,color:"#F0EDE8",overflow:"hidden",textOverflow:"ellipsis",whiteSpace:"nowrap"}}>{p.name}</div>
+              {p.sold_out_today && <span style={{fontSize:9,padding:"2px 6px",background:"rgba(200,122,106,0.15)",color:"#C87A6A",borderRadius:6,fontWeight:700,flexShrink:0}}>Tükendi</span>}
+              {p.sold_out_today && talepler[p.id] > 0 && <span style={{fontSize:9,padding:"2px 6px",background:"#FFFFFF",color:"#0C0C0C",borderRadius:6,fontWeight:800,flexShrink:0}}>{talepler[p.id]} KİŞİ SORUYOR</span>}
+              <div style={{marginLeft:"auto",fontSize:15,color:"#FFFFFF",fontWeight:800,flexShrink:0}}>₺{p.price}</div>
             </div>
+            {(p.description || notlar.length > 0) && (
+              <div style={{fontSize:11,color:"#8A8580",marginTop:3,overflow:"hidden",textOverflow:"ellipsis",whiteSpace:"nowrap"}}>
+                {p.description}{p.description && notlar.length ? " · " : ""}{notlar.join(" · ")}
+              </div>
+            )}
           </div>
+          {!sirala && <Ikon ad="oksag" boy={14} style={{color:"#555",flexShrink:0}}/>}
         </div>
-      ))}
+        );
+      })}
 
       {/* CATEGORY MODAL */}
       {catModal && (
@@ -458,6 +488,11 @@ export default function MenuMgmtPage() {
             <button onClick={()=>setCatModal(null)} style={cancelBtn}>İptal</button>
             <button onClick={saveCat} disabled={busy} style={{...saveBtn,opacity:busy?0.6:1}}>{busy?"...":"Kaydet"}</button>
           </div>
+          {/* Silme listede degil burada: yanlislikla dokunulan "Sil" kategoriyi
+              goturuyordu. */}
+          {catModal.mode !== "new" && (
+            <button onClick={()=>{ const c = catModal.data; setCatModal(null); delCat(c); }} style={silBtn}>Bu kategoriyi sil</button>
+          )}
         </Modal>
       )}
 
@@ -659,6 +694,11 @@ export default function MenuMgmtPage() {
             <button onClick={()=>setProdModal(null)} style={cancelBtn}>İptal</button>
             <button onClick={saveProd} disabled={busy} style={{...saveBtn,opacity:busy?0.6:1}}>{busy?"...":"Kaydet"}</button>
           </div>
+          {/* Silme listede degil burada: karttaki "Sil" dugmesine yanlislikla
+              dokunmak urunu goturuyordu. */}
+          {prodModal.mode !== "new" && (
+            <button onClick={()=>{ const p = prodModal.data; setProdModal(null); delProd(p); }} style={silBtn}>Bu ürünü sil</button>
+          )}
         </Modal>
       )}
     </div>
@@ -679,6 +719,7 @@ function OptionInput({onAdd}) {
 const inputS = {width:"100%",padding:"10px 12px",background:"#0C0C0C",border:"1px solid #2A2A2A",borderRadius:8,color:"#F0EDE8",fontSize:14,outline:"none",fontFamily:"inherit"};
 const cancelBtn = {flex:1,padding:"12px",background:"transparent",color:"#888",border:"1px solid #333",borderRadius:10,fontSize:14,fontWeight:700,cursor:"pointer"};
 const saveBtn = {flex:2,padding:"12px",background:"#FFFFFF",color:"#000",border:"none",borderRadius:10,fontSize:14,fontWeight:800,cursor:"pointer"};
+const silBtn = {width:"100%",marginTop:10,padding:"11px",background:"transparent",color:"#C87A6A",border:"1px solid #2A2A2A",borderRadius:10,fontSize:13,fontWeight:700,cursor:"pointer",fontFamily:"inherit"};
 
 function Field({label, children}) {
   return (<div style={{marginBottom:12}}>
