@@ -2,6 +2,7 @@ import { useState, useEffect } from "react";
 import { supabase } from "../../lib/supabase.js";
 import { useAuth } from "../../contexts/AuthContext.jsx";
 import Ikon from "../../components/Ikon.jsx";
+import StokEkleSheet from "../../components/StokEkleSheet.jsx";
 
 const cv = "'Coolvetica','Bebas Neue',sans-serif";
 const cvc = "'Coolvetica Condensed','Barlow Condensed',sans-serif";
@@ -19,47 +20,10 @@ const alertLevel = (i) => {
 const AC = { out: "#C87A6A", critical: "#C87A6A", low: "#FFFFFF", ok: "#FFFFFF" };
 const AL = { out: "Tükendi", critical: "Kritik", low: "Düşük", ok: "Yeterli" };
 
-function EntryModal({ item, onClose, onDone }) {
-  const [qty, setQty] = useState("");
-  const [saving, setSaving] = useState(false);
-
-  const save = async () => {
-    const n = parseFloat(qty);
-    if (!n || n <= 0) return;
-    setSaving(true);
-    const after = (Number(item.stock_qty) || 0) + n;
-    const { data, error } = await supabase
-      .from("ingredients").update({ stock_qty: after }).eq("id", item.id).select("id");
-    setSaving(false);
-    if (error) { alert("Kaydedilemedi: " + error.message); return; }
-    if (!data?.length) { alert("Kaydedilemedi: bu işlem için yetkin yok."); return; }
-    onDone(); onClose();
-  };
-
-  return (
-    <div onClick={onClose} style={{ position: "fixed", inset: 0, background: "#000000bb", zIndex: 300, display: "flex", alignItems: "center", justifyContent: "center" }}>
-      <div onClick={e => e.stopPropagation()} style={{ background: "#161616", border: "1px solid #2A2A2A", borderRadius: 16, padding: 28, width: 360, maxWidth: "92vw" }}>
-        <div style={{ color: "#F0EDE8", fontFamily: cv, fontSize: 22, marginBottom: 4 }}>Stok Girişi</div>
-        <div style={{ color: "#888", fontFamily: cvc, fontSize: 12, marginBottom: 20 }}>
-          {item.name} · Mevcut: {Number(item.stock_qty) || 0} {item.unit}
-        </div>
-        <input type="number" value={qty} onChange={e => setQty(e.target.value)} placeholder={`Miktar (${item.unit})`}
-          style={{ width: "100%", background: "#111", border: "1px solid #2A2A2A", borderRadius: 8, padding: "11px 14px", color: "#F0EDE8", fontFamily: cvc, fontSize: 16, marginBottom: 12 }} />
-        <div style={{ color: "#888888", fontFamily: cvc, fontSize: 11, marginBottom: 18, lineHeight: 1.5 }}>
-          Faturayla gelen mallar için Faturalar ekranını kullan — maliyet de oradan güncellenir.
-          Burası sayım düzeltmesi ve elden alınan mallar içindir.
-        </div>
-        <div style={{ display: "flex", gap: 10 }}>
-          <button onClick={onClose} style={{ flex: 1, padding: "11px", background: "transparent", border: "1px solid #2A2A2A", color: "#888", borderRadius: 8, cursor: "pointer", fontFamily: cvc, fontSize: 12 }}>İptal</button>
-          <button onClick={save} disabled={saving} style={{ flex: 2, padding: "11px", background: saving ? "#333" : "#FFFFFF", border: "none", color: "#000", borderRadius: 8, cursor: saving ? "wait" : "pointer", fontFamily: cv, fontSize: 16 }}>
-            {saving ? "KAYDEDİLİYOR..." : "STOKA EKLE"}
-          </button>
-        </div>
-      </div>
-    </div>
-  );
-}
-
+// Stok girisi artik sunucuda toplaniyor (nip_stok_ekle). Eskiden bu ekran
+// mevcut stogu okuyup ustune ekleyip MUTLAK deger yaziyordu: modal acikken
+// satis olursa o satis geri geliyordu. Ortak alt sayfa ayni isi kilitli satirda
+// yapar, kim ne girdi defterine (stock_entries) yazar.
 export default function StockViewPage() {
   const { staffUser } = useAuth();
   const [items, setItems] = useState([]);
@@ -115,7 +79,15 @@ export default function StockViewPage() {
           );
         })}
       </div>
-      {entry && <EntryModal item={entry} onClose={() => setEntry(null)} onDone={load} />}
+      {entry && (
+        <StokEkleSheet
+          kalem={{ tur: "malzeme", id: entry.id, ad: entry.name, birim: entry.unit, stok: Number(entry.stock_qty) || 0, pack_qty: Number(entry.pack_qty) || 1 }}
+          storeId={staffUser?.store_ids?.[0]}
+          ipucu="Faturayla gelen mallar için Faturalar ekranını kullan — maliyet de oradan güncellenir. Burası elden alınan mal ve düzeltme içindir."
+          onKapat={() => setEntry(null)}
+          onBitti={() => { setEntry(null); load(); }}
+        />
+      )}
     </div>
   );
 }

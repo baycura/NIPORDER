@@ -3,6 +3,7 @@ import { Link } from "react-router-dom";
 import { supabase } from "../../lib/supabase.js";
 import { useAuth } from "../../contexts/AuthContext.jsx";
 import Ikon from "../../components/Ikon.jsx";
+import StokEkleSheet from "../../components/StokEkleSheet.jsx";
 
 // URUN STOKU — "hangi urunden elimizde kac tane var?" kategori ve markaya gore.
 //
@@ -35,6 +36,11 @@ export default function ProductStockPage() {
   const [arama, setArama] = useState("");
   const [acik, setAcik] = useState({});     // grup basligi acik/kapali
   const [acikUrun, setAcikUrun] = useState(null);
+  // Stok ekleme: raf urununde adet/beden, recete urununde satiri sinirlayan
+  // malzeme. Giris sunucuda toplanir (nip_stok_ekle), uzerine yazmaz.
+  const [ekle, setEkle] = useState(null);
+  const [sonGiris, setSonGiris] = useState(null);
+  const [tazele, setTazele] = useState(0);
 
   useEffect(() => {
     const storeIds = staffUser?.store_ids?.length ? staffUser.store_ids : ["00000000-0000-0000-0000-000000000000"];
@@ -52,7 +58,11 @@ export default function ProductStockPage() {
       setVeri({ products: rs[0].data || [], categories: rs[1].data || [], brands: rs[2].data || [], recipes: rs[3].data || [], ingredients: rs[4].data || [] });
     });
     return () => { iptal = true; };
-  }, [staffUser?.id]);
+  }, [staffUser?.id, tazele]);
+
+  const rafEkleAc = (u) => setEkle({ tur: "urun", id: u.id, ad: u.name, stok: Number(u.retail_stock) || 0, bedenler: u.bedenler, takipsiz: u.track_stock !== true });
+  const malzemeEkleAc = (m) => setEkle({ tur: "malzeme", id: m.id, ad: m.ad, birim: m.unit, stok: Number(m.stok) || 0 });
+  const girisBitti = (s) => { setEkle(null); setSonGiris(s); setTazele(t => t + 1); };
 
   // Her urune bir stok karti: { tur, adet, seviye, bedenler, sinir, malzemeler }
   const urunler = useMemo(() => {
@@ -82,7 +92,8 @@ export default function ProductStockPage() {
           const stok = Number(i.stock_qty) || 0;
           const birim = Number(r.qty_per_unit) || 0;
           const sinirlar = !r.party_only && !i.is_consumable && birim > 0;
-          return { ad: i.name, unit: i.unit, stok, birim, parti: !!r.party_only, sarf: !!i.is_consumable, sinirlar,
+          // id de tasiniyor: satir acilinca malzemeye dogrudan stok girilebilsin
+          return { id: i.id, ad: i.name, unit: i.unit, stok, birim, parti: !!r.party_only, sarf: !!i.is_consumable, sinirlar,
                    yapilabilir: sinirlar ? Math.floor(Math.max(0, stok) / birim) : null };
         });
         const sinirlayan = malzemeler.filter(m => m.sinirlar);
@@ -102,6 +113,7 @@ export default function ProductStockPage() {
       return {
         ...p, kategori: c?.name || "—", kategoriId: p.category_id, ustKategori: ust?.name || null, ustSira: ust?.sort_order ?? c?.sort_order ?? 999, katSira: c?.sort_order ?? 999,
         rafMi, markaAd, tur, adet, seviye, bedenler, sinir, malzemeler, sayimGerekli,
+        receteli: (recPerProd[p.id] || []).length > 0,
       };
     });
   }, [veri]);
@@ -183,24 +195,40 @@ export default function ProductStockPage() {
               {u.tur === "yok" && <span style={{ fontSize: 11, color: C.faint }}>stok takibi yok — reçete ya da raf stoğu gir</span>}
             </div>
           </div>
-          <div style={{ textAlign: "right", flexShrink: 0 }}>
-            {u.adet == null ? (
-              <div style={{ fontSize: 12, color: C.faint }}>—</div>
-            ) : (
-              <div style={{ fontSize: 22, fontWeight: 900, fontFamily: hv, lineHeight: 1, color: seviyeRenk[u.seviye], fontVariantNumeric: "tabular-nums" }}>
-                {u.tur === "recete" && "≈ "}{fmtN(u.adet)}<span style={{ fontSize: 11, fontFamily: cv, fontWeight: 600, color: C.muted, marginLeft: 3 }}>adet</span>
-              </div>
+          <div style={{ display: "flex", alignItems: "center", gap: 8, flexShrink: 0 }}>
+            <div style={{ textAlign: "right" }}>
+              {u.adet == null ? (
+                <div style={{ fontSize: 12, color: C.faint }}>—</div>
+              ) : (
+                <div style={{ fontSize: 22, fontWeight: 900, fontFamily: hv, lineHeight: 1, color: seviyeRenk[u.seviye], fontVariantNumeric: "tabular-nums" }}>
+                  {u.tur === "recete" && "≈ "}{fmtN(u.adet)}<span style={{ fontSize: 11, fontFamily: cv, fontWeight: 600, color: C.muted, marginLeft: 3 }}>adet</span>
+                </div>
+              )}
+              {seviyeAd[u.seviye] && <div style={{ fontSize: 10, color: seviyeRenk[u.seviye], marginTop: 3, fontWeight: 700, letterSpacing: 0.3 }}>{seviyeAd[u.seviye].toUpperCase()}</div>}
+            </div>
+            {/* Raf urunu: adedi buradan eklenir. Recete urununde stok malzemede
+                yasar — satir acilinca malzemenin yanindaki + kullanilir. */}
+            {!u.receteli && (
+              <button onClick={(e) => { e.stopPropagation(); rafEkleAc(u); }} title="Stoğa ekle"
+                style={{ width: 40, height: 40, flexShrink: 0, borderRadius: 9, background: "transparent", color: C.ink, border: `1px solid ${C.cardLine}`, cursor: "pointer", display: "flex", alignItems: "center", justifyContent: "center" }}>
+                <Ikon ad="ekle" boy={15} />
+              </button>
             )}
-            {seviyeAd[u.seviye] && <div style={{ fontSize: 10, color: seviyeRenk[u.seviye], marginTop: 3, fontWeight: 700, letterSpacing: 0.3 }}>{seviyeAd[u.seviye].toUpperCase()}</div>}
           </div>
         </div>
         {acikBu && u.malzemeler.length > 0 && (
           <div style={{ marginTop: 8, padding: "8px 10px", background: "#0C0C0C", borderRadius: 8, fontSize: 12, color: C.muted, lineHeight: 1.7 }}>
             {u.malzemeler.map((m, i) => (
-              <div key={i} style={{ display: "flex", justifyContent: "space-between", gap: 8, opacity: m.sinirlar ? 1 : 0.6 }}>
-                <span>{m.ad}{m.parti ? " (parti)" : m.sarf ? " (sarf)" : ""} · {fmtN(m.birim)} {m.unit}/adet</span>
-                <span style={{ color: m.stok < 0 ? C.down : C.ink, fontVariantNumeric: "tabular-nums", whiteSpace: "nowrap" }}>
-                  {fmtN(m.stok)} {m.unit}{m.sinirlar ? ` → ${fmtN(m.yapilabilir)} adet` : ""}
+              <div key={i} style={{ display: "flex", alignItems: "center", justifyContent: "space-between", gap: 8, opacity: m.sinirlar ? 1 : 0.6 }}>
+                <span style={{ minWidth: 0 }}>{m.ad}{m.parti ? " (parti)" : m.sarf ? " (sarf)" : ""} · {fmtN(m.birim)} {m.unit}/adet</span>
+                <span style={{ display: "flex", alignItems: "center", gap: 8, flexShrink: 0 }}>
+                  <span style={{ color: m.stok < 0 ? C.down : C.ink, fontVariantNumeric: "tabular-nums", whiteSpace: "nowrap" }}>
+                    {fmtN(m.stok)} {m.unit}{m.sinirlar ? ` → ${fmtN(m.yapilabilir)} adet` : ""}
+                  </span>
+                  <button onClick={(e) => { e.stopPropagation(); malzemeEkleAc(m); }} title={m.ad + " stoğuna ekle"}
+                    style={{ width: 34, height: 34, flexShrink: 0, borderRadius: 8, background: "transparent", color: C.ink, border: `1px solid ${C.cardLine}`, cursor: "pointer", display: "flex", alignItems: "center", justifyContent: "center" }}>
+                    <Ikon ad="ekle" boy={13} />
+                  </button>
                 </span>
               </div>
             ))}
@@ -218,6 +246,15 @@ export default function ProductStockPage() {
         <div style={{ fontSize: 12, color: C.faint }}>raf: adet · bar: reçeteden ≈ yapılabilir</div>
       </div>
 
+      {sonGiris && (
+        <div onClick={() => setSonGiris(null)} style={{ ...kart, marginTop: 14, padding: "11px 14px", borderColor: C.accent, display: "flex", alignItems: "center", gap: 10, cursor: "pointer" }}>
+          <Ikon ad="onayli" boy={16} style={{ color: C.accent, flexShrink: 0 }} />
+          <div style={{ flex: 1, minWidth: 0, fontSize: 13 }}>
+            <b>{sonGiris.kalem}{sonGiris.beden ? " · " + sonGiris.beden : ""}</b> · {fmtN(sonGiris.onceki)} → <b>{fmtN(sonGiris.sonraki)}</b> {sonGiris.birim} kaydedildi
+          </div>
+          <Ikon ad="kapat" boy={13} style={{ color: C.faint, flexShrink: 0 }} />
+        </div>
+      )}
       {hata && <div style={{ ...kart, marginTop: 14, borderColor: C.down, color: C.down, fontSize: 13 }}><Ikon ad="uyari" boy={14} style={{ marginRight: 6 }} />{hata}</div>}
       {!veri && !hata && <div style={{ padding: 40, textAlign: "center", color: C.muted }}>Yükleniyor…</div>}
 
@@ -284,8 +321,13 @@ export default function ProductStockPage() {
           Raf ürünlerinin adedi ve bedenleri <Link to="/retail" style={{ color: C.muted }}>Ürünler (Raf)</Link>'tan; bar ürünlerinin stoğu
           reçetedeki malzemeden hesaplanır (buz, pipet, bardak gibi sarf ve parti satırları sınır sayılmaz) — satıra dokununca malzemeler açılır.
           Eksi stok, sayım yapılmadan düşüm başladığını gösterir; <Link to="/stock-count" style={{ color: C.muted }}>Stok Sayımı</Link> ile düzelir.
+          Satırdaki <b style={{ color: C.muted }}>+</b> gelen malı mevcudun üstüne ekler (üzerine yazmaz).
         </div>
       </>)}
+
+      {ekle && (
+        <StokEkleSheet kalem={ekle} storeId={staffUser?.store_ids?.[0]} onKapat={() => setEkle(null)} onBitti={girisBitti} />
+      )}
     </div>
   );
 }
