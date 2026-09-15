@@ -4,7 +4,7 @@ import { useAuth } from "../../contexts/AuthContext.jsx";
 import Ikon from "../../components/Ikon.jsx";
 import { raflaraAyir, grupAdi, RAF_URUN, trKucuk } from "../../lib/malzemeGrup.js";
 import {
-  fmtTL, fmtMiktar, kapVar, kapAdi, kapBoyu, ficiMi, kabaCevir, kabaGeri, farkTutari,
+  fmtTL, fmtMiktar, kapVar, kapAdi, boyYaz, boySecenekleri, ficiMi, kabaCevir, kabaGeri, farkTutari,
   farkRengi, ONEMSIZ, TASLAK_KEY, aramaUyar,
 } from "../../lib/stockCount.js";
 
@@ -77,6 +77,9 @@ export default function StockCountPage() {
   const [hata, setHata] = useState(null);
 
   const [sayimlar, setSayimlar] = useState({});         // { [id]: "ham metin" }
+  // Elindeki sisenin boyu: ayni cin bazen 70, bazen 100 cl gelir. Bos =
+  // malzemenin kayitli boyu. Yalniz bu sayima ait, kayda dokunmaz.
+  const [boylar, setBoylar] = useState({});             // { [id]: ml }
   const [kapModu, setKapModu] = useState(false);
   const [ara, setAra] = useState("");
   const [birim, setBirim] = useState("hepsi");
@@ -148,6 +151,7 @@ export default function StockCountPage() {
       if (ham) {
         const t = JSON.parse(ham);
         setSayimlar(t.sayimlar || {});
+        setBoylar(t.boylar || {});
         setKapModu(!!t.kapModu);
         setNot(t.not || "");
         if (t.sayan) setSayan(t.sayan);
@@ -161,9 +165,9 @@ export default function StockCountPage() {
   useEffect(() => {
     if (!storeId || !taslakYuklendi.current) return;
     try {
-      localStorage.setItem(TASLAK_KEY(storeId), JSON.stringify({ sayimlar, kapModu, not, sayan }));
+      localStorage.setItem(TASLAK_KEY(storeId), JSON.stringify({ sayimlar, boylar, kapModu, not, sayan }));
     } catch (e) { /* kota dolu olabilir, sayimi engelleme */ }
-  }, [sayimlar, kapModu, not, sayan, storeId]);
+  }, [sayimlar, boylar, kapModu, not, sayan, storeId]);
 
   const malzemeById = useMemo(() => {
     const m = {};
@@ -182,7 +186,7 @@ export default function StockCountPage() {
         const i = malzemeById[id];
         const n = Number(ham);
         if (ham === "" || ham == null || !i || !kapVar(i) || ficiMi(i) || !isFinite(n)) { out[id] = ham; continue; }
-        out[id] = sayiYaz(yeniKap ? kabaCevir(n, i) : kabaGeri(n, i));
+        out[id] = sayiYaz(yeniKap ? kabaCevir(n, i, boylar[id]) : kabaGeri(n, i, boylar[id]));
       }
       return out;
     });
@@ -198,12 +202,13 @@ export default function StockCountPage() {
     const ham = sayimlar[i.id];
     const girildi = ham !== "" && ham != null && isFinite(Number(ham));
     const beklenenTemel = Number(i.stock_qty) || 0;
-    const beklenen = kap ? kabaCevir(beklenenTemel, i) : beklenenTemel;
+    const boy = boylar[i.id];
+    const beklenen = kap ? kabaCevir(beklenenTemel, i, boy) : beklenenTemel;
     const sayilan = girildi ? Number(ham) : null;
-    const sayilanTemel = girildi ? kabaGeri(sayilan, i) : null;
+    const sayilanTemel = girildi ? kabaGeri(sayilan, i, boy) : null;
     const farkTemel = girildi ? sayilanTemel - beklenenTemel : null;
     return {
-      kap, girildi, beklenen,
+      kap, girildi, beklenen, boy: kap ? (Number(boy) || Number(i.unit_volume_ml)) : 0,
       birimAdi: kap ? kapAdi(i) : i.unit,
       fark: girildi ? sayilan - beklenen : null,
       farkTemel,
@@ -223,7 +228,7 @@ export default function StockCountPage() {
     // Raf sirasina diz: bolum basliklari bir kez cikar, sayan kisi rafi bitirip
     // otekine gecer. Raf icinde alfabetik.
     return raflaraAyir(suzulmus).flatMap(g => g.items);
-  }, [malzemeler, ara, birim, sadeceSayilan, sayimlar, kapModu]);
+  }, [malzemeler, ara, birim, sadeceSayilan, sayimlar, boylar, kapModu]);
 
   // Raf cipleri malzemenin grubundan turetilir (ingredients.grup); raf urunleri
   // kendi rafinda. Eskiden bunlar birim cipleriydi ("ml", "adet") — sayan kisi
@@ -243,7 +248,7 @@ export default function StockCountPage() {
       }
     }
     return { adet, sapan, net, maliyetsiz };
-  }, [malzemeler, sayimlar, kapModu]);
+  }, [malzemeler, sayimlar, boylar, kapModu]);
 
   const kaydet = async () => {
     if (busy) return;
@@ -257,7 +262,7 @@ export default function StockCountPage() {
       if (!h.girildi) continue;
       // Gonderilen deger HER ZAMAN kayit birimindedir; ekran kap modunda olsa
       // bile veritabani mililitre gorur.
-      const temel = kabaGeri(Number(sayimlar[i.id]), i);
+      const temel = kabaGeri(Number(sayimlar[i.id]), i, boylar[i.id]);
       if (!isFinite(temel) || temel < 0) { alert(`${i.name}: geçersiz sayı`); return; }
       // Raf urunu adetle sayilir; 1,5 tisort yok. Sunucu da ayni kurali kosar.
       if (i.urun && !Number.isInteger(temel)) { alert(`${i.name}: adet tam sayı olmalı`); return; }
@@ -284,7 +289,7 @@ export default function StockCountPage() {
     setMalzemeler(m => (m || []).map(i => {
       const ham = sayimlar[i.id];
       if (ham === "" || ham == null || !isFinite(Number(ham))) return i;
-      return { ...i, stock_qty: kabaGeri(Number(ham), i) };
+      return { ...i, stock_qty: kabaGeri(Number(ham), i, boylar[i.id]) };
     }));
     gecmisYukle();
   };
@@ -487,7 +492,7 @@ export default function StockCountPage() {
                         <span style={{ color: C.ink, fontWeight: 800, marginRight: 6 }}>{i.variant}</span>
                       )}
                       beklenen {fmtMiktar(h.beklenen)} {h.birimAdi}
-                      {h.kap && <> · 1 {h.birimAdi} = {kapBoyu(i)}</>}
+                      {h.kap && <> · 1 {h.birimAdi} = {boyYaz(h.boy)}</>}
                     </div>
                   </div>
                   <input
@@ -498,6 +503,28 @@ export default function StockCountPage() {
                     style={{ ...inputS, width: 96, flexShrink: 0, textAlign: "center", fontWeight: 700,
                              borderColor: h.girildi ? "#3D3D3D" : C.line }} />
                 </div>
+
+                {/* BOY SECIMI: ayni cin bazen 70, bazen 100 cl gelir. Cipler
+                    yalniz o satiri sayarken cikar — 130 satirin hepsinde durup
+                    ekrani doldurmasin. Secim yazilan sayiyi degistirmez:
+                    "kac sise" ayni, bir sisenin kac ml oldugu degisir. */}
+                {h.girildi && h.kap && boySecenekleri(i).length > 1 && (
+                  <div style={{ display: "flex", alignItems: "center", gap: 6, marginTop: 8, flexWrap: "wrap" }}>
+                    <span style={{ fontSize: 11, color: C.faint }}>Elindeki {h.birimAdi}:</span>
+                    {boySecenekleri(i).map(ml => {
+                      const secili = h.boy === ml;
+                      return (
+                        <button key={ml} onClick={() => setBoylar(b => ({ ...b, [i.id]: ml }))} style={{
+                          minHeight: 32, padding: "5px 10px", borderRadius: 8, cursor: "pointer", fontFamily: cv,
+                          fontSize: 11, fontWeight: 700,
+                          background: secili ? C.accent : "transparent",
+                          color: secili ? "#000" : C.muted,
+                          border: `1px solid ${secili ? C.accent : C.line}`,
+                        }}>{boyYaz(ml)}</button>
+                      );
+                    })}
+                  </div>
+                )}
 
                 {h.girildi && (
                   <div style={{ display: "flex", alignItems: "center", gap: 8, marginTop: 7,

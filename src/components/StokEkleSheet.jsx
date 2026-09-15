@@ -1,5 +1,6 @@
 import { useMemo, useState } from "react";
 import { supabase } from "../lib/supabase.js";
+import { FICI_ML, boySecenekleri, boyYaz, kapAdi } from "../lib/stockCount.js";
 import Ikon from "./Ikon.jsx";
 
 // STOK EKLE — "girdigim stogu ekleyebildigim bir dugme"
@@ -12,9 +13,13 @@ import Ikon from "./Ikon.jsx";
 //   { tur:"malzeme", id, ad, birim, stok, pack_qty, kapMl }   -> ingredients
 //   { tur:"urun",    id, ad, stok, bedenler:[{name,stock}] }  -> products
 //
-// FICI (kapMl >= 20 L): ekran ficiyi ADETLE alir, ml'ye kendi cevirir. 50
-// litrelik fici icin "50000" yazdirmak hem zor hem tehlikeli — bir hane sasan
-// stogu on kat sisiriyordu. Hacim sabit oldugu icin (30 ya da 50 L) adet yeter.
+// KAP ILE GIRIS (kapMl dolu, malzeme hacimle tutuluyor): ekran siseyi/ficiyi
+// ADETLE alir, ml'ye kendi cevirir. "50000" ya da "700" yazdirmak hem zor hem
+// tehlikeli — bir hane sasan stogu on kat sisiriyordu.
+//   * Fici (>= 20 L): her zaman adetle, secim yok.
+//   * Sise: varsayilan adet; "ml ile gir" dugmesiyle kayit birimine donulur.
+//     Boy cipleri (50/70/100 cl + kayitli boy) elindeki sisenin boyunu secer;
+//     ayni cin bazen 70, bazen 100 cl geliyor (sahip, 16.09.2026).
 //
 // onBitti(sonuc): { kalem, beden, onceki, sonraki, birim } — cagiran sayfa
 // listesini tazeler.
@@ -50,30 +55,40 @@ export default function StokEkleSheet({ kalem, storeId, ipucu, onKapat, onBitti 
 
   const urunMu = kalem?.tur === "urun";
   const kayitBirim = urunMu ? "adet" : (kalem?.birim || "adet");
-  // Fici: ekranda her sey (mevcut, girilen, sonuc) FICI cinsinden; sunucuya
-  // giden delta ml'ye cevrilir. Esik stockCount.js'teki FICI_ML ile ayni.
   // Kap cevrimi yalniz HACIMLE tutulan malzemede: adetle tutulan sise bira
   // zaten sayilacak seydir, 330'a bolunmez.
   const mlKat = urunMu ? 0 : ({ ml: 1, cl: 10, l: 1000 }[kayitBirim] || 0);
-  const kapMl = mlKat ? Number(kalem?.kapMl) || 0 : 0;
-  const ficiMi = kapMl >= 20000;
-  const kapKayit = ficiMi ? kapMl / mlKat : 1;   // bir ficinin kayit birimindeki boyu
-  const birim = ficiMi ? "fıçı" : kayitBirim;
-  const kapYaz = ficiMi ? (kapMl >= 1000 ? fmt(kapMl / 1000) + " L" : fmt(kapMl) + " ml") : "";
+  const kayitliKap = mlKat ? Number(kalem?.kapMl) || 0 : 0;
+  const kapVarMi = kayitliKap > 1;
+  const ficiMi = kayitliKap >= FICI_ML;
+  // SAHIP: "Sise agir alkoller 50, 70, 100 cl'lik versiyonlarla satiliyor;
+  // boy secenegi olsun." Elindeki sisenin boyu tek dokunusla degisir; kayitli
+  // boy varsayilan, secim yalniz bu girise ait.
+  const [boy, setBoy] = useState(kayitliKap);
+  // Hacimle tutulan malzemede varsayilan giris KAP ile: 70 cl'lik siseyi
+  // "700" diye yazdirmak hem yavas hem hataya acik. ml'ye tek dokunusla donulur.
+  const [kapGiris, setKapGiris] = useState(kapVarMi);
+  const kapNesne = { unit: kayitBirim, unit_volume_ml: boy || kayitliKap };
+  const boylar = kapVarMi ? boySecenekleri({ unit: kayitBirim, unit_volume_ml: kayitliKap }) : [];
+  const kapAd = kapAdi(kapNesne);
+  const kapli = kapVarMi && kapGiris;
+  const kapKayit = kapli ? (Number(boy) || kayitliKap) / mlKat : 1;  // bir kabin kayit birimindeki boyu
+  const birim = kapli ? kapAd : kayitBirim;
+  const kapYaz = boyYaz(boy || kayitliKap);
 
   // Gosterilen mevcut: bedenli urunde secili bedenin stogu (secilmeden yok),
-  // digerlerinde kalemin kendi stogu. Ficide fici cinsinden.
+  // digerlerinde kalemin kendi stogu. Kap girisinde kap cinsinden.
   const bedenGerekli = bedenler.length > 0;
   const mevcut = useMemo(() => {
     if (bedenGerekli) return beden ? (Number(bedenler.find(v => v.name === beden)?.stock) || 0) : null;
     const t = Number(kalem?.stok) || 0;
-    return ficiMi ? t / kapKayit : t;
-  }, [bedenGerekli, bedenler, beden, kalem, ficiMi, kapKayit]);
+    return kapli ? t / kapKayit : t;
+  }, [bedenGerekli, bedenler, beden, kalem, kapli, kapKayit]);
 
   const n = sayiya(miktar);
   const delta = n == null ? null : (yon === "dus" ? -Math.abs(n) : Math.abs(n));
-  // Sunucuya giden miktar HER ZAMAN kayit birimindedir (ml), ekran fici gosterse de.
-  const deltaTemel = delta == null ? null : (ficiMi ? delta * kapKayit : delta);
+  // Sunucuya giden miktar HER ZAMAN kayit birimindedir (ml), ekran sise gosterse de.
+  const deltaTemel = delta == null ? null : (kapli ? delta * kapKayit : delta);
   const sonuc = delta == null || mevcut == null ? null : mevcut + delta;
   // Neden kapali oldugu kullaniciya yazilir; sessiz gri dugme "bozuk" sanilyordu
   const engel = bedenGerekli && !beden ? "Önce beden seç."
@@ -84,16 +99,19 @@ export default function StokEkleSheet({ kalem, storeId, ipucu, onKapat, onBitti 
     : sonuc != null && sonuc < 0 ? "Sonuç eksiye düşüyor. Sayım farkını düzeltmek için Stok Sayımı'nı kullan."
     : null;
   const gecersiz = delta == null || delta === 0 || !!engel;
+  // Kap ile girerken "700" yazan kisi ml sanmis olabilir. Engellemiyoruz —
+  // 100 siselik alim olur — ama ne yazdigini yuzune soyluyoruz.
+  const kapUyari = kapli && delta != null && Math.abs(delta) > 60;
 
   // Hizli dokunuslar: koli gelen malzemede once koli, sonra tek tek.
   // Tekrar eden deger elenir (2'li pakette "+2" iki kere ciziliyordu).
   const kisayollar = useMemo(() => {
-    if (ficiMi) return [1, 2, 4];            // fici koli gelmez, tek tek gelir
+    if (kapli) return ficiMi ? [1, 2, 4] : [1, 2, 6, 12];  // kap tek tek ya da koli gelir
     const paket = Number(kalem?.pack_qty) || 1;
     const temel = urunMu ? [1, 2, 5, 10] : [1, 2, 6, 12];
     const ham = paket > 1 ? [paket, paket * 2, ...temel] : temel;
     return [...new Set(ham)].slice(0, 4);
-  }, [kalem?.pack_qty, urunMu, ficiMi]);
+  }, [kalem?.pack_qty, urunMu, kapli, ficiMi]);
 
   const ekleKisayol = (v) => setMiktar(String((sayiya(miktar) || 0) + v));
 
@@ -120,7 +138,7 @@ export default function StokEkleSheet({ kalem, storeId, ipucu, onKapat, onBitti 
     const ozet = s || { kalem: kalem.ad, beden, onceki: mevcut, sonraki: sonuc, birim };
     onBitti?.({
       ...ozet,
-      ...(ficiMi ? { onceki: mevcut, sonraki: sonuc, birim: "fıçı" } : null),
+      ...(kapli ? { onceki: mevcut, sonraki: sonuc, birim: kapAd } : null),
       tur: kalem.tur, id: kalem.id, storeId: kalem.storeId || storeId, delta: deltaTemel,
     });
   };
@@ -150,7 +168,7 @@ export default function StokEkleSheet({ kalem, storeId, ipucu, onKapat, onBitti 
               {mevcut == null
                 ? "Beden seç"
                 : <>Rafta <b style={{ color: C.ink }}>{fmt(mevcut)}</b> {birim}{beden ? ` · ${beden}` : ""}
-                   {ficiMi ? ` · 1 fıçı = ${kapYaz}` : ""}</>}
+                   {kapli ? ` · 1 ${kapAd} = ${kapYaz}` : ""}</>}
             </div>
           </div>
           <button onClick={kapat} aria-label="Kapat" disabled={busy} style={{ background: "transparent", border: "none", color: C.soluk, cursor: busy ? "default" : "pointer", padding: 4, flexShrink: 0, opacity: busy ? 0.4 : 1 }}>
@@ -178,6 +196,42 @@ export default function StokEkleSheet({ kalem, storeId, ipucu, onKapat, onBitti 
           {yonBtn("ekle", "+ Stoğa ekle")}
           {yonBtn("dus", "− Stoktan düş")}
         </div>
+
+        {/* NE ILE GIRIYORSUN: sise mi, mililitre mi. Hacimle tutulan malzemede
+            varsayilan sise — 70 cl'lik siseyi "700" diye yazdirmak yavas ve
+            hataya acik. Fici zaten hep adetle girilir, secim cikmaz. */}
+        {kapVarMi && !ficiMi && (
+          <div style={{ display: "flex", gap: 6, marginBottom: 12 }}>
+            {[[true, kapAd], [false, kayitBirim]].map(([k, etiket]) => (
+              <button key={String(k)} onClick={() => { setKapGiris(k); setMiktar(""); setHata(null); }}
+                style={{ flex: 1, padding: "9px 10px", minHeight: 40, borderRadius: 9, cursor: "pointer", fontFamily: cv, fontSize: 12, fontWeight: 700,
+                  background: kapGiris === k ? "#2A2A2A" : "transparent",
+                  color: kapGiris === k ? C.ink : C.silik,
+                  border: `1px solid ${kapGiris === k ? "#555" : C.cizgi}` }}>
+                {etiket} ile gir
+              </button>
+            ))}
+          </div>
+        )}
+
+        {/* BOY: ayni cin bazen 70, bazen 100 cl gelir. Secim yalniz bu girise
+            ait; malzemenin kayitli boyu degismez. */}
+        {kapli && boylar.length > 1 && (
+          <div style={{ marginBottom: 12 }}>
+            <div style={etiketS}>ELİNDEKİ {kapAd.toLocaleUpperCase("tr-TR")} KAÇ CL?</div>
+            <div style={{ display: "flex", gap: 6, flexWrap: "wrap" }}>
+              {boylar.map(ml => (
+                <button key={ml} onClick={() => setBoy(ml)}
+                  style={{ padding: "9px 13px", minHeight: 40, borderRadius: 9, cursor: "pointer", fontFamily: cv, fontSize: 12, fontWeight: 700,
+                    background: (boy || kayitliKap) === ml ? C.ak : "transparent",
+                    color: (boy || kayitliKap) === ml ? "#000" : C.soluk,
+                    border: `1px solid ${(boy || kayitliKap) === ml ? C.ak : C.cizgi}` }}>
+                  {boyYaz(ml)}
+                </button>
+              ))}
+            </div>
+          </div>
+        )}
 
         <div style={etiketS}>{yon === "dus" ? "DÜŞÜLECEK" : "EKLENECEK"} MİKTAR ({birim})</div>
         <div style={{ display: "flex", gap: 8, alignItems: "center", marginBottom: 10 }}>
@@ -213,9 +267,14 @@ export default function StokEkleSheet({ kalem, storeId, ipucu, onKapat, onBitti 
 
         {/* Ficide ne yazildigi acikta dursun: defterde ml gorulecek, ekranda
             fici yazdik — ikisinin bagini kullanici da gorsun. */}
-        {ficiMi && deltaTemel != null && deltaTemel !== 0 && (
-          <div style={{ fontSize: 12, color: C.silik, textAlign: "center", marginTop: -6, marginBottom: 12 }}>
-            Stoğa {yon === "dus" ? "düşülecek" : "eklenecek"}: {fmt(Math.abs(deltaTemel))} {kayitBirim}
+        {kapli && deltaTemel != null && deltaTemel !== 0 && (
+          <div style={{ fontSize: 12, color: kapUyari ? C.kirmizi : C.silik, textAlign: "center", marginTop: -6, marginBottom: 12, lineHeight: 1.6 }}>
+            {fmt(Math.abs(delta))} × {kapYaz} = {fmt(Math.abs(deltaTemel))} {kayitBirim}
+            {" "}stoğa {yon === "dus" ? "düşülecek" : "eklenecek"}
+            {kapUyari && (<><br/>
+              <b>{fmt(Math.abs(delta))} {kapAd}</b> mi giriyorsun? {kayitBirim} yazmak istiyorsan
+              “{kayitBirim} ile gir”e dokun.
+            </>)}
           </div>
         )}
 

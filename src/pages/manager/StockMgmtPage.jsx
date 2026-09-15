@@ -378,8 +378,20 @@ export default function StockMgmtPage() {
             <div style={{fontSize:12,color:"#8A8580",letterSpacing:"0.2px",fontWeight:600,marginBottom:8,display:"flex",alignItems:"center",gap:6}}><Ikon ad="stok" boy={13}/>ŞİŞE / FIÇI HESABI</div>
             <Field label="BIR SISE / FICI HACMI (ml)">
               <input type="number" step="1" value={form.unit_volume_ml||""} onChange={e=>setForm(f => ({...f,unit_volume_ml:e.target.value}))} placeholder="70cl sise = 700 · 50L fici = 50000" style={inputS}/>
-              <div style={{fontSize:11,color:"#666",marginTop:5,lineHeight:1.5}}>
-                Sayımda ve stok girişinde şişe/fıçı olarak saymayı bu sağlar. 20 L ve üstü fıçı sayılır, hep adetle girilir.
+              {/* Sik boylar tek dokunusla: cin/viski/votka 50-70-100 cl gelir. */}
+              <div style={{display:"flex",gap:6,flexWrap:"wrap",marginTop:7}}>
+                {[["35cl",350],["50cl",500],["70cl",700],["75cl",750],["100cl",1000],["30L fıçı",30000],["50L fıçı",50000]].map(([lbl,val]) => {
+                  const secili = Number(form.unit_volume_ml) === val;
+                  return (
+                    <button key={lbl} onClick={()=>setForm(f => ({...f,unit_volume_ml:val}))}
+                      style={{padding:"7px 10px",background:secili?"#FFFFFF":"#222",color:secili?"#000":"#aaa",border:"1px solid "+(secili?"#FFFFFF":"#333"),borderRadius:8,fontSize:11,fontWeight:700,cursor:"pointer",fontFamily:"inherit"}}>{lbl}</button>
+                  );
+                })}
+              </div>
+              <div style={{fontSize:11,color:"#666",marginTop:7,lineHeight:1.5}}>
+                Sayımda ve stok girişinde şişe/fıçı olarak saymayı bu sağlar — burada yazan "varsayılan boy"dur.
+                Aynı ürün başka boyda gelirse sayım ve stok girişi ekranlarında boyu tek dokunuşla değiştirebilirsin.
+                20 L ve üstü fıçı sayılır, hep adetle girilir.
               </div>
             </Field>
             <Field label="KOLI ICI ADET (koli gelmiyorsa 1)">
