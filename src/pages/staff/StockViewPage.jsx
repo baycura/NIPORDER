@@ -1,8 +1,9 @@
-import { useState, useEffect } from "react";
+import { useState, useEffect, useMemo } from "react";
 import { supabase } from "../../lib/supabase.js";
 import { useAuth } from "../../contexts/AuthContext.jsx";
 import Ikon from "../../components/Ikon.jsx";
 import StokEkleSheet from "../../components/StokEkleSheet.jsx";
+import { raflaraAyir, siseKarsiligi, trKucuk } from "../../lib/malzemeGrup.js";
 
 const cv = "'Coolvetica','Bebas Neue',sans-serif";
 const cvc = "'Coolvetica Condensed','Barlow Condensed',sans-serif";
@@ -45,7 +46,14 @@ export default function StockViewPage() {
   // dokunup "yetkin yok" hatasi aliyorlardi.
   const stokGirebilir = !["kitchen", "viewer", "parttime"].includes(staffUser?.role);
   const alerts = items.filter(i => alertLevel(i) !== "ok");
-  const filtered = items.filter(i => !search || i.name?.toLowerCase().includes(search.toLowerCase()));
+  // Duz liste 146 satirdi; raflara ayrildi (Stok Yonetimi ile ayni raflar).
+  // Arama hem malzeme hem raf adinda.
+  const q = trKucuk(search.trim());
+  const raflar = useMemo(() => raflaraAyir(
+    items.filter(i => !q || trKucuk(i.name).includes(q) || trKucuk(i.grup).includes(q)),
+    (g, i) => { if (alertLevel(i) !== "ok") g.uyari = (g.uyari || 0) + 1; }
+  ), [items, q]);
+  const filtered = raflar.flatMap(g => g.items);
 
   return (
     <div>
@@ -64,37 +72,54 @@ export default function StockViewPage() {
           <Ikon ad="uyari" boy={15} style={{ color: "#C87A6A" }}/><span style={{ color: "#C87A6A", fontFamily: cvc, fontSize: 12 }}>{alerts.length} malzeme kritik</span>
         </div>
       )}
-      <input value={search} onChange={e => setSearch(e.target.value)} placeholder="Malzeme ara..."
-        style={{ width: "100%", background: "#111", border: "1px solid #2A2A2A", borderRadius: 8, padding: "10px 14px", color: "#F0EDE8", fontFamily: cvc, fontSize: 14, marginBottom: 16 }} />
+      {/* boxSizing olmadan %100 + yanlardaki 28px dolgu tasiyordu */}
+      <input value={search} onChange={e => setSearch(e.target.value)} placeholder="Malzeme ya da raf ara..."
+        style={{ width: "100%", boxSizing: "border-box", background: "#111", border: "1px solid #2A2A2A", borderRadius: 8, padding: "10px 14px", color: "#F0EDE8", fontFamily: cvc, fontSize: 14, marginBottom: 16 }} />
       {loading && <div style={{ color: "#888", fontFamily: cvc, fontSize: 12, textAlign: "center", padding: 40 }}>Yükleniyor...</div>}
       {!loading && filtered.length === 0 && (
         <div style={{ color: "#888888", fontFamily: cvc, fontSize: 12, textAlign: "center", padding: 40 }}>
           {items.length === 0 ? "Henüz hammadde girilmemiş." : "Aramaya uyan malzeme yok."}
         </div>
       )}
-      <div style={{ background: "#1E1E1E", border: "1px solid #2A2A2A", borderRadius: 12, overflow: "hidden" }}>
-        {filtered.map((item, i) => {
+      {/* Raf raf: barmen buz ve pipet ararken mop ile tuvalet kagidini
+          gecmesin. Raf basliklari yapiskan, uzun listede nerede oldugun belli. */}
+      {raflar.map(g => (
+        <div key={g.ad} style={{ marginBottom: 14 }}>
+          <div style={{ position: "sticky", top: 0, zIndex: 2, background: "#0C0C0C", display: "flex", alignItems: "baseline", gap: 8, padding: "6px 2px 8px" }}>
+            <span style={{ color: "#F0EDE8", fontFamily: cv, fontSize: 17 }}>{g.ad}</span>
+            <span style={{ color: "#666", fontFamily: cvc, fontSize: 11 }}>
+              {g.items.length} kalem{g.uyari ? " · " : ""}
+              {g.uyari ? <span style={{ color: "#C87A6A" }}>{g.uyari} kritik</span> : null}
+            </span>
+          </div>
+          <div style={{ background: "#1E1E1E", border: "1px solid #2A2A2A", borderRadius: 12, overflow: "hidden" }}>
+        {g.items.map((item, i) => {
           const lvl = alertLevel(item);
           const color = AC[lvl];
+          const sise = siseKarsiligi(item);
           return (
-            <div key={item.id} style={{ display: "grid", gridTemplateColumns: "1.8fr 1fr 1fr .8fr", padding: "11px 16px", alignItems: "center", borderBottom: i < filtered.length - 1 ? "1px solid #2A2A2A" : "none" }}>
-              <span style={{ color: "#F0EDE8", fontFamily: cvc, fontSize: 13, fontWeight: 700 }}>{item.name}</span>
-              <span style={{ color: lvl !== "ok" ? "#C87A6A" : "#F0EDE8", fontFamily: cv, fontSize: 16 }}>
-                {Number(item.stock_qty) || 0} {item.unit}
-              </span>
-              <span style={{ color: "#888", fontFamily: cvc, fontSize: 12 }}>
-                {Number(item.min_stock) > 0 ? Number(item.min_stock) + " " + item.unit : "—"}
-              </span>
-              <div style={{ display: "flex", alignItems: "center", gap: 6 }}>
-                <span style={{ background: color + "22", color, fontFamily: cvc, fontSize: 10, padding: "2px 7px", borderRadius: 3 }}>{AL[lvl]}</span>
-                {stokGirebilir && (
-                  <button onClick={() => setEntry(item)} style={{ background: "rgba(62,207,142,0.12)", border: "1px solid #FFFFFF", color: "#FFFFFF", borderRadius: 5, padding: "3px 8px", cursor: "pointer", fontFamily: cvc, fontSize: 10 }}>+</button>
-                )}
+            <div key={item.id} style={{ display: "flex", alignItems: "center", gap: 10, padding: "11px 14px", borderBottom: i < g.items.length - 1 ? "1px solid #2A2A2A" : "none" }}>
+              <div style={{ flex: 1, minWidth: 0 }}>
+                <div style={{ color: "#F0EDE8", fontFamily: cvc, fontSize: 13, fontWeight: 700, overflow: "hidden", textOverflow: "ellipsis", whiteSpace: "nowrap" }}>{item.name}</div>
+                <div style={{ display: "flex", alignItems: "baseline", gap: 6, marginTop: 2, flexWrap: "wrap" }}>
+                  <span style={{ color: lvl !== "ok" ? "#C87A6A" : "#F0EDE8", fontFamily: cv, fontSize: 15 }}>
+                    {Number(item.stock_qty) || 0} {item.unit}
+                  </span>
+                  {sise != null && <span style={{ color: "#666", fontFamily: cvc, fontSize: 11 }}>≈{sise} şişe</span>}
+                  {Number(item.min_stock) > 0 && <span style={{ color: "#666", fontFamily: cvc, fontSize: 11 }}>· min {Number(item.min_stock)} {item.unit}</span>}
+                </div>
               </div>
+              <span style={{ background: color + "22", color, fontFamily: cvc, fontSize: 10, padding: "3px 7px", borderRadius: 4, flexShrink: 0 }}>{AL[lvl]}</span>
+              {stokGirebilir && (
+                <button onClick={() => setEntry(item)} aria-label="Stoğa ekle"
+                  style={{ width: 38, height: 38, flexShrink: 0, background: "transparent", border: "1px solid #FFFFFF", color: "#FFFFFF", borderRadius: 9, cursor: "pointer", fontFamily: cv, fontSize: 18, lineHeight: 1 }}>+</button>
+              )}
             </div>
           );
         })}
-      </div>
+          </div>
+        </div>
+      ))}
       {entry && (
         <StokEkleSheet
           kalem={{ tur: "malzeme", id: entry.id, ad: entry.name, birim: entry.unit, stok: Number(entry.stock_qty) || 0, pack_qty: Number(entry.pack_qty) || 1, storeId: entry.store_id }}

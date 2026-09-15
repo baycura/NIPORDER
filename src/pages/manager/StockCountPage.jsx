@@ -2,6 +2,7 @@ import { useEffect, useMemo, useRef, useState } from "react";
 import { supabase } from "../../lib/supabase.js";
 import { useAuth } from "../../contexts/AuthContext.jsx";
 import Ikon from "../../components/Ikon.jsx";
+import { raflaraAyir, grupAdi, RAF_URUN, trKucuk } from "../../lib/malzemeGrup.js";
 import {
   fmtTL, fmtMiktar, kapVar, kapAdi, kabaCevir, kabaGeri, farkTutari,
   farkRengi, ONEMSIZ, TASLAK_KEY, aramaUyar,
@@ -103,7 +104,7 @@ export default function StockCountPage() {
     setMalzemeler(null); setHata(null);
     Promise.all([
       supabase.from("ingredients")
-        .select("id,name,unit,stock_qty,cost_per_unit,unit_volume_ml")
+        .select("id,name,unit,stock_qty,cost_per_unit,unit_volume_ml,grup")
         .eq("store_id", storeId).order("name"),
       supabase.from("products")
         .select("id,name,retail_stock,variants,cost_price")
@@ -207,23 +208,23 @@ export default function StockCountPage() {
   };
 
   const gosterilen = useMemo(() => {
-    return (malzemeler || []).filter(i => {
-      if (!aramaUyar(i.name, ara)) return false;
-      // Birim cipleri yalniz malzemeyi suzer: "adet" cipine basan kisi bardak
-      // ve pecete sayar, tisortler "Urunler" cipinde kalir.
-      if (birim === "urun" ? !i.urun : (birim !== "hepsi" && (i.urun || (i.unit || "") !== birim))) return false;
+    const suzulmus = (malzemeler || []).filter(i => {
+      // Arama hem malzeme hem raf adinda: "temizlik" yazan o rafi gorur
+      if (!aramaUyar(i.name, ara) && !trKucuk(grupAdi(i)).includes(trKucuk(ara.trim()))) return false;
+      // Raf cipi: "Cin", "Temizlik"... Raf urunleri kendi rafinda (RAF_URUN).
+      if (birim !== "hepsi" && grupAdi(i) !== birim) return false;
       if (sadeceSayilan && !satirHesap(i).girildi) return false;
       return true;
     });
+    // Raf sirasina diz: bolum basliklari bir kez cikar, sayan kisi rafi bitirip
+    // otekine gecer. Raf icinde alfabetik.
+    return raflaraAyir(suzulmus).flatMap(g => g.items);
   }, [malzemeler, ara, birim, sadeceSayilan, sayimlar, kapModu]);
 
-  // Birim cipleri malzemeden turetilir; raf urunleri ayri bir cip alir ki
-  // "adet"li bir malzeme varsa ikisi birbirine karismasin.
-  const birimler = useMemo(() => {
-    const set = new Set((malzemeler || []).filter(i => !i.urun).map(i => i.unit).filter(Boolean));
-    return [...set].sort();
-  }, [malzemeler]);
-  const urunVar = useMemo(() => (malzemeler || []).some(i => i.urun), [malzemeler]);
+  // Raf cipleri malzemenin grubundan turetilir (ingredients.grup); raf urunleri
+  // kendi rafinda. Eskiden bunlar birim cipleriydi ("ml", "adet") — sayan kisi
+  // rafa gore geziyor, birime gore degil.
+  const raflar = useMemo(() => raflaraAyir(malzemeler || []), [malzemeler]);
 
   const ozet = useMemo(() => {
     let adet = 0, sapan = 0, net = 0, maliyetsiz = 0;
@@ -383,12 +384,11 @@ export default function StockCountPage() {
 
           <div style={{ display: "flex", gap: 7, flexWrap: "wrap" }}>
             <button onClick={() => setBirim("hepsi")} style={cip(birim === "hepsi")}>Hepsi</button>
-            {birimler.map(b => (
-              <button key={b} onClick={() => setBirim(b)} style={cip(birim === b)}>{b}</button>
+            {raflar.map(r => (
+              <button key={r.ad} onClick={() => setBirim(birim === r.ad ? "hepsi" : r.ad)} style={cip(birim === r.ad)}>
+                {r.ad} <span style={{ opacity: 0.6 }}>{r.items.length}</span>
+              </button>
             ))}
-            {urunVar && (
-              <button onClick={() => setBirim("urun")} style={cip(birim === "urun")}>Ürünler</button>
-            )}
             <button onClick={() => setSadeceSayilan(v => !v)} style={cip(sadeceSayilan)}>
               Sadece sayılanlar{ozet.adet > 0 ? ` (${ozet.adet})` : ""}
             </button>
@@ -444,9 +444,9 @@ export default function StockCountPage() {
           {gosterilen.map((i, idx) => {
             const h = satirHesap(i);
             const farkli = h.girildi && Math.abs(h.farkTemel) > ONEMSIZ;
-            // Raf urunleri listenin sonunda; 132 malzemenin altinda kaybolmasin
-            // diye ilk urun satirinin ustune bolum basligi gelir.
-            const bolumBasi = i.urun && (idx === 0 || !gosterilen[idx - 1].urun);
+            // Her raf degisiminde baslik: sayan kisi hangi rafta oldugunu bilsin.
+            const raf = grupAdi(i);
+            const bolumBasi = idx === 0 || grupAdi(gosterilen[idx - 1]) !== raf;
             return (
               <div key={i.id} style={{
                 padding: "11px 14px", borderTop: idx === 0 ? "none" : `1px solid ${C.line}`,
@@ -454,7 +454,8 @@ export default function StockCountPage() {
               }}>
                 {bolumBasi && (
                   <div style={{ ...etiket, marginBottom: 10, color: C.ink }}>
-                    RAF ÜRÜNLERİ · adetle sayılır, bedenli ürün beden başına
+                    {raf.toLocaleUpperCase("tr")}
+                    {raf === RAF_URUN ? " · adetle sayılır, bedenli ürün beden başına" : ""}
                   </div>
                 )}
                 <div style={{ display: "flex", alignItems: "center", gap: 10 }}>
