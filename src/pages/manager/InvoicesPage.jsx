@@ -108,6 +108,10 @@ export default function InvoicesPage() {
   const matchIngredient = (name) => {
     const n = normName(name);
     if (!n) return null;
+    // Once ogrenilmis tedarikci adlari: "CORONA KL 33CL 4X6 (İTHAL)" bir kere
+    // eslestirildiyse bir daha yeni malzeme acilmaz (ikizlerin sebebi buydu).
+    const takma = ingredients.find(ing => (ing.fatura_adlari || []).some(a => normName(a) === n));
+    if (takma) return takma;
     let best = null, bestScore = 0;
     for (const ing of ingredients) {
       const m = normName(ing.name);
@@ -118,8 +122,21 @@ export default function InvoicesPage() {
         const toks = n.split(" ").filter(t => t.length > 2);
         const hit = toks.filter(t => m.includes(t)).length;
         if (toks.length) score = 60 * hit / toks.length;
+        // Ters yon: malzemenin KENDI kelimeleri faturada geciyor mu? Tedarikci
+        // adlari uzun ve gurultulu ("BEEFEATER LONDON DRY GIN 12/100 CL"), o
+        // yuzden faturanin kelime sayisina bolmek eslemeyi kacirir. Tek
+        // kelimelik malzemede uygulanmaz (Limon <-> "LIMON SUYU" karisirdi).
+        const mtoks = m.split(" ").filter(t => t.length > 2);
+        if (mtoks.length >= 2) {
+          const mhit = mtoks.filter(t => n.includes(t)).length;
+          score = Math.max(score, 70 * mhit / mtoks.length);
+        }
       }
-      if (score > bestScore) { bestScore = score; best = ing; }
+      // Esitlikte daha UZUN (daha ozel) ad kazanir: "LİMON SUYU 1 LT" faturasi
+      // "Limon" degil "Limon Suyu" ile eslesir.
+      if (score > bestScore || (score === bestScore && best && m.length > normName(best.name).length)) {
+        bestScore = score; best = ing;
+      }
     }
     return bestScore >= 50 ? best : null;
   };
@@ -148,9 +165,10 @@ export default function InvoicesPage() {
           content: match ? contentDefault(match, unit) : 1,
           vat_pct: l.vat_pct, discount_pct: l.discount_pct, list_unit_cost: l.list_unit_cost,
         };
+        // hamAd: faturadaki tedarikci yazimi. Kayitta takma ad olarak ogrenilir.
         return match
-          ? { ...base, ingredient_id: match.id, isNew: false, newName: "", newUnit: unit }
-          : { ...base, ingredient_id: "", isNew: true, newName: l.name, newUnit: unit };
+          ? { ...base, hamAd: l.name, ingredient_id: match.id, isNew: false, newName: "", newUnit: unit }
+          : { ...base, hamAd: l.name, ingredient_id: "", isNew: true, newName: l.name, newUnit: unit };
       });
       setLines(newLines);
       const matched = newLines.filter(l => !l.isNew).length;
@@ -198,8 +216,8 @@ export default function InvoicesPage() {
           list_unit_cost: Number(l.list_unit_cost) || 0,
         };
         return match
-          ? { ...base, ingredient_id: match.id, isNew: false, newName: "", newUnit: unit }
-          : { ...base, ingredient_id: "", isNew: true, newName: l.name, newUnit: unit };
+          ? { ...base, hamAd: l.name, ingredient_id: match.id, isNew: false, newName: "", newUnit: unit }
+          : { ...base, hamAd: l.name, ingredient_id: "", isNew: true, newName: l.name, newUnit: unit };
       });
       if (newLines.length) {
         setLines(newLines);
@@ -313,6 +331,17 @@ export default function InvoicesPage() {
         }
       }
       if (!ingId) continue;
+      // TEDARIKCI ADINI OGREN: "CORONA KL 33CL 4X6 (İTHAL)" bu malzemeye
+      // baglandiysa bir dahaki faturada eslesir, ikiz kayit acilmaz.
+      if (l.hamAd) {
+        const ing0 = ingredients.find(x => x.id === ingId);
+        const adlar = ing0?.fatura_adlari || [];
+        const ham = l.hamAd.trim();
+        if (ham && normName(ham) !== normName(ing0?.name || "")
+            && !adlar.some(a => normName(a) === normName(ham))) {
+          await supabase.from("ingredients").update({ fatura_adlari: [...adlar, ham] }).eq("id", ingId);
+        }
+      }
       const calc = lineCalc(l.isNew ? { ...l, ingredient_id: ingId } : l);
       const qty = calc.usable || Number(l.qty)||0;          // stoga eklenecek NET miktar (fire dusulmus)
       const unitCost = calc.costPerUnit || Number(l.unit_cost)||0;  // gercek birim maliyet
