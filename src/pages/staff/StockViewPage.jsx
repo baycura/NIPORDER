@@ -40,6 +40,10 @@ export default function StockViewPage() {
   };
   useEffect(() => { load(); }, [staffUser?.id]);
 
+  // Stok yazma kapisi nip_stok_ekle ile ayni olmali: mutfak ve gozlemci bu
+  // ekrani gorebilir (stok bakmak icin), ama "+" onlarda cikmaz — yoksa
+  // dokunup "yetkin yok" hatasi aliyorlardi.
+  const stokGirebilir = !["kitchen", "viewer", "parttime"].includes(staffUser?.role);
   const alerts = items.filter(i => alertLevel(i) !== "ok");
   const filtered = items.filter(i => !search || i.name?.toLowerCase().includes(search.toLowerCase()));
 
@@ -83,7 +87,9 @@ export default function StockViewPage() {
               </span>
               <div style={{ display: "flex", alignItems: "center", gap: 6 }}>
                 <span style={{ background: color + "22", color, fontFamily: cvc, fontSize: 10, padding: "2px 7px", borderRadius: 3 }}>{AL[lvl]}</span>
-                <button onClick={() => setEntry(item)} style={{ background: "rgba(62,207,142,0.12)", border: "1px solid #FFFFFF", color: "#FFFFFF", borderRadius: 5, padding: "3px 8px", cursor: "pointer", fontFamily: cvc, fontSize: 10 }}>+</button>
+                {stokGirebilir && (
+                  <button onClick={() => setEntry(item)} style={{ background: "rgba(62,207,142,0.12)", border: "1px solid #FFFFFF", color: "#FFFFFF", borderRadius: 5, padding: "3px 8px", cursor: "pointer", fontFamily: cvc, fontSize: 10 }}>+</button>
+                )}
               </div>
             </div>
           );
