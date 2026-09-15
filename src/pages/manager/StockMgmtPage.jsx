@@ -3,6 +3,7 @@ import { useNavigate } from "react-router-dom";
 import { supabase } from "../../lib/supabase.js";
 import { useAuth } from "../../contexts/AuthContext.jsx";
 import Ikon from "../../components/Ikon.jsx";
+import StokEkleSheet, { stokGeriAl } from "../../components/StokEkleSheet.jsx";
 import { paketIkilemi, ikilemMetni, birimYaz, anlasilirYaz } from "../../lib/birimMaliyet.js";
 
 const cv = "-apple-system,BlinkMacSystemFont,'Segoe UI',Roboto,sans-serif";
@@ -17,17 +18,58 @@ export default function StockMgmtPage() {
   const [modal, setModal] = useState(null);
   const [form, setForm] = useState({});
   const [busy, setBusy] = useState(false);
+  // Stok kutusu duzenlemede KILITLI acilir: eskiden maliyeti degistirmek icin
+  // acilan modal, kaydederken o anki stok sayisini da geri yaziyordu — arada
+  // gecen satislar siliniyordu. Artik stok ya "+ Stok" ile eklenir (sunucuda
+  // stok = stok + miktar) ya da bilerek "uzerine yaz" acilir.
+  const [ekle, setEkle] = useState(null);          // StokEkleSheet'e giden kalem
+  const [uzerineYaz, setUzerineYaz] = useState(false);
+  const [sonGiris, setSonGiris] = useState(null);  // "3 sise eklendi" seridi
+  const [girisler, setGirisler] = useState([]);    // stock_entries defteri
 
-  const load = async () => {
-    setLoading(true);
-    const { data } = await supabase.from("ingredients").select("*").in("store_id", staffUser?.store_ids?.length ? staffUser.store_ids : ["00000000-0000-0000-0000-000000000000"]).order("name");
+  // sessiz: stok girisi sonrasi tazelemede sayfayi "Yukleniyor" ekranina
+  // dusurmesin (acik modal ve onay seridi kaybolurdu)
+  const load = async (sessiz) => {
+    if (!sessiz) setLoading(true);
+    const storeIds = staffUser?.store_ids?.length ? staffUser.store_ids : ["00000000-0000-0000-0000-000000000000"];
+    const [{ data }, { data: gir }] = await Promise.all([
+      supabase.from("ingredients").select("*").in("store_id", storeIds).order("name"),
+      // Giris defteri: "kim ne zaman ne ekledi" ekranda gorunsun
+      supabase.from("stock_entries").select("id,kalem_adi,variant_name,delta,before_qty,after_qty,unit,note,staff_name,created_at")
+        .in("store_id", storeIds).order("created_at", { ascending: false }).limit(12),
+    ]);
     setItems(data || []);
+    setGirisler(gir || []);
     setLoading(false);
   };
   useEffect(() => { load(); }, []);
 
-  const openNew = () => { setModal({mode:"new"}); setForm({name:"", unit:"ml", stock_qty:0, cost_per_unit:0, waste_pct:0, pack_qty:1, unit_volume_ml:"", waste_per_pack:0, is_consumable:false}); };
-  const openEdit = (i) => { setModal({mode:"edit", data:i}); setForm({name:i.name, unit:i.unit, stock_qty:Number(i.stock_qty)||0, cost_per_unit:Number(i.cost_per_unit)||0, waste_pct:Number(i.waste_pct)||0, pack_qty:Number(i.pack_qty)||1, unit_volume_ml:i.unit_volume_ml??"", waste_per_pack:Number(i.waste_per_pack)||0, is_consumable:!!i.is_consumable}); };
+  const openNew = () => { setUzerineYaz(true); setModal({mode:"new"}); setForm({name:"", unit:"ml", stock_qty:0, cost_per_unit:0, waste_pct:0, pack_qty:1, unit_volume_ml:"", waste_per_pack:0, is_consumable:false}); };
+  const openEdit = (i) => { setUzerineYaz(false); setModal({mode:"edit", data:i}); setForm({name:i.name, unit:i.unit, stock_qty:Number(i.stock_qty)||0, cost_per_unit:Number(i.cost_per_unit)||0, waste_pct:Number(i.waste_pct)||0, pack_qty:Number(i.pack_qty)||1, unit_volume_ml:i.unit_volume_ml??"", waste_per_pack:Number(i.waste_per_pack)||0, is_consumable:!!i.is_consumable}); };
+
+  // Satirdan ya da modalin icinden acilir; kaydedince listeyi tazeler.
+  // storeId kalemin kendi magazasi: iki magazali yoneticide liste iki magazadan
+  // geliyor, sayfanin ilk magazasi gonderilse "bulunamadi" hatasi duserdi.
+  const stokEkleAc = (i) => setEkle({ tur:"malzeme", id:i.id, ad:i.name, birim:i.unit, stok:Number(i.stock_qty)||0, pack_qty:Number(i.pack_qty)||1, storeId:i.store_id });
+  const girisBitti = (s) => {
+    const acik = ekle;
+    setEkle(null);
+    setSonGiris(s);
+    // Modal acikken girildiyse hem formu hem modal.data'yi tazele: yoksa ayni
+    // modaldan ikinci giris bayat mevcutla acilirdi.
+    if (modal?.mode === "edit" && modal.data?.id === acik?.id) {
+      setForm(f => ({ ...f, stock_qty: Number(s.sonraki)||0 }));
+      setModal(m => (m ? { ...m, data: { ...m.data, stock_qty: Number(s.sonraki)||0 } } : m));
+    }
+    load(true);
+  };
+  const geriAl = async () => {
+    if (!sonGiris) return;
+    const { error } = await stokGeriAl(sonGiris);
+    if (error) { alert("Geri alinamadi: " + error.message); return; }
+    setSonGiris(null);
+    load(true);
+  };
 
   const save = async () => {
     if (busy) return;
@@ -51,7 +93,9 @@ export default function StockMgmtPage() {
     setBusy(true);
     const payload = {
       name: form.name.trim(), unit: form.unit, store_id: staffUser?.store_ids?.[0],
-      stock_qty: Number(form.stock_qty)||0,
+      // Stok yalniz yeni kayitta ya da "uzerine yaz" bilerek acildiginda
+      // yazilir; yoksa maliyet duzeltmesi aradaki satisi geri alirdi.
+      ...(modal.mode === "new" || uzerineYaz ? { stock_qty: Number(form.stock_qty)||0 } : {}),
       cost_per_unit: maliyet,
       waste_pct: Number(form.waste_pct)||0,
       pack_qty: Number(form.pack_qty)||1,
@@ -85,6 +129,17 @@ export default function StockMgmtPage() {
     <div style={{fontFamily:cv,color:"#F0EDE8"}}>
       <div style={{fontSize:24,fontWeight:800,marginBottom:4}}>Stok Yonetimi</div>
       <div style={{fontSize:11,color:"#888",letterSpacing:"1px",marginBottom:14}}>{items.length} HAMMADDE · {lowStock} AZALAN</div>
+
+      {sonGiris && (
+        <div style={{background:"#161616",border:"1px solid #FFFFFF",borderRadius:12,padding:"11px 14px",marginBottom:12,display:"flex",alignItems:"center",gap:10}}>
+          <Ikon ad="onayli" boy={16} style={{color:"#FFFFFF",flexShrink:0}}/>
+          <div style={{flex:1,minWidth:0,fontSize:13}}>
+            <b>{sonGiris.kalem}</b> · {Number(sonGiris.onceki)} → <b>{Number(sonGiris.sonraki)}</b> {sonGiris.birim} kaydedildi
+          </div>
+          <button onClick={geriAl} style={{padding:"8px 12px",minHeight:38,background:"transparent",color:"#C87A6A",border:"1px solid #2A2A2A",borderRadius:8,fontSize:12,fontWeight:700,cursor:"pointer",flexShrink:0,fontFamily:"inherit"}}>Geri al</button>
+          <button onClick={()=>setSonGiris(null)} aria-label="Kapat" style={{background:"transparent",border:"none",color:"#666",cursor:"pointer",padding:4,flexShrink:0}}><Ikon ad="kapat" boy={13}/></button>
+        </div>
+      )}
 
       {/* Rafi saymak icin buraya gelinirdi: her malzeme tek tek acilir, sayi
           ustune yazilirdi. Sayim ekrani ayni isi karsilastirarak ve kayit
@@ -131,14 +186,47 @@ export default function StockMgmtPage() {
                   {value > 0 && <span style={{marginLeft:8,color:"#FFFFFF"}}>· deger ₺{Math.round(value)}</span>}
                 </div>
               </div>
-              <div style={{display:"flex",flexDirection:"column",gap:4,flexShrink:0}}>
-                <button onClick={() => openEdit(i)} style={{padding:"5px 9px",background:"#222",color:"#aaa",border:"1px solid #333",borderRadius:6,fontSize:10,cursor:"pointer"}}>Duzenle</button>
-                <button onClick={() => del(i)} style={{padding:"5px 9px",background:"transparent",color:"#C87A6A",border:"1px solid #2A2A2A",borderRadius:6,fontSize:10,cursor:"pointer"}}>Sil</button>
+              <div style={{display:"flex",alignItems:"center",gap:6,flexShrink:0}}>
+                {/* Sahada en cok yapilan is: gelen malin stoga eklenmesi. Bu
+                    yuzden satirin en gorunur dugmesi bu. */}
+                <button onClick={() => stokEkleAc(i)} title="Stoğa ekle"
+                  style={{padding:"10px 12px",minHeight:44,background:"transparent",color:"#FFFFFF",border:"1px solid #FFFFFF",borderRadius:9,fontSize:12,fontWeight:800,cursor:"pointer",whiteSpace:"nowrap",display:"flex",alignItems:"center",gap:5}}>
+                  <Ikon ad="ekle" boy={13}/> Stok
+                </button>
+                <div style={{display:"flex",flexDirection:"column",gap:4}}>
+                  <button onClick={() => openEdit(i)} style={{padding:"5px 9px",background:"#222",color:"#aaa",border:"1px solid #333",borderRadius:6,fontSize:10,cursor:"pointer"}}>Duzenle</button>
+                  <button onClick={() => del(i)} style={{padding:"5px 9px",background:"transparent",color:"#C87A6A",border:"1px solid #2A2A2A",borderRadius:6,fontSize:10,cursor:"pointer"}}>Sil</button>
+                </div>
               </div>
             </div>
           </div>
         );
       })}
+
+      {girisler.length > 0 && (
+        <div style={{marginTop:18}}>
+          <div style={{fontSize:11,color:"#888",letterSpacing:"1.5px",fontWeight:700,marginBottom:8}}>SON STOK GİRİŞLERİ</div>
+          <div style={{background:"#1A1A1A",border:"1px solid #2A2A2A",borderRadius:10,overflow:"hidden"}}>
+            {girisler.map((g,i) => (
+              <div key={g.id} style={{display:"flex",alignItems:"center",gap:10,padding:"9px 12px",borderTop:i?"1px solid #2A2A2A":"none"}}>
+                <span style={{fontSize:13,fontWeight:800,color:Number(g.delta)<0?"#C87A6A":"#F0EDE8",width:58,flexShrink:0,fontVariantNumeric:"tabular-nums"}}>
+                  {Number(g.delta)>0?"+":""}{Number(g.delta)}
+                </span>
+                <div style={{flex:1,minWidth:0}}>
+                  <div style={{fontSize:13,whiteSpace:"nowrap",overflow:"hidden",textOverflow:"ellipsis"}}>
+                    {g.kalem_adi}{g.variant_name?" · "+g.variant_name:""} <span style={{color:"#666"}}>{Number(g.before_qty)} → {Number(g.after_qty)} {g.unit}</span>
+                  </div>
+                  {g.note && <div style={{fontSize:11,color:"#666",marginTop:2,whiteSpace:"nowrap",overflow:"hidden",textOverflow:"ellipsis"}}>{g.note}</div>}
+                </div>
+                <div style={{fontSize:11,color:"#666",textAlign:"right",flexShrink:0,whiteSpace:"nowrap"}}>
+                  {new Date(g.created_at).toLocaleString("tr-TR",{timeZone:"Europe/Istanbul",day:"2-digit",month:"2-digit",hour:"2-digit",minute:"2-digit"})}
+                  <div>{g.staff_name}</div>
+                </div>
+              </div>
+            ))}
+          </div>
+        </div>
+      )}
 
       {modal && (
         <Modal onClose={() => setModal(null)} title={modal.mode==="new"?"Yeni Hammadde":"Hammaddeyi Duzenle"}>
@@ -150,7 +238,32 @@ export default function StockMgmtPage() {
               ))}
             </div>
           </Field>
-          <Field label={"STOK MIKTARI (" + form.unit + ")"}><input type="number" step="0.01" value={form.stock_qty||0} onChange={e=>setForm({...form,stock_qty:e.target.value})} style={inputS}/></Field>
+          {modal.mode === "edit" && !uzerineYaz ? (
+            <Field label={"STOK (" + form.unit + ")"}>
+              <div style={{display:"flex",alignItems:"center",gap:8,flexWrap:"wrap"}}>
+                <div style={{...inputS,flex:1,minWidth:120,display:"flex",alignItems:"center",justifyContent:"space-between",gap:8,color:"#F0EDE8"}}>
+                  <b style={{fontVariantNumeric:"tabular-nums"}}>{Number(form.stock_qty)||0}</b>
+                  <span style={{fontSize:12,color:"#666"}}>{form.unit}</span>
+                </div>
+                <button onClick={()=>stokEkleAc(modal.data)}
+                  style={{padding:"11px 14px",minHeight:44,background:"#FFFFFF",color:"#000",border:"none",borderRadius:9,fontSize:13,fontWeight:800,cursor:"pointer",whiteSpace:"nowrap"}}>+ Stok ekle</button>
+                <button onClick={()=>setUzerineYaz(true)}
+                  style={{padding:"11px 12px",minHeight:44,background:"transparent",color:"#8A8580",border:"1px solid #2A2A2A",borderRadius:9,fontSize:12,fontWeight:700,cursor:"pointer",whiteSpace:"nowrap"}}>Üzerine yaz</button>
+              </div>
+              <div style={{fontSize:11,color:"#666",marginTop:6,lineHeight:1.5}}>
+                Gelen malı <b style={{color:"#8A8580"}}>+ Stok ekle</b> ile gir: mevcudun üstüne eklenir, arada geçen satış kaybolmaz.
+              </div>
+            </Field>
+          ) : (
+            <Field label={"STOK MIKTARI (" + form.unit + ")" + (modal.mode === "edit" ? " — ÜZERİNE YAZAR" : "")}>
+              <input type="number" step="0.01" value={form.stock_qty||0} onChange={e=>setForm({...form,stock_qty:e.target.value})} style={inputS}/>
+              {modal.mode === "edit" && (
+                <div style={{fontSize:11,color:"#C87A6A",marginTop:6,lineHeight:1.5}}>
+                  Bu sayı mevcut stoğun yerine geçer. Eklemek için <button onClick={()=>setUzerineYaz(false)} style={{background:"transparent",border:"none",color:"#F0EDE8",textDecoration:"underline",cursor:"pointer",padding:0,font:"inherit"}}>+ Stok ekle</button>'ye dön.
+                </div>
+              )}
+            </Field>
+          )}
           <Field label={"BIRIM MALIYET (₺ / " + form.unit + ")"}>
             <input type="number" step="0.01" value={form.cost_per_unit||0} onChange={e=>setForm({...form,cost_per_unit:e.target.value})} style={inputS}/>
             {/* Mililitre/gram maliyeti tek basina okunmaz; litre/kilo fiyatina
@@ -210,6 +323,12 @@ export default function StockMgmtPage() {
             <button onClick={save} disabled={busy} style={{...saveBtn,opacity:busy?0.6:1}}>{busy?"...":"Kaydet"}</button>
           </div>
         </Modal>
+      )}
+
+      {ekle && (
+        <StokEkleSheet kalem={ekle} storeId={staffUser?.store_ids?.[0]}
+          ipucu="Faturayla gelen malda maliyet de güncellensin diye Faturalar ekranını kullan; burası elden alınan mal, düzeltme ve fire içindir."
+          onKapat={()=>setEkle(null)} onBitti={girisBitti}/>
       )}
     </div>
   );

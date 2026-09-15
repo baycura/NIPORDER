@@ -2,6 +2,7 @@ import { useEffect, useState } from "react";
 import { supabase } from "../../lib/supabase.js";
 import { useAuth } from "../../contexts/AuthContext.jsx";
 import Ikon from "../../components/Ikon.jsx";
+import StokEkleSheet, { stokGeriAl } from "../../components/StokEkleSheet.jsx";
 
 const cv = "-apple-system,BlinkMacSystemFont,'Segoe UI',Roboto,sans-serif";
 const SIZE_SETS = {
@@ -22,6 +23,10 @@ export default function RetailPage() {
   const [prodModal, setProdModal] = useState(null);
   const [form, setForm] = useState({});
   const [busy, setBusy] = useState(false);
+  // Modaldeki stok kutulari mevcudun UZERINE yazar (beden sayilari dahil).
+  // Gelen yeni parti icin satirdaki "+ Stok": sunucuda stok = stok + miktar.
+  const [ekle, setEkle] = useState(null);
+  const [sonGiris, setSonGiris] = useState(null);
 
   const storeId = staffUser?.store_ids?.[0];
 
@@ -69,11 +74,22 @@ export default function RetailPage() {
 
   // ---- Ürünler ----
   const openNewProduct = (brandId) => {
+    setStokIlk(null);
     setProdModal({ mode: "new" });
     setForm({ name: "", name_en: "", brand_id: brandId || "", price: "", retail_stock: 0, sizeSet: "Tek beden", variants: [], is_available: true });
   };
+  // Stok imzasi: modal acilirken ne gorduysek o. Kaydederken ayniysa stok
+  // alanlarina HIC dokunmayiz — yoksa yalniz fiyati duzeltmek bile modal
+  // acikken satilan urunu rafa geri koyardi (ve o yanlis sayi Shopify'a giderdi).
+  const stokImzasi = (rs, vs) => JSON.stringify([Number(rs) || 0, (vs || []).map(v => [v.name, Number(v.stock) || 0])]);
+  const [stokIlk, setStokIlk] = useState(null);
+
   const openEditProduct = (p) => {
     const vs = Array.isArray(p.variants) ? p.variants : [];
+    // Imza kaydetmedeki ile AYNI kaynaktan kurulmali: bedenli urunde toplam
+    // bedenlerden hesaplanir. retail_stock ile beden toplami ayrismis olabilir
+    // (satis tetigi ikisini bagimsiz kirpiyor) ve imza tutmazsa koruma calismaz.
+    setStokIlk(stokImzasi(vs.length ? vs.reduce((s, v) => s + (Number(v.stock) || 0), 0) : p.retail_stock, vs));
     setProdModal({ mode: "edit", data: p });
     setForm({
       name: p.name || "", name_en: p.name_en || "", brand_id: p.brand_id || "", price: p.price ?? "",
@@ -85,7 +101,12 @@ export default function RetailPage() {
   const setSizeSet = (key) => {
     const sizes = SIZE_SETS[key] || [];
     const prev = form.variants || [];
-    const variants = sizes.map(s => ({ name: s, stock: Number(prev.find(v => v.name === s)?.stock) || 0 }));
+    // Eski bedenin tum alanlari korunur: shopify_variant_id / inventory_item_id
+    // silinirse urun Shopify ile baglantisini kaybeder, stok magazaya gitmez.
+    const variants = sizes.map(s => {
+      const eski = prev.find(v => v.name === s);
+      return eski ? { ...eski, stock: Number(eski.stock) || 0 } : { name: s, stock: 0 };
+    });
     setForm({ ...form, sizeSet: key, variants });
   };
   const setVariantStock = (name, val) => setForm({ ...form, variants: (form.variants || []).map(v => v.name === name ? { ...v, stock: Math.max(0, Number(val) || 0) } : v) });
@@ -97,6 +118,8 @@ export default function RetailPage() {
     setBusy(true);
     const variants = (form.variants || []).filter(v => v.name);
     const totalFromVariants = variants.reduce((s, v) => s + (Number(v.stock) || 0), 0);
+    const stokDegismedi = prodModal.mode === "edit" && stokIlk != null
+      && stokImzasi(variants.length ? totalFromVariants : form.retail_stock, variants) === stokIlk;
     const payload = {
       name: form.name.trim(),
       name_en: form.name_en?.trim() || null,
@@ -107,8 +130,11 @@ export default function RetailPage() {
       store_id: storeId,
       kitchen_destination_store_id: storeId,
       track_stock: true,
-      retail_stock: variants.length ? totalFromVariants : (Number(form.retail_stock) || 0),
-      variants: variants.length ? variants : null,
+      // Stoga dokunulmadiysa yazma: satis bu modal acikken olmus olabilir.
+      ...(stokDegismedi ? {} : {
+        retail_stock: variants.length ? totalFromVariants : (Number(form.retail_stock) || 0),
+        variants: variants.length ? variants : null,
+      }),
       is_available: form.is_available !== false,
       has_options: variants.length > 0,
       options_config: variants.length
@@ -122,6 +148,18 @@ export default function RetailPage() {
     if (error) { alert("Hata: " + error.message); return; }
     setProdModal(null); load();
   };
+  const stokEkleAc = (p) => {
+    const vs = Array.isArray(p.variants) ? p.variants.filter(v => v?.name) : [];
+    setEkle({ tur:"urun", id:p.id, ad:p.name, stok:Number(p.retail_stock)||0, bedenler:vs, takipsiz: p.track_stock !== true, storeId: p.store_id });
+  };
+  const girisBitti = (s) => { setEkle(null); setSonGiris(s); load(); };
+  const geriAl = async () => {
+    if (!sonGiris) return;
+    const { error } = await stokGeriAl(sonGiris);
+    if (error) { alert("Geri alinamadi: " + error.message); return; }
+    setSonGiris(null); load();
+  };
+
   const delProduct = async (p) => {
     if (!confirm('"' + p.name + '" silinsin mi?')) return;
     const { error } = await supabase.from("products").delete().eq("id", p.id);
@@ -161,9 +199,15 @@ export default function RetailPage() {
               </div>
             )}
           </div>
-          <div style={{ display: "flex", flexDirection: "column", gap: 4, flexShrink: 0 }}>
-            <button onClick={() => openEditProduct(p)} style={{ padding: "6px 10px", background: "#222", color: "#aaa", border: "1px solid #333", borderRadius: 6, fontSize: 11, cursor: "pointer" }}>Düzenle</button>
-            <button onClick={() => delProduct(p)} style={{ padding: "6px 10px", background: "transparent", color: "#C87A6A", border: "1px solid #2A2A2A", borderRadius: 6, fontSize: 11, cursor: "pointer" }}>Sil</button>
+          <div style={{ display: "flex", alignItems: "center", gap: 6, flexShrink: 0 }}>
+            <button onClick={() => stokEkleAc(p)} title="Stoğa ekle"
+              style={{ padding: "10px 12px", minHeight: 44, background: "transparent", color: "#FFFFFF", border: "1px solid #FFFFFF", borderRadius: 9, fontSize: 12, fontWeight: 800, cursor: "pointer", whiteSpace: "nowrap", display: "flex", alignItems: "center", gap: 5 }}>
+              <Ikon ad="ekle" boy={13} /> Stok
+            </button>
+            <div style={{ display: "flex", flexDirection: "column", gap: 4 }}>
+              <button onClick={() => openEditProduct(p)} style={{ padding: "6px 10px", background: "#222", color: "#aaa", border: "1px solid #333", borderRadius: 6, fontSize: 11, cursor: "pointer" }}>Düzenle</button>
+              <button onClick={() => delProduct(p)} style={{ padding: "6px 10px", background: "transparent", color: "#C87A6A", border: "1px solid #2A2A2A", borderRadius: 6, fontSize: 11, cursor: "pointer" }}>Sil</button>
+            </div>
           </div>
         </div>
       </div>
@@ -176,6 +220,17 @@ export default function RetailPage() {
       <div style={{ fontSize: 11, color: "#888", letterSpacing: "1px", marginBottom: 14 }}>
         {brands.length} MARKA · {products.length} ÜRÜN · {totalStock} ADET STOK
       </div>
+
+      {sonGiris && (
+        <div style={{ background: "#161616", border: "1px solid #FFFFFF", borderRadius: 12, padding: "11px 14px", marginBottom: 12, display: "flex", alignItems: "center", gap: 10 }}>
+          <Ikon ad="onayli" boy={16} style={{ color: "#FFFFFF", flexShrink: 0 }} />
+          <div style={{ flex: 1, minWidth: 0, fontSize: 13 }}>
+            <b>{sonGiris.kalem}{sonGiris.beden ? " · " + sonGiris.beden : ""}</b> · {Number(sonGiris.onceki)} → <b>{Number(sonGiris.sonraki)}</b> adet kaydedildi
+          </div>
+          <button onClick={geriAl} style={{ padding: "8px 12px", minHeight: 38, background: "transparent", color: "#C87A6A", border: "1px solid #2A2A2A", borderRadius: 8, fontSize: 12, fontWeight: 700, cursor: "pointer", flexShrink: 0, fontFamily: "inherit" }}>Geri al</button>
+          <button onClick={() => setSonGiris(null)} aria-label="Kapat" style={{ background: "transparent", border: "none", color: "#666", cursor: "pointer", padding: 4, flexShrink: 0 }}><Ikon ad="kapat" boy={13} /></button>
+        </div>
+      )}
 
       {stockValue > 0 && (
         <div style={{ background: "#161616", border: "1px solid #FFFFFF", borderRadius: 12, padding: 14, marginBottom: 14 }}>
@@ -267,6 +322,12 @@ export default function RetailPage() {
             </div>
           </Field>
 
+          {prodModal.mode === "edit" && (
+            <div style={{ background: "#0C0C0C", border: "1px solid #2A2A2A", borderRadius: 10, padding: "10px 12px", marginBottom: 12, fontSize: 12, color: "#8A8580", lineHeight: 1.6 }}>
+              Aşağıdaki stok kutuları mevcudun <b style={{ color: "#F0EDE8" }}>üzerine yazar</b>. Yeni gelen partiyi eklemek için modalı kapatıp ürün satırındaki <b style={{ color: "#F0EDE8" }}>+ Stok</b>'u kullan.
+            </div>
+          )}
+
           {(form.variants || []).length > 0 ? (
             <Field label="BEDEN BAZINDA STOK (adet)">
               <div style={{ display: "grid", gridTemplateColumns: "repeat(auto-fill,minmax(90px,1fr))", gap: 8 }}>
@@ -295,6 +356,10 @@ export default function RetailPage() {
             <button onClick={saveProduct} disabled={busy} style={{ ...saveBtn, opacity: busy ? 0.6 : 1 }}>{busy ? "..." : "Kaydet"}</button>
           </div>
         </Modal>
+      )}
+
+      {ekle && (
+        <StokEkleSheet kalem={ekle} storeId={storeId} onKapat={() => setEkle(null)} onBitti={girisBitti} />
       )}
     </div>
   );

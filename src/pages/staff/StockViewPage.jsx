@@ -2,6 +2,7 @@ import { useState, useEffect } from "react";
 import { supabase } from "../../lib/supabase.js";
 import { useAuth } from "../../contexts/AuthContext.jsx";
 import Ikon from "../../components/Ikon.jsx";
+import StokEkleSheet from "../../components/StokEkleSheet.jsx";
 
 const cv = "'Coolvetica','Bebas Neue',sans-serif";
 const cvc = "'Coolvetica Condensed','Barlow Condensed',sans-serif";
@@ -19,53 +20,17 @@ const alertLevel = (i) => {
 const AC = { out: "#C87A6A", critical: "#C87A6A", low: "#FFFFFF", ok: "#FFFFFF" };
 const AL = { out: "Tükendi", critical: "Kritik", low: "Düşük", ok: "Yeterli" };
 
-function EntryModal({ item, onClose, onDone }) {
-  const [qty, setQty] = useState("");
-  const [saving, setSaving] = useState(false);
-
-  const save = async () => {
-    const n = parseFloat(qty);
-    if (!n || n <= 0) return;
-    setSaving(true);
-    const after = (Number(item.stock_qty) || 0) + n;
-    const { data, error } = await supabase
-      .from("ingredients").update({ stock_qty: after }).eq("id", item.id).select("id");
-    setSaving(false);
-    if (error) { alert("Kaydedilemedi: " + error.message); return; }
-    if (!data?.length) { alert("Kaydedilemedi: bu işlem için yetkin yok."); return; }
-    onDone(); onClose();
-  };
-
-  return (
-    <div onClick={onClose} style={{ position: "fixed", inset: 0, background: "#000000bb", zIndex: 300, display: "flex", alignItems: "center", justifyContent: "center" }}>
-      <div onClick={e => e.stopPropagation()} style={{ background: "#161616", border: "1px solid #2A2A2A", borderRadius: 16, padding: 28, width: 360, maxWidth: "92vw" }}>
-        <div style={{ color: "#F0EDE8", fontFamily: cv, fontSize: 22, marginBottom: 4 }}>Stok Girişi</div>
-        <div style={{ color: "#888", fontFamily: cvc, fontSize: 12, marginBottom: 20 }}>
-          {item.name} · Mevcut: {Number(item.stock_qty) || 0} {item.unit}
-        </div>
-        <input type="number" value={qty} onChange={e => setQty(e.target.value)} placeholder={`Miktar (${item.unit})`}
-          style={{ width: "100%", background: "#111", border: "1px solid #2A2A2A", borderRadius: 8, padding: "11px 14px", color: "#F0EDE8", fontFamily: cvc, fontSize: 16, marginBottom: 12 }} />
-        <div style={{ color: "#888888", fontFamily: cvc, fontSize: 11, marginBottom: 18, lineHeight: 1.5 }}>
-          Faturayla gelen mallar için Faturalar ekranını kullan — maliyet de oradan güncellenir.
-          Burası sayım düzeltmesi ve elden alınan mallar içindir.
-        </div>
-        <div style={{ display: "flex", gap: 10 }}>
-          <button onClick={onClose} style={{ flex: 1, padding: "11px", background: "transparent", border: "1px solid #2A2A2A", color: "#888", borderRadius: 8, cursor: "pointer", fontFamily: cvc, fontSize: 12 }}>İptal</button>
-          <button onClick={save} disabled={saving} style={{ flex: 2, padding: "11px", background: saving ? "#333" : "#FFFFFF", border: "none", color: "#000", borderRadius: 8, cursor: saving ? "wait" : "pointer", fontFamily: cv, fontSize: 16 }}>
-            {saving ? "KAYDEDİLİYOR..." : "STOKA EKLE"}
-          </button>
-        </div>
-      </div>
-    </div>
-  );
-}
-
+// Stok girisi artik sunucuda toplaniyor (nip_stok_ekle). Eskiden bu ekran
+// mevcut stogu okuyup ustune ekleyip MUTLAK deger yaziyordu: modal acikken
+// satis olursa o satis geri geliyordu. Ortak alt sayfa ayni isi kilitli satirda
+// yapar, kim ne girdi defterine (stock_entries) yazar.
 export default function StockViewPage() {
   const { staffUser } = useAuth();
   const [items, setItems] = useState([]);
   const [loading, setLoading] = useState(true);
   const [entry, setEntry] = useState(null);
   const [search, setSearch] = useState("");
+  const [sonGiris, setSonGiris] = useState(null);
 
   const load = async () => {
     const storeIds = staffUser?.store_ids?.length ? staffUser.store_ids : ["00000000-0000-0000-0000-000000000000"];
@@ -81,6 +46,15 @@ export default function StockViewPage() {
   return (
     <div>
       <h1 style={{ color: "#F0EDE8", fontFamily: cv, fontSize: 28, letterSpacing: "-0.5px", margin: "0 0 16px" }}>Stok</h1>
+      {sonGiris && (
+        <div onClick={() => setSonGiris(null)} style={{ background: "#161616", border: "1px solid #FFFFFF", borderRadius: 10, padding: "10px 16px", marginBottom: 16, display: "flex", gap: 10, alignItems: "center", cursor: "pointer" }}>
+          <Ikon ad="onayli" boy={15} style={{ color: "#FFFFFF", flexShrink: 0 }} />
+          <span style={{ color: "#F0EDE8", fontFamily: cvc, fontSize: 12, flex: 1, minWidth: 0 }}>
+            {sonGiris.kalem} · {Number(sonGiris.onceki)} → <b>{Number(sonGiris.sonraki)}</b> {sonGiris.birim} kaydedildi
+          </span>
+          <Ikon ad="kapat" boy={12} style={{ color: "#666", flexShrink: 0 }} />
+        </div>
+      )}
       {alerts.length > 0 && (
         <div style={{ background: "rgba(224,90,90,0.12)", border: "1px solid #2A2A2A", borderRadius: 10, padding: "10px 16px", marginBottom: 16, display: "flex", gap: 10, alignItems: "center" }}>
           <Ikon ad="uyari" boy={15} style={{ color: "#C87A6A" }}/><span style={{ color: "#C87A6A", fontFamily: cvc, fontSize: 12 }}>{alerts.length} malzeme kritik</span>
@@ -115,7 +89,15 @@ export default function StockViewPage() {
           );
         })}
       </div>
-      {entry && <EntryModal item={entry} onClose={() => setEntry(null)} onDone={load} />}
+      {entry && (
+        <StokEkleSheet
+          kalem={{ tur: "malzeme", id: entry.id, ad: entry.name, birim: entry.unit, stok: Number(entry.stock_qty) || 0, pack_qty: Number(entry.pack_qty) || 1, storeId: entry.store_id }}
+          storeId={staffUser?.store_ids?.[0]}
+          ipucu="Faturayla gelen mallar için Faturalar ekranını kullan — maliyet de oradan güncellenir. Burası elden alınan mal ve düzeltme içindir."
+          onKapat={() => setEntry(null)}
+          onBitti={(s) => { setEntry(null); setSonGiris(s); load(); }}
+        />
+      )}
     </div>
   );
 }
