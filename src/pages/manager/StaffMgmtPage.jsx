@@ -157,17 +157,17 @@ export default function StaffMgmtPage() {
 
       {modal && (
         <Modal onClose={() => setModal(null)} title={modal.mode==="new"?"Yeni Personel":"Personeli Duzenle"}>
-          <Field label="AD SOYAD"><input value={form.name||""} onChange={e=>setForm({...form,name:e.target.value})} style={inputS}/></Field>
-          <Field label="EMAIL"><input type="email" value={form.email||""} onChange={e=>setForm({...form,email:e.target.value})} disabled={modal.mode==="edit"} style={{...inputS, opacity:modal.mode==="edit"?0.6:1}}/></Field>
-          {modal.mode==="new" && <Field label="SIFRE (en az 6 karakter)"><input type="text" value={form.password||""} onChange={e=>setForm({...form,password:e.target.value})} placeholder="orn: garson2026" style={inputS}/></Field>}
-          <Field label="TELEFON"><input value={form.phone||""} onChange={e=>setForm({...form,phone:e.target.value})} style={inputS}/></Field>
+          <Field label="AD SOYAD"><input value={form.name||""} onChange={e=>setForm(f => ({...f,name:e.target.value}))} style={inputS}/></Field>
+          <Field label="EMAIL"><input type="email" value={form.email||""} onChange={e=>setForm(f => ({...f,email:e.target.value}))} disabled={modal.mode==="edit"} style={{...inputS, opacity:modal.mode==="edit"?0.6:1}}/></Field>
+          {modal.mode==="new" && <Field label="SIFRE (en az 6 karakter)"><input type="text" value={form.password||""} onChange={e=>setForm(f => ({...f,password:e.target.value}))} placeholder="orn: garson2026" style={inputS}/></Field>}
+          <Field label="TELEFON"><input value={form.phone||""} onChange={e=>setForm(f => ({...f,phone:e.target.value}))} style={inputS}/></Field>
 
-          <Field label="GORUNEN UNVAN (uygulamada gozukur)"><input value={form.display_role||""} onChange={e=>setForm({...form,display_role:e.target.value})} placeholder="Yönetici" style={inputS}/></Field>
+          <Field label="GORUNEN UNVAN (uygulamada gozukur)"><input value={form.display_role||""} onChange={e=>setForm(f => ({...f,display_role:e.target.value}))} placeholder="Yönetici" style={inputS}/></Field>
 
           <Field label="GERCEK YETKI">
             <div style={{display:"flex",gap:6,flexWrap:"wrap"}}>
               {ROLES.map(r => (
-                <button key={r.key} onClick={()=>setForm({...form,role:r.key})} style={{flex:"1 1 calc(50% - 6px)",minWidth:120,padding:"10px",background:form.role===r.key?"#FFFFFF":"#222",color:form.role===r.key?"#000":"#888",border:"1px solid "+(form.role===r.key?"#FFFFFF":"#333"),borderRadius:8,fontSize:11,fontWeight:700,cursor:"pointer"}}>{r.label}</button>
+                <button key={r.key} onClick={()=>setForm(f => ({...f,role:r.key}))} style={{flex:"1 1 calc(50% - 6px)",minWidth:120,padding:"10px",background:form.role===r.key?"#FFFFFF":"#222",color:form.role===r.key?"#000":"#888",border:"1px solid "+(form.role===r.key?"#FFFFFF":"#333"),borderRadius:8,fontSize:11,fontWeight:700,cursor:"pointer"}}>{r.label}</button>
               ))}
             </div>
           </Field>
@@ -177,7 +177,7 @@ export default function StaffMgmtPage() {
               {[{id:"c3c6e0c7-1821-4edd-993d-ad960cfbc452",label:"Paris"},{id:"c39da530-7f73-4f69-a752-029bf03790b1",label:"Berlin"}].map(st => {
                 const sel = (form.store_ids||[]).includes(st.id);
                 return (
-                  <button key={st.id} type="button" onClick={()=>setForm({...form,store_ids:sel?(form.store_ids||[]).filter(id=>id!==st.id):[...(form.store_ids||[]),st.id]})} style={{flex:"1 1 calc(50% - 6px)",minWidth:120,padding:"10px",background:sel?"#FFFFFF":"#222",color:sel?"#000":"#888",border:"1px solid "+(sel?"#FFFFFF":"#333"),borderRadius:8,fontSize:13,fontWeight:700,cursor:"pointer"}}>{sel?"✓ ":""}{st.label}</button>
+                  <button key={st.id} type="button" onClick={()=>setForm(f => ({...f,store_ids:sel?(f.store_ids||[]).filter(id=>id!==st.id):[...(f.store_ids||[]),st.id]}))} style={{flex:"1 1 calc(50% - 6px)",minWidth:120,padding:"10px",background:sel?"#FFFFFF":"#222",color:sel?"#000":"#888",border:"1px solid "+(sel?"#FFFFFF":"#333"),borderRadius:8,fontSize:13,fontWeight:700,cursor:"pointer"}}>{sel?"✓ ":""}{st.label}</button>
                 );
               })}
             </div>

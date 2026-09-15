@@ -45,11 +45,11 @@ export default function ContentPage() {
       const { data } = supabase.storage.from("product-images").getPublicUrl(path);
       if (data?.publicUrl) urls.push(data.publicUrl);
     }
-    setForm({ ...form, images: urls });
+    setForm(f => ({ ...f, images: urls }));
     setBusy(false);
   };
 
-  const removePhoto = (idx) => setForm({ ...form, images: (form.images || []).filter((_, i) => i !== idx) });
+  const removePhoto = (idx) => setForm(f => ({ ...f, images: (f.images || []).filter((_, i) => i !== idx) }));
 
   // --- AI ile icerik yazdirma (istege bagli: yuklu ilk fotografa bakarak) ---
   const [aiBrief, setAiBrief] = useState("");
@@ -173,7 +173,7 @@ export default function ContentPage() {
 
             <div style={{display:"flex",gap:6,marginBottom:12}}>
               {KINDS.map(k => (
-                <button key={k.key} onClick={() => setForm({...form, kind:k.key})} style={{flex:1,padding:"9px",border:"none",borderRadius:8,fontSize:11,fontWeight:700,background:form.kind===k.key?"#FFFFFF":"#222",color:form.kind===k.key?"#000":"#888",cursor:"pointer"}}>{k.label}</button>
+                <button key={k.key} onClick={() => setForm(f => ({...f, kind:k.key}))} style={{flex:1,padding:"9px",border:"none",borderRadius:8,fontSize:11,fontWeight:700,background:form.kind===k.key?"#FFFFFF":"#222",color:form.kind===k.key?"#000":"#888",cursor:"pointer"}}>{k.label}</button>
               ))}
             </div>
 
@@ -203,23 +203,23 @@ export default function ContentPage() {
               </div>
             </div>
 
-            <Field label="BAŞLIK (Türkçe)"><input value={form.title||""} onChange={e=>setForm({...form,title:e.target.value})} placeholder={form.kind==="urun"?"örn: Croissant Club Tee":"örn: Fethiye'de bu hafta"} style={inputS}/></Field>
-            <Field label={form.kind==="urun"?"HİKAYE / TANITIM (Türkçe)":"YAZI (Türkçe)"}><textarea value={form.body||""} onChange={e=>setForm({...form,body:e.target.value})} rows={5} style={{...inputS,resize:"vertical"}}/></Field>
+            <Field label="BAŞLIK (Türkçe)"><input value={form.title||""} onChange={e=>setForm(f => ({...f,title:e.target.value}))} placeholder={form.kind==="urun"?"örn: Croissant Club Tee":"örn: Fethiye'de bu hafta"} style={inputS}/></Field>
+            <Field label={form.kind==="urun"?"HİKAYE / TANITIM (Türkçe)":"YAZI (Türkçe)"}><textarea value={form.body||""} onChange={e=>setForm(f => ({...f,body:e.target.value}))} rows={5} style={{...inputS,resize:"vertical"}}/></Field>
 
             <div style={{background:"#141414",border:"1px solid #2A2A2A",borderRadius:10,padding:12,marginBottom:12}}>
               <div style={{fontSize:12,color:"#888",letterSpacing:"0.2px",fontWeight:600,marginBottom:8}}>ENGLISH (opsiyonel — boşsa Türkçe gösterilir)</div>
-              <Field label="TITLE"><input value={form.title_en||""} onChange={e=>setForm({...form,title_en:e.target.value})} style={inputS}/></Field>
-              <Field label="TEXT"><textarea value={form.body_en||""} onChange={e=>setForm({...form,body_en:e.target.value})} rows={4} style={{...inputS,resize:"vertical"}}/></Field>
+              <Field label="TITLE"><input value={form.title_en||""} onChange={e=>setForm(f => ({...f,title_en:e.target.value}))} style={inputS}/></Field>
+              <Field label="TEXT"><textarea value={form.body_en||""} onChange={e=>setForm(f => ({...f,body_en:e.target.value}))} rows={4} style={{...inputS,resize:"vertical"}}/></Field>
             </div>
 
             <div style={{background:"#141414",border:"1px solid #2A2A2A",borderRadius:10,padding:12,marginBottom:12}}>
               <div style={{fontSize:12,color:"#888",letterSpacing:"0.2px",fontWeight:600,marginBottom:8}}>РУССКИЙ (opsiyonel — boşsa Türkçe gösterilir)</div>
-              <Field label="ЗАГОЛОВОК"><input value={form.title_ru||""} onChange={e=>setForm({...form,title_ru:e.target.value})} style={inputS}/></Field>
-              <Field label="ТЕКСТ"><textarea value={form.body_ru||""} onChange={e=>setForm({...form,body_ru:e.target.value})} rows={4} style={{...inputS,resize:"vertical"}}/></Field>
+              <Field label="ЗАГОЛОВОК"><input value={form.title_ru||""} onChange={e=>setForm(f => ({...f,title_ru:e.target.value}))} style={inputS}/></Field>
+              <Field label="ТЕКСТ"><textarea value={form.body_ru||""} onChange={e=>setForm(f => ({...f,body_ru:e.target.value}))} rows={4} style={{...inputS,resize:"vertical"}}/></Field>
             </div>
 
             <Field label="LİNK (opsiyonel — karta tıklayınca bu sayfa açılır)">
-              <input value={form.link_url||""} onChange={e=>setForm({...form,link_url:e.target.value})} placeholder="örn: https://notinparis.me/pages/cote-de-lycia" style={inputS}/>
+              <input value={form.link_url||""} onChange={e=>setForm(f => ({...f,link_url:e.target.value}))} placeholder="örn: https://notinparis.me/pages/cote-de-lycia" style={inputS}/>
             </Field>
 
             <div style={{marginBottom:12}}>
@@ -238,9 +238,9 @@ export default function ContentPage() {
             </div>
 
             <div style={{display:"flex",gap:10,alignItems:"center",marginBottom:14}}>
-              <Field label="SIRA (küçük üstte)"><input type="number" value={form.sort_order??0} onChange={e=>setForm({...form,sort_order:e.target.value})} style={{...inputS,width:100}}/></Field>
+              <Field label="SIRA (küçük üstte)"><input type="number" value={form.sort_order??0} onChange={e=>setForm(f => ({...f,sort_order:e.target.value}))} style={{...inputS,width:100}}/></Field>
               <label style={{display:"flex",alignItems:"center",gap:8,fontSize:12,color:"#ddd",cursor:"pointer",marginTop:8}}>
-                <input type="checkbox" checked={form.is_active!==false} onChange={e=>setForm({...form,is_active:e.target.checked})} style={{accentColor:"#FFFFFF"}}/> Aktif (menüde görünür)
+                <input type="checkbox" checked={form.is_active!==false} onChange={e=>setForm(f => ({...f,is_active:e.target.checked}))} style={{accentColor:"#FFFFFF"}}/> Aktif (menüde görünür)
               </label>
             </div>
 

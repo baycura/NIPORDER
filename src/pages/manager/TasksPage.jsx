@@ -156,7 +156,7 @@ export default function TasksPage() {
             <h2 style={{ fontSize: 18, fontWeight: 700, marginTop: 0, marginBottom: 16 }}>Yeni Görev</h2>
             <div style={{ marginBottom: 12 }}>
               <label style={{ display: "block", fontSize: 12, color: "#888", marginBottom: 4, fontWeight: 600, letterSpacing: 0.5 }}>BAŞLIK *</label>
-              <input type="text" value={form.title} onChange={e => setForm({ ...form, title: e.target.value })} placeholder="Örn: Soğutucu temizliği" style={{ width: "100%", padding: "10px 12px", background: "#000", color: "#F0EDE8", border: "1px solid #444", borderRadius: 8, fontSize: 14, boxSizing: "border-box" }} autoFocus />
+              <input type="text" value={form.title} onChange={e => setForm(f => ({ ...f, title: e.target.value }))} placeholder="Örn: Soğutucu temizliği" style={{ width: "100%", padding: "10px 12px", background: "#000", color: "#F0EDE8", border: "1px solid #444", borderRadius: 8, fontSize: 14, boxSizing: "border-box" }} autoFocus />
             </div>
             <div style={{ marginBottom: 12 }}>
               <label style={{ display: "block", fontSize: 12, color: "#888", marginBottom: 6, fontWeight: 600, letterSpacing: 0.5 }}>ATANANLAR (boş = herkese açık)</label>
@@ -164,14 +164,14 @@ export default function TasksPage() {
                 {staffList.map(s => {
                   const sel = form.assigned_to.includes(s.id);
                   return (
-                    <button key={s.id} type="button" onClick={() => setForm({ ...form, assigned_to: sel ? form.assigned_to.filter(id => id !== s.id) : [...form.assigned_to, s.id] })} style={{ padding: "6px 12px", background: sel ? "#FFFFFF" : "#0F0F0F", color: sel ? "#000" : "#888", border: "1px solid " + (sel ? "#FFFFFF" : "#333"), borderRadius: 16, cursor: "pointer", fontSize: 12, fontWeight: 600 }}>{sel ? "✓ " : ""}{s.name}</button>
+                    <button key={s.id} type="button" onClick={() => setForm(f => ({ ...f, assigned_to: sel ? f.assigned_to.filter(id => id !== s.id) : [...f.assigned_to, s.id] }))} style={{ padding: "6px 12px", background: sel ? "#FFFFFF" : "#0F0F0F", color: sel ? "#000" : "#888", border: "1px solid " + (sel ? "#FFFFFF" : "#333"), borderRadius: 16, cursor: "pointer", fontSize: 12, fontWeight: 600 }}>{sel ? "✓ " : ""}{s.name}</button>
                   );
                 })}
               </div>
             </div>
             <div style={{ marginBottom: 16 }}>
               <label style={{ display: "block", fontSize: 12, color: "#888", marginBottom: 4, fontWeight: 600, letterSpacing: 0.5 }}>AÇIKLAMA (opsiyonel)</label>
-              <textarea value={form.description} onChange={e => setForm({ ...form, description: e.target.value })} rows={3} placeholder="Detay yazabilirsin..." style={{ width: "100%", padding: "10px 12px", background: "#000", color: "#F0EDE8", border: "1px solid #444", borderRadius: 8, fontSize: 14, resize: "vertical", fontFamily: "inherit", boxSizing: "border-box" }} />
+              <textarea value={form.description} onChange={e => setForm(f => ({ ...f, description: e.target.value }))} rows={3} placeholder="Detay yazabilirsin..." style={{ width: "100%", padding: "10px 12px", background: "#000", color: "#F0EDE8", border: "1px solid #444", borderRadius: 8, fontSize: 14, resize: "vertical", fontFamily: "inherit", boxSizing: "border-box" }} />
             </div>
             <div style={{ display: "flex", gap: 8, justifyContent: "flex-end" }}>
               <button onClick={() => { setModal(false); setForm({ title: "", description: "", assigned_to: [] }); }} style={{ padding: "10px 18px", background: "transparent", color: "#888", border: "1px solid #444", borderRadius: 8, cursor: "pointer", fontSize: 14 }}>İptal</button>

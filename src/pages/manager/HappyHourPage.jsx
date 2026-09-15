@@ -81,7 +81,7 @@ export default function HappyHourPage() {
 
   const toggleDay = (idx) => {
     const d = form.days_of_week.includes(idx) ? form.days_of_week.filter(x => x !== idx) : [...form.days_of_week, idx];
-    setForm({ ...form, days_of_week: d });
+    setForm(f => ({ ...f, days_of_week: d }));
   };
 
   // Secili urunlere yuzde indirim uygula (fiyatlari tek tek yazmaya gerek kalmasin)
@@ -95,13 +95,13 @@ export default function HappyHourPage() {
       const prod = products.find(x => x.id === pid);
       if (prod) po[pid] = Math.round(Number(prod.price) * (100 - pct) / 100);
     });
-    setForm({ ...form, product_overrides: po });
+    setForm(f => ({ ...f, product_overrides: po }));
   };
 
   const selectAllFiltered = (list) => {
     const po = { ...form.product_overrides };
     list.forEach(p => { if (po[p.id] == null) po[p.id] = Math.round(Number(p.price)); });
-    setForm({ ...form, product_overrides: po });
+    setForm(f => ({ ...f, product_overrides: po }));
   };
 
   const setProductPrice = (pid, defaultPrice, newPrice) => {
@@ -111,7 +111,7 @@ export default function HappyHourPage() {
     } else {
       po[pid] = parseInt(newPrice, 10) || 0;
     }
-    setForm({ ...form, product_overrides: po });
+    setForm(f => ({ ...f, product_overrides: po }));
   };
 
   const selectedCount = Object.keys(form.product_overrides).length;
@@ -157,15 +157,15 @@ export default function HappyHourPage() {
           <div style={{ background: "#111", padding: 24, borderRadius: 12, width: "100%", maxWidth: 700, border: "1px solid #333" }}>
             <h2 style={{ fontWeight: 800, fontSize: 20, margin: "0 0 16px 0" }}>Yeni happy hour</h2>
             <label style={{ display: "block", color: "#aaa", fontSize: 12, marginBottom: 4 }}>İsim</label>
-            <input value={form.name} onChange={e => setForm({ ...form, name: e.target.value })} placeholder="Örn: Akşam Kokteyl Saati" style={{ width: "100%", padding: 10, background: "#000", color: "#fff", border: "1px solid #333", borderRadius: 6, marginBottom: 12 }} />
+            <input value={form.name} onChange={e => setForm(f => ({ ...f, name: e.target.value }))} placeholder="Örn: Akşam Kokteyl Saati" style={{ width: "100%", padding: 10, background: "#000", color: "#fff", border: "1px solid #333", borderRadius: 6, marginBottom: 12 }} />
             <div style={{ display: "flex", gap: 12, marginBottom: 12 }}>
               <div style={{ flex: 1 }}>
                 <label style={{ display: "block", color: "#aaa", fontSize: 12, marginBottom: 4 }}>Başlangıç</label>
-                <input type="time" value={form.start_time} onChange={e => setForm({ ...form, start_time: e.target.value })} style={{ width: "100%", padding: 10, background: "#000", color: "#fff", border: "1px solid #333", borderRadius: 6 }} />
+                <input type="time" value={form.start_time} onChange={e => setForm(f => ({ ...f, start_time: e.target.value }))} style={{ width: "100%", padding: 10, background: "#000", color: "#fff", border: "1px solid #333", borderRadius: 6 }} />
               </div>
               <div style={{ flex: 1 }}>
                 <label style={{ display: "block", color: "#aaa", fontSize: 12, marginBottom: 4 }}>Bitiş</label>
-                <input type="time" value={form.end_time} onChange={e => setForm({ ...form, end_time: e.target.value })} style={{ width: "100%", padding: 10, background: "#000", color: "#fff", border: "1px solid #333", borderRadius: 6 }} />
+                <input type="time" value={form.end_time} onChange={e => setForm(f => ({ ...f, end_time: e.target.value }))} style={{ width: "100%", padding: 10, background: "#000", color: "#fff", border: "1px solid #333", borderRadius: 6 }} />
               </div>
             </div>
             <label style={{ display: "block", color: "#aaa", fontSize: 12, marginBottom: 4 }}>Günler</label>

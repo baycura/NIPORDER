@@ -144,7 +144,7 @@ export default function MembersPage() {
     if (error) { alert("Tahsilat yapılamadı: " + error.message); return; }
     const kalan = Number(data ?? newBalance);
     setPayAmount("");
-    setForm({ ...form, outstanding_balance: kalan });
+    setForm(f => ({ ...f, outstanding_balance: kalan }));
     alert("Ödeme kaydedildi. Yeni borç: ₺" + kalan);
     load();
   };
@@ -228,11 +228,11 @@ export default function MembersPage() {
 
       {modal && (
         <Modal onClose={() => setModal(null)} title={modal.mode==="new"?"Yeni Musteri":(modal.data?.name || "Musteri")}>
-          <Field label="AD SOYAD"><input value={form.name||""} onChange={e=>setForm({...form,name:e.target.value})} style={inputS}/></Field>
+          <Field label="AD SOYAD"><input value={form.name||""} onChange={e=>setForm(f => ({...f,name:e.target.value}))} style={inputS}/></Field>
           <div style={{display:"flex",gap:8}}>
-            <Field label="EMAIL"><input value={form.email||""} onChange={e=>setForm({...form,email:e.target.value})} style={inputS}/></Field>
+            <Field label="EMAIL"><input value={form.email||""} onChange={e=>setForm(f => ({...f,email:e.target.value}))} style={inputS}/></Field>
           </div>
-          <Field label="TELEFON"><input value={form.phone||""} onChange={e=>setForm({...form,phone:e.target.value})} style={inputS}/></Field>
+          <Field label="TELEFON"><input value={form.phone||""} onChange={e=>setForm(f => ({...f,phone:e.target.value}))} style={inputS}/></Field>
           {modal.mode === "edit" && modal.data?.member_code && (
             // Salt okunur: kod rezervasyon sisteminden geliyor, elle degistirilmez.
             // Veritabani tarafinda da kilitli (trg_customers_guard_identity).
@@ -286,7 +286,7 @@ export default function MembersPage() {
           <div style={{background:"#222",border:"1px solid #333",borderRadius:10,padding:12,marginBottom:12}}>
             <div style={{fontSize:12,color:"#888",letterSpacing:"0.2px",fontWeight:600,marginBottom:8}}>Özel indirim</div>
             <div style={{display:"flex",alignItems:"center",gap:8}}>
-              <input type="number" min="0" max="50" value={form.admin_discount||0} onChange={e=>setForm({...form,admin_discount:e.target.value})} style={{...inputS,flex:1}}/>
+              <input type="number" min="0" max="50" value={form.admin_discount||0} onChange={e=>setForm(f => ({...f,admin_discount:e.target.value}))} style={{...inputS,flex:1}}/>
               <span style={{fontSize:20,color:"#FFFFFF",fontWeight:700}}>%</span>
             </div>
             <div style={{fontSize:10,color:"#888888",marginTop:6}}>NOT: Bu musteriye ozel indirim. Uye indirimi yerine bu uygulanir.</div>
@@ -295,7 +295,7 @@ export default function MembersPage() {
           <div style={{background:"#161616",border:"1px solid #2A2A2A",borderRadius:10,padding:12,marginBottom:12}}>
             <div style={{fontSize:12,color:"#C87A6A",letterSpacing:"0.2px",fontWeight:600,marginBottom:8}}>Açık borç</div>
             <div style={{display:"flex",alignItems:"center",gap:8,marginBottom:10}}>
-              <input type="number" value={form.outstanding_balance||0} onChange={e=>setForm({...form,outstanding_balance:e.target.value})} style={{...inputS,flex:1}}/>
+              <input type="number" value={form.outstanding_balance||0} onChange={e=>setForm(f => ({...f,outstanding_balance:e.target.value}))} style={{...inputS,flex:1}}/>
               <span style={{fontSize:16,color:"#FFFFFF",fontWeight:700}}>₺</span>
             </div>
             {modal.mode === "edit" && (
@@ -320,7 +320,7 @@ export default function MembersPage() {
             )}
           </div>
 
-          <Field label="NOTLAR"><textarea value={form.notes||""} onChange={e=>setForm({...form,notes:e.target.value})} rows={3} style={{...inputS,resize:"vertical"}}/></Field>
+          <Field label="NOTLAR"><textarea value={form.notes||""} onChange={e=>setForm(f => ({...f,notes:e.target.value}))} rows={3} style={{...inputS,resize:"vertical"}}/></Field>
 
           <div style={{display:"flex",gap:8,marginTop:10}}>
             <button onClick={() => setModal(null)} style={cancelBtn}>Iptal</button>

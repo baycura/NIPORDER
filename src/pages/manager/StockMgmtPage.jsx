@@ -230,11 +230,11 @@ export default function StockMgmtPage() {
 
       {modal && (
         <Modal onClose={() => setModal(null)} title={modal.mode==="new"?"Yeni Hammadde":"Hammaddeyi Duzenle"}>
-          <Field label="AD"><input value={form.name||""} onChange={e=>setForm({...form,name:e.target.value})} placeholder="orn: Bud Ficinin" style={inputS}/></Field>
+          <Field label="AD"><input value={form.name||""} onChange={e=>setForm(f => ({...f,name:e.target.value}))} placeholder="orn: Bud Ficinin" style={inputS}/></Field>
           <Field label="BIRIM">
             <div style={{display:"flex",gap:6,flexWrap:"wrap"}}>
               {UNITS.map(u => (
-                <button key={u} onClick={()=>setForm({...form,unit:u})} style={{padding:"8px 14px",background:form.unit===u?"#FFFFFF":"#222",color:form.unit===u?"#000":"#888",border:"1px solid "+(form.unit===u?"#FFFFFF":"#333"),borderRadius:8,fontSize:12,fontWeight:700,cursor:"pointer"}}>{u}</button>
+                <button key={u} onClick={()=>setForm(f => ({...f,unit:u}))} style={{padding:"8px 14px",background:form.unit===u?"#FFFFFF":"#222",color:form.unit===u?"#000":"#888",border:"1px solid "+(form.unit===u?"#FFFFFF":"#333"),borderRadius:8,fontSize:12,fontWeight:700,cursor:"pointer"}}>{u}</button>
               ))}
             </div>
           </Field>
@@ -256,7 +256,7 @@ export default function StockMgmtPage() {
             </Field>
           ) : (
             <Field label={"STOK MIKTARI (" + form.unit + ")" + (modal.mode === "edit" ? " — ÜZERİNE YAZAR" : "")}>
-              <input type="number" step="0.01" value={form.stock_qty||0} onChange={e=>setForm({...form,stock_qty:e.target.value})} style={inputS}/>
+              <input type="number" step="0.01" value={form.stock_qty||0} onChange={e=>setForm(f => ({...f,stock_qty:e.target.value}))} style={inputS}/>
               {modal.mode === "edit" && (
                 <div style={{fontSize:11,color:"#C87A6A",marginTop:6,lineHeight:1.5}}>
                   Bu sayı mevcut stoğun yerine geçer. Eklemek için <button onClick={()=>setUzerineYaz(false)} style={{background:"transparent",border:"none",color:"#F0EDE8",textDecoration:"underline",cursor:"pointer",padding:0,font:"inherit"}}>+ Stok ekle</button>'ye dön.
@@ -265,7 +265,7 @@ export default function StockMgmtPage() {
             </Field>
           )}
           <Field label={"BIRIM MALIYET (₺ / " + form.unit + ")"}>
-            <input type="number" step="0.01" value={form.cost_per_unit||0} onChange={e=>setForm({...form,cost_per_unit:e.target.value})} style={inputS}/>
+            <input type="number" step="0.01" value={form.cost_per_unit||0} onChange={e=>setForm(f => ({...f,cost_per_unit:e.target.value}))} style={inputS}/>
             {/* Mililitre/gram maliyeti tek basina okunmaz; litre/kilo fiyatina
                 cevrilince yanlislik goze carpar (Sut ₺205/litre yaziyordu). */}
             {anlasilirYaz(form.cost_per_unit, form.unit) && (
@@ -286,23 +286,23 @@ export default function StockMgmtPage() {
               );
             })()}
           </Field>
-          <Field label="FIRE ORANI (%)"><input type="number" step="0.1" min="0" max="100" value={form.waste_pct||0} onChange={e=>setForm({...form,waste_pct:e.target.value})} placeholder="orn: 3 = %3 dokulme/fire" style={inputS}/></Field>
+          <Field label="FIRE ORANI (%)"><input type="number" step="0.1" min="0" max="100" value={form.waste_pct||0} onChange={e=>setForm(f => ({...f,waste_pct:e.target.value}))} placeholder="orn: 3 = %3 dokulme/fire" style={inputS}/></Field>
 
           <div style={{background:"#0C0C0C",border:"1px solid #2A2A2A",borderRadius:10,padding:12,marginBottom:12}}>
             <div style={{fontSize:12,color:"#8A8580",letterSpacing:"0.2px",fontWeight:600,marginBottom:8,display:"flex",alignItems:"center",gap:6}}><Ikon ad="stok" boy={13}/>AMBALAJ (fatura girisi bunu kullanir)</div>
             <Field label="KOLI ICI ADET (koli gelmiyorsa 1)">
-              <input type="number" min="1" step="1" value={form.pack_qty||1} onChange={e=>setForm({...form,pack_qty:e.target.value})} placeholder="orn: 24 sise/koli" style={inputS}/>
+              <input type="number" min="1" step="1" value={form.pack_qty||1} onChange={e=>setForm(f => ({...f,pack_qty:e.target.value}))} placeholder="orn: 24 sise/koli" style={inputS}/>
             </Field>
             <Field label="BIR SISE / FICI HACMI (ml)">
-              <input type="number" step="1" value={form.unit_volume_ml||""} onChange={e=>setForm({...form,unit_volume_ml:e.target.value})} placeholder="70cl sise = 700 · 30L fici = 30000" style={inputS}/>
+              <input type="number" step="1" value={form.unit_volume_ml||""} onChange={e=>setForm(f => ({...f,unit_volume_ml:e.target.value}))} placeholder="70cl sise = 700 · 30L fici = 30000" style={inputS}/>
             </Field>
             <Field label={"AMBALAJ BASINA FIRE (" + form.unit + ")"}>
-              <input type="number" step="1" value={form.waste_per_pack||0} onChange={e=>setForm({...form,waste_per_pack:e.target.value})} placeholder="Fici: 5 bardak fire = 5 x bardak ml" style={inputS}/>
+              <input type="number" step="1" value={form.waste_per_pack||0} onChange={e=>setForm(f => ({...f,waste_per_pack:e.target.value}))} placeholder="Fici: 5 bardak fire = 5 x bardak ml" style={inputS}/>
             </Field>
             {VOL_UNITS.includes(form.unit) && (
               <div style={{display:"flex",gap:6,flexWrap:"wrap"}}>
                 {[["5 x 500ml bardak",2500],["5 x 330ml bardak",1650],["Fire yok",0]].map(([lbl,val]) => (
-                  <button key={lbl} onClick={()=>setForm({...form,waste_per_pack:val})} style={{padding:"7px 10px",background:"#222",color:"#aaa",border:"1px solid #333",borderRadius:8,fontSize:11,fontWeight:700,cursor:"pointer"}}>{lbl}</button>
+                  <button key={lbl} onClick={()=>setForm(f => ({...f,waste_per_pack:val}))} style={{padding:"7px 10px",background:"#222",color:"#aaa",border:"1px solid #333",borderRadius:8,fontSize:11,fontWeight:700,cursor:"pointer"}}>{lbl}</button>
                 ))}
               </div>
             )}
@@ -315,7 +315,7 @@ export default function StockMgmtPage() {
           </div>
 
           <label style={{display:"flex",alignItems:"center",gap:8,marginBottom:12,cursor:"pointer"}}>
-            <input type="checkbox" checked={!!form.is_consumable} onChange={e=>setForm({...form,is_consumable:e.target.checked})} style={{width:18,height:18,accentColor:"#FFFFFF"}}/>
+            <input type="checkbox" checked={!!form.is_consumable} onChange={e=>setForm(f => ({...f,is_consumable:e.target.checked}))} style={{width:18,height:18,accentColor:"#FFFFFF"}}/>
             <span style={{fontSize:13,color:"#F0EDE8"}}>Sarf malzeme (buz, pet bardak, pipet...) — recetelere tek dokunusla eklenir</span>
           </label>
           <div style={{display:"flex",gap:8,marginTop:10}}>

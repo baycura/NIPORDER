@@ -214,24 +214,24 @@ export default function RidesPage() {
         </div>
 
         <div style={etiket}>BAŞLIK</div>
-        <input value={form.title} onChange={e => setForm({ ...form, title: e.target.value })}
+        <input value={form.title} onChange={e => setForm(f => ({ ...f, title: e.target.value }))}
                placeholder="Easy Coffee Ride" style={{ ...inputS, marginBottom: 11 }} />
 
         <div style={{ display: "flex", gap: 9, marginBottom: 11 }}>
           <div style={{ flex: 1.2 }}>
             <div style={etiket}>TARİH</div>
             <input type="date" value={form.ride_date}
-                   onChange={e => setForm({ ...form, ride_date: e.target.value })} style={inputS} />
+                   onChange={e => setForm(f => ({ ...f, ride_date: e.target.value }))} style={inputS} />
           </div>
           <div style={{ flex: 1 }}>
             <div style={etiket}>SAAT</div>
             <input type="time" value={form.ride_time}
-                   onChange={e => setForm({ ...form, ride_time: e.target.value })} style={inputS} />
+                   onChange={e => setForm(f => ({ ...f, ride_time: e.target.value }))} style={inputS} />
           </div>
         </div>
 
         <div style={etiket}>BULUŞMA</div>
-        <input value={form.meet_point} onChange={e => setForm({ ...form, meet_point: e.target.value })}
+        <input value={form.meet_point} onChange={e => setForm(f => ({ ...f, meet_point: e.target.value }))}
                placeholder="NOT IN PARIS" style={{ ...inputS, marginBottom: 11 }} />
 
         <div style={{ display: "flex", gap: 9, marginBottom: 11 }}>
@@ -239,14 +239,14 @@ export default function RidesPage() {
             <div key={k} style={{ flex: 1 }}>
               <div style={etiket}>{l}</div>
               <input type={k === "pace" ? "text" : "number"} inputMode="decimal" value={form[k]}
-                     onChange={e => setForm({ ...form, [k]: e.target.value })} style={inputS} />
+                     onChange={e => setForm(f => ({ ...f, [k]: e.target.value }))} style={inputS} />
             </div>
           ))}
         </div>
 
         <div style={etiket}>STRAVA ETKİNLİK NUMARASI <span style={{ color: C.faint, fontWeight: 400 }}>— opsiyonel</span></div>
         <input value={form.strava_event_id}
-               onChange={e => setForm({ ...form, strava_event_id: e.target.value })}
+               onChange={e => setForm(f => ({ ...f, strava_event_id: e.target.value }))}
                placeholder="3529462624075386286" style={{ ...inputS, marginBottom: 4 }} />
         <div style={{ fontSize: 12, color: C.faint, marginBottom: 11, lineHeight: 1.5 }}>
           Strava'daki etkinlik adresinin sonundaki uzun sayı. Yazarsan "Katıl" düğmesi
@@ -254,7 +254,7 @@ export default function RidesPage() {
         </div>
 
         <div style={etiket}>NOT</div>
-        <textarea value={form.notes} onChange={e => setForm({ ...form, notes: e.target.value })}
+        <textarea value={form.notes} onChange={e => setForm(f => ({ ...f, notes: e.target.value }))}
                   rows={2} placeholder="Kahve molası var, ışık getirin…"
                   style={{ ...inputS, resize: "vertical", minHeight: 60, marginBottom: 12 }} />
 

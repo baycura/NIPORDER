@@ -80,19 +80,19 @@ export default function CategorySchedulePage() {
 
   const toggleDay = (idx) => {
     const d = form.days_of_week.includes(idx) ? form.days_of_week.filter(x => x !== idx) : [...form.days_of_week, idx];
-    setForm({ ...form, days_of_week: d });
+    setForm(f => ({ ...f, days_of_week: d }));
   };
 
   const toggleCategory = (cid) => {
     const co = { ...form.category_overrides };
     if (co[cid]) delete co[cid]; else co[cid] = true;
-    setForm({ ...form, category_overrides: co });
+    setForm(f => ({ ...f, category_overrides: co }));
   };
 
   const toggleProduct = (pid) => {
     const po = { ...form.product_overrides };
     if (po[pid]) delete po[pid]; else po[pid] = true;
-    setForm({ ...form, product_overrides: po });
+    setForm(f => ({ ...f, product_overrides: po }));
   };
 
   return (
@@ -136,15 +136,15 @@ export default function CategorySchedulePage() {
           <div style={{ background: "#111", padding: 24, borderRadius: 12, width: "100%", maxWidth: 700, border: "1px solid #333" }}>
             <h2 style={{ fontWeight: 800, fontSize: 20, margin: "0 0 16px 0" }}>Yeni kural</h2>
             <label style={{ display: "block", color: "#aaa", fontSize: 12, marginBottom: 4 }}>İsim</label>
-            <input value={form.name} onChange={e => setForm({ ...form, name: e.target.value })} placeholder="Örn: Gece Mutfak Kapalı" style={{ width: "100%", padding: 10, background: "#000", color: "#fff", border: "1px solid #333", borderRadius: 6, marginBottom: 12 }} />
+            <input value={form.name} onChange={e => setForm(f => ({ ...f, name: e.target.value }))} placeholder="Örn: Gece Mutfak Kapalı" style={{ width: "100%", padding: 10, background: "#000", color: "#fff", border: "1px solid #333", borderRadius: 6, marginBottom: 12 }} />
             <div style={{ display: "flex", gap: 12, marginBottom: 12 }}>
               <div style={{ flex: 1 }}>
                 <label style={{ display: "block", color: "#aaa", fontSize: 12, marginBottom: 4 }}>Başlangıç</label>
-                <input type="time" value={form.start_time} onChange={e => setForm({ ...form, start_time: e.target.value })} style={{ width: "100%", padding: 10, background: "#000", color: "#fff", border: "1px solid #333", borderRadius: 6 }} />
+                <input type="time" value={form.start_time} onChange={e => setForm(f => ({ ...f, start_time: e.target.value }))} style={{ width: "100%", padding: 10, background: "#000", color: "#fff", border: "1px solid #333", borderRadius: 6 }} />
               </div>
               <div style={{ flex: 1 }}>
                 <label style={{ display: "block", color: "#aaa", fontSize: 12, marginBottom: 4 }}>Bitiş</label>
-                <input type="time" value={form.end_time} onChange={e => setForm({ ...form, end_time: e.target.value })} style={{ width: "100%", padding: 10, background: "#000", color: "#fff", border: "1px solid #333", borderRadius: 6 }} />
+                <input type="time" value={form.end_time} onChange={e => setForm(f => ({ ...f, end_time: e.target.value }))} style={{ width: "100%", padding: 10, background: "#000", color: "#fff", border: "1px solid #333", borderRadius: 6 }} />
               </div>
             </div>
             <label style={{ display: "block", color: "#aaa", fontSize: 12, marginBottom: 4 }}>Günler</label>

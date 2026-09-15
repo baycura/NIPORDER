@@ -439,11 +439,11 @@ export default function InvoicesPage() {
 
       {modal && (
         <Modal onClose={()=>setModal(null)} title={modal.mode === "manual" ? "Manuel Stok Girişi" : "Yeni Fatura"}>
-          <Field label="TEDARIKCI"><input value={form.supplier_name||""} onChange={e=>setForm({...form,supplier_name:e.target.value})} placeholder="orn: Anadolu Efes" style={inputS}/></Field>
+          <Field label="TEDARIKCI"><input value={form.supplier_name||""} onChange={e=>setForm(f => ({...f,supplier_name:e.target.value}))} placeholder="orn: Anadolu Efes" style={inputS}/></Field>
           <div style={{display:"flex",gap:8}}>
-            <Field label="TARIH"><input type="date" value={form.invoice_date||""} onChange={e=>setForm({...form,invoice_date:e.target.value})} style={inputS}/></Field>
+            <Field label="TARIH"><input type="date" value={form.invoice_date||""} onChange={e=>setForm(f => ({...f,invoice_date:e.target.value}))} style={inputS}/></Field>
             {modal.mode !== "manual" && (
-              <Field label="FATURA NO"><input value={form.invoice_no||""} onChange={e=>setForm({...form,invoice_no:e.target.value})} placeholder="XML'den gelir" style={inputS}/></Field>
+              <Field label="FATURA NO"><input value={form.invoice_no||""} onChange={e=>setForm(f => ({...f,invoice_no:e.target.value}))} placeholder="XML'den gelir" style={inputS}/></Field>
             )}
           </div>
 

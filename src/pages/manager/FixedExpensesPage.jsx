@@ -214,17 +214,17 @@ export default function FixedExpensesPage() {
 
       {modal && (
         <Modal onClose={() => setModal(null)} title={modal.mode === "new" ? "Yeni Sabit Gider" : "Gideri Düzenle"}>
-          <Field label="GİDER ADI"><input value={form.name || ""} onChange={e => setForm({ ...form, name: e.target.value })} placeholder="örn: Dükkan kirası, Mustafa maaş, Elektrik" style={inputS} /></Field>
+          <Field label="GİDER ADI"><input value={form.name || ""} onChange={e => setForm(f => ({ ...f, name: e.target.value }))} placeholder="örn: Dükkan kirası, Mustafa maaş, Elektrik" style={inputS} /></Field>
           <Field label="KATEGORİ">
             <div style={{ display: "flex", gap: 6, flexWrap: "wrap" }}>
               {CATEGORIES.map(c => (
-                <button key={c.key} onClick={() => setForm({ ...form, category: c.key })} style={{ padding: "8px 12px", background: form.category === c.key ? "#FFFFFF" : "#222", color: form.category === c.key ? "#000" : "#888", border: "1px solid " + (form.category === c.key ? "#FFFFFF" : "#333"), borderRadius: 8, fontSize: 12, fontWeight: 700, cursor: "pointer" }}>{c.icon} {c.label}</button>
+                <button key={c.key} onClick={() => setForm(f => ({ ...f, category: c.key }))} style={{ padding: "8px 12px", background: form.category === c.key ? "#FFFFFF" : "#222", color: form.category === c.key ? "#000" : "#888", border: "1px solid " + (form.category === c.key ? "#FFFFFF" : "#333"), borderRadius: 8, fontSize: 12, fontWeight: 700, cursor: "pointer" }}>{c.icon} {c.label}</button>
               ))}
             </div>
           </Field>
-          <Field label="AYLIK TUTAR (₺)"><input type="number" step="0.01" value={form.amount ?? ""} onChange={e => setForm({ ...form, amount: e.target.value })} style={inputS} /></Field>
-          <Field label="ÖDEME GÜNÜ (opsiyonel, 1-31)"><input type="number" min="1" max="31" value={form.day_of_month ?? ""} onChange={e => setForm({ ...form, day_of_month: e.target.value })} placeholder="örn: 5" style={inputS} /></Field>
-          <Field label="NOT (opsiyonel)"><input value={form.notes || ""} onChange={e => setForm({ ...form, notes: e.target.value })} placeholder="örn: kontrat Mart'ta yenilenecek" style={inputS} /></Field>
+          <Field label="AYLIK TUTAR (₺)"><input type="number" step="0.01" value={form.amount ?? ""} onChange={e => setForm(f => ({ ...f, amount: e.target.value }))} style={inputS} /></Field>
+          <Field label="ÖDEME GÜNÜ (opsiyonel, 1-31)"><input type="number" min="1" max="31" value={form.day_of_month ?? ""} onChange={e => setForm(f => ({ ...f, day_of_month: e.target.value }))} placeholder="örn: 5" style={inputS} /></Field>
+          <Field label="NOT (opsiyonel)"><input value={form.notes || ""} onChange={e => setForm(f => ({ ...f, notes: e.target.value }))} placeholder="örn: kontrat Mart'ta yenilenecek" style={inputS} /></Field>
           <div style={{ display: "flex", gap: 8, marginTop: 10 }}>
             <button onClick={() => setModal(null)} style={cancelBtn}>İptal</button>
             <button onClick={save} disabled={busy} style={{ ...saveBtn, opacity: busy ? 0.6 : 1 }}>{busy ? "..." : "Kaydet"}</button>
