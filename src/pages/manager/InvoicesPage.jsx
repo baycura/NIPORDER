@@ -619,10 +619,14 @@ export default function InvoicesPage() {
                           <input type="number" step="1" value={l.pack_qty||1} onChange={e=>updateLine(idx,"pack_qty",e.target.value)} style={{...inputS, padding:"8px"}}/>
                         </label>
                       )}
+                      {/* Icerik yalniz hacimle tutulan malzemede sorulur:
+                          adetle tutulan sise birada "sise icerigi" hep 1. */}
+                      {["ml","cl","l"].includes(c.unit) && (
                       <label style={{flex:"1 1 100px"}}>
                         <div style={{fontSize:9,color:"#888888",fontWeight:700,marginBottom:3}}>ŞİŞE / FIÇI İÇERİĞİ ({c.unit})</div>
                         <input type="number" step="0.01" value={l.content||1} onChange={e=>updateLine(idx,"content",e.target.value)} placeholder={c.unit==="ml"?"70cl = 700":"1"} style={{...inputS, padding:"8px"}}/>
                       </label>
+                      )}
                       <label style={{flex:"1 1 110px"}}>
                         <div style={{fontSize:9,color:"#888888",fontWeight:700,marginBottom:3}}>{koli ? "KOLİ FİYATI ₺" : "ADET FİYATI ₺"} (KDV dahil)</div>
                         <input type="number" step="0.01" value={l.unit_cost||0} onChange={e=>updateLine(idx,"unit_cost",e.target.value)} style={{...inputS, padding:"8px"}}/>

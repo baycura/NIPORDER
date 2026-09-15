@@ -166,7 +166,9 @@ export default function StockMgmtPage() {
                   {isLow && <span style={{fontSize:9,padding:"2px 6px",background:"#2A2A2A",color:"#C87A6A",borderRadius:6,fontWeight:700}}>Azalan</span>}
                   {i.waste_pct > 0 && <span style={{fontSize:9,padding:"2px 6px",background:"#2A2A2A",color:"#F0EDE8",borderRadius:6,fontWeight:700}}>FIRE %{i.waste_pct}</span>}
                   {i.is_consumable && <span style={{fontSize:9,padding:"2px 6px",background:"#2A2A2A",color:"#F0EDE8",borderRadius:6,fontWeight:700}}>Sarf</span>}
-                  {Number(i.unit_volume_ml) > 0 && <span style={{fontSize:9,padding:"2px 6px",background:"#22262E",color:"#8A8580",borderRadius:6,fontWeight:700}}>{Number(i.pack_qty)>1 ? i.pack_qty+"x" : ""}{Number(i.unit_volume_ml)>=1000 ? (Number(i.unit_volume_ml)/1000)+"L" : i.unit_volume_ml+"ml"}</span>}
+                  {/* Ambalaj rozeti yalniz hacimle tutulan malzemede: adetle
+                      tutulan sise birada "24x330ml" bilgi degil gurultu. */}
+                  {VOL_UNITS.includes(i.unit) && Number(i.unit_volume_ml) > 0 && <span style={{fontSize:9,padding:"2px 6px",background:"#22262E",color:"#8A8580",borderRadius:6,fontWeight:700}}>{Number(i.pack_qty)>1 ? i.pack_qty+"x" : ""}{Number(i.unit_volume_ml)>=1000 ? (Number(i.unit_volume_ml)/1000)+"L" : i.unit_volume_ml+"ml"}</span>}
                 </div>
                 <div style={{fontSize:12,color:"#888",marginTop:3}}>
                   <span style={{color:isLow?"#C87A6A":"#F0EDE8",fontWeight:700}}>{i.stock_qty}</span> {i.unit}
@@ -367,24 +369,30 @@ export default function StockMgmtPage() {
           </Field>
           <Field label="FIRE ORANI (%)"><input type="number" step="0.1" min="0" max="100" value={form.waste_pct||0} onChange={e=>setForm(f => ({...f,waste_pct:e.target.value}))} placeholder="orn: 3 = %3 dokulme/fire" style={inputS}/></Field>
 
+          {/* AMBALAJ yalniz hacimle tutulan malzemede sorulur. Adetle tutulan
+              sise bira icin sise hacmi, koli ici ve ambalaj fire hesabi ne
+              stoga ne maliyete giriyor — sahip: "adet fiyatiyla alip adet
+              fiyatiyla satiyoruz, bu kadar detay gereksiz". */}
+          {VOL_UNITS.includes(form.unit) ? (
           <div style={{background:"#0C0C0C",border:"1px solid #2A2A2A",borderRadius:10,padding:12,marginBottom:12}}>
-            <div style={{fontSize:12,color:"#8A8580",letterSpacing:"0.2px",fontWeight:600,marginBottom:8,display:"flex",alignItems:"center",gap:6}}><Ikon ad="stok" boy={13}/>AMBALAJ (fatura girisi bunu kullanir)</div>
+            <div style={{fontSize:12,color:"#8A8580",letterSpacing:"0.2px",fontWeight:600,marginBottom:8,display:"flex",alignItems:"center",gap:6}}><Ikon ad="stok" boy={13}/>ŞİŞE / FIÇI HESABI</div>
+            <Field label="BIR SISE / FICI HACMI (ml)">
+              <input type="number" step="1" value={form.unit_volume_ml||""} onChange={e=>setForm(f => ({...f,unit_volume_ml:e.target.value}))} placeholder="70cl sise = 700 · 50L fici = 50000" style={inputS}/>
+              <div style={{fontSize:11,color:"#666",marginTop:5,lineHeight:1.5}}>
+                Sayımda ve stok girişinde şişe/fıçı olarak saymayı bu sağlar. 20 L ve üstü fıçı sayılır, hep adetle girilir.
+              </div>
+            </Field>
             <Field label="KOLI ICI ADET (koli gelmiyorsa 1)">
               <input type="number" min="1" step="1" value={form.pack_qty||1} onChange={e=>setForm(f => ({...f,pack_qty:e.target.value}))} placeholder="orn: 24 sise/koli" style={inputS}/>
-            </Field>
-            <Field label="BIR SISE / FICI HACMI (ml)">
-              <input type="number" step="1" value={form.unit_volume_ml||""} onChange={e=>setForm(f => ({...f,unit_volume_ml:e.target.value}))} placeholder="70cl sise = 700 · 30L fici = 30000" style={inputS}/>
             </Field>
             <Field label={"AMBALAJ BASINA FIRE (" + form.unit + ")"}>
               <input type="number" step="1" value={form.waste_per_pack||0} onChange={e=>setForm(f => ({...f,waste_per_pack:e.target.value}))} placeholder="Fici: 5 bardak fire = 5 x bardak ml" style={inputS}/>
             </Field>
-            {VOL_UNITS.includes(form.unit) && (
-              <div style={{display:"flex",gap:6,flexWrap:"wrap"}}>
-                {[["5 x 500ml bardak",2500],["5 x 330ml bardak",1650],["Fire yok",0]].map(([lbl,val]) => (
-                  <button key={lbl} onClick={()=>setForm(f => ({...f,waste_per_pack:val}))} style={{padding:"7px 10px",background:"#222",color:"#aaa",border:"1px solid #333",borderRadius:8,fontSize:11,fontWeight:700,cursor:"pointer"}}>{lbl}</button>
-                ))}
-              </div>
-            )}
+            <div style={{display:"flex",gap:6,flexWrap:"wrap"}}>
+              {[["5 x 500ml bardak",2500],["5 x 330ml bardak",1650],["Fire yok",0]].map(([lbl,val]) => (
+                <button key={lbl} onClick={()=>setForm(f => ({...f,waste_per_pack:val}))} style={{padding:"7px 10px",background:"#222",color:"#aaa",border:"1px solid #333",borderRadius:8,fontSize:11,fontWeight:700,cursor:"pointer"}}>{lbl}</button>
+              ))}
+            </div>
             {Number(form.unit_volume_ml) > 0 && Number(form.pack_qty) > 0 && (
               <div style={{fontSize:11,color:"#888",marginTop:8,lineHeight:1.5}}>
                 1 koli = {form.pack_qty} x {form.unit_volume_ml} ml = <b style={{color:"#FFFFFF"}}>{(Number(form.pack_qty)*Number(form.unit_volume_ml)).toLocaleString("tr-TR")} ml</b>
@@ -392,6 +400,12 @@ export default function StockMgmtPage() {
               </div>
             )}
           </div>
+          ) : (
+            <div style={{fontSize:11,color:"#666",marginBottom:12,lineHeight:1.6}}>
+              Bu malzeme <b style={{color:"#8A8580"}}>{form.unit}</b> olarak tutuluyor: şişe hacmi, koli ve ambalaj fire hesabı sorulmaz.
+              Ne aldıysan o sayıda girersin, satışta o sayıdan düşer.
+            </div>
+          )}
 
           <label style={{display:"flex",alignItems:"center",gap:8,marginBottom:12,cursor:"pointer"}}>
             <input type="checkbox" checked={!!form.is_consumable} onChange={e=>setForm(f => ({...f,is_consumable:e.target.checked}))} style={{width:18,height:18,accentColor:"#FFFFFF"}}/>
