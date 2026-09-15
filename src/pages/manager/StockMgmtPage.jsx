@@ -3,7 +3,7 @@ import { useNavigate } from "react-router-dom";
 import { supabase } from "../../lib/supabase.js";
 import { useAuth } from "../../contexts/AuthContext.jsx";
 import Ikon from "../../components/Ikon.jsx";
-import StokEkleSheet from "../../components/StokEkleSheet.jsx";
+import StokEkleSheet, { stokGeriAl } from "../../components/StokEkleSheet.jsx";
 import { paketIkilemi, ikilemMetni, birimYaz, anlasilirYaz } from "../../lib/birimMaliyet.js";
 
 const cv = "-apple-system,BlinkMacSystemFont,'Segoe UI',Roboto,sans-serif";
@@ -27,8 +27,10 @@ export default function StockMgmtPage() {
   const [sonGiris, setSonGiris] = useState(null);  // "3 sise eklendi" seridi
   const [girisler, setGirisler] = useState([]);    // stock_entries defteri
 
-  const load = async () => {
-    setLoading(true);
+  // sessiz: stok girisi sonrasi tazelemede sayfayi "Yukleniyor" ekranina
+  // dusurmesin (acik modal ve onay seridi kaybolurdu)
+  const load = async (sessiz) => {
+    if (!sessiz) setLoading(true);
     const storeIds = staffUser?.store_ids?.length ? staffUser.store_ids : ["00000000-0000-0000-0000-000000000000"];
     const [{ data }, { data: gir }] = await Promise.all([
       supabase.from("ingredients").select("*").in("store_id", storeIds).order("name"),
@@ -46,12 +48,27 @@ export default function StockMgmtPage() {
   const openEdit = (i) => { setUzerineYaz(false); setModal({mode:"edit", data:i}); setForm({name:i.name, unit:i.unit, stock_qty:Number(i.stock_qty)||0, cost_per_unit:Number(i.cost_per_unit)||0, waste_pct:Number(i.waste_pct)||0, pack_qty:Number(i.pack_qty)||1, unit_volume_ml:i.unit_volume_ml??"", waste_per_pack:Number(i.waste_per_pack)||0, is_consumable:!!i.is_consumable}); };
 
   // Satirdan ya da modalin icinden acilir; kaydedince listeyi tazeler.
-  const stokEkleAc = (i) => setEkle({ tur:"malzeme", id:i.id, ad:i.name, birim:i.unit, stok:Number(i.stock_qty)||0, pack_qty:Number(i.pack_qty)||1 });
+  // storeId kalemin kendi magazasi: iki magazali yoneticide liste iki magazadan
+  // geliyor, sayfanin ilk magazasi gonderilse "bulunamadi" hatasi duserdi.
+  const stokEkleAc = (i) => setEkle({ tur:"malzeme", id:i.id, ad:i.name, birim:i.unit, stok:Number(i.stock_qty)||0, pack_qty:Number(i.pack_qty)||1, storeId:i.store_id });
   const girisBitti = (s) => {
+    const acik = ekle;
     setEkle(null);
     setSonGiris(s);
-    setForm(f => (modal?.mode === "edit" && modal.data?.id === ekle?.id ? { ...f, stock_qty: Number(s.sonraki)||0 } : f));
-    load();
+    // Modal acikken girildiyse hem formu hem modal.data'yi tazele: yoksa ayni
+    // modaldan ikinci giris bayat mevcutla acilirdi.
+    if (modal?.mode === "edit" && modal.data?.id === acik?.id) {
+      setForm(f => ({ ...f, stock_qty: Number(s.sonraki)||0 }));
+      setModal(m => (m ? { ...m, data: { ...m.data, stock_qty: Number(s.sonraki)||0 } } : m));
+    }
+    load(true);
+  };
+  const geriAl = async () => {
+    if (!sonGiris) return;
+    const { error } = await stokGeriAl(sonGiris);
+    if (error) { alert("Geri alinamadi: " + error.message); return; }
+    setSonGiris(null);
+    load(true);
   };
 
   const save = async () => {
@@ -114,12 +131,13 @@ export default function StockMgmtPage() {
       <div style={{fontSize:11,color:"#888",letterSpacing:"1px",marginBottom:14}}>{items.length} HAMMADDE · {lowStock} AZALAN</div>
 
       {sonGiris && (
-        <div onClick={()=>setSonGiris(null)} style={{background:"#161616",border:"1px solid #FFFFFF",borderRadius:12,padding:"11px 14px",marginBottom:12,display:"flex",alignItems:"center",gap:10,cursor:"pointer"}}>
+        <div style={{background:"#161616",border:"1px solid #FFFFFF",borderRadius:12,padding:"11px 14px",marginBottom:12,display:"flex",alignItems:"center",gap:10}}>
           <Ikon ad="onayli" boy={16} style={{color:"#FFFFFF",flexShrink:0}}/>
           <div style={{flex:1,minWidth:0,fontSize:13}}>
             <b>{sonGiris.kalem}</b> · {Number(sonGiris.onceki)} → <b>{Number(sonGiris.sonraki)}</b> {sonGiris.birim} kaydedildi
           </div>
-          <Ikon ad="kapat" boy={13} style={{color:"#666",flexShrink:0}}/>
+          <button onClick={geriAl} style={{padding:"8px 12px",minHeight:38,background:"transparent",color:"#C87A6A",border:"1px solid #2A2A2A",borderRadius:8,fontSize:12,fontWeight:700,cursor:"pointer",flexShrink:0,fontFamily:"inherit"}}>Geri al</button>
+          <button onClick={()=>setSonGiris(null)} aria-label="Kapat" style={{background:"transparent",border:"none",color:"#666",cursor:"pointer",padding:4,flexShrink:0}}><Ikon ad="kapat" boy={13}/></button>
         </div>
       )}
 
@@ -309,6 +327,7 @@ export default function StockMgmtPage() {
 
       {ekle && (
         <StokEkleSheet kalem={ekle} storeId={staffUser?.store_ids?.[0]}
+          ipucu="Faturayla gelen malda maliyet de güncellensin diye Faturalar ekranını kullan; burası elden alınan mal, düzeltme ve fire içindir."
           onKapat={()=>setEkle(null)} onBitti={girisBitti}/>
       )}
     </div>

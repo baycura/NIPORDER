@@ -2,7 +2,7 @@ import { useEffect, useState } from "react";
 import { supabase } from "../../lib/supabase.js";
 import { useAuth } from "../../contexts/AuthContext.jsx";
 import Ikon from "../../components/Ikon.jsx";
-import StokEkleSheet from "../../components/StokEkleSheet.jsx";
+import StokEkleSheet, { stokGeriAl } from "../../components/StokEkleSheet.jsx";
 
 const cv = "-apple-system,BlinkMacSystemFont,'Segoe UI',Roboto,sans-serif";
 const SIZE_SETS = {
@@ -86,7 +86,10 @@ export default function RetailPage() {
 
   const openEditProduct = (p) => {
     const vs = Array.isArray(p.variants) ? p.variants : [];
-    setStokIlk(stokImzasi(p.retail_stock, vs));
+    // Imza kaydetmedeki ile AYNI kaynaktan kurulmali: bedenli urunde toplam
+    // bedenlerden hesaplanir. retail_stock ile beden toplami ayrismis olabilir
+    // (satis tetigi ikisini bagimsiz kirpiyor) ve imza tutmazsa koruma calismaz.
+    setStokIlk(stokImzasi(vs.length ? vs.reduce((s, v) => s + (Number(v.stock) || 0), 0) : p.retail_stock, vs));
     setProdModal({ mode: "edit", data: p });
     setForm({
       name: p.name || "", name_en: p.name_en || "", brand_id: p.brand_id || "", price: p.price ?? "",
@@ -147,9 +150,15 @@ export default function RetailPage() {
   };
   const stokEkleAc = (p) => {
     const vs = Array.isArray(p.variants) ? p.variants.filter(v => v?.name) : [];
-    setEkle({ tur:"urun", id:p.id, ad:p.name, stok:Number(p.retail_stock)||0, bedenler:vs, takipsiz: p.track_stock !== true });
+    setEkle({ tur:"urun", id:p.id, ad:p.name, stok:Number(p.retail_stock)||0, bedenler:vs, takipsiz: p.track_stock !== true, storeId: p.store_id });
   };
   const girisBitti = (s) => { setEkle(null); setSonGiris(s); load(); };
+  const geriAl = async () => {
+    if (!sonGiris) return;
+    const { error } = await stokGeriAl(sonGiris);
+    if (error) { alert("Geri alinamadi: " + error.message); return; }
+    setSonGiris(null); load();
+  };
 
   const delProduct = async (p) => {
     if (!confirm('"' + p.name + '" silinsin mi?')) return;
@@ -213,12 +222,13 @@ export default function RetailPage() {
       </div>
 
       {sonGiris && (
-        <div onClick={() => setSonGiris(null)} style={{ background: "#161616", border: "1px solid #FFFFFF", borderRadius: 12, padding: "11px 14px", marginBottom: 12, display: "flex", alignItems: "center", gap: 10, cursor: "pointer" }}>
+        <div style={{ background: "#161616", border: "1px solid #FFFFFF", borderRadius: 12, padding: "11px 14px", marginBottom: 12, display: "flex", alignItems: "center", gap: 10 }}>
           <Ikon ad="onayli" boy={16} style={{ color: "#FFFFFF", flexShrink: 0 }} />
           <div style={{ flex: 1, minWidth: 0, fontSize: 13 }}>
             <b>{sonGiris.kalem}{sonGiris.beden ? " · " + sonGiris.beden : ""}</b> · {Number(sonGiris.onceki)} → <b>{Number(sonGiris.sonraki)}</b> adet kaydedildi
           </div>
-          <Ikon ad="kapat" boy={13} style={{ color: "#666", flexShrink: 0 }} />
+          <button onClick={geriAl} style={{ padding: "8px 12px", minHeight: 38, background: "transparent", color: "#C87A6A", border: "1px solid #2A2A2A", borderRadius: 8, fontSize: 12, fontWeight: 700, cursor: "pointer", flexShrink: 0, fontFamily: "inherit" }}>Geri al</button>
+          <button onClick={() => setSonGiris(null)} aria-label="Kapat" style={{ background: "transparent", border: "none", color: "#666", cursor: "pointer", padding: 4, flexShrink: 0 }}><Ikon ad="kapat" boy={13} /></button>
         </div>
       )}
 

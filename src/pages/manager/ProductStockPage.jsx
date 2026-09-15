@@ -3,7 +3,7 @@ import { Link } from "react-router-dom";
 import { supabase } from "../../lib/supabase.js";
 import { useAuth } from "../../contexts/AuthContext.jsx";
 import Ikon from "../../components/Ikon.jsx";
-import StokEkleSheet from "../../components/StokEkleSheet.jsx";
+import StokEkleSheet, { stokGeriAl } from "../../components/StokEkleSheet.jsx";
 
 // URUN STOKU — "hangi urunden elimizde kac tane var?" kategori ve markaya gore.
 //
@@ -50,7 +50,7 @@ export default function ProductStockPage() {
       supabase.from("categories").select("id,name,parent_id,sort_order,is_active,staff_only,show_in_shop").order("sort_order"),
       supabase.from("brands").select("id,name,sort_order").order("sort_order"),
       supabase.from("recipes").select("product_id,ingredient_id,qty_per_unit,party_only"),
-      supabase.from("ingredients").select("id,name,unit,stock_qty,min_stock,is_consumable").in("store_id", storeIds),
+      supabase.from("ingredients").select("id,name,unit,stock_qty,min_stock,is_consumable,store_id").in("store_id", storeIds),
     ]).then(rs => {
       if (iptal) return;
       const err = rs.find(r => r.error);
@@ -60,9 +60,15 @@ export default function ProductStockPage() {
     return () => { iptal = true; };
   }, [staffUser?.id, tazele]);
 
-  const rafEkleAc = (u) => setEkle({ tur: "urun", id: u.id, ad: u.name, stok: Number(u.retail_stock) || 0, bedenler: u.bedenler, takipsiz: u.track_stock !== true });
-  const malzemeEkleAc = (m) => setEkle({ tur: "malzeme", id: m.id, ad: m.ad, birim: m.unit, stok: Number(m.stok) || 0 });
+  const rafEkleAc = (u) => setEkle({ tur: "urun", id: u.id, ad: u.name, stok: Number(u.retail_stock) || 0, bedenler: u.bedenler, takipsiz: u.track_stock !== true, storeId: u.store_id });
+  const malzemeEkleAc = (m) => setEkle({ tur: "malzeme", id: m.id, ad: m.ad, birim: m.unit, stok: Number(m.stok) || 0, storeId: m.store_id });
   const girisBitti = (s) => { setEkle(null); setSonGiris(s); setTazele(t => t + 1); };
+  const geriAl = async () => {
+    if (!sonGiris) return;
+    const { error } = await stokGeriAl(sonGiris);
+    if (error) { setHata("Geri alinamadi: " + error.message); return; }
+    setSonGiris(null); setTazele(t => t + 1);
+  };
 
   // Her urune bir stok karti: { tur, adet, seviye, bedenler, sinir, malzemeler }
   const urunler = useMemo(() => {
@@ -92,8 +98,8 @@ export default function ProductStockPage() {
           const stok = Number(i.stock_qty) || 0;
           const birim = Number(r.qty_per_unit) || 0;
           const sinirlar = !r.party_only && !i.is_consumable && birim > 0;
-          // id de tasiniyor: satir acilinca malzemeye dogrudan stok girilebilsin
-          return { id: i.id, ad: i.name, unit: i.unit, stok, birim, parti: !!r.party_only, sarf: !!i.is_consumable, sinirlar,
+          // id ve magaza da tasiniyor: satir acilinca malzemeye stok girilebilsin
+          return { id: i.id, store_id: i.store_id, ad: i.name, unit: i.unit, stok, birim, parti: !!r.party_only, sarf: !!i.is_consumable, sinirlar,
                    yapilabilir: sinirlar ? Math.floor(Math.max(0, stok) / birim) : null };
         });
         const sinirlayan = malzemeler.filter(m => m.sinirlar);
@@ -207,8 +213,10 @@ export default function ProductStockPage() {
               {seviyeAd[u.seviye] && <div style={{ fontSize: 10, color: seviyeRenk[u.seviye], marginTop: 3, fontWeight: 700, letterSpacing: 0.3 }}>{seviyeAd[u.seviye].toUpperCase()}</div>}
             </div>
             {/* Raf urunu: adedi buradan eklenir. Recete urununde stok malzemede
-                yasar — satir acilinca malzemenin yanindaki + kullanilir. */}
-            {!u.receteli && (
+                yasar — satir acilinca malzemenin yanindaki + kullanilir.
+                Menu urununde (Cilbir, Durum...) adet stogu tutulmaz: dugme
+                cikmaz, yoksa kasada "raf urunu" gibi davranip mutfaga dusmezdi. */}
+            {!u.receteli && (u.tur === "raf" || u.rafMi) && (
               <button onClick={(e) => { e.stopPropagation(); rafEkleAc(u); }} title="Stoğa ekle"
                 style={{ width: 40, height: 40, flexShrink: 0, borderRadius: 9, background: "transparent", color: C.ink, border: `1px solid ${C.cardLine}`, cursor: "pointer", display: "flex", alignItems: "center", justifyContent: "center" }}>
                 <Ikon ad="ekle" boy={15} />
@@ -247,12 +255,13 @@ export default function ProductStockPage() {
       </div>
 
       {sonGiris && (
-        <div onClick={() => setSonGiris(null)} style={{ ...kart, marginTop: 14, padding: "11px 14px", borderColor: C.accent, display: "flex", alignItems: "center", gap: 10, cursor: "pointer" }}>
+        <div style={{ ...kart, marginTop: 14, padding: "11px 14px", borderColor: C.accent, display: "flex", alignItems: "center", gap: 10 }}>
           <Ikon ad="onayli" boy={16} style={{ color: C.accent, flexShrink: 0 }} />
           <div style={{ flex: 1, minWidth: 0, fontSize: 13 }}>
             <b>{sonGiris.kalem}{sonGiris.beden ? " · " + sonGiris.beden : ""}</b> · {fmtN(sonGiris.onceki)} → <b>{fmtN(sonGiris.sonraki)}</b> {sonGiris.birim} kaydedildi
           </div>
-          <Ikon ad="kapat" boy={13} style={{ color: C.faint, flexShrink: 0 }} />
+          <button onClick={geriAl} style={{ padding: "8px 12px", minHeight: 38, background: "transparent", color: C.down, border: `1px solid ${C.cardLine}`, borderRadius: 8, fontSize: 12, fontWeight: 700, cursor: "pointer", flexShrink: 0, fontFamily: cv }}>Geri al</button>
+          <button onClick={() => setSonGiris(null)} aria-label="Kapat" style={{ background: "transparent", border: "none", color: C.faint, cursor: "pointer", padding: 4, flexShrink: 0 }}><Ikon ad="kapat" boy={13} /></button>
         </div>
       )}
       {hata && <div style={{ ...kart, marginTop: 14, borderColor: C.down, color: C.down, fontSize: 13 }}><Ikon ad="uyari" boy={14} style={{ marginRight: 6 }} />{hata}</div>}

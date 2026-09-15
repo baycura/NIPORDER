@@ -30,6 +30,7 @@ export default function StockViewPage() {
   const [loading, setLoading] = useState(true);
   const [entry, setEntry] = useState(null);
   const [search, setSearch] = useState("");
+  const [sonGiris, setSonGiris] = useState(null);
 
   const load = async () => {
     const storeIds = staffUser?.store_ids?.length ? staffUser.store_ids : ["00000000-0000-0000-0000-000000000000"];
@@ -45,6 +46,15 @@ export default function StockViewPage() {
   return (
     <div>
       <h1 style={{ color: "#F0EDE8", fontFamily: cv, fontSize: 28, letterSpacing: "-0.5px", margin: "0 0 16px" }}>Stok</h1>
+      {sonGiris && (
+        <div onClick={() => setSonGiris(null)} style={{ background: "#161616", border: "1px solid #FFFFFF", borderRadius: 10, padding: "10px 16px", marginBottom: 16, display: "flex", gap: 10, alignItems: "center", cursor: "pointer" }}>
+          <Ikon ad="onayli" boy={15} style={{ color: "#FFFFFF", flexShrink: 0 }} />
+          <span style={{ color: "#F0EDE8", fontFamily: cvc, fontSize: 12, flex: 1, minWidth: 0 }}>
+            {sonGiris.kalem} · {Number(sonGiris.onceki)} → <b>{Number(sonGiris.sonraki)}</b> {sonGiris.birim} kaydedildi
+          </span>
+          <Ikon ad="kapat" boy={12} style={{ color: "#666", flexShrink: 0 }} />
+        </div>
+      )}
       {alerts.length > 0 && (
         <div style={{ background: "rgba(224,90,90,0.12)", border: "1px solid #2A2A2A", borderRadius: 10, padding: "10px 16px", marginBottom: 16, display: "flex", gap: 10, alignItems: "center" }}>
           <Ikon ad="uyari" boy={15} style={{ color: "#C87A6A" }}/><span style={{ color: "#C87A6A", fontFamily: cvc, fontSize: 12 }}>{alerts.length} malzeme kritik</span>
@@ -81,11 +91,11 @@ export default function StockViewPage() {
       </div>
       {entry && (
         <StokEkleSheet
-          kalem={{ tur: "malzeme", id: entry.id, ad: entry.name, birim: entry.unit, stok: Number(entry.stock_qty) || 0, pack_qty: Number(entry.pack_qty) || 1 }}
+          kalem={{ tur: "malzeme", id: entry.id, ad: entry.name, birim: entry.unit, stok: Number(entry.stock_qty) || 0, pack_qty: Number(entry.pack_qty) || 1, storeId: entry.store_id }}
           storeId={staffUser?.store_ids?.[0]}
           ipucu="Faturayla gelen mallar için Faturalar ekranını kullan — maliyet de oradan güncellenir. Burası elden alınan mal ve düzeltme içindir."
           onKapat={() => setEntry(null)}
-          onBitti={() => { setEntry(null); load(); }}
+          onBitti={(s) => { setEntry(null); setSonGiris(s); load(); }}
         />
       )}
     </div>
