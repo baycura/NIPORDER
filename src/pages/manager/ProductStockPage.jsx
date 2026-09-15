@@ -50,7 +50,7 @@ export default function ProductStockPage() {
       supabase.from("categories").select("id,name,parent_id,sort_order,is_active,staff_only,show_in_shop").order("sort_order"),
       supabase.from("brands").select("id,name,sort_order").order("sort_order"),
       supabase.from("recipes").select("product_id,ingredient_id,qty_per_unit,party_only"),
-      supabase.from("ingredients").select("id,name,unit,stock_qty,min_stock,is_consumable,store_id").in("store_id", storeIds),
+      supabase.from("ingredients").select("id,name,unit,stock_qty,min_stock,is_consumable,unit_volume_ml,store_id").in("store_id", storeIds),
     ]).then(rs => {
       if (iptal) return;
       const err = rs.find(r => r.error);
@@ -61,7 +61,7 @@ export default function ProductStockPage() {
   }, [staffUser?.id, tazele]);
 
   const rafEkleAc = (u) => setEkle({ tur: "urun", id: u.id, ad: u.name, stok: Number(u.retail_stock) || 0, bedenler: u.bedenler, takipsiz: u.track_stock !== true, storeId: u.store_id });
-  const malzemeEkleAc = (m) => setEkle({ tur: "malzeme", id: m.id, ad: m.ad, birim: m.unit, stok: Number(m.stok) || 0, storeId: m.store_id });
+  const malzemeEkleAc = (m) => setEkle({ tur: "malzeme", id: m.id, ad: m.ad, birim: m.unit, stok: Number(m.stok) || 0, kapMl: m.kapMl || 0, storeId: m.store_id });
   const girisBitti = (s) => { setEkle(null); setSonGiris(s); setTazele(t => t + 1); };
   const geriAl = async () => {
     if (!sonGiris) return;
@@ -99,7 +99,7 @@ export default function ProductStockPage() {
           const birim = Number(r.qty_per_unit) || 0;
           const sinirlar = !r.party_only && !i.is_consumable && birim > 0;
           // id ve magaza da tasiniyor: satir acilinca malzemeye stok girilebilsin
-          return { id: i.id, store_id: i.store_id, ad: i.name, unit: i.unit, stok, birim, parti: !!r.party_only, sarf: !!i.is_consumable, sinirlar,
+          return { id: i.id, store_id: i.store_id, ad: i.name, unit: i.unit, kapMl: Number(i.unit_volume_ml) || 0, stok, birim, parti: !!r.party_only, sarf: !!i.is_consumable, sinirlar,
                    yapilabilir: sinirlar ? Math.floor(Math.max(0, stok) / birim) : null };
         });
         const sinirlayan = malzemeler.filter(m => m.sinirlar);

@@ -5,7 +5,7 @@ import { useAuth } from "../../contexts/AuthContext.jsx";
 import Ikon from "../../components/Ikon.jsx";
 import StokEkleSheet, { stokGeriAl } from "../../components/StokEkleSheet.jsx";
 import { paketIkilemi, ikilemMetni, birimYaz, anlasilirYaz } from "../../lib/birimMaliyet.js";
-import { GRUP_SIRASI, GRUPSUZ, RAF_URUN, raflaraAyir, siseKarsiligi, trKucuk } from "../../lib/malzemeGrup.js";
+import { GRUP_SIRASI, GRUPSUZ, RAF_URUN, raflaraAyir, siseKarsiligi, kapAdi, trKucuk } from "../../lib/malzemeGrup.js";
 import { ozellik } from "../../lib/profil.js";
 
 const cv = "-apple-system,BlinkMacSystemFont,'Segoe UI',Roboto,sans-serif";
@@ -59,7 +59,8 @@ export default function StockMgmtPage() {
   // Satirdan ya da modalin icinden acilir; kaydedince listeyi tazeler.
   // storeId kalemin kendi magazasi: iki magazali yoneticide liste iki magazadan
   // geliyor, sayfanin ilk magazasi gonderilse "bulunamadi" hatasi duserdi.
-  const stokEkleAc = (i) => setEkle({ tur:"malzeme", id:i.id, ad:i.name, birim:i.unit, stok:Number(i.stock_qty)||0, pack_qty:Number(i.pack_qty)||1, storeId:i.store_id });
+  // kapMl: fici ml ile degil ADETLE girilsin diye (bkz. StokEkleSheet).
+  const stokEkleAc = (i) => setEkle({ tur:"malzeme", id:i.id, ad:i.name, birim:i.unit, stok:Number(i.stock_qty)||0, pack_qty:Number(i.pack_qty)||1, kapMl:Number(i.unit_volume_ml)||0, storeId:i.store_id });
   const girisBitti = (s) => {
     const acik = ekle;
     setEkle(null);
@@ -170,7 +171,7 @@ export default function StockMgmtPage() {
                 <div style={{fontSize:12,color:"#888",marginTop:3}}>
                   <span style={{color:isLow?"#C87A6A":"#F0EDE8",fontWeight:700}}>{i.stock_qty}</span> {i.unit}
                   {/* Bar sise sayar, sistem ml tutar: ikisini yan yana goster */}
-                  {sise != null && <span style={{marginLeft:6,color:"#8A8580"}}>≈ {sise} şişe</span>}
+                  {sise != null && <span style={{marginLeft:6,color:"#8A8580"}}>≈ {sise} {kapAdi(i)}</span>}
                   {i.cost_per_unit > 0 && <span style={{marginLeft:8}}>· ₺{i.cost_per_unit}/{i.unit}</span>}
                   {value > 0 && <span style={{marginLeft:8,color:"#FFFFFF"}}>· deger ₺{Math.round(value)}</span>}
                 </div>

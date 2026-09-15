@@ -3,7 +3,7 @@ import { supabase } from "../../lib/supabase.js";
 import { useAuth } from "../../contexts/AuthContext.jsx";
 import Ikon from "../../components/Ikon.jsx";
 import StokEkleSheet from "../../components/StokEkleSheet.jsx";
-import { raflaraAyir, siseKarsiligi, trKucuk } from "../../lib/malzemeGrup.js";
+import { raflaraAyir, siseKarsiligi, kapAdi, trKucuk } from "../../lib/malzemeGrup.js";
 import { ozellik } from "../../lib/profil.js";
 
 const cv = "'Coolvetica','Bebas Neue',sans-serif";
@@ -106,7 +106,7 @@ export default function StockViewPage() {
                   <span style={{ color: lvl !== "ok" ? "#C87A6A" : "#F0EDE8", fontFamily: cv, fontSize: 15 }}>
                     {Number(item.stock_qty) || 0} {item.unit}
                   </span>
-                  {sise != null && <span style={{ color: "#666", fontFamily: cvc, fontSize: 11 }}>≈{sise} şişe</span>}
+                  {sise != null && <span style={{ color: "#666", fontFamily: cvc, fontSize: 11 }}>≈{sise} {kapAdi(item)}</span>}
                   {Number(item.min_stock) > 0 && <span style={{ color: "#666", fontFamily: cvc, fontSize: 11 }}>· min {Number(item.min_stock)} {item.unit}</span>}
                 </div>
               </div>
@@ -123,7 +123,7 @@ export default function StockViewPage() {
       ))}
       {entry && (
         <StokEkleSheet
-          kalem={{ tur: "malzeme", id: entry.id, ad: entry.name, birim: entry.unit, stok: Number(entry.stock_qty) || 0, pack_qty: Number(entry.pack_qty) || 1, storeId: entry.store_id }}
+          kalem={{ tur: "malzeme", id: entry.id, ad: entry.name, birim: entry.unit, stok: Number(entry.stock_qty) || 0, pack_qty: Number(entry.pack_qty) || 1, kapMl: Number(entry.unit_volume_ml) || 0, storeId: entry.store_id }}
           storeId={staffUser?.store_ids?.[0]}
           ipucu={ozellik("faturaStok")
             ? "Faturayla gelen mallar için Faturalar ekranını kullan — maliyet de oradan güncellenir. Burası elden alınan mal ve düzeltme içindir."

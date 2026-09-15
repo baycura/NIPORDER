@@ -9,8 +9,12 @@ import Ikon from "./Ikon.jsx";
 // (nip_stok_ekle, satir kilitli). Ekran acikken satis olursa kaybolmaz.
 //
 // Kalem iki turlu olabilir:
-//   { tur:"malzeme", id, ad, birim, stok, pack_qty }          -> ingredients
+//   { tur:"malzeme", id, ad, birim, stok, pack_qty, kapMl }   -> ingredients
 //   { tur:"urun",    id, ad, stok, bedenler:[{name,stock}] }  -> products
+//
+// FICI (kapMl >= 20 L): ekran ficiyi ADETLE alir, ml'ye kendi cevirir. 50
+// litrelik fici icin "50000" yazdirmak hem zor hem tehlikeli — bir hane sasan
+// stogu on kat sisiriyordu. Hacim sabit oldugu icin (30 ya da 50 L) adet yeter.
 //
 // onBitti(sonuc): { kalem, beden, onceki, sonraki, birim } — cagiran sayfa
 // listesini tazeler.
@@ -45,18 +49,27 @@ export default function StokEkleSheet({ kalem, storeId, ipucu, onKapat, onBitti 
   const [hata, setHata] = useState(null);
 
   const urunMu = kalem?.tur === "urun";
-  const birim = urunMu ? "adet" : (kalem?.birim || "adet");
+  const kayitBirim = urunMu ? "adet" : (kalem?.birim || "adet");
+  // Fici: ekranda her sey (mevcut, girilen, sonuc) FICI cinsinden; sunucuya
+  // giden delta ml'ye cevrilir. Esik stockCount.js'teki FICI_ML ile ayni.
+  const kapMl = urunMu ? 0 : Number(kalem?.kapMl) || 0;
+  const ficiMi = kapMl >= 20000;
+  const birim = ficiMi ? "fıçı" : kayitBirim;
+  const kapYaz = ficiMi ? (kapMl >= 1000 ? fmt(kapMl / 1000) + " L" : fmt(kapMl) + " ml") : "";
 
   // Gosterilen mevcut: bedenli urunde secili bedenin stogu (secilmeden yok),
-  // digerlerinde kalemin kendi stogu
+  // digerlerinde kalemin kendi stogu. Ficide fici cinsinden.
   const bedenGerekli = bedenler.length > 0;
   const mevcut = useMemo(() => {
     if (bedenGerekli) return beden ? (Number(bedenler.find(v => v.name === beden)?.stock) || 0) : null;
-    return Number(kalem?.stok) || 0;
-  }, [bedenGerekli, bedenler, beden, kalem]);
+    const t = Number(kalem?.stok) || 0;
+    return ficiMi ? t / kapMl : t;
+  }, [bedenGerekli, bedenler, beden, kalem, ficiMi, kapMl]);
 
   const n = sayiya(miktar);
   const delta = n == null ? null : (yon === "dus" ? -Math.abs(n) : Math.abs(n));
+  // Sunucuya giden miktar HER ZAMAN kayit birimindedir (ml), ekran fici gosterse de.
+  const deltaTemel = delta == null ? null : (ficiMi ? delta * kapMl : delta);
   const sonuc = delta == null || mevcut == null ? null : mevcut + delta;
   // Neden kapali oldugu kullaniciya yazilir; sessiz gri dugme "bozuk" sanilyordu
   const engel = bedenGerekli && !beden ? "Önce beden seç."
@@ -71,11 +84,12 @@ export default function StokEkleSheet({ kalem, storeId, ipucu, onKapat, onBitti 
   // Hizli dokunuslar: koli gelen malzemede once koli, sonra tek tek.
   // Tekrar eden deger elenir (2'li pakette "+2" iki kere ciziliyordu).
   const kisayollar = useMemo(() => {
+    if (ficiMi) return [1, 2, 4];            // fici koli gelmez, tek tek gelir
     const paket = Number(kalem?.pack_qty) || 1;
     const temel = urunMu ? [1, 2, 5, 10] : [1, 2, 6, 12];
     const ham = paket > 1 ? [paket, paket * 2, ...temel] : temel;
     return [...new Set(ham)].slice(0, 4);
-  }, [kalem?.pack_qty, urunMu]);
+  }, [kalem?.pack_qty, urunMu, ficiMi]);
 
   const ekleKisayol = (v) => setMiktar(String((sayiya(miktar) || 0) + v));
 
@@ -83,8 +97,8 @@ export default function StokEkleSheet({ kalem, storeId, ipucu, onKapat, onBitti 
     if (busy || gecersiz) return;
     setBusy(true); setHata(null);
     const satir = urunMu
-      ? { product_id: kalem.id, variant: beden || null, miktar: delta }
-      : { ingredient_id: kalem.id, miktar: delta };
+      ? { product_id: kalem.id, variant: beden || null, miktar: deltaTemel }
+      : { ingredient_id: kalem.id, miktar: deltaTemel };
     // Kalem kendi magazasini tasir: iki magazali yoneticide liste iki magazadan
     // gelirken sayfanin ilk magazasi gonderilse "bulunamadi" hatasi duserdi.
     const { data, error } = await supabase.rpc("nip_stok_ekle", {
@@ -96,10 +110,14 @@ export default function StokEkleSheet({ kalem, storeId, ipucu, onKapat, onBitti 
     if (error) { setHata(error.message.replace(/^.*?stok girisi: /, "")); return; }
     const s = Array.isArray(data) ? data[0] : data;
     if (navigator.vibrate) navigator.vibrate(12);
-    // Kalemin kimligi de donuyor: cagiran sayfa "Geri al" gosterebilsin
+    // Kalemin kimligi de donuyor: cagiran sayfa "Geri al" gosterebilsin.
+    // delta KAYIT biriminde gider: "Geri al" ayni miktari ters yonde yollar.
+    // Fici girisinde onay seridi de fici yazsin — ml gormek icin girmedik.
+    const ozet = s || { kalem: kalem.ad, beden, onceki: mevcut, sonraki: sonuc, birim };
     onBitti?.({
-      ...(s || { kalem: kalem.ad, beden, onceki: mevcut, sonraki: sonuc, birim }),
-      tur: kalem.tur, id: kalem.id, storeId: kalem.storeId || storeId, delta,
+      ...ozet,
+      ...(ficiMi ? { onceki: mevcut, sonraki: sonuc, birim: "fıçı" } : null),
+      tur: kalem.tur, id: kalem.id, storeId: kalem.storeId || storeId, delta: deltaTemel,
     });
   };
 
@@ -127,7 +145,8 @@ export default function StokEkleSheet({ kalem, storeId, ipucu, onKapat, onBitti 
             <div style={{ fontSize: 12, color: C.soluk, marginTop: 3 }}>
               {mevcut == null
                 ? "Beden seç"
-                : <>Rafta <b style={{ color: C.ink }}>{fmt(mevcut)}</b> {birim}{beden ? ` · ${beden}` : ""}</>}
+                : <>Rafta <b style={{ color: C.ink }}>{fmt(mevcut)}</b> {birim}{beden ? ` · ${beden}` : ""}
+                   {ficiMi ? ` · 1 fıçı = ${kapYaz}` : ""}</>}
             </div>
           </div>
           <button onClick={kapat} aria-label="Kapat" disabled={busy} style={{ background: "transparent", border: "none", color: C.soluk, cursor: busy ? "default" : "pointer", padding: 4, flexShrink: 0, opacity: busy ? 0.4 : 1 }}>
@@ -187,6 +206,14 @@ export default function StokEkleSheet({ kalem, storeId, ipucu, onKapat, onBitti 
           </span>
           <span style={{ fontSize: 12, color: C.soluk }}>{birim}</span>
         </div>
+
+        {/* Ficide ne yazildigi acikta dursun: defterde ml gorulecek, ekranda
+            fici yazdik — ikisinin bagini kullanici da gorsun. */}
+        {ficiMi && deltaTemel != null && deltaTemel !== 0 && (
+          <div style={{ fontSize: 12, color: C.silik, textAlign: "center", marginTop: -6, marginBottom: 12 }}>
+            Stoğa {yon === "dus" ? "düşülecek" : "eklenecek"}: {fmt(Math.abs(deltaTemel))} {kayitBirim}
+          </div>
+        )}
 
         <input value={not} onChange={e => setNot(e.target.value)} placeholder="Not (irsaliye no, tedarikçi, kırılan…)"
           style={{ width: "100%", boxSizing: "border-box", padding: "11px 12px", background: C.koyu, border: `1px solid ${C.cizgi}`, borderRadius: 9, color: C.ink, fontFamily: cv, fontSize: 14, outline: "none", marginBottom: 12 }} />
