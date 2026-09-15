@@ -221,16 +221,16 @@ export default function MenuMgmtPage() {
   const addGroup = () => {
     const gs = [...((prodForm.options_config && prodForm.options_config.groups) || [])];
     gs.push({name:"", required:true, options:[]});
-    setProdForm({...prodForm, options_config:{groups:gs}});
+    setProdForm(f => ({...f, options_config:{groups:gs}}));
   };
   const updateGroup = (idx, key, val) => {
     const gs = [...((prodForm.options_config && prodForm.options_config.groups) || [])];
     gs[idx] = {...gs[idx], [key]:val};
-    setProdForm({...prodForm, options_config:{groups:gs}});
+    setProdForm(f => ({...f, options_config:{groups:gs}}));
   };
   const removeGroup = (idx) => {
     const gs = ((prodForm.options_config && prodForm.options_config.groups) || []).filter((_,i)=>i!==idx);
-    setProdForm({...prodForm, options_config:{groups:gs}});
+    setProdForm(f => ({...f, options_config:{groups:gs}}));
   };
   const addOption = (gIdx, opt) => {
     const txt = (opt||"").trim();
@@ -240,12 +240,12 @@ export default function MenuMgmtPage() {
     if (opts.includes(txt)) return;
     opts.push(txt);
     gs[gIdx] = {...gs[gIdx], options:opts};
-    setProdForm({...prodForm, options_config:{groups:gs}});
+    setProdForm(f => ({...f, options_config:{groups:gs}}));
   };
   const removeOption = (gIdx, optIdx) => {
     const gs = [...((prodForm.options_config && prodForm.options_config.groups) || [])];
     gs[gIdx] = {...gs[gIdx], options:(gs[gIdx].options||[]).filter((_,i)=>i!==optIdx)};
-    setProdForm({...prodForm, options_config:{groups:gs}});
+    setProdForm(f => ({...f, options_config:{groups:gs}}));
   };
   const reorderProducts = async (fromIdx, toIdx) => {
     if (fromIdx == null || fromIdx === toIdx) return;
@@ -282,7 +282,7 @@ export default function MenuMgmtPage() {
   };
 
   const applyBedenPreset = () => {
-    setProdForm({...prodForm, has_options:true, options_config:{groups:[{name:"Beden", required:true, options:["XS","S","M","L","XL","XXL"]}]}});
+    setProdForm(f => ({...f, has_options:true, options_config:{groups:[{name:"Beden", required:true, options:["XS","S","M","L","XL","XXL"]}]}}));
   };
 
   if (loading) return (<div style={{color:"#888",fontFamily:cv,padding:20}}>Yukleniyor...</div>);
@@ -384,24 +384,24 @@ export default function MenuMgmtPage() {
       {/* CATEGORY MODAL */}
       {catModal && (
         <Modal onClose={()=>setCatModal(null)} title={catModal.mode==="new"?"Yeni Kategori":"Kategoriyi Düzenle"}>
-          <Field label="AD (Türkçe)"><input value={catForm.name||""} onChange={e=>setCatForm({...catForm,name:e.target.value})} style={inputS}/></Field>
-          <Field label="NAME (English)"><input value={catForm.name_en||""} onChange={e=>setCatForm({...catForm,name_en:e.target.value})} placeholder="Optional" style={inputS}/></Field>
-          <Field label="НАЗВАНИЕ (Rusca)"><input value={catForm.name_ru||""} onChange={e=>setCatForm({...catForm,name_ru:e.target.value})} placeholder="Opsiyonel - RU secilince gorunur" style={inputS}/></Field>
-          <Field label="IKON (emoji)"><input value={catForm.icon||""} onChange={e=>setCatForm({...catForm,icon:e.target.value})} placeholder="👕" style={inputS}/></Field>
+          <Field label="AD (Türkçe)"><input value={catForm.name||""} onChange={e=>setCatForm(f => ({...f,name:e.target.value}))} style={inputS}/></Field>
+          <Field label="NAME (English)"><input value={catForm.name_en||""} onChange={e=>setCatForm(f => ({...f,name_en:e.target.value}))} placeholder="Optional" style={inputS}/></Field>
+          <Field label="НАЗВАНИЕ (Rusca)"><input value={catForm.name_ru||""} onChange={e=>setCatForm(f => ({...f,name_ru:e.target.value}))} placeholder="Opsiyonel - RU secilince gorunur" style={inputS}/></Field>
+          <Field label="IKON (emoji)"><input value={catForm.icon||""} onChange={e=>setCatForm(f => ({...f,icon:e.target.value}))} placeholder="👕" style={inputS}/></Field>
           {/* Urun basina 152 kayit yerine kategori basina bir varsayilan.
               Musteri menusundeki "~8 dk" rozeti boylece calisir hale gelir. */}
           <Field label="HAZIRLANMA SÜRESİ (dk — bu kategorinin varsayılanı)">
             <input type="number" min="1" max="240" value={catForm.prep_time_minutes ?? ""}
-                   onChange={e=>setCatForm({...catForm,prep_time_minutes:e.target.value})}
+                   onChange={e=>setCatForm(f => ({...f,prep_time_minutes:e.target.value}))}
                    placeholder="örn: kahveler 4, kokteyller 7, mutfak 15" style={inputS}/>
             <div style={{fontSize:12,color:"#8A8580",marginTop:5,lineHeight:1.5}}>
               Ürünün kendi süresi girilmişse o kazanır. Boş bırakırsan o kategoride
               hazırlanma süresi hiç gösterilmez.
             </div>
           </Field>
-          <Field label="SIRA (kucuk=once)"><input type="number" value={catForm.sort_order||0} onChange={e=>setCatForm({...catForm,sort_order:e.target.value})} style={inputS}/></Field>
+          <Field label="SIRA (kucuk=once)"><input type="number" value={catForm.sort_order||0} onChange={e=>setCatForm(f => ({...f,sort_order:e.target.value}))} style={inputS}/></Field>
           <Field label="UST KATEGORI">
-            <select value={catForm.parent_id||""} onChange={e=>setCatForm({...catForm,parent_id:e.target.value||null})} style={inputS}>
+            <select value={catForm.parent_id||""} onChange={e=>setCatForm(f => ({...f,parent_id:e.target.value||null}))} style={inputS}>
               <option value="">— Yok (menude sekme olur) —</option>
               {categories.filter(c => !c.parent_id && c.id !== catModal.data?.id && !c.show_in_shop)
                 .map(c => <option key={c.id} value={c.id}>{c.name}</option>)}
@@ -409,8 +409,8 @@ export default function MenuMgmtPage() {
             <div style={{fontSize:10,color:"#888888",marginTop:4}}>Secilirse ust kategorinin icinde alt secim olarak gorunur, ust menude yer kaplamaz.</div>
           </Field>
           <div style={{display:"flex",gap:8}}>
-            <Field label="SİPARİŞ SAATİ — BAŞLANGIÇ"><input type="time" value={catForm.available_from||""} onChange={e=>setCatForm({...catForm,available_from:e.target.value})} style={inputS}/></Field>
-            <Field label="SİPARİŞ SAATİ — BİTİŞ"><input type="time" value={catForm.available_until||""} onChange={e=>setCatForm({...catForm,available_until:e.target.value})} style={inputS}/></Field>
+            <Field label="SİPARİŞ SAATİ — BAŞLANGIÇ"><input type="time" value={catForm.available_from||""} onChange={e=>setCatForm(f => ({...f,available_from:e.target.value}))} style={inputS}/></Field>
+            <Field label="SİPARİŞ SAATİ — BİTİŞ"><input type="time" value={catForm.available_until||""} onChange={e=>setCatForm(f => ({...f,available_until:e.target.value}))} style={inputS}/></Field>
           </div>
           <div style={{fontSize:10,color:"#888888",marginTop:-6,marginBottom:12,lineHeight:1.5}}>
             Menü her saat okunur; bu aralığın dışında ürünler silik görünür ve sipariş butonu çalışmaz.
@@ -418,20 +418,20 @@ export default function MenuMgmtPage() {
             Kategoriyi tamamen <b>gizlemek</b> için Kategori Zamanlama sayfasını kullan.
           </div>
           <label style={{display:"flex",alignItems:"center",gap:8,marginBottom:12,cursor:"pointer"}}>
-            <input type="checkbox" checked={catForm.show_in_party_menu!==false} onChange={e=>setCatForm({...catForm,show_in_party_menu:e.target.checked})}/>
+            <input type="checkbox" checked={catForm.show_in_party_menu!==false} onChange={e=>setCatForm(f => ({...f,show_in_party_menu:e.target.checked}))}/>
             <span style={{fontSize:13,color:"#F0EDE8"}}>Parti menusunde goster</span>
           </label>
           <label style={{display:"flex",alignItems:"center",gap:8,marginBottom:12,cursor:"pointer"}}>
-            <input type="checkbox" checked={!!catForm.staff_only} onChange={e=>setCatForm({...catForm,staff_only:e.target.checked})}/>
+            <input type="checkbox" checked={!!catForm.staff_only} onChange={e=>setCatForm(f => ({...f,staff_only:e.target.checked}))}/>
             <span style={{fontSize:13,color:"#F0EDE8"}}>Yalnız kasada (müşteri menüsünde gizli — tişört, seramik gibi satış ürünleri için)</span>
           </label>
           <label style={{display:"flex",alignItems:"center",gap:8,marginBottom:12,cursor:"pointer"}}>
-            <input type="checkbox" checked={!!catForm.show_in_shop} onChange={e=>setCatForm({...catForm,show_in_shop:e.target.checked})}/>
+            <input type="checkbox" checked={!!catForm.show_in_shop} onChange={e=>setCatForm(f => ({...f,show_in_shop:e.target.checked}))}/>
             <span style={{fontSize:13,color:"#F0EDE8"}}>Müşteride SHOP sekmesinde göster (menüde değil — kişisel bakım, şapka, kolye, marka ürünleri)</span>
           </label>
           {catModal.data?.store_id === DONER_STORE_ID && (
             <label style={{display:"flex",alignItems:"center",gap:8,marginBottom:10,cursor:"pointer"}}>
-              <input type="checkbox" checked={!!catForm.show_in_paris_menu} onChange={e=>setCatForm({...catForm,show_in_paris_menu:e.target.checked})}/>
+              <input type="checkbox" checked={!!catForm.show_in_paris_menu} onChange={e=>setCatForm(f => ({...f,show_in_paris_menu:e.target.checked}))}/>
               <span style={{fontSize:13,color:"#F0EDE8"}}>Paris menüsünde de göster (döner mutfağının ürünleri Paris'ten de sipariş edilebilsin)</span>
             </label>
           )}
@@ -440,18 +440,18 @@ export default function MenuMgmtPage() {
               <div style={{fontSize:12,color:"#8A8580",letterSpacing:"0.2px",fontWeight:600,marginBottom:8,display:"flex",alignItems:"center",gap:6}}><Ikon ad="raf" boy={13}/>MARKA KUTUSU (Shop sekmesinde görünür)</div>
               <div style={{fontSize:12,color:"#888",letterSpacing:"0.2px",fontWeight:600,marginBottom:4}}>KATEGORİ ETİKETİ (Seramik, Takı, Doğal Bakım...)</div>
               <div style={{display:"flex",gap:6,marginBottom:10}}>
-                <input value={catForm.shop_tag||""} onChange={e=>setCatForm({...catForm,shop_tag:e.target.value})} placeholder="TR" style={{flex:1,padding:"8px 10px",background:"#0C0C0C",border:"1px solid #2A2A2A",borderRadius:8,color:"#F0EDE8",fontSize:13,outline:"none"}}/>
-                <input value={catForm.shop_tag_en||""} onChange={e=>setCatForm({...catForm,shop_tag_en:e.target.value})} placeholder="EN" style={{flex:1,padding:"8px 10px",background:"#0C0C0C",border:"1px solid #2A2A2A",borderRadius:8,color:"#F0EDE8",fontSize:13,outline:"none"}}/>
-                <input value={catForm.shop_tag_ru||""} onChange={e=>setCatForm({...catForm,shop_tag_ru:e.target.value})} placeholder="RU" style={{flex:1,padding:"8px 10px",background:"#0C0C0C",border:"1px solid #2A2A2A",borderRadius:8,color:"#F0EDE8",fontSize:13,outline:"none"}}/>
+                <input value={catForm.shop_tag||""} onChange={e=>setCatForm(f => ({...f,shop_tag:e.target.value}))} placeholder="TR" style={{flex:1,padding:"8px 10px",background:"#0C0C0C",border:"1px solid #2A2A2A",borderRadius:8,color:"#F0EDE8",fontSize:13,outline:"none"}}/>
+                <input value={catForm.shop_tag_en||""} onChange={e=>setCatForm(f => ({...f,shop_tag_en:e.target.value}))} placeholder="EN" style={{flex:1,padding:"8px 10px",background:"#0C0C0C",border:"1px solid #2A2A2A",borderRadius:8,color:"#F0EDE8",fontSize:13,outline:"none"}}/>
+                <input value={catForm.shop_tag_ru||""} onChange={e=>setCatForm(f => ({...f,shop_tag_ru:e.target.value}))} placeholder="RU" style={{flex:1,padding:"8px 10px",background:"#0C0C0C",border:"1px solid #2A2A2A",borderRadius:8,color:"#F0EDE8",fontSize:13,outline:"none"}}/>
               </div>
               <div style={{fontSize:12,color:"#888",letterSpacing:"0.2px",fontWeight:600,marginBottom:4}}>Mini tanıtım (1-2 cümle)</div>
-              <textarea value={catForm.description||""} onChange={e=>setCatForm({...catForm,description:e.target.value})} placeholder="TR — örn: El yapımı seramikler..." rows={2} style={{width:"100%",padding:"8px 10px",background:"#0C0C0C",border:"1px solid #2A2A2A",borderRadius:8,color:"#F0EDE8",fontSize:13,outline:"none",resize:"vertical",marginBottom:6,fontFamily:"inherit"}}/>
-              <textarea value={catForm.description_en||""} onChange={e=>setCatForm({...catForm,description_en:e.target.value})} placeholder="EN" rows={2} style={{width:"100%",padding:"8px 10px",background:"#0C0C0C",border:"1px solid #2A2A2A",borderRadius:8,color:"#F0EDE8",fontSize:13,outline:"none",resize:"vertical",marginBottom:6,fontFamily:"inherit"}}/>
-              <textarea value={catForm.description_ru||""} onChange={e=>setCatForm({...catForm,description_ru:e.target.value})} placeholder="RU" rows={2} style={{width:"100%",padding:"8px 10px",background:"#0C0C0C",border:"1px solid #2A2A2A",borderRadius:8,color:"#F0EDE8",fontSize:13,outline:"none",resize:"vertical",fontFamily:"inherit"}}/>
+              <textarea value={catForm.description||""} onChange={e=>setCatForm(f => ({...f,description:e.target.value}))} placeholder="TR — örn: El yapımı seramikler..." rows={2} style={{width:"100%",padding:"8px 10px",background:"#0C0C0C",border:"1px solid #2A2A2A",borderRadius:8,color:"#F0EDE8",fontSize:13,outline:"none",resize:"vertical",marginBottom:6,fontFamily:"inherit"}}/>
+              <textarea value={catForm.description_en||""} onChange={e=>setCatForm(f => ({...f,description_en:e.target.value}))} placeholder="EN" rows={2} style={{width:"100%",padding:"8px 10px",background:"#0C0C0C",border:"1px solid #2A2A2A",borderRadius:8,color:"#F0EDE8",fontSize:13,outline:"none",resize:"vertical",marginBottom:6,fontFamily:"inherit"}}/>
+              <textarea value={catForm.description_ru||""} onChange={e=>setCatForm(f => ({...f,description_ru:e.target.value}))} placeholder="RU" rows={2} style={{width:"100%",padding:"8px 10px",background:"#0C0C0C",border:"1px solid #2A2A2A",borderRadius:8,color:"#F0EDE8",fontSize:13,outline:"none",resize:"vertical",fontFamily:"inherit"}}/>
             </div>
           )}
           <label style={{display:"flex",alignItems:"center",gap:8,marginBottom:12,cursor:"pointer"}}>
-            <input type="checkbox" checked={catForm.is_active!==false} onChange={e=>setCatForm({...catForm,is_active:e.target.checked})}/>
+            <input type="checkbox" checked={catForm.is_active!==false} onChange={e=>setCatForm(f => ({...f,is_active:e.target.checked}))}/>
             <span style={{fontSize:13,color:"#F0EDE8"}}>Aktif</span>
           </label>
           <div style={{display:"flex",gap:8,marginTop:10}}>
@@ -464,15 +464,15 @@ export default function MenuMgmtPage() {
       {/* PRODUCT MODAL */}
       {prodModal && (
         <Modal onClose={()=>setProdModal(null)} title={prodModal.mode==="new"?"Yeni Ürün":"Ürünü Düzenle"}>
-          <Field label="AD (Türkçe)"><input value={prodForm.name||""} onChange={e=>setProdForm({...prodForm,name:e.target.value})} style={inputS}/></Field>
-          <Field label="NAME (English)"><input value={prodForm.name_en||""} onChange={e=>setProdForm({...prodForm,name_en:e.target.value})} placeholder="Optional - shown when customer selects EN" style={inputS}/></Field>
-          <Field label="НАЗВАНИЕ (Rusca)"><input value={prodForm.name_ru||""} onChange={e=>setProdForm({...prodForm,name_ru:e.target.value})} placeholder="Opsiyonel - RU secilince gorunur" style={inputS}/></Field>
-          <Field label="MARKA (opsiyonel)"><input value={prodForm.brand||""} onChange={e=>setProdForm({...prodForm,brand:e.target.value})} placeholder="Orn: Rapha, Le Bon Bain..." style={inputS}/></Field>
-          <Field label="AÇIKLAMA (Türkçe)"><textarea value={prodForm.description||""} onChange={e=>setProdForm({...prodForm,description:e.target.value})} rows={2} style={{...inputS,resize:"vertical"}}/></Field>
-          <Field label="DESCRIPTION (English)"><textarea value={prodForm.description_en||""} onChange={e=>setProdForm({...prodForm,description_en:e.target.value})} rows={2} placeholder="Optional - shown when customer selects EN" style={{...inputS,resize:"vertical"}}/></Field>
-          <Field label="ОПИСАНИЕ (Rusca)"><textarea value={prodForm.description_ru||""} onChange={e=>setProdForm({...prodForm,description_ru:e.target.value})} rows={2} placeholder="Opsiyonel - RU secilince gorunur" style={{...inputS,resize:"vertical"}}/></Field>
+          <Field label="AD (Türkçe)"><input value={prodForm.name||""} onChange={e=>setProdForm(f => ({...f,name:e.target.value}))} style={inputS}/></Field>
+          <Field label="NAME (English)"><input value={prodForm.name_en||""} onChange={e=>setProdForm(f => ({...f,name_en:e.target.value}))} placeholder="Optional - shown when customer selects EN" style={inputS}/></Field>
+          <Field label="НАЗВАНИЕ (Rusca)"><input value={prodForm.name_ru||""} onChange={e=>setProdForm(f => ({...f,name_ru:e.target.value}))} placeholder="Opsiyonel - RU secilince gorunur" style={inputS}/></Field>
+          <Field label="MARKA (opsiyonel)"><input value={prodForm.brand||""} onChange={e=>setProdForm(f => ({...f,brand:e.target.value}))} placeholder="Orn: Rapha, Le Bon Bain..." style={inputS}/></Field>
+          <Field label="AÇIKLAMA (Türkçe)"><textarea value={prodForm.description||""} onChange={e=>setProdForm(f => ({...f,description:e.target.value}))} rows={2} style={{...inputS,resize:"vertical"}}/></Field>
+          <Field label="DESCRIPTION (English)"><textarea value={prodForm.description_en||""} onChange={e=>setProdForm(f => ({...f,description_en:e.target.value}))} rows={2} placeholder="Optional - shown when customer selects EN" style={{...inputS,resize:"vertical"}}/></Field>
+          <Field label="ОПИСАНИЕ (Rusca)"><textarea value={prodForm.description_ru||""} onChange={e=>setProdForm(f => ({...f,description_ru:e.target.value}))} rows={2} placeholder="Opsiyonel - RU secilince gorunur" style={{...inputS,resize:"vertical"}}/></Field>
           <Field label="SHOP ALT GRUBU (opsiyonel)">
-            <input list="nip-shop-groups" value={prodForm.shop_group||""} onChange={e=>setProdForm({...prodForm,shop_group:e.target.value})}
+            <input list="nip-shop-groups" value={prodForm.shop_group||""} onChange={e=>setProdForm(f => ({...f,shop_group:e.target.value}))}
               placeholder="örn: Tişörtler, Şapkalar, Takılar" style={inputS}/>
             <datalist id="nip-shop-groups">
               {[...new Set(products.map(p=>p.shop_group).filter(Boolean))].map(g => <option key={g} value={g}/>)}
@@ -491,7 +491,7 @@ export default function MenuMgmtPage() {
                 <input type="file" accept="image/*" onChange={gorselSec} disabled={gorselBusy} style={{display:"none"}}/>
               </label>
               {prodForm.image_url && !gorselBusy && (
-                <button type="button" onClick={()=>setProdForm({...prodForm,image_url:""})} style={{padding:"8px 10px",background:"transparent",color:"#888",border:"1px solid #2A2A2A",borderRadius:8,fontSize:12,cursor:"pointer"}}>Kaldır</button>
+                <button type="button" onClick={()=>setProdForm(f => ({...f,image_url:""}))} style={{padding:"8px 10px",background:"transparent",color:"#888",border:"1px solid #2A2A2A",borderRadius:8,fontSize:12,cursor:"pointer"}}>Kaldır</button>
               )}
             </div>
             <div style={{fontSize:10,color:"#888888",marginTop:4,lineHeight:1.5}}>
@@ -502,16 +502,16 @@ export default function MenuMgmtPage() {
             <div style={{display:"flex",gap:6}}>
               <div style={{display:"flex",gap:4,background:"#0C0C0C",border:"1px solid #2A2A2A",borderRadius:8,padding:3,flexShrink:0}}>
                 {[{k:"TRY",l:"₺"},{k:"EUR",l:"€"}].map(c => (
-                  <button key={c.k} type="button" onClick={()=>setProdForm({...prodForm,currency:c.k})}
+                  <button key={c.k} type="button" onClick={()=>setProdForm(f => ({...f,currency:c.k}))}
                     style={{padding:"6px 12px",border:"none",borderRadius:6,fontSize:14,fontWeight:800,cursor:"pointer",
                             background:(prodForm.currency||"TRY")===c.k?"#FFFFFF":"transparent",
                             color:(prodForm.currency||"TRY")===c.k?"#000":"#888"}}>{c.l}</button>
                 ))}
               </div>
               {prodForm.currency === "EUR" ? (
-                <input type="number" step="0.01" value={prodForm.price_eur??''} onChange={e=>setProdForm({...prodForm,price_eur:e.target.value})} placeholder="örn: 25" style={inputS}/>
+                <input type="number" step="0.01" value={prodForm.price_eur??''} onChange={e=>setProdForm(f => ({...f,price_eur:e.target.value}))} placeholder="örn: 25" style={inputS}/>
               ) : (
-                <input type="number" step="0.01" value={prodForm.price??''} onChange={e=>setProdForm({...prodForm,price:e.target.value})} style={inputS}/>
+                <input type="number" step="0.01" value={prodForm.price??''} onChange={e=>setProdForm(f => ({...f,price:e.target.value}))} style={inputS}/>
               )}
             </div>
             {prodForm.currency === "EUR" && (
@@ -526,7 +526,7 @@ export default function MenuMgmtPage() {
               baska hicbir yerde tutulmuyor; urun karliligi raporu bu alani okur. */}
           <Field label="ALIŞ FİYATI (₺ / adet — opsiyonel)">
             <input type="number" step="0.01" min="0" value={prodForm.cost_price??''}
-                   onChange={e=>setProdForm({...prodForm,cost_price:e.target.value})}
+                   onChange={e=>setProdForm(f => ({...f,cost_price:e.target.value}))}
                    placeholder="örn: 950" style={inputS}/>
             <div style={{fontSize:12,color:"#8A8580",marginTop:5,lineHeight:1.5}}>
               Reçetesi olan ürünlerde boş bırak — orada maliyet reçeteden hesaplanır.
@@ -534,32 +534,32 @@ export default function MenuMgmtPage() {
               kârlılık raporu bu ürünü göremez.
             </div>
           </Field>
-          <Field label="ANLIK INDIRIM (%)"><input type="number" step="1" min="0" max="99" value={prodForm.instant_discount_pct??''} onChange={e=>setProdForm({...prodForm,instant_discount_pct:e.target.value})} style={inputS}/></Field>
+          <Field label="ANLIK INDIRIM (%)"><input type="number" step="1" min="0" max="99" value={prodForm.instant_discount_pct??''} onChange={e=>setProdForm(f => ({...f,instant_discount_pct:e.target.value}))} style={inputS}/></Field>
 
           {/* HAPPY HOUR */}
         <div style={{background:"#0C0C0C",border:"1px solid #222",borderRadius:10,padding:12,marginBottom:10}}>
           <label style={{display:"flex",alignItems:"center",gap:8,cursor:"pointer",fontSize:14,fontWeight:600,color:"#F0EDE8"}}>
-            <input type="checkbox" checked={!!prodForm.hh_enabled} onChange={e=>setProdForm({...prodForm,hh_enabled:e.target.checked})}/>
+            <input type="checkbox" checked={!!prodForm.hh_enabled} onChange={e=>setProdForm(f => ({...f,hh_enabled:e.target.checked}))}/>
             <Ikon ad="kampanya" boy={14} style={{marginRight:6}}/>Happy Hour
           </label>
           {prodForm.hh_enabled && (<div style={{marginTop:10}}>
             <div style={{display:"flex",gap:10,marginBottom:10}}>
-              <div style={{flex:1}}><div style={{fontSize:11,color:"#888",fontWeight:600,marginBottom:4}}>Başlangıç</div><input type="time" value={prodForm.hh_start||""} onChange={e=>setProdForm({...prodForm,hh_start:e.target.value})} style={{width:"100%",padding:8,background:"#1a1a1a",border:"1px solid #333",borderRadius:8,color:"#fff",boxSizing:"border-box"}}/></div>
-              <div style={{flex:1}}><div style={{fontSize:11,color:"#888",fontWeight:600,marginBottom:4}}>Bitiş</div><input type="time" value={prodForm.hh_end||""} onChange={e=>setProdForm({...prodForm,hh_end:e.target.value})} style={{width:"100%",padding:8,background:"#1a1a1a",border:"1px solid #333",borderRadius:8,color:"#fff",boxSizing:"border-box"}}/></div>
+              <div style={{flex:1}}><div style={{fontSize:11,color:"#888",fontWeight:600,marginBottom:4}}>Başlangıç</div><input type="time" value={prodForm.hh_start||""} onChange={e=>setProdForm(f => ({...f,hh_start:e.target.value}))} style={{width:"100%",padding:8,background:"#1a1a1a",border:"1px solid #333",borderRadius:8,color:"#fff",boxSizing:"border-box"}}/></div>
+              <div style={{flex:1}}><div style={{fontSize:11,color:"#888",fontWeight:600,marginBottom:4}}>Bitiş</div><input type="time" value={prodForm.hh_end||""} onChange={e=>setProdForm(f => ({...f,hh_end:e.target.value}))} style={{width:"100%",padding:8,background:"#1a1a1a",border:"1px solid #333",borderRadius:8,color:"#fff",boxSizing:"border-box"}}/></div>
             </div>
             <div style={{fontSize:11,color:"#888",fontWeight:600,marginBottom:6}}>Günler</div>
             <div style={{display:"flex",gap:6,marginBottom:10,flexWrap:"wrap"}}>
-              {["Pzt","Sal","Çar","Per","Cum","Cmt","Paz"].map((d,i)=>{const dn=(i+1)%7;const days=Array.isArray(prodForm.hh_days)?prodForm.hh_days:[0,1,2,3,4,5,6];const on=days.includes(dn);return(<button key={d} type="button" onClick={()=>{const nd=on?days.filter(x=>x!==dn):[...days,dn];setProdForm({...prodForm,hh_days:nd});}} style={{padding:"6px 11px",borderRadius:8,fontSize:13,fontWeight:600,border:"1px solid "+(on?"#FFFFFF":"#333"),background:on?"#FFFFFF":"#1a1a1a",color:on?"#000":"#888",cursor:"pointer"}}>{d}</button>);})}
+              {["Pzt","Sal","Çar","Per","Cum","Cmt","Paz"].map((d,i)=>{const dn=(i+1)%7;const days=Array.isArray(prodForm.hh_days)?prodForm.hh_days:[0,1,2,3,4,5,6];const on=days.includes(dn);return(<button key={d} type="button" onClick={()=>{const nd=on?days.filter(x=>x!==dn):[...days,dn];setProdForm(f => ({...f,hh_days:nd}));}} style={{padding:"6px 11px",borderRadius:8,fontSize:13,fontWeight:600,border:"1px solid "+(on?"#FFFFFF":"#333"),background:on?"#FFFFFF":"#1a1a1a",color:on?"#000":"#888",cursor:"pointer"}}>{d}</button>);})}
             </div>
             <div style={{fontSize:11,color:"#888",fontWeight:600,marginBottom:4}}>Happy hour fiyatı (₺)</div>
-            <input type="number" step="0.01" value={prodForm.hh_price??""} onChange={e=>setProdForm({...prodForm,hh_price:e.target.value})} placeholder="örn: 200" style={{width:"100%",padding:8,background:"#1a1a1a",border:"1px solid #333",borderRadius:8,color:"#fff",boxSizing:"border-box"}}/>
+            <input type="number" step="0.01" value={prodForm.hh_price??""} onChange={e=>setProdForm(f => ({...f,hh_price:e.target.value}))} placeholder="örn: 200" style={{width:"100%",padding:8,background:"#1a1a1a",border:"1px solid #333",borderRadius:8,color:"#fff",boxSizing:"border-box"}}/>
           </div>)}
         </div>
 
         {/* OPTIONS SYSTEM */}
           <div style={{background:"#0C0C0C",border:"1px solid "+(prodForm.has_options?"#FFFFFF":"#2A2A2A"),borderRadius:10,padding:12,marginBottom:12}}>
             <label style={{display:"flex",alignItems:"center",gap:8,cursor:"pointer",marginBottom:prodForm.has_options?10:0}}>
-              <input type="checkbox" checked={!!prodForm.has_options} onChange={e=>setProdForm({...prodForm,has_options:e.target.checked, options_config: e.target.checked ? (prodForm.options_config||{groups:[]}) : {groups:[]}})}/>
+              <input type="checkbox" checked={!!prodForm.has_options} onChange={e=>setProdForm(f => ({...f,has_options:e.target.checked, options_config: e.target.checked ? (f.options_config||{groups:[]}) : {groups:[]}}))}/>
               <span style={{fontSize:13,color:"#F0EDE8",fontWeight:700}}>Seçenekli ürün (beden/renk vb)</span>
             </label>
 
@@ -598,23 +598,23 @@ export default function MenuMgmtPage() {
 
           <div style={{background:"#0C0C0C",border:"1px solid #2A2A2A",borderRadius:10,padding:12,marginBottom:12}}>
             <label style={{display:"flex",alignItems:"center",gap:8,marginBottom:8,cursor:"pointer"}}>
-              <input type="checkbox" checked={!!prodForm.sold_out_today} onChange={e=>setProdForm({...prodForm,sold_out_today:e.target.checked})}/>
+              <input type="checkbox" checked={!!prodForm.sold_out_today} onChange={e=>setProdForm(f => ({...f,sold_out_today:e.target.checked}))}/>
               <span style={{fontSize:13,color:"#F0EDE8"}}>Bugün tükendi</span>
             </label>
-            {prodForm.sold_out_today && (<input value={prodForm.unavailable_reason||""} onChange={e=>setProdForm({...prodForm,unavailable_reason:e.target.value})} placeholder="Neden (musteri gorecek)" style={{...inputS,fontSize:13}}/>)}
+            {prodForm.sold_out_today && (<input value={prodForm.unavailable_reason||""} onChange={e=>setProdForm(f => ({...f,unavailable_reason:e.target.value}))} placeholder="Neden (musteri gorecek)" style={{...inputS,fontSize:13}}/>)}
           </div>
 
           <div style={{marginBottom:10}}>
             <label style={{display:"block",fontSize:11,color:"#888",marginBottom:4,fontWeight:600,letterSpacing:0.5}}>HANGİ MENÜDE GÖRÜNSÜN? (birden fazla seçilebilir)</label>
             <div style={{display:"flex",gap:6}}>
-              {[{id:PARIS_STORE_ID,label:storeLabel(PARIS_STORE_ID)},...(DONER_STORE_ID ? [{id:DONER_STORE_ID,label:"Döner"}] : [])].map(s => { const sel = [prodForm.store_id,...(prodForm.additional_store_ids||[])].filter(Boolean).includes(s.id); return (<button key={s.id} type="button" onClick={()=>{const cur=[prodForm.store_id,...(prodForm.additional_store_ids||[])].filter(Boolean);const next=cur.includes(s.id)?cur.filter(x=>x!==s.id):[...cur,s.id];setProdForm({...prodForm,store_id:next[0]||"",additional_store_ids:next.slice(1)});}} style={{flex:1,padding:"8px",background:sel?"#FFFFFF":"#222",color:sel?"#000":"#888",border:"1px solid "+(sel?"#FFFFFF":"#333"),borderRadius:6,fontSize:13,fontWeight:700,cursor:"pointer"}}>{sel?"✓ ":""}{s.label}</button>); })}
+              {[{id:PARIS_STORE_ID,label:storeLabel(PARIS_STORE_ID)},...(DONER_STORE_ID ? [{id:DONER_STORE_ID,label:"Döner"}] : [])].map(s => { const sel = [prodForm.store_id,...(prodForm.additional_store_ids||[])].filter(Boolean).includes(s.id); return (<button key={s.id} type="button" onClick={()=>{const cur=[prodForm.store_id,...(prodForm.additional_store_ids||[])].filter(Boolean);const next=cur.includes(s.id)?cur.filter(x=>x!==s.id):[...cur,s.id];setProdForm(f => ({...f,store_id:next[0]||"",additional_store_ids:next.slice(1)}));}} style={{flex:1,padding:"8px",background:sel?"#FFFFFF":"#222",color:sel?"#000":"#888",border:"1px solid "+(sel?"#FFFFFF":"#333"),borderRadius:6,fontSize:13,fontWeight:700,cursor:"pointer"}}>{sel?"✓ ":""}{s.label}</button>); })}
             </div>
           </div>
 
           <div style={{marginBottom:10}}>
             <label style={{display:"block",fontSize:11,color:"#888",marginBottom:4,fontWeight:600,letterSpacing:0.5}}>BU ÜRÜNÜ KİM YAPIYOR? (mutfak)</label>
             <div style={{display:"flex",gap:6}}>
-              {[{id:PARIS_STORE_ID,label:"Kendi Mutfağımız"},...(DONER_STORE_ID ? [{id:DONER_STORE_ID,label:"Döner Mutfağı"}] : [])].map(s => { const sel = prodForm.kitchen_destination_store_id === s.id; return (<button key={s.id} type="button" onClick={()=>setProdForm({...prodForm,kitchen_destination_store_id:s.id})} style={{flex:1,padding:"8px",background:sel?"#FFFFFF":"#222",color:sel?"#000":"#888",border:"1px solid "+(sel?"#FFFFFF":"#333"),borderRadius:6,fontSize:13,fontWeight:700,cursor:"pointer"}}>{sel?"✓ ":""}{s.label}</button>); })}
+              {[{id:PARIS_STORE_ID,label:"Kendi Mutfağımız"},...(DONER_STORE_ID ? [{id:DONER_STORE_ID,label:"Döner Mutfağı"}] : [])].map(s => { const sel = prodForm.kitchen_destination_store_id === s.id; return (<button key={s.id} type="button" onClick={()=>setProdForm(f => ({...f,kitchen_destination_store_id:s.id}))} style={{flex:1,padding:"8px",background:sel?"#FFFFFF":"#222",color:sel?"#000":"#888",border:"1px solid "+(sel?"#FFFFFF":"#333"),borderRadius:6,fontSize:13,fontWeight:700,cursor:"pointer"}}>{sel?"✓ ":""}{s.label}</button>); })}
             </div>
             {prodForm.kitchen_destination_store_id === DONER_STORE_ID && (
               <div style={{marginTop:6,fontSize:11,color:"#8A8580",background:"rgba(224,122,62,0.1)",border:"1px solid #2A2A2A",borderRadius:6,padding:"6px 8px",lineHeight:1.4}}>
@@ -624,12 +624,12 @@ export default function MenuMgmtPage() {
           </div>
 
           <label style={{display:"flex",alignItems:"center",gap:8,marginBottom:10,cursor:"pointer"}}>
-            <input type="checkbox" checked={!!prodForm.show_in_party_menu} onChange={e=>setProdForm({...prodForm,show_in_party_menu:e.target.checked})}/>
+            <input type="checkbox" checked={!!prodForm.show_in_party_menu} onChange={e=>setProdForm(f => ({...f,show_in_party_menu:e.target.checked}))}/>
             <span style={{fontSize:13,color:"#F0EDE8"}}>Sadece parti menüsünde</span>
           </label>
 
           <label style={{display:"flex",alignItems:"flex-start",gap:8,marginBottom:4,cursor:"pointer"}}>
-            <input type="checkbox" checked={!!prodForm.kitchen_consignment} onChange={e=>setProdForm({...prodForm,kitchen_consignment:e.target.checked})} style={{marginTop:3}}/>
+            <input type="checkbox" checked={!!prodForm.kitchen_consignment} onChange={e=>setProdForm(f => ({...f,kitchen_consignment:e.target.checked}))} style={{marginTop:3}}/>
             <span style={{fontSize:13,color:"#F0EDE8"}}>NIP Kitchen envanteri</span>
           </label>
           <div style={{fontSize:10,color:"#888888",marginBottom:12,marginLeft:24,lineHeight:1.5}}>
@@ -638,18 +638,18 @@ export default function MenuMgmtPage() {
           </div>
 
           <label style={{display:"flex",alignItems:"center",gap:8,marginBottom:12,cursor:"pointer"}}>
-            <input type="checkbox" checked={prodForm.is_available!==false} onChange={e=>setProdForm({...prodForm,is_available:e.target.checked})}/>
+            <input type="checkbox" checked={prodForm.is_available!==false} onChange={e=>setProdForm(f => ({...f,is_available:e.target.checked}))}/>
             <span style={{fontSize:13,color:"#F0EDE8"}}>Menüde aktif</span>
           </label>
 
           <div style={{display:"flex",alignItems:"center",gap:10,marginBottom:10,flexWrap:"wrap"}}>
             <label style={{display:"flex",alignItems:"center",gap:8,cursor:"pointer",color:"#F0EDE8",fontSize:13}}>
-              <input type="checkbox" checked={!!prodForm.show_prep_time} onChange={e=>setProdForm({...prodForm,show_prep_time:e.target.checked})}/>
+              <input type="checkbox" checked={!!prodForm.show_prep_time} onChange={e=>setProdForm(f => ({...f,show_prep_time:e.target.checked}))}/>
               <span><Ikon ad="vardiya" boy={13} style={{marginRight:5}}/>Hazırlanma süresi göster</span>
             </label>
             {prodForm.show_prep_time && (
               <div style={{display:"flex",alignItems:"center",gap:6}}>
-                <input type="number" min="1" max="240" placeholder="20" value={prodForm.prep_time_minutes||""} onChange={e=>setProdForm({...prodForm,prep_time_minutes:e.target.value?parseInt(e.target.value,10):null})} style={{width:70,padding:"6px 8px",background:"#000",color:"#F0EDE8",border:"1px solid #444",borderRadius:6,fontSize:13}}/>
+                <input type="number" min="1" max="240" placeholder="20" value={prodForm.prep_time_minutes||""} onChange={e=>setProdForm(f => ({...f,prep_time_minutes:e.target.value?parseInt(e.target.value,10):null}))} style={{width:70,padding:"6px 8px",background:"#000",color:"#F0EDE8",border:"1px solid #444",borderRadius:6,fontSize:13}}/>
                 <span style={{color:"#888",fontSize:12}}>dakika</span>
               </div>
             )}

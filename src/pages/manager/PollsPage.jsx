@@ -218,38 +218,38 @@ export default function PollsPage() {
           <div onClick={e => e.stopPropagation()} style={{background:"#161616",border:"1px solid #2A2A2A",borderRadius:"16px 16px 0 0",padding:20,width:"100%",maxWidth:560,maxHeight:"92vh",overflowY:"auto"}}>
             <div style={{fontSize:18,fontWeight:800,marginBottom:16}}>{modal.mode==="new"?"Yeni Soru":"Soruyu Düzenle"}</div>
 
-            <Field label="SORU (Türkçe)"><input value={form.question} onChange={e=>setForm({...form,question:e.target.value})} placeholder="örn: Yarın hangi çekirdekten filtre demleyelim?" style={inputS}/></Field>
-            <Field label="QUESTION (English)"><input value={form.question_en} onChange={e=>setForm({...form,question_en:e.target.value})} style={inputS}/></Field>
-            <Field label="ВОПРОС (Русский)"><input value={form.question_ru} onChange={e=>setForm({...form,question_ru:e.target.value})} style={inputS}/></Field>
+            <Field label="SORU (Türkçe)"><input value={form.question} onChange={e=>setForm(f => ({...f,question:e.target.value}))} placeholder="örn: Yarın hangi çekirdekten filtre demleyelim?" style={inputS}/></Field>
+            <Field label="QUESTION (English)"><input value={form.question_en} onChange={e=>setForm(f => ({...f,question_en:e.target.value}))} style={inputS}/></Field>
+            <Field label="ВОПРОС (Русский)"><input value={form.question_ru} onChange={e=>setForm(f => ({...f,question_ru:e.target.value}))} style={inputS}/></Field>
 
             <div style={{fontSize:12,color:"#888",letterSpacing:"0.2px",fontWeight:600,margin:"14px 0 6px"}}>Seçenekler</div>
             {(form.options || []).map((o, i) => (
               <div key={i} style={{background:"#141414",border:"1px solid #2A2A2A",borderRadius:8,padding:8,marginBottom:6}}>
                 <div style={{display:"flex",gap:6,alignItems:"center",marginBottom:6}}>
                   <span style={{fontSize:11,color:"#888888",fontWeight:800,width:14}}>{i+1}.</span>
-                  <input value={o.tr} onChange={e=>{const n=[...form.options];n[i]={...o,tr:e.target.value};setForm({...form,options:n});}} placeholder="Türkçe" style={{...inputS,flex:1}}/>
-                  <button onClick={()=>setForm({...form,options:form.options.filter((_,j)=>j!==i)})} style={{background:"transparent",color:"#C87A6A",border:"1px solid #2A2A2A",borderRadius:6,padding:"8px 10px",fontSize:12,cursor:"pointer",flexShrink:0}}>×</button>
+                  <input value={o.tr} onChange={e=>{const n=[...form.options];n[i]={...o,tr:e.target.value};setForm(f => ({...f,options:n}));}} placeholder="Türkçe" style={{...inputS,flex:1}}/>
+                  <button onClick={()=>setForm(f => ({...f,options:f.options.filter((_,j)=>j!==i)}))} style={{background:"transparent",color:"#C87A6A",border:"1px solid #2A2A2A",borderRadius:6,padding:"8px 10px",fontSize:12,cursor:"pointer",flexShrink:0}}>×</button>
                 </div>
                 <div style={{display:"flex",gap:6}}>
-                  <input value={o.en||""} onChange={e=>{const n=[...form.options];n[i]={...o,en:e.target.value};setForm({...form,options:n});}} placeholder="English" style={{...inputS,fontSize:12}}/>
-                  <input value={o.ru||""} onChange={e=>{const n=[...form.options];n[i]={...o,ru:e.target.value};setForm({...form,options:n});}} placeholder="Русский" style={{...inputS,fontSize:12}}/>
+                  <input value={o.en||""} onChange={e=>{const n=[...form.options];n[i]={...o,en:e.target.value};setForm(f => ({...f,options:n}));}} placeholder="English" style={{...inputS,fontSize:12}}/>
+                  <input value={o.ru||""} onChange={e=>{const n=[...form.options];n[i]={...o,ru:e.target.value};setForm(f => ({...f,options:n}));}} placeholder="Русский" style={{...inputS,fontSize:12}}/>
                 </div>
               </div>
             ))}
-            <button onClick={()=>setForm({...form,options:[...form.options,{id:nextOptId(form.options),tr:"",en:"",ru:""}]})}
+            <button onClick={()=>setForm(f => ({...f,options:[...f.options,{id:nextOptId(f.options),tr:"",en:"",ru:""}]}))}
               style={{padding:"8px 14px",background:"#222",color:"#aaa",border:"1px solid #333",borderRadius:8,fontSize:12,fontWeight:700,cursor:"pointer",marginBottom:12}}>+ Seçenek ekle</button>
 
             <label style={{display:"flex",alignItems:"center",gap:8,fontSize:13,color:"#ddd",cursor:"pointer",marginBottom:12}}>
-              <input type="checkbox" checked={!!form.allow_free_text} onChange={e=>setForm({...form,allow_free_text:e.target.checked})} style={{width:16,height:16,accentColor:"#FFFFFF"}}/>
+              <input type="checkbox" checked={!!form.allow_free_text} onChange={e=>setForm(f => ({...f,allow_free_text:e.target.checked}))} style={{width:16,height:16,accentColor:"#FFFFFF"}}/>
               <Ikon ad="kalem" boy={13} style={{marginRight:5}}/>Müşteri kendi cevabını da yazabilsin
             </label>
 
             <div style={{display:"flex",gap:10}}>
-              <Field label="SIRA (küçük üstte)"><input type="number" value={form.sort_order} onChange={e=>setForm({...form,sort_order:e.target.value})} style={{...inputS,width:90}}/></Field>
-              <Field label="BİTİŞ (opsiyonel)"><input type="datetime-local" value={form.ends_at} onChange={e=>setForm({...form,ends_at:e.target.value})} style={inputS}/></Field>
+              <Field label="SIRA (küçük üstte)"><input type="number" value={form.sort_order} onChange={e=>setForm(f => ({...f,sort_order:e.target.value}))} style={{...inputS,width:90}}/></Field>
+              <Field label="BİTİŞ (opsiyonel)"><input type="datetime-local" value={form.ends_at} onChange={e=>setForm(f => ({...f,ends_at:e.target.value}))} style={inputS}/></Field>
             </div>
             <label style={{display:"flex",alignItems:"center",gap:8,fontSize:13,color:"#ddd",cursor:"pointer",marginBottom:14}}>
-              <input type="checkbox" checked={form.is_active!==false} onChange={e=>setForm({...form,is_active:e.target.checked})} style={{accentColor:"#FFFFFF"}}/> Yayında (menüde görünür)
+              <input type="checkbox" checked={form.is_active!==false} onChange={e=>setForm(f => ({...f,is_active:e.target.checked}))} style={{accentColor:"#FFFFFF"}}/> Yayında (menüde görünür)
             </label>
 
             <div style={{display:"flex",gap:8}}>

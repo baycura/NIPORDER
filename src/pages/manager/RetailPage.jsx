@@ -107,9 +107,9 @@ export default function RetailPage() {
       const eski = prev.find(v => v.name === s);
       return eski ? { ...eski, stock: Number(eski.stock) || 0 } : { name: s, stock: 0 };
     });
-    setForm({ ...form, sizeSet: key, variants });
+    setForm(f => ({ ...f, sizeSet: key, variants }));
   };
-  const setVariantStock = (name, val) => setForm({ ...form, variants: (form.variants || []).map(v => v.name === name ? { ...v, stock: Math.max(0, Number(val) || 0) } : v) });
+  const setVariantStock = (name, val) => setForm(f => ({ ...f, variants: (f.variants || []).map(v => v.name === name ? { ...v, stock: Math.max(0, Number(val) || 0) } : v) }));
 
   const saveProduct = async () => {
     if (busy) return;
@@ -290,9 +290,9 @@ export default function RetailPage() {
 
       {brandModal && (
         <Modal onClose={() => setBrandModal(null)} title={brandModal.mode === "new" ? "Yeni Marka" : "Markayı Düzenle"}>
-          <Field label="MARKA ADI"><input value={brandForm.name || ""} onChange={e => setBrandForm({ ...brandForm, name: e.target.value })} placeholder="örn: Not in Paris, Rapha, Seramik Atölyesi" style={inputS} /></Field>
-          <Field label="AÇIKLAMA (opsiyonel)"><input value={brandForm.description || ""} onChange={e => setBrandForm({ ...brandForm, description: e.target.value })} placeholder="örn: kendi üretimimiz" style={inputS} /></Field>
-          <Field label="SIRA (küçük = önce)"><input type="number" value={brandForm.sort_order || 100} onChange={e => setBrandForm({ ...brandForm, sort_order: e.target.value })} style={inputS} /></Field>
+          <Field label="MARKA ADI"><input value={brandForm.name || ""} onChange={e => setBrandForm(f => ({ ...f, name: e.target.value }))} placeholder="örn: Not in Paris, Rapha, Seramik Atölyesi" style={inputS} /></Field>
+          <Field label="AÇIKLAMA (opsiyonel)"><input value={brandForm.description || ""} onChange={e => setBrandForm(f => ({ ...f, description: e.target.value }))} placeholder="örn: kendi üretimimiz" style={inputS} /></Field>
+          <Field label="SIRA (küçük = önce)"><input type="number" value={brandForm.sort_order || 100} onChange={e => setBrandForm(f => ({ ...f, sort_order: e.target.value }))} style={inputS} /></Field>
           <div style={{ display: "flex", gap: 8, marginTop: 10 }}>
             <button onClick={() => setBrandModal(null)} style={cancelBtn}>İptal</button>
             <button onClick={saveBrand} disabled={busy} style={{ ...saveBtn, opacity: busy ? 0.6 : 1 }}>{busy ? "..." : "Kaydet"}</button>
@@ -302,16 +302,16 @@ export default function RetailPage() {
 
       {prodModal && (
         <Modal onClose={() => setProdModal(null)} title={prodModal.mode === "new" ? "Yeni Ürün" : "Ürünü Düzenle"}>
-          <Field label="ÜRÜN ADI"><input value={form.name || ""} onChange={e => setForm({ ...form, name: e.target.value })} placeholder="örn: Bisiklet Forması" style={inputS} /></Field>
-          <Field label="İNGİLİZCE ADI (opsiyonel)"><input value={form.name_en || ""} onChange={e => setForm({ ...form, name_en: e.target.value })} placeholder="e.g. Cycling Jersey" style={inputS} /></Field>
+          <Field label="ÜRÜN ADI"><input value={form.name || ""} onChange={e => setForm(f => ({ ...f, name: e.target.value }))} placeholder="örn: Bisiklet Forması" style={inputS} /></Field>
+          <Field label="İNGİLİZCE ADI (opsiyonel)"><input value={form.name_en || ""} onChange={e => setForm(f => ({ ...f, name_en: e.target.value }))} placeholder="e.g. Cycling Jersey" style={inputS} /></Field>
           <Field label="MARKA">
-            <select value={form.brand_id || ""} onChange={e => setForm({ ...form, brand_id: e.target.value })} style={inputS}>
+            <select value={form.brand_id || ""} onChange={e => setForm(f => ({ ...f, brand_id: e.target.value }))} style={inputS}>
               <option value="">- Markasız -</option>
               {brands.map(b => (<option key={b.id} value={b.id}>{b.name}</option>))}
             </select>
           </Field>
           <Field label="SATIŞ FİYATI (₺) — 0 girersen kasada sorulur">
-            <input type="number" step="0.01" value={form.price ?? ""} onChange={e => setForm({ ...form, price: e.target.value })} style={inputS} />
+            <input type="number" step="0.01" value={form.price ?? ""} onChange={e => setForm(f => ({ ...f, price: e.target.value }))} style={inputS} />
           </Field>
 
           <Field label="BEDEN">
@@ -343,11 +343,11 @@ export default function RetailPage() {
               </div>
             </Field>
           ) : (
-            <Field label="STOK (adet)"><input type="number" min="0" value={form.retail_stock || 0} onChange={e => setForm({ ...form, retail_stock: e.target.value })} style={inputS} /></Field>
+            <Field label="STOK (adet)"><input type="number" min="0" value={form.retail_stock || 0} onChange={e => setForm(f => ({ ...f, retail_stock: e.target.value }))} style={inputS} /></Field>
           )}
 
           <label style={{ display: "flex", alignItems: "center", gap: 8, marginBottom: 12, cursor: "pointer" }}>
-            <input type="checkbox" checked={form.is_available !== false} onChange={e => setForm({ ...form, is_available: e.target.checked })} style={{ width: 18, height: 18, accentColor: "#FFFFFF" }} />
+            <input type="checkbox" checked={form.is_available !== false} onChange={e => setForm(f => ({ ...f, is_available: e.target.checked }))} style={{ width: 18, height: 18, accentColor: "#FFFFFF" }} />
             <span style={{ fontSize: 13, color: "#F0EDE8" }}>Satışta (kasada listelensin)</span>
           </label>
 
