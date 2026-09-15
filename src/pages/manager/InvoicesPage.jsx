@@ -330,30 +330,38 @@ export default function InvoicesPage() {
       }
       // Increment stock + update cost (+ anormal fiyat artisi tespiti)
       const ing = ingredients.find(i => i.id === ingId);
-      // Ayni hammadde bu faturada birden fazla satirda geciyorsa stok BIRIKMELI;
-      // yoksa ikinci satir birincinin eklemesini ezerdi.
-      const currentStock = runningStock[ingId] != null ? runningStock[ingId] : (Number(ing?.stock_qty)||0);
       const prevCost = Number(ing?.cost_per_unit)||0;
       const isManual = modal?.mode === "manual";
       if (!isManual && !l.isNew && prevCost > 0 && unitCost > prevCost) {
         const pct = ((unitCost - prevCost) / prevCost) * 100;
         if (pct >= PRICE_ALERT_PCT) anomalies.push({ name: ing?.name || "?", unit: ing?.unit || "", prev: prevCost, now: unitCost, pct });
       }
-      runningStock[ingId] = currentStock + qty;
-      // Ayni hammadde birden fazla satirda geciyorsa maliyet AGIRLIKLI ORTALAMA
-      // olmali. Aksi halde son satir kazanir; bedelsiz (%100 iskontolu) bir satir
-      // varsa maliyet sifira duser ve urun bedavaya mal olmus gibi gorunurdu.
+      // STOK: sunucuda toplanir (nip_stok_ekle). Eskiden bu ekran sayfa
+      // acildiginda okudugu stogu bellekte toplayip MUTLAK deger yaziyordu;
+      // arada baska biri "+ Stok" ile mal girdiyse ya da satis olduysa o kayit
+      // siliniyordu. Ayni hammadde iki satirda gecerse iki kez eklenir, dogru.
+      if (qty > 0) {
+        const { error: stokHata } = await supabase.rpc("nip_stok_ekle", {
+          p_store_id: inv.store_id,
+          p_kalemler: [{ ingredient_id: ingId, miktar: qty }],
+          p_not: "Fatura" + (faturaNo ? " " + faturaNo : "") + " · " + form.supplier_name.trim(),
+        });
+        if (stokHata) { alert("Stok islenemedi (" + (ing?.name || "kalem") + "): " + stokHata.message); }
+        else runningStock[ingId] = (runningStock[ingId] || 0) + qty;
+      }
+      // MALIYET stogun disinda: ayni hammadde birden fazla satirda geciyorsa
+      // AGIRLIKLI ORTALAMA olmali. Aksi halde son satir kazanir; bedelsiz
+      // (%100 iskontolu) bir satir varsa maliyet sifira duser ve urun bedavaya
+      // mal olmus gibi gorunurdu.
       const acc = costAcc[ingId] || { cost: 0, qty: 0 };
       acc.cost += unitCost * qty;
       acc.qty += qty;
       costAcc[ingId] = acc;
       const avgCost = acc.qty > 0 ? acc.cost / acc.qty : 0;
-
-      await supabase.from("ingredients").update({
-        stock_qty: runningStock[ingId],
-        // Maliyet 0 girildiyse mevcut maliyet korunur (manuel sayimda fiyat zorunlu degil)
-        cost_per_unit: avgCost > 0 ? avgCost : prevCost,
-      }).eq("id", ingId);
+      // Maliyet 0 girildiyse mevcut maliyet korunur (manuel sayimda fiyat zorunlu degil)
+      if (avgCost > 0 && avgCost !== prevCost) {
+        await supabase.from("ingredients").update({ cost_per_unit: avgCost }).eq("id", ingId);
+      }
     }
 
     setPriceAlerts(anomalies);
