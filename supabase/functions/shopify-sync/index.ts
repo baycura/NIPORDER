@@ -210,6 +210,16 @@ async function siparisler(shop: string, token: string) {
       const vid = gidNum(li.variant?.id);
       if (!vid) continue;
       const adet = Number(li.quantity) || 0;
+      // ACIK BORC — Shopify anahtari girilmeden once kapatilmali:
+      // Asagidaki iki blok stogu "oku -> bellekte hesapla -> MUTLAK yaz"
+      // yapiyor; okuma ile yazma arasinda ag gidis-donusu var ve bunlar ayri
+      // transaction. Bu pencerede yapilan elle stok girisi (nip_stok_ekle,
+      // 20260915_stok_girisi.sql) ya da kasa satisi sessizce SILINIR —
+      // fonksiyonun satir kilidi Postgres disindaki bu yaziciya ulasmaz.
+      // Cozum: nip_stok_ekle'yi service_role'e acip (current_user kapisi,
+      // nip_urun_satis'taki kalip) buradan -adet delta ile cagirmak.
+      // Su an uykuda: Shopify anahtari girilmedigi icin bu is hic kosmuyor
+      // (bot_config'te shopify anahtari yok, shopify_sync_log bos).
       // Tek varyantli urun
       const { data: p1 } = await supa.from("products").select("id, name, retail_stock")
         .eq("shopify_variant_id", vid).maybeSingle();
