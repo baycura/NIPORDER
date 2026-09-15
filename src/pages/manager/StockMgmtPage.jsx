@@ -1,4 +1,4 @@
-import { useEffect, useState } from "react";
+import { useEffect, useMemo, useState } from "react";
 import { useNavigate } from "react-router-dom";
 import { supabase } from "../../lib/supabase.js";
 import { useAuth } from "../../contexts/AuthContext.jsx";
@@ -9,6 +9,18 @@ import { paketIkilemi, ikilemMetni, birimYaz, anlasilirYaz } from "../../lib/bir
 const cv = "-apple-system,BlinkMacSystemFont,'Segoe UI',Roboto,sans-serif";
 const UNITS = ["ml","cl","l","g","kg","adet","şişe","porsiyon"];
 const VOL_UNITS = ["ml","cl","l"];
+
+// Raflar menudeki gibi: once icki, sonra bar disi. Listede olmayan bir grup
+// (elle yazilan yeni raf) sona alfabetik eklenir; grubu bos olan "Diger"e duser.
+const GRUP_SIRASI = [
+  "Cin", "Viski", "Votka", "Rom & Tekila", "Likör & Aperitif",
+  "Fıçı Bira", "Şişe Bira", "Şarap & Köpüklü",
+  "Meşrubat & Su", "Meyve Suyu & Şurup", "Kahve & Çay",
+  "Süt & Yiyecek", "Sarf & Temizlik", "Diğer",
+];
+const GRUPSUZ = "Diğer";
+const grupSira = (ad) => { const i = GRUP_SIRASI.indexOf(ad); return i < 0 ? GRUP_SIRASI.length : i; };
+const trKucuk = (s) => String(s || "").toLocaleLowerCase("tr");
 
 export default function StockMgmtPage() {
   const { staffUser } = useAuth();
@@ -26,6 +38,10 @@ export default function StockMgmtPage() {
   const [uzerineYaz, setUzerineYaz] = useState(false);
   const [sonGiris, setSonGiris] = useState(null);  // "3 sise eklendi" seridi
   const [girisler, setGirisler] = useState([]);    // stock_entries defteri
+  // 146 malzeme tek duz listeydi; artik menudeki gibi raflara ayriliyor
+  const [grupFiltre, setGrupFiltre] = useState(null);   // null = hepsi
+  const [acikGruplar, setAcikGruplar] = useState({});   // { "Cin": true }
+  const [arama, setArama] = useState("");
 
   // sessiz: stok girisi sonrasi tazelemede sayfayi "Yukleniyor" ekranina
   // dusurmesin (acik modal ve onay seridi kaybolurdu)
@@ -44,8 +60,10 @@ export default function StockMgmtPage() {
   };
   useEffect(() => { load(); }, []);
 
-  const openNew = () => { setUzerineYaz(true); setModal({mode:"new"}); setForm({name:"", unit:"ml", stock_qty:0, cost_per_unit:0, waste_pct:0, pack_qty:1, unit_volume_ml:"", waste_per_pack:0, is_consumable:false}); };
-  const openEdit = (i) => { setUzerineYaz(false); setModal({mode:"edit", data:i}); setForm({name:i.name, unit:i.unit, stock_qty:Number(i.stock_qty)||0, cost_per_unit:Number(i.cost_per_unit)||0, waste_pct:Number(i.waste_pct)||0, pack_qty:Number(i.pack_qty)||1, unit_volume_ml:i.unit_volume_ml??"", waste_per_pack:Number(i.waste_per_pack)||0, is_consumable:!!i.is_consumable}); };
+  // Yeni hammadde acik raftan aciliyorsa o rafi hazir getir (Cin rafindayken
+  // "+ Yeni Hammadde" -> grup Cin)
+  const openNew = () => { setUzerineYaz(true); setModal({mode:"new"}); setForm({name:"", unit:"ml", grup: grupFiltre && grupFiltre !== GRUPSUZ ? grupFiltre : "", stock_qty:0, cost_per_unit:0, waste_pct:0, pack_qty:1, unit_volume_ml:"", waste_per_pack:0, is_consumable:false}); };
+  const openEdit = (i) => { setUzerineYaz(false); setModal({mode:"edit", data:i}); setForm({name:i.name, unit:i.unit, grup:i.grup||"", stock_qty:Number(i.stock_qty)||0, cost_per_unit:Number(i.cost_per_unit)||0, waste_pct:Number(i.waste_pct)||0, pack_qty:Number(i.pack_qty)||1, unit_volume_ml:i.unit_volume_ml??"", waste_per_pack:Number(i.waste_per_pack)||0, is_consumable:!!i.is_consumable}); };
 
   // Satirdan ya da modalin icinden acilir; kaydedince listeyi tazeler.
   // storeId kalemin kendi magazasi: iki magazali yoneticide liste iki magazadan
@@ -93,6 +111,7 @@ export default function StockMgmtPage() {
     setBusy(true);
     const payload = {
       name: form.name.trim(), unit: form.unit, store_id: staffUser?.store_ids?.[0],
+      grup: form.grup?.trim() || null,
       // Stok yalniz yeni kayitta ya da "uzerine yaz" bilerek acildiginda
       // yazilir; yoksa maliyet duzeltmesi aradaki satisi geri alirdi.
       ...(modal.mode === "new" || uzerineYaz ? { stock_qty: Number(form.stock_qty)||0 } : {}),
@@ -120,10 +139,78 @@ export default function StockMgmtPage() {
     load();
   };
 
+  // Raflar: arama ve filtre uygulandiktan sonra grup grup toplanir.
+  // Hook'lar erken donusten ONCE cagrilmali.
+  const q = trKucuk(arama.trim());
+  const gruplar = useMemo(() => {
+    const m = new Map();
+    items.forEach(i => {
+      if (q && !trKucuk(i.name).includes(q) && !trKucuk(i.grup).includes(q)) return;
+      const ad = i.grup?.trim() || GRUPSUZ;
+      if (!m.has(ad)) m.set(ad, { ad, items: [], azalan: 0, tukenen: 0, deger: 0 });
+      const g = m.get(ad);
+      g.items.push(i);
+      const stok = Number(i.stock_qty) || 0;
+      if (stok <= 0) g.tukenen++; else if (stok < 10) g.azalan++;
+      g.deger += stok * (Number(i.cost_per_unit) || 0);
+    });
+    return [...m.values()].sort((a, b) => grupSira(a.ad) - grupSira(b.ad) || a.ad.localeCompare(b.ad, "tr"));
+  }, [items, q]);
+
   if (loading) return (<div style={{color:"#888",fontFamily:cv,padding:20}}>Yukleniyor...</div>);
 
   const totalValue = items.reduce((s,i) => s + (Number(i.stock_qty)||0) * (Number(i.cost_per_unit)||0), 0);
   const lowStock = items.filter(i => Number(i.stock_qty) < 10).length;
+  // Arama yapiliyorsa ya da tek raf secildiyse raflar kendiliginden acilir;
+  // yoksa 146 satir tek ekrana dokulurdu.
+  const gosterilen = grupFiltre ? gruplar.filter(g => g.ad === grupFiltre) : gruplar;
+  const hepsiAcik = !!q || !!grupFiltre || gosterilen.length === 1;
+
+  // Tek malzeme satiri: raf acilinca bu ciziliyor
+  const satir = (i) => {
+        const value = (Number(i.stock_qty)||0) * (Number(i.cost_per_unit)||0);
+        const isLow = Number(i.stock_qty) < 10;
+        // Hacim birimli malzemede sise karsiligi (1 sise = unit_volume_ml)
+        const hacim = Number(i.unit_volume_ml) || 0;
+        const carp = i.unit === "ml" ? 1 : i.unit === "cl" ? 10 : i.unit === "l" ? 1000 : 0;
+        const sise = carp && hacim > 0
+          ? Math.round((Number(i.stock_qty) || 0) * carp / hacim * 10) / 10
+          : null;
+        return (
+          <div key={i.id} style={{background:"#1A1A1A",border:"1px solid "+(isLow?"#2A2A2A":"#2A2A2A"),borderRadius:10,padding:12,marginBottom:8}}>
+            <div style={{display:"flex",justifyContent:"space-between",alignItems:"flex-start",gap:10}}>
+              <div style={{flex:1,minWidth:0}}>
+                <div style={{display:"flex",alignItems:"center",gap:6,flexWrap:"wrap"}}>
+                  <div style={{fontSize:14,fontWeight:700,color:"#F0EDE8"}}>{i.name}</div>
+                  {isLow && <span style={{fontSize:9,padding:"2px 6px",background:"#2A2A2A",color:"#C87A6A",borderRadius:6,fontWeight:700}}>Azalan</span>}
+                  {i.waste_pct > 0 && <span style={{fontSize:9,padding:"2px 6px",background:"#2A2A2A",color:"#F0EDE8",borderRadius:6,fontWeight:700}}>FIRE %{i.waste_pct}</span>}
+                  {i.is_consumable && <span style={{fontSize:9,padding:"2px 6px",background:"#2A2A2A",color:"#F0EDE8",borderRadius:6,fontWeight:700}}>Sarf</span>}
+                  {Number(i.unit_volume_ml) > 0 && <span style={{fontSize:9,padding:"2px 6px",background:"#22262E",color:"#8A8580",borderRadius:6,fontWeight:700}}>{Number(i.pack_qty)>1 ? i.pack_qty+"x" : ""}{Number(i.unit_volume_ml)>=1000 ? (Number(i.unit_volume_ml)/1000)+"L" : i.unit_volume_ml+"ml"}</span>}
+                </div>
+                <div style={{fontSize:12,color:"#888",marginTop:3}}>
+                  <span style={{color:isLow?"#C87A6A":"#F0EDE8",fontWeight:700}}>{i.stock_qty}</span> {i.unit}
+                  {/* Bar sise sayar, sistem ml tutar: ikisini yan yana goster */}
+                  {sise != null && <span style={{marginLeft:6,color:"#8A8580"}}>≈ {sise} şişe</span>}
+                  {i.cost_per_unit > 0 && <span style={{marginLeft:8}}>· ₺{i.cost_per_unit}/{i.unit}</span>}
+                  {value > 0 && <span style={{marginLeft:8,color:"#FFFFFF"}}>· deger ₺{Math.round(value)}</span>}
+                </div>
+              </div>
+              <div style={{display:"flex",alignItems:"center",gap:6,flexShrink:0}}>
+                {/* Sahada en cok yapilan is: gelen malin stoga eklenmesi. Bu
+                    yuzden satirin en gorunur dugmesi bu. */}
+                <button onClick={() => stokEkleAc(i)} title="Stoğa ekle"
+                  style={{padding:"10px 12px",minHeight:44,background:"transparent",color:"#FFFFFF",border:"1px solid #FFFFFF",borderRadius:9,fontSize:12,fontWeight:800,cursor:"pointer",whiteSpace:"nowrap",display:"flex",alignItems:"center",gap:5}}>
+                  <Ikon ad="ekle" boy={13}/> Stok
+                </button>
+                <div style={{display:"flex",flexDirection:"column",gap:4}}>
+                  <button onClick={() => openEdit(i)} style={{padding:"5px 9px",background:"#222",color:"#aaa",border:"1px solid #333",borderRadius:6,fontSize:10,cursor:"pointer"}}>Duzenle</button>
+                  <button onClick={() => del(i)} style={{padding:"5px 9px",background:"transparent",color:"#C87A6A",border:"1px solid #2A2A2A",borderRadius:6,fontSize:10,cursor:"pointer"}}>Sil</button>
+                </div>
+              </div>
+            </div>
+          </div>
+        );
+  };
 
   return (
     <div style={{fontFamily:cv,color:"#F0EDE8"}}>
@@ -164,44 +251,41 @@ export default function StockMgmtPage() {
 
       <button onClick={openNew} style={{padding:"10px 16px",background:"#FFFFFF",color:"#000",border:"none",borderRadius:10,fontSize:13,fontWeight:800,cursor:"pointer",marginBottom:14}}>+ Yeni Hammadde</button>
 
-      {items.length === 0 && <div style={{textAlign:"center",padding:40,color:"#888888",fontSize:13}}>Hic hammadde yok. Ekle veya fatura yukle.</div>}
+      {/* Raf secimi: menudeki kategori seridinin malzeme karsiligi */}
+      <div style={{display:"flex",gap:6,overflowX:"auto",paddingBottom:6,marginBottom:8,WebkitOverflowScrolling:"touch"}}>
+        <button onClick={()=>setGrupFiltre(null)} style={cip(!grupFiltre)}>Hepsi <span style={{opacity:0.6}}>{items.length}</span></button>
+        {gruplar.map(g => (
+          <button key={g.ad} onClick={()=>setGrupFiltre(grupFiltre === g.ad ? null : g.ad)} style={cip(grupFiltre === g.ad)}>
+            {g.ad} <span style={{opacity:0.6}}>{g.items.length}</span>
+          </button>
+        ))}
+      </div>
 
-      {items.map(i => {
-        const value = (Number(i.stock_qty)||0) * (Number(i.cost_per_unit)||0);
-        const isLow = Number(i.stock_qty) < 10;
+      <input value={arama} onChange={e=>setArama(e.target.value)} placeholder="Malzeme ya da raf ara"
+        style={{width:"100%",boxSizing:"border-box",padding:"10px 12px",minHeight:42,background:"#0C0C0C",border:"1px solid #2A2A2A",borderRadius:9,color:"#F0EDE8",fontFamily:cv,fontSize:14,outline:"none",marginBottom:12}}/>
+
+      {items.length === 0 && <div style={{textAlign:"center",padding:40,color:"#888888",fontSize:13}}>Hic hammadde yok. Ekle veya fatura yukle.</div>}
+      {items.length > 0 && gosterilen.length === 0 && <div style={{textAlign:"center",padding:30,color:"#888888",fontSize:13}}>Aramaya uyan malzeme yok.</div>}
+
+      {gosterilen.map(g => {
+        const acik = acikGruplar[g.ad] ?? hepsiAcik;
         return (
-          <div key={i.id} style={{background:"#1A1A1A",border:"1px solid "+(isLow?"#2A2A2A":"#2A2A2A"),borderRadius:10,padding:12,marginBottom:8}}>
-            <div style={{display:"flex",justifyContent:"space-between",alignItems:"flex-start",gap:10}}>
-              <div style={{flex:1,minWidth:0}}>
-                <div style={{display:"flex",alignItems:"center",gap:6,flexWrap:"wrap"}}>
-                  <div style={{fontSize:14,fontWeight:700,color:"#F0EDE8"}}>{i.name}</div>
-                  {isLow && <span style={{fontSize:9,padding:"2px 6px",background:"#2A2A2A",color:"#C87A6A",borderRadius:6,fontWeight:700}}>Azalan</span>}
-                  {i.waste_pct > 0 && <span style={{fontSize:9,padding:"2px 6px",background:"#2A2A2A",color:"#F0EDE8",borderRadius:6,fontWeight:700}}>FIRE %{i.waste_pct}</span>}
-                  {i.is_consumable && <span style={{fontSize:9,padding:"2px 6px",background:"#2A2A2A",color:"#F0EDE8",borderRadius:6,fontWeight:700}}>Sarf</span>}
-                  {Number(i.unit_volume_ml) > 0 && <span style={{fontSize:9,padding:"2px 6px",background:"#22262E",color:"#8A8580",borderRadius:6,fontWeight:700}}>{Number(i.pack_qty)>1 ? i.pack_qty+"x" : ""}{Number(i.unit_volume_ml)>=1000 ? (Number(i.unit_volume_ml)/1000)+"L" : i.unit_volume_ml+"ml"}</span>}
-                </div>
-                <div style={{fontSize:12,color:"#888",marginTop:3}}>
-                  <span style={{color:isLow?"#C87A6A":"#F0EDE8",fontWeight:700}}>{i.stock_qty}</span> {i.unit}
-                  {i.cost_per_unit > 0 && <span style={{marginLeft:8}}>· ₺{i.cost_per_unit}/{i.unit}</span>}
-                  {value > 0 && <span style={{marginLeft:8,color:"#FFFFFF"}}>· deger ₺{Math.round(value)}</span>}
-                </div>
-              </div>
-              <div style={{display:"flex",alignItems:"center",gap:6,flexShrink:0}}>
-                {/* Sahada en cok yapilan is: gelen malin stoga eklenmesi. Bu
-                    yuzden satirin en gorunur dugmesi bu. */}
-                <button onClick={() => stokEkleAc(i)} title="Stoğa ekle"
-                  style={{padding:"10px 12px",minHeight:44,background:"transparent",color:"#FFFFFF",border:"1px solid #FFFFFF",borderRadius:9,fontSize:12,fontWeight:800,cursor:"pointer",whiteSpace:"nowrap",display:"flex",alignItems:"center",gap:5}}>
-                  <Ikon ad="ekle" boy={13}/> Stok
-                </button>
-                <div style={{display:"flex",flexDirection:"column",gap:4}}>
-                  <button onClick={() => openEdit(i)} style={{padding:"5px 9px",background:"#222",color:"#aaa",border:"1px solid #333",borderRadius:6,fontSize:10,cursor:"pointer"}}>Duzenle</button>
-                  <button onClick={() => del(i)} style={{padding:"5px 9px",background:"transparent",color:"#C87A6A",border:"1px solid #2A2A2A",borderRadius:6,fontSize:10,cursor:"pointer"}}>Sil</button>
-                </div>
-              </div>
-            </div>
-          </div>
+        <div key={g.ad} style={{background:"#161616",border:"1px solid #2A2A2A",borderRadius:12,marginBottom:10,overflow:"hidden"}}>
+          <button onClick={()=>setAcikGruplar(a => ({...a, [g.ad]: !acik}))}
+            style={{width:"100%",display:"flex",alignItems:"center",gap:10,padding:"12px 14px",background:"transparent",border:"none",color:"#F0EDE8",cursor:"pointer",fontFamily:cv,textAlign:"left"}}>
+            <Ikon ad={acik ? "asagi" : "sag"} boy={14} style={{color:"#8A8580",flexShrink:0}}/>
+            <span style={{flex:1,minWidth:0,fontSize:15,fontWeight:800,overflow:"hidden",textOverflow:"ellipsis",whiteSpace:"nowrap"}}>{g.ad}</span>
+            <span style={{fontSize:12,color:"#8A8580",whiteSpace:"nowrap",fontVariantNumeric:"tabular-nums"}}>
+              {g.items.length} kalem
+              {g.tukenen > 0 && <span style={{color:"#C87A6A"}}> · {g.tukenen} tükendi</span>}
+              {g.azalan > 0 && <span> · {g.azalan} azalan</span>}
+            </span>
+          </button>
+          {acik && <div style={{padding:"0 10px 10px"}}>{g.items.map(satir)}</div>}
+        </div>
         );
       })}
+
 
       {girisler.length > 0 && (
         <div style={{marginTop:18}}>
@@ -231,6 +315,20 @@ export default function StockMgmtPage() {
       {modal && (
         <Modal onClose={() => setModal(null)} title={modal.mode==="new"?"Yeni Hammadde":"Hammaddeyi Duzenle"}>
           <Field label="AD"><input value={form.name||""} onChange={e=>setForm(f => ({...f,name:e.target.value}))} placeholder="orn: Bud Ficinin" style={inputS}/></Field>
+          {/* Raf: menudeki kategori gibi. Listede olmayan bir raf gerekiyorsa
+              alttaki kutuya yazilir, yeni raf kendiliginden acilir. */}
+          <Field label="RAF">
+            <div style={{display:"flex",gap:6,flexWrap:"wrap",marginBottom:7}}>
+              {[...GRUP_SIRASI.filter(x => x !== GRUPSUZ),
+                ...[...new Set(items.map(i => i.grup).filter(x => x && !GRUP_SIRASI.includes(x)))]
+               ].map(x => (
+                <button key={x} onClick={()=>setForm(f=>({...f,grup:x}))} style={cip(form.grup===x)}>{x}</button>
+              ))}
+            </div>
+            <input value={form.grup||""} onChange={e=>setForm(f=>({...f,grup:e.target.value}))}
+              placeholder="ya da yeni raf adı yaz (örn: Sake)" style={inputS}/>
+          </Field>
+
           <Field label="BIRIM">
             <div style={{display:"flex",gap:6,flexWrap:"wrap"}}>
               {UNITS.map(u => (
@@ -335,6 +433,12 @@ export default function StockMgmtPage() {
 }
 
 const inputS = {width:"100%",padding:"10px 12px",background:"#0C0C0C",border:"1px solid #2A2A2A",borderRadius:8,color:"#F0EDE8",fontSize:14,outline:"none",fontFamily:"inherit"};
+const cip = (aktif) => ({
+  padding:"9px 13px", minHeight:40, borderRadius:9, cursor:"pointer", fontFamily:cv, fontSize:12, fontWeight:700,
+  whiteSpace:"nowrap", flexShrink:0,
+  background: aktif ? "#FFFFFF" : "transparent", color: aktif ? "#000" : "#8A8580",
+  border: "1px solid " + (aktif ? "#FFFFFF" : "#2A2A2A"),
+});
 const cancelBtn = {flex:1,padding:"12px",background:"transparent",color:"#888",border:"1px solid #333",borderRadius:10,fontSize:14,fontWeight:700,cursor:"pointer"};
 const saveBtn = {flex:2,padding:"12px",background:"#FFFFFF",color:"#000",border:"none",borderRadius:10,fontSize:14,fontWeight:800,cursor:"pointer"};
 
