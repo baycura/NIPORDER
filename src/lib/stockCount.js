@@ -13,13 +13,28 @@ export const fmtMiktar = (n) =>
 // Yoksa satir kendi biriminde kalir — tahmin YAPILMAZ.
 export const kapVar = (i) => Number(i?.unit_volume_ml) > 1;
 
+// FICI ESIGI: 20 litre ve ustu kap ficidir. Fici hacmi sabittir (30 ya da
+// 50 L) ve kimse depoda mililitre saymaz — fici HER ZAMAN adetle sayilir,
+// ekranin sayim birimi ne olursa olsun (sahip karari, 16.09.2026).
+export const FICI_ML = 20000;
+export const ficiMi = (i) => Number(i?.unit_volume_ml) >= FICI_ML;
+
 // Kabin adi hacimden turetilir. Amac dogru terminoloji degil, sayan kisinin
 // eline aldigi seyi tanimasi: 50 L'lik sey fici, 750 ml'lik sey sise.
 export function kapAdi(i) {
   const ml = Number(i?.unit_volume_ml) || 0;
-  if (ml >= 20000) return "fıçı";
+  if (ml >= FICI_ML) return "fıçı";
   if (ml >= 2000) return "bidon";
   return "şişe";
+}
+
+// Kap boyu okunur yazi: 50.000 ml degil "50 L". Sayan kisi elindeki fıçının
+// ustundeki yaziyla karsilastiracak.
+export function kapBoyu(i) {
+  const ml = Number(i?.unit_volume_ml) || 0;
+  if (!ml) return "";
+  if (ml >= 1000) return fmtMiktar(ml / 1000) + " L";
+  return fmtMiktar(ml) + " ml";
 }
 
 // Kayit biriminden kap birimine ve geri. Cevrim TEK YONLU degil: ekranda ne

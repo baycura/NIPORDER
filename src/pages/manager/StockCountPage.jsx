@@ -4,7 +4,7 @@ import { useAuth } from "../../contexts/AuthContext.jsx";
 import Ikon from "../../components/Ikon.jsx";
 import { raflaraAyir, grupAdi, RAF_URUN, trKucuk } from "../../lib/malzemeGrup.js";
 import {
-  fmtTL, fmtMiktar, kapVar, kapAdi, kabaCevir, kabaGeri, farkTutari,
+  fmtTL, fmtMiktar, kapVar, kapAdi, kapBoyu, ficiMi, kabaCevir, kabaGeri, farkTutari,
   farkRengi, ONEMSIZ, TASLAK_KEY, aramaUyar,
 } from "../../lib/stockCount.js";
 
@@ -173,13 +173,15 @@ export default function StockCountPage() {
 
   // Mod degisince girilmis sayilar da cevrilir. Cevrilmezse 14 fici yazan
   // kisi kayit birimine gecince "14 ml" gormus olur.
+  // FICILAR MODA TABI DEGIL: onlar her zaman fici sayilir, girilen sayi oldugu
+  // gibi kalir — yoksa mod dugmesine dokunan kisi 16 fıçıyı 800.000'e cevirir.
   const modDegistir = (yeniKap) => {
     setSayimlar(s => {
       const out = {};
       for (const [id, ham] of Object.entries(s)) {
         const i = malzemeById[id];
         const n = Number(ham);
-        if (ham === "" || ham == null || !i || !kapVar(i) || !isFinite(n)) { out[id] = ham; continue; }
+        if (ham === "" || ham == null || !i || !kapVar(i) || ficiMi(i) || !isFinite(n)) { out[id] = ham; continue; }
         out[id] = sayiYaz(yeniKap ? kabaCevir(n, i) : kabaGeri(n, i));
       }
       return out;
@@ -190,7 +192,9 @@ export default function StockCountPage() {
   // Bir satirin ekranda gosterilecek hali: beklenen, sayilan ve fark HEP ayni
   // birimde. Karisirsa sayim degil kaza olur.
   const satirHesap = (i) => {
-    const kap = kapModu && kapVar(i);
+    // Fici modun disinda: 50 L'lik fici hep "fici" olarak sayilir. Kalanini
+    // mililitreyle sayan yok; hacim sabit oldugu icin adet yeter.
+    const kap = kapVar(i) && (kapModu || ficiMi(i));
     const ham = sayimlar[i.id];
     const girildi = ham !== "" && ham != null && isFinite(Number(ham));
     const beklenenTemel = Number(i.stock_qty) || 0;
@@ -401,6 +405,14 @@ export default function StockCountPage() {
             <button onClick={() => modDegistir(false)} style={cip(!kapModu)}>Kayıt birimi</button>
             <button onClick={() => modDegistir(true)} style={cip(kapModu)}>Şişe &amp; kutu</button>
           </div>
+          {/* Fici bu dugmeye tabi degil: hacmi sabit (30 ya da 50 L), kimse
+              depoda mililitre saymaz. Sahip karari — her tur fici adetle. */}
+          {(malzemeler || []).some(ficiMi) && (
+            <div style={{ fontSize: 12, color: C.faint, marginTop: 8, lineHeight: 1.6 }}>
+              Fıçılar her zaman <b style={{ color: C.muted }}>fıçı</b> olarak sayılır — hacimleri sabit
+              (30 ya da 50 L). Musluktaki açık fıçıyı da say; yarıysa 0,5 yaz.
+            </div>
+          )}
         </div>
 
         {/* Yapiskan ozet: sayarken kac malzeme girdigin ve fark hep gorunur
@@ -475,7 +487,7 @@ export default function StockCountPage() {
                         <span style={{ color: C.ink, fontWeight: 800, marginRight: 6 }}>{i.variant}</span>
                       )}
                       beklenen {fmtMiktar(h.beklenen)} {h.birimAdi}
-                      {h.kap && <> · {fmtMiktar(i.unit_volume_ml)} {i.unit}</>}
+                      {h.kap && <> · 1 {h.birimAdi} = {kapBoyu(i)}</>}
                     </div>
                   </div>
                   <input

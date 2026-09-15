@@ -55,3 +55,7 @@ export function siseKarsiligi(i) {
   if (!carp || hacim <= 0) return null;
   return Math.round((Number(i.stock_qty) || 0) * carp / hacim * 10) / 10;
 }
+
+// Kabin adi: 50 L'lik sey "sise" degil fici. Esik ve adlandirma sayim
+// ekraniyla ayni yerden gelsin diye stockCount.js'ten.
+export { kapAdi, ficiMi } from "./stockCount.js";
