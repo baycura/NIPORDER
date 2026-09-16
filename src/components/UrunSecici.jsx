@@ -129,7 +129,7 @@ export default function UrunSecici({
         <div style={{position:"sticky",top:0,zIndex:2,background:"#161616",display:"flex",gap:5,overflowX:"auto",marginTop:10,padding:"6px 0"}}>
           {catChips.map(c => (
             <button key={c.id} onClick={() => onCat && onCat(c.id)} style={{flexShrink:0,padding:"8px 11px",minHeight:36,border:"1px solid "+(aktifCat===c.id?"#FFFFFF":"#333"),borderRadius:12,fontSize:12,fontWeight:600,background:aktifCat===c.id?"rgba(255,255,255,0.2)":"#1A1A1A",color:aktifCat===c.id?"#FFFFFF":"#aaa",cursor:"pointer",whiteSpace:"nowrap",letterSpacing:"0.2px",fontFamily:"inherit"}}>
-              {c.icon}{c.name?.toUpperCase()}
+              {c.icon}{c.name?.toLocaleUpperCase("tr-TR")}
             </button>
           ))}
         </div>

@@ -75,9 +75,15 @@ export const MARKA = {
   sehir:        env.VITE_MARKA_SEHIR || "Fethiye",
   epostaAlani:  env.VITE_MARKA_EPOSTA_ALANI || "notinparis.me",
   instagram:    env.VITE_MARKA_INSTAGRAM || (nip ? "https://instagram.com/notinparis.me" : ""),
+  // MARKA ADININ DILI — buyuk harfe cevirme kurali buna bagli.
+  // Turkce'de i -> İ, Ingilizce'de i -> I. Arayuz Turkce (html lang="tr") oldugu
+  // icin marka adi da Turkce kuralla buyuyordu: "Not in Paris" -> "NOT İN PARİS".
+  // Marka adi Ingilizce; dili ayri tutuyoruz. Turkce adli isletmede
+  // VITE_MARKA_DIL=tr yazilir, "İş Kahvesi" -> "İŞ KAHVESİ" dogru cikar.
+  dil:          env.VITE_MARKA_DIL || (nip ? "en" : "tr"),
   // Acilis/karsilama logosu. Isletme kendi ikonlarini isletme/<slug>/public/icons
   // altina koyar; ayni yol, farkli dosya.
   logoYolu:     "/icons/logo-mark.png",
 };
-MARKA.harf = ((MARKA.kisa || MARKA.ad || "N").trim()[0] || "N").toLocaleUpperCase("tr-TR");
-MARKA.buyuk = MARKA.ad.toLocaleUpperCase("tr-TR");
+MARKA.harf = ((MARKA.kisa || MARKA.ad || "N").trim()[0] || "N").toLocaleUpperCase(MARKA.dil);
+MARKA.buyuk = MARKA.ad.toLocaleUpperCase(MARKA.dil);

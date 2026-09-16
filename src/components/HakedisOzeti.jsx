@@ -123,7 +123,7 @@ export default function HakedisOzeti({
       <div style={{ display: "flex", alignItems: "center", justifyContent: "space-between", gap: 8 }}>
         <button type="button" aria-label="Önceki ay" disabled={!geriOlur} onClick={() => geriOlur && onAy(ayKaydir(ay, -1))} style={okDugme(!geriOlur)}><Ikon ad="oksol" boy={18} /></button>
         <div style={{ textAlign: "center", minWidth: 0 }}>
-          <div style={{ fontFamily: hv, fontSize: 28, letterSpacing: 1, lineHeight: 1 }}>{ayEtiketi(ay).toUpperCase()}</div>
+          <div style={{ fontFamily: hv, fontSize: 28, letterSpacing: 1, lineHeight: 1 }}>{ayEtiketi(ay).toLocaleUpperCase("tr-TR")}</div>
           {guncel && <div style={{ fontSize: 11, color: C.muted, marginTop: 4 }}>ay sürüyor</div>}
         </div>
         <button type="button" aria-label="Sonraki ay" disabled={!ileriOlur} onClick={() => ileriOlur && onAy(ayKaydir(ay, 1))} style={okDugme(!ileriOlur)}><Ikon ad="oksag" boy={18} /></button>

@@ -1568,7 +1568,10 @@ export default function CustomerMenu() {
   const susBarActive = browsing && successOrderId && orderStage === "pending";
 
   return (
-    <div className="nip-customer nip-customer-shell" style={{fontFamily:cv,background:"#fff",minHeight:"100vh",color:"#000",paddingBottom:cart.length>0?156:96}}>
+    // lang: sayfanin kabugu Turkce (index.html lang="tr") ama musteri menusu uc
+    // dilli. CSS buyuk harfi dile gore yapar; secili dili buraya yaziyoruz ki
+    // Ingilizce/Rusca metin Turkce kuralla buyumesin.
+    <div lang={lang} className="nip-customer nip-customer-shell" style={{fontFamily:cv,background:"#fff",minHeight:"100vh",color:"#000",paddingBottom:cart.length>0?156:96}}>
       <div style={{borderBottom:"1px solid #eee",position:"sticky",top:0,background:"#fff",zIndex:20}}>
         {(() => {
           // Duyuru seridi — Ayarlar > Duyuru Seridi'nden yonetilir (uc dilli, TR'ye dusme)
@@ -1583,9 +1586,11 @@ export default function CustomerMenu() {
         <div style={{padding:"20px 16px 10px"}}>
         <div style={{display:"flex",alignItems:"center",justifyContent:"space-between"}}>
           <div>
-            <div style={{fontSize:24,fontWeight:400,letterSpacing:"0.005em",fontFamily:"'Coolvetica Heavy','Coolvetica Condensed','Barlow Condensed',sans-serif",textTransform:"uppercase"}}>{MARKA.ad}</div>
+            {/* lang: CSS'te buyuk harf DILE gore yapilir. Sayfa lang="tr" oldugu
+                icin "Not in Paris" Turkce kuralla "NOT İN PARİS" cikiyordu. */}
+            <div lang={MARKA.dil} style={{fontSize:24,fontWeight:400,letterSpacing:"0.005em",fontFamily:"'Coolvetica Heavy','Coolvetica Condensed','Barlow Condensed',sans-serif",textTransform:"uppercase"}}>{MARKA.ad}</div>
             <div style={{fontSize:12,color:"#666666",letterSpacing:"0.2px",marginTop:2}}>
-              {custTab !== "menu" ? (CUST_TABS.find(x=>x.key===custTab)?.[["en","ru"].includes(lang)?lang:"tr"] || "").toUpperCase() : (table ? table.name?.toUpperCase() : t.menu)}
+              {custTab !== "menu" ? (CUST_TABS.find(x=>x.key===custTab)?.[["en","ru"].includes(lang)?lang:"tr"] || "").toLocaleUpperCase(lang) : (table ? table.name?.toLocaleUpperCase(lang) : t.menu)}
               {partyMode && custTab === "menu" && <span style={{marginLeft:6,color:"#000000",fontWeight:700}}>· {t.partyMode}</span>}
             </div>
           </div>
@@ -2256,7 +2261,7 @@ export default function CustomerMenu() {
             {(optModal.options_config?.groups || []).map(group => (
               <div key={group.name} style={{marginBottom:14}}>
                 <div style={{fontSize:11,color:"#333",letterSpacing:"1px",fontWeight:700,marginBottom:6}}>
-                  {optT(group.name)?.toUpperCase()}{group.required && <span style={{color:"#A34A3A",marginLeft:4}}>*</span>}
+                  {optT(group.name)?.toLocaleUpperCase(lang)}{group.required && <span style={{color:"#A34A3A",marginLeft:4}}>*</span>}
                   {group.multi && <span style={{color:"#666666",fontWeight:600,marginLeft:6}}>· {t.multi_select}</span>}
                 </div>
                 <div style={{display:"flex",flexWrap:"wrap",gap:6}}>
