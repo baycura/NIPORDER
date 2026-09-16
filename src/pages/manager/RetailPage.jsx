@@ -64,12 +64,14 @@ export default function RetailPage() {
     if (error) { alert("Hata: " + error.message); return; }
     setBrandModal(null); load();
   };
+  // Donen deger: silindi mi. Pencere ancak silme gerceklestiyse kapanir.
   const delBrand = async (b) => {
     const n = products.filter(p => p.brand_id === b.id).length;
-    if (!confirm('"' + b.name + '" markası silinsin mi?' + (n ? "\n\n" + n + " ürün markasız kalacak (silinmez)." : ""))) return;
+    if (!confirm('"' + b.name + '" markası silinsin mi?' + (n ? "\n\n" + n + " ürün markasız kalacak (silinmez)." : ""))) return false;
     const { error } = await supabase.from("brands").delete().eq("id", b.id);
-    if (error) { alert("Hata: " + error.message); return; }
+    if (error) { alert("Hata: " + error.message); return false; }
     load();
+    return true;
   };
 
   // ---- Ürünler ----
@@ -160,11 +162,15 @@ export default function RetailPage() {
     setSonGiris(null); load();
   };
 
+  // Donen deger: silindi mi. Pencerenin dibindeki "Bu urunu sil" buna bakar —
+  // onay kutusunda "Iptal" denince pencere ACIK kalmali, yoksa kaydedilmemis
+  // fiyat degisikligi sessizce ucuyordu.
   const delProduct = async (p) => {
-    if (!confirm('"' + p.name + '" silinsin mi?')) return;
+    if (!confirm('"' + p.name + '" silinsin mi?')) return false;
     const { error } = await supabase.from("products").delete().eq("id", p.id);
-    if (error) { alert("Silinemedi (geçmiş siparişlerde kullanılmış olabilir): " + error.message); return; }
+    if (error) { alert("Silinemedi (geçmiş siparişlerde kullanılmış olabilir): " + error.message); return false; }
     load();
+    return true;
   };
 
   if (loading) return (<div style={{ color: "#888", fontFamily: cv, padding: 20 }}>Yukleniyor...</div>);
@@ -173,43 +179,68 @@ export default function RetailPage() {
   const totalStock = products.reduce((s, p) => s + (Number(p.retail_stock) || 0), 0);
   const stockValue = products.reduce((s, p) => s + (Number(p.retail_stock) || 0) * (Number(p.price) || 0), 0);
 
+  // SAHIP: "Arayuz cok komplike, kafa karistirici." Kartta eskiden ayni anda
+  // Duzenle, Sil, uc rozet ve cok satira tasan beden rozetleri vardi; listedeki
+  // "Sil"e yanlislikla dokunmak urunu goturuyordu. Artik: karta dokun =
+  // duzenle, silme urun penceresinin dibinde, kartta yalniz gunluk is olan
+  // "+ Stok" kaliyor. Veri akisi, stok hesaplari ve sorgular aynen duruyor.
   const ProductRow = ({ p }) => {
     const vs = Array.isArray(p.variants) ? p.variants : [];
+    const stok = Number(p.retail_stock) || 0;
     const low = Number(p.retail_stock) <= 2;
+    // "Tukendi" rozeti bedenli urunde BEDEN TOPLAMINDAN hesaplanir: retail_stock
+    // ile beden toplami ayrisabiliyor (satis tetigi ikisini bagimsiz kirpiyor),
+    // ayrisinca kart ustte "Tukendi" derken altta "M 4" yaziyordu.
+    const bedenToplam = vs.reduce((s, v) => s + (Number(v.stock) || 0), 0);
+    const bitti = vs.length ? bedenToplam <= 0 : stok <= 0;
+    // Rozet enflasyonu yerine tek silik satir: aksiyon gerektirmeyen bilgiler
+    // (kapali, serbest tutar) alt nota iner. "Kapali" kelimesi Menu
+    // Yonetimi'ndekiyle ayni — ayni alan iki ekranda iki isim tasimasin.
+    // Fiyat da alt satirda: bu bir STOK ekrani, ust satirda adin yaninda duran
+    // tek sayi stok olsun. Fiyat ustteyken telefonda urun adi "Fethiye Lo..."
+    // diye kirpiliyordu.
+    const notlar = [
+      Number(p.price) > 0 ? "₺" + p.price : "Serbest tutar",
+      p.is_available === false && "Kapalı",
+    ].filter(Boolean);
     return (
-      <div style={{ background: "#161616", border: "1px solid " + (low ? "#2A2A2A" : "#2A2A2A"), borderRadius: 10, padding: 12, marginBottom: 8 }}>
-        <div style={{ display: "flex", justifyContent: "space-between", alignItems: "flex-start", gap: 10 }}>
-          <div style={{ flex: 1, minWidth: 0 }}>
-            <div style={{ fontSize: 14, fontWeight: 700, color: "#F0EDE8" }}>
-              {p.name}
-              {p.is_available === false && <span style={{ marginLeft: 6, fontSize: 9, padding: "2px 6px", background: "#333", color: "#999", borderRadius: 6, fontWeight: 700 }}>Pasif</span>}
-              {low && <span style={{ marginLeft: 6, fontSize: 9, padding: "2px 6px", background: "#2A2A2A", color: "#F0EDE8", borderRadius: 6, fontWeight: 700 }}>Azalan</span>}
-            </div>
-            <div style={{ fontSize: 12, color: "#888", marginTop: 3 }}>
-              {Number(p.price) > 0 ? <span style={{ color: "#FFFFFF", fontWeight: 700 }}>₺{p.price}</span> : <span>Serbest tutar</span>}
-              <span style={{ marginLeft: 10 }}>Stok: <b style={{ color: low ? "#F0EDE8" : "#F0EDE8" }}>{p.retail_stock || 0}</b> adet</span>
-            </div>
-            {vs.length > 0 && (
-              <div style={{ display: "flex", flexWrap: "wrap", gap: 5, marginTop: 7 }}>
-                {vs.map(v => (
-                  <span key={v.name} style={{ fontSize: 11, padding: "4px 9px", background: Number(v.stock) > 0 ? "#22262E" : "#161616", color: Number(v.stock) > 0 ? "#8A8580" : "#8A8580", borderRadius: 8, fontWeight: 700 }}>
-                    {v.name}: {v.stock}
-                  </span>
-                ))}
-              </div>
-            )}
-          </div>
-          <div style={{ display: "flex", alignItems: "center", gap: 6, flexShrink: 0 }}>
-            <button onClick={() => stokEkleAc(p)} title="Stoğa ekle"
-              style={{ padding: "10px 12px", minHeight: 44, background: "transparent", color: "#FFFFFF", border: "1px solid #FFFFFF", borderRadius: 9, fontSize: 12, fontWeight: 800, cursor: "pointer", whiteSpace: "nowrap", display: "flex", alignItems: "center", gap: 5 }}>
-              <Ikon ad="ekle" boy={13} /> Stok
-            </button>
-            <div style={{ display: "flex", flexDirection: "column", gap: 4 }}>
-              <button onClick={() => openEditProduct(p)} style={{ padding: "6px 10px", background: "#222", color: "#aaa", border: "1px solid #333", borderRadius: 6, fontSize: 11, cursor: "pointer" }}>Düzenle</button>
-              <button onClick={() => delProduct(p)} style={{ padding: "6px 10px", background: "transparent", color: "#C87A6A", border: "1px solid #2A2A2A", borderRadius: 6, fontSize: 11, cursor: "pointer" }}>Sil</button>
+      // role/tabIndex/Enter: kart tiklanabilir bir div oldu; klavyeyle gezen
+      // masaustu kullanicisi urun duzenlemeye ulasamaz olmasin.
+      <div onClick={() => openEditProduct(p)} role="button" tabIndex={0} aria-label={p.name + " — düzenle"}
+        onKeyDown={(e) => { if (e.key === "Enter" || e.key === " ") { e.preventDefault(); openEditProduct(p); } }}
+        style={{ background: "#161616", border: "1px solid #2A2A2A", borderRadius: 10, padding: "10px 12px", marginBottom: 8, display: "flex", alignItems: "center", gap: 10, cursor: "pointer", opacity: p.is_available === false ? 0.55 : 1 }}>
+        <div style={{ flex: 1, minWidth: 0 }}>
+          <div style={{ display: "flex", alignItems: "baseline", gap: 8 }}>
+            <div style={{ fontSize: 15, fontWeight: 700, color: "#F0EDE8", overflow: "hidden", textOverflow: "ellipsis", whiteSpace: "nowrap" }}>{p.name}</div>
+            {bitti && <span style={{ fontSize: 9, padding: "2px 6px", background: "rgba(200,122,106,0.15)", color: "#C87A6A", borderRadius: 6, fontWeight: 700, flexShrink: 0 }}>Tükendi</span>}
+            {low && !bitti && <span style={{ fontSize: 9, padding: "2px 6px", background: "#2A2A2A", color: "#F0EDE8", borderRadius: 6, fontWeight: 700, flexShrink: 0 }}>Azalan</span>}
+            <div style={{ marginLeft: "auto", fontSize: 15, color: "#FFFFFF", fontWeight: 800, flexShrink: 0, whiteSpace: "nowrap" }}>
+              {stok}<span style={{ color: "#8A8580", fontWeight: 700, fontSize: 11, marginLeft: 3 }}>adet</span>
             </div>
           </div>
+          {/* Bu satir SARAR, kirpilmaz: alti bedenli tisortte "hangi beden
+              bitti" listeden bakilan isin kendisi, uc noktaya kurban gitmesin. */}
+          {(vs.length > 0 || notlar.length > 0) && (
+            <div style={{ fontSize: 11, color: "#8A8580", marginTop: 3, lineHeight: 1.6 }}>
+              {vs.map((v, i) => (
+                <span key={v.name} style={{ color: Number(v.stock) < 0 ? "#C87A6A" : Number(v.stock) > 0 ? "#8A8580" : "#555" }}>
+                  {i > 0 ? " · " : ""}{v.name} {v.stock}
+                </span>
+              ))}
+              {vs.length > 0 && notlar.length > 0 ? " · " : ""}{notlar.join(" · ")}
+            </div>
+          )}
         </div>
+        {/* stopPropagation sart: yoksa stok sayfasi ile birlikte urun duzenleme
+            penceresi de acilir. */}
+        {/* Dokunma hedefi 44 px kalir: kartin tamami tiklanabilir oldugu icin
+            isabetsiz dokunus artik duzenleme penceresini aciyor — hedefi
+            kucultmek en sik yapilan isi (mal girisi) riske atardi. */}
+        <button onClick={(e) => { e.stopPropagation(); stokEkleAc(p); }} title="Stoğa ekle"
+          style={{ padding: "10px 12px", minHeight: 44, background: "transparent", color: "#FFFFFF", border: "1px solid #FFFFFF", borderRadius: 9, fontSize: 12, fontWeight: 800, cursor: "pointer", whiteSpace: "nowrap", display: "flex", alignItems: "center", gap: 5, flexShrink: 0, fontFamily: "inherit" }}>
+          <Ikon ad="ekle" boy={13} /> Stok
+        </button>
+        <Ikon ad="oksag" boy={14} style={{ color: "#555", flexShrink: 0 }} />
       </div>
     );
   };
@@ -265,10 +296,9 @@ export default function RetailPage() {
                   {list.length} ürün · {bStock} adet stok{b.description ? " · " + b.description : ""}
                 </div>
               </div>
-              <div style={{ display: "flex", gap: 4, flexShrink: 0 }} onClick={e => e.stopPropagation()}>
-                <button onClick={() => openEditBrand(b)} style={{ padding: "6px 10px", background: "#222", color: "#aaa", border: "1px solid #333", borderRadius: 6, fontSize: 11, cursor: "pointer" }}>Düzenle</button>
-                <button onClick={() => delBrand(b)} style={{ padding: "6px 10px", background: "transparent", color: "#C87A6A", border: "1px solid #2A2A2A", borderRadius: 6, fontSize: 11, cursor: "pointer" }}>Sil</button>
-              </div>
+              {/* Marka silme de listeden kalkti, marka penceresinin dibine indi.
+                  stopPropagation olmadan Duzenle'ye basmak markayi acip kapatir. */}
+              <button onClick={(e) => { e.stopPropagation(); openEditBrand(b); }} style={{ padding: "6px 10px", background: "transparent", color: "#8A8580", border: "1px solid #2A2A2A", borderRadius: 8, fontSize: 11, fontWeight: 700, cursor: "pointer", flexShrink: 0 }}>Markayı düzenle</button>
             </div>
             {open && (
               <div style={{ padding: "0 12px 12px" }}>
@@ -297,6 +327,11 @@ export default function RetailPage() {
             <button onClick={() => setBrandModal(null)} style={cancelBtn}>İptal</button>
             <button onClick={saveBrand} disabled={busy} style={{ ...saveBtn, opacity: busy ? 0.6 : 1 }}>{busy ? "..." : "Kaydet"}</button>
           </div>
+          {/* Silme listede degil burada: yanlislikla dokunulan "Sil" markayi
+              goturuyordu. */}
+          {brandModal.mode !== "new" && (
+            <button onClick={async () => { const b = brandModal.data; if (await delBrand(b)) setBrandModal(null); }} style={silBtn}>Bu markayı sil</button>
+          )}
         </Modal>
       )}
 
@@ -355,6 +390,11 @@ export default function RetailPage() {
             <button onClick={() => setProdModal(null)} style={cancelBtn}>İptal</button>
             <button onClick={saveProduct} disabled={busy} style={{ ...saveBtn, opacity: busy ? 0.6 : 1 }}>{busy ? "..." : "Kaydet"}</button>
           </div>
+          {/* Silme listede degil burada: karttaki "Sil" dugmesine yanlislikla
+              dokunmak urunu goturuyordu. */}
+          {prodModal.mode !== "new" && (
+            <button onClick={async () => { const p = prodModal.data; if (await delProduct(p)) setProdModal(null); }} style={silBtn}>Bu ürünü sil</button>
+          )}
         </Modal>
       )}
 
@@ -368,6 +408,7 @@ export default function RetailPage() {
 const inputS = { width: "100%", padding: "10px 12px", background: "#0C0C0C", border: "1px solid #2A2A2A", borderRadius: 8, color: "#F0EDE8", fontSize: 14, outline: "none", fontFamily: "inherit" };
 const cancelBtn = { flex: 1, padding: "12px", background: "transparent", color: "#888", border: "1px solid #333", borderRadius: 10, fontSize: 14, fontWeight: 700, cursor: "pointer" };
 const saveBtn = { flex: 2, padding: "12px", background: "#FFFFFF", color: "#000", border: "none", borderRadius: 10, fontSize: 14, fontWeight: 800, cursor: "pointer" };
+const silBtn = { width: "100%", marginTop: 10, padding: "11px", background: "transparent", color: "#C87A6A", border: "1px solid #2A2A2A", borderRadius: 10, fontSize: 13, fontWeight: 700, cursor: "pointer", fontFamily: "inherit" };
 
 function Field({ label, children }) {
   return (<div style={{ marginBottom: 12 }}>

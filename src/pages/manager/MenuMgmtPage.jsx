@@ -97,13 +97,15 @@ export default function MenuMgmtPage() {
     setCatModal(null); setBusy(false); load();
   };
 
+  // Donen deger: silindi mi. Pencere ancak silme gerceklestiyse kapanir.
   const delCat = async (c) => {
     const prodCount = products.filter(p => p.category_id === c.id).length;
-    if (prodCount > 0) { alert("Bu kategoride " + prodCount + " urun var. Once urunleri sil/tasi."); return; }
-    if (!confirm('"' + c.name + '" silinsin mi?')) return;
+    if (prodCount > 0) { alert("Bu kategoride " + prodCount + " urun var. Once urunleri sil/tasi."); return false; }
+    if (!confirm('"' + c.name + '" silinsin mi?')) return false;
     const { error } = await supabase.from("categories").delete().eq("id", c.id);
-    if (error) { alert("Silinemedi: " + error.message); return; }
+    if (error) { alert("Silinemedi: " + error.message); return false; }
     load();
+    return true;
   };
 
   // -------- PRODUCTS --------
@@ -213,11 +215,15 @@ export default function MenuMgmtPage() {
     setProdModal(null); setBusy(false); load();
   };
 
+  // Donen deger: silindi mi. Pencerenin dibindeki "Bu urunu sil" buna bakar —
+  // onay kutusunda "Iptal" denince pencere ACIK kalmali, yoksa kaydedilmemis
+  // degisiklik sessizce ucuyordu.
   const delProd = async (p) => {
-    if (!confirm('"' + p.name + '" silinsin mi?')) return;
+    if (!confirm('"' + p.name + '" silinsin mi?')) return false;
     const { error: pdErr } = await supabase.from("products").delete().eq("id", p.id);
-    if (pdErr) { alert("Silinemedi: " + pdErr.message); return; }
+    if (pdErr) { alert("Silinemedi: " + pdErr.message); return false; }
     load();
+    return true;
   };
 
   // -------- Option groups editor --------
@@ -371,6 +377,10 @@ export default function MenuMgmtPage() {
           onDrop={(e) => { if (!sirala) return; e.preventDefault(); reorderProducts(dragSrc, idx); setDragSrc(null); setDragOver(null); }}
           onDragEnd={() => { setDragSrc(null); setDragOver(null); }}
           onClick={() => { if (!sirala) openEditProd(p); }}
+          // Kart tiklanabilir bir div: klavyeyle gezen masaustu kullanicisi de
+          // duzenlemeye ulassin, ekran okuyucu kartin adini okusun.
+          {...(sirala ? {} : { role: "button", tabIndex: 0, "aria-label": p.name + " — düzenle",
+            onKeyDown: (e) => { if (e.key === "Enter" || e.key === " ") { e.preventDefault(); openEditProd(p); } } })}
           style={{
             background: dragOver === idx && dragSrc !== idx ? "#2A2A2A" : "#1A1A1A",
             border: dragOver === idx && dragSrc !== idx ? "2px dashed #FFFFFF" : "1px solid #2A2A2A",
@@ -491,7 +501,7 @@ export default function MenuMgmtPage() {
           {/* Silme listede degil burada: yanlislikla dokunulan "Sil" kategoriyi
               goturuyordu. */}
           {catModal.mode !== "new" && (
-            <button onClick={()=>{ const c = catModal.data; setCatModal(null); delCat(c); }} style={silBtn}>Bu kategoriyi sil</button>
+            <button onClick={async ()=>{ const c = catModal.data; if (await delCat(c)) setCatModal(null); }} style={silBtn}>Bu kategoriyi sil</button>
           )}
         </Modal>
       )}
@@ -697,7 +707,7 @@ export default function MenuMgmtPage() {
           {/* Silme listede degil burada: karttaki "Sil" dugmesine yanlislikla
               dokunmak urunu goturuyordu. */}
           {prodModal.mode !== "new" && (
-            <button onClick={()=>{ const p = prodModal.data; setProdModal(null); delProd(p); }} style={silBtn}>Bu ürünü sil</button>
+            <button onClick={async ()=>{ const p = prodModal.data; if (await delProd(p)) setProdModal(null); }} style={silBtn}>Bu ürünü sil</button>
           )}
         </Modal>
       )}
