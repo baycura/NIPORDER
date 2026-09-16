@@ -410,7 +410,7 @@ function Etkinlikler({ uyar }) {
 
   // index.html:1800 updateEvt / 1801 addEvt — ayni alanlar, ayni varsayilanlar
   const kaydet = async () => {
-    const name = form.name.trim().toUpperCase(), cap = parseInt(form.capacity);
+    const name = form.name.trim().toLocaleUpperCase("tr-TR"), cap = parseInt(form.capacity);
     if (!name || !form.date || !cap) return uyar("İsim, tarih ve kapasite zorunlu", true);
     setBusy(true);
     const ortak = {

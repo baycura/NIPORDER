@@ -163,7 +163,7 @@ export default function OrdersPage() {
               <div style={{display:"flex",alignItems:"center",gap:8,flexWrap:"wrap"}}>
                 {o.stores?.slug && <span style={{display:"inline-block",background:o.stores.slug==="doner"?"#FFFFFF":"#222222",color:o.stores.slug==="doner"?"#000":"#F0EDE8",padding:"2px 8px",borderRadius:6,fontSize:12,fontWeight:600,letterSpacing:"0.2px"}}>{o.stores.slug==="doner"?"DÖNER":"PARIS"}</span>}
                 <div style={{fontSize:14,fontWeight:700,color:"#F0EDE8"}}>{where}</div>
-                <span style={{fontSize:12,padding:"2px 8px",background:st.color+"22",color:st.color,borderRadius:6,fontWeight:600,letterSpacing:"0.2px"}}>{st.label?.toUpperCase()}</span>
+                <span style={{fontSize:12,padding:"2px 8px",background:st.color+"22",color:st.color,borderRadius:6,fontWeight:600,letterSpacing:"0.2px"}}>{st.label?.toLocaleUpperCase("tr-TR")}</span>
               </div>
               <div style={{fontSize:11,color:"#888",marginTop:3}}>
                 {new Date(o.created_at).toLocaleString("tr-TR", {hour:"2-digit", minute:"2-digit", day:"2-digit", month:"2-digit"})}

@@ -72,7 +72,9 @@ export default function StaffLayout() {
       <div style={{padding:"18px 16px 14px",borderBottom:"1px solid #2A2A2A",display:"flex",alignItems:"center",gap:10}}>
         <div style={{width:38,height:38,borderRadius:10,background:"#FFFFFF",display:"flex",alignItems:"center",justifyContent:"center",fontSize:20,color:"#000",fontWeight:900,fontFamily:cv}}>{MARKA.harf}</div>
         <div>
-          <div style={{color:"#F0EDE8",fontSize:16,fontWeight:400,fontFamily:"'Coolvetica Heavy',"+cv,textTransform:"uppercase",letterSpacing:"0.005em"}}>{MARKA.ad}</div>
+          {/* lang: CSS buyuk harfi DILE gore yapar; sayfa lang="tr" oldugu icin
+              "Not in Paris" Turkce kuralla "NOT İN PARİS" oluyordu. */}
+          <div lang={MARKA.dil} style={{color:"#F0EDE8",fontSize:16,fontWeight:400,fontFamily:"'Coolvetica Heavy',"+cv,textTransform:"uppercase",letterSpacing:"0.005em"}}>{MARKA.ad}</div>
           <div style={{color:"#888",fontSize:10,fontFamily:cv}}>{APP_HOST}</div>
         </div>
       </div>
@@ -107,7 +109,7 @@ export default function StaffLayout() {
         <div style={{width:34,height:34,borderRadius:"50%",background:color+"33",display:"flex",alignItems:"center",justifyContent:"center",color,fontSize:15,fontWeight:700,fontFamily:cv}}>{staffUser?.name?.[0]||"?"}</div>
         <div style={{flex:1,minWidth:0}}>
           <div style={{color:"#F0EDE8",fontSize:13,fontWeight:700,fontFamily:cv,whiteSpace:"nowrap",overflow:"hidden",textOverflow:"ellipsis"}}>{staffUser?.name}</div>
-          <div style={{color,fontSize:12,letterSpacing:"0.2px",fontFamily:cv,fontWeight:600}}>{displayRole?.toUpperCase()}</div>
+          <div style={{color,fontSize:12,letterSpacing:"0.2px",fontFamily:cv,fontWeight:600}}>{displayRole?.toLocaleUpperCase("tr-TR")}</div>
         </div>
         <button onClick={async()=>{await signOut();navigate("/login");}} title="Çıkış" aria-label="Çıkış" style={{background:"none",border:"none",color:"#888888",cursor:"pointer",padding:6,display:"flex"}}><Ikon ad="cikis" boy={19}/></button>
       </div>
@@ -128,7 +130,7 @@ export default function StaffLayout() {
     <header style={{display:"flex",alignItems:"center",justifyContent:"space-between",padding:"10px 14px",background:"#161616",borderBottom:"1px solid #2A2A2A",position:"sticky",top:0,zIndex:40}}>
       <div style={{display:"flex",alignItems:"center",gap:8}}>
         <div style={{width:30,height:30,borderRadius:8,background:"#FFFFFF",display:"flex",alignItems:"center",justifyContent:"center",fontSize:16,color:"#000",fontWeight:900}}>{MARKA.harf}</div>
-        <div style={{color:"#F0EDE8",fontSize:15,fontWeight:400,fontFamily:"'Coolvetica Heavy',"+cv,textTransform:"uppercase",letterSpacing:"0.005em"}}>{MARKA.ad}</div>
+        <div lang={MARKA.dil} style={{color:"#F0EDE8",fontSize:15,fontWeight:400,fontFamily:"'Coolvetica Heavy',"+cv,textTransform:"uppercase",letterSpacing:"0.005em"}}>{MARKA.ad}</div>
       </div>
       <div onClick={avatarTikla} title={avatarTikla ? "Vardiyam" : undefined}
            style={{width:30,height:30,borderRadius:"50%",background:color+"33",display:"flex",alignItems:"center",justifyContent:"center",color,fontSize:13,fontWeight:700,cursor:avatarTikla?"pointer":"default"}}>
