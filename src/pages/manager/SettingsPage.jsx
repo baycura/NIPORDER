@@ -157,6 +157,32 @@ export default function SettingsPage() {
           <br/>EK PAY: kura eklenecek yuzde (orn. 2 yazarsan kur %2 yuksek uygulanir).
           <br/>GUVENLIK BANDI: kur bu yuzdeden fazla sicrarsa otomatik YAZILMAZ, burada uyari cikar — elle onaylarsin.
         </div>
+
+        {/* Turist ipucu: TL fiyatin yaninda yaklasik euro. Fiyati euro girilen
+            urunler bundan etkilenmez, onlarin gercek euro fiyati zaten yaziyor. */}
+        <div style={{borderTop:"1px solid #2A2A2A",marginTop:12,paddingTop:12}}>
+          <Toggle checked={settings.eur_price_hint !== false && settings.eur_price_hint !== "false"}
+            onChange={v=>setKey("eur_price_hint", v)}
+            label="QR menude TL fiyatin yaninda yaklasik € goster (yalniz EN/RU dilinde)"/>
+          <Field label="YUVARLAMA ADIMI">
+            <div style={{display:"flex",gap:6}}>
+              {[["0.5","0,50 € adimlarla (onerilen)"],["1","1 € adimlarla"]].map(([k,l]) => {
+                const secili = String(settings.eur_price_hint_step ?? "0.5") === k;
+                return (
+                  <button key={k} type="button" onClick={()=>setKey("eur_price_hint_step", k)}
+                    style={{flex:1,padding:"9px 10px",borderRadius:8,cursor:"pointer",fontFamily:"inherit",fontSize:12,fontWeight:700,
+                            background:secili?"#FFFFFF":"transparent",color:secili?"#000":"#888",
+                            border:"1px solid "+(secili?"#FFFFFF":"#2A2A2A")}}>{l}</button>
+                );
+              })}
+            </div>
+          </Field>
+          <div style={{fontSize:11,color:"#888",lineHeight:1.6}}>
+            Rakam HER ZAMAN asagi yuvarlanir — musteri kasada gordugunden fazlasini odemesin.
+            1 € adiminda ucuz urunler cok sapar (165 ₺ urun 2,94 € eder, "2 €" gorunur); 0,50 adiminda sapma en fazla yarim euro kalir.
+            Menude "1 € ≈ {Math.round(Number(String(settings.eur_rate || "").replace(",", ".")) || 0) || "—"} ₺" notu da cikar, rakamin nereden geldigi belli olur.
+          </div>
+        </div>
       </Section>
       )}
 
