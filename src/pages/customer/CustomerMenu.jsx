@@ -7,6 +7,7 @@ import { optionMod } from "../../lib/productOptions.js";
 import { PHONE_CODES, toE164 } from "../../lib/phoneCodes.js";
 import { errorText } from "../../lib/errorText.js";
 import { ozellik, MARKA, rezervasyonYerel, PROFIL } from "../../lib/profil.js";
+import { euroKuru, euroGosterilsin, euroAdimi, euroYaz } from "../../lib/euro.js";
 import { STORE_SLUG } from "../../lib/stores.js";
 import { RESERVE_URL, RESERVE_KEY, RESERVATION_URL } from "../../lib/reserve.js";
 import Ikon from "../../components/Ikon.jsx";
@@ -509,6 +510,14 @@ export default function CustomerMenu() {
   //  2. PROGRAMLI — eski davranis: party_mode_enabled + gun + saat penceresi.
   // Manuel yol mutlak zaman damgasi tasidigi icin cihaz saatinin kaymasindan
   // saat penceresi kadar etkilenmez.
+  // EURO IPUCU — TL fiyatin yaninda kucuk, silik "≈ €5" (bkz. lib/euro.js).
+  // Yalniz turist dillerinde (EN/RU) cikar: Turk misafir icin gurultu olurdu.
+  // Kur Ayarlar'dan gelir, gunluk cekilir; kur yoksa hicbir sey gosterilmez.
+  const eurKur = euroKuru(settings);
+  const eurAdim = euroAdimi(settings);
+  const eurAcik = ozellik("eur") && euroGosterilsin(settings) && eurKur > 1 && ["en", "ru"].includes(lang);
+  const eur = (tl) => (eurAcik ? euroYaz(tl, eurKur, eurAdim) : null);
+
   const partyManual = !!(settings && settings.party_manual_until &&
     now < new Date(settings.party_manual_until));
   const partyMode = partyManual || !!(settings && settings.party_mode_enabled &&
@@ -1592,6 +1601,8 @@ export default function CustomerMenu() {
             <div style={{fontSize:12,color:"#666666",letterSpacing:"0.2px",marginTop:2}}>
               {custTab !== "menu" ? (CUST_TABS.find(x=>x.key===custTab)?.[["en","ru"].includes(lang)?lang:"tr"] || "").toLocaleUpperCase(lang) : (table ? table.name?.toLocaleUpperCase(lang) : t.menu)}
               {partyMode && custTab === "menu" && <span style={{marginLeft:6,color:"#000000",fontWeight:700}}>· {t.partyMode}</span>}
+              {/* Kurun kendisi de gorunsun: "≈ €5" nereden cikti belli olsun. */}
+              {eurAcik && custTab === "menu" && <span style={{marginLeft:6,color:"#9A9A9A"}}>· 1 € ≈ {Math.round(eurKur)} ₺</span>}
             </div>
           </div>
           <div style={{display:"flex",alignItems:"center",gap:8}}>
@@ -2030,6 +2041,10 @@ export default function CustomerMenu() {
                   {p.currency === "EUR" && p.price_eur != null && (
                     <span style={{fontSize:12,color:"#666666",fontWeight:600}}>· €{Number(p.price_eur)}</span>
                   )}
+                  {/* Turist ipucu: satis TL, bu yaklasik karsilik (asagi yuvarli). */}
+                  {p.currency !== "EUR" && eur(fp) && (
+                    <span style={{fontSize:12,color:"#9A9A9A",fontWeight:500}}>{eur(fp)}</span>
+                  )}
                   {memberPriceFor(p) != null && memberPriceFor(p) <= fp && <span style={{fontSize:12,padding:"2px 6px",background:"#000",color:"#FFFFFF",borderRadius:6,fontWeight:600,letterSpacing:"0.2px"}}>{L("SANA ÖZEL","YOUR PRICE","ВАША ЦЕНА")}</span>}
                 </div>
               </div>
@@ -2058,7 +2073,7 @@ export default function CustomerMenu() {
         <div style={{position:"fixed",bottom:susBarActive?128:84,left:14,right:14,zIndex:40}}>
           <button onClick={() => setCheckoutOpen(true)} style={{width:"100%",padding:"16px 20px",background:"#000",color:"#fff",border:"none",borderRadius:14,fontSize:15,fontWeight:800,cursor:"pointer",boxShadow:"0 6px 20px rgba(0,0,0,0.35)",display:"flex",justifyContent:"space-between",alignItems:"center"}}>
             <span style={{display:"flex",alignItems:"center",gap:8}}><Ikon ad="sepet" boy={16}/>{t.cart} ({cartCount})</span>
-            <span>₺{cartTotal} · {t.continue}<Ikon ad="oksag" boy={14} style={{marginLeft:6}}/></span>
+            <span>₺{cartTotal}{eur(cartTotal) ? " " + eur(cartTotal) : ""} · {t.continue}<Ikon ad="oksag" boy={14} style={{marginLeft:6}}/></span>
           </button>
         </div>
       )}
@@ -2257,7 +2272,10 @@ export default function CustomerMenu() {
         <div onClick={() => setOptModal(null)} style={{position:"fixed",inset:0,background:"rgba(0,0,0,0.55)",display:"flex",alignItems:"flex-end",justifyContent:"center",zIndex:100}}>
           <div onClick={e=>e.stopPropagation()} style={{background:"#fff",borderRadius:"18px 18px 0 0",padding:20,width:"100%",maxWidth:500,maxHeight:"85vh",overflowY:"auto"}}>
             <div style={{fontSize:20,fontWeight:800,marginBottom:4}}>{pName(optModal)}</div>
-            <div style={{fontSize:13,color:"#666",marginBottom:18}}>₺{calcPrice(optModal, optSelected)}</div>
+            <div style={{fontSize:13,color:"#666",marginBottom:18}}>
+              ₺{calcPrice(optModal, optSelected)}
+              {eur(calcPrice(optModal, optSelected)) && <span style={{color:"#9A9A9A",marginLeft:6}}>{eur(calcPrice(optModal, optSelected))}</span>}
+            </div>
             {(optModal.options_config?.groups || []).map(group => (
               <div key={group.name} style={{marginBottom:14}}>
                 <div style={{fontSize:11,color:"#333",letterSpacing:"1px",fontWeight:700,marginBottom:6}}>
@@ -2431,7 +2449,15 @@ export default function CustomerMenu() {
             )}
             <div style={{display:"flex",justifyContent:"space-between",alignItems:"center",marginTop:16,padding:"14px 0",borderTop:"2px solid #000"}}>
               <div style={{fontSize:13,color:"#333",letterSpacing:"1px",fontWeight:700}}>{t.total}</div>
-              <div style={{fontSize:22,fontWeight:800}}>₺{cartTotal}</div>
+              <div style={{fontSize:22,fontWeight:800}}>
+                ₺{cartTotal}
+                {eur(cartTotal) && <span style={{fontSize:13,color:"#9A9A9A",fontWeight:500,marginLeft:8}}>{eur(cartTotal)}</span>}
+              </div>
+              {eurAcik && (
+                <div style={{fontSize:11,color:"#9A9A9A",marginTop:2}}>
+                  {L("Ödeme ₺ olarak alınır; € yaklaşıktır.","Payment is taken in ₺; € is approximate.","Оплата принимается в ₺; € — приблизительно.")}
+                </div>
+              )}
             </div>
             {customer && usePoints && walletBalance > 0 && (() => {
               const kullanilacak = Math.min(walletBalance, cartTotal);
