@@ -170,36 +170,68 @@ export default function ProductStockPage() {
   });
   const rozet = (renk) => ({ fontSize: 10, padding: "2px 7px", borderRadius: 6, fontWeight: 700, letterSpacing: 0.3, background: renk + "22", color: renk, whiteSpace: "nowrap" });
   const seviyeRenk = { tukendi: C.down, azalan: C.ink, ok: C.muted, yok: C.faint };
-  const seviyeAd = { tukendi: "Tükendi", azalan: "Azalan", ok: "", yok: "takip yok" };
 
+  // SAHIP: "Arayuz cok komplike, kafa karistirici." Eskiden bir satirda bes
+  // rozet (Pasif, Bugun tukendi, Sayim gerekli, beden cipleri) ve sagda bir de
+  // tekrar eden seviye etiketi vardi; satir uc satira tasiyordu. Artik Menu
+  // Yonetimi kalibi: ustte ad + yalniz AKSIYON isteyen rozet, altta " · " ile
+  // birlesmis TEK silik satir.
   const satir = (u) => {
     const acikBu = acikUrun === u.id;
     const tiklanir = u.tur === "recete";
+
+    // Rozet yalniz aksiyon isteyen durumda: stok bitti, azaldi ya da sayim
+    // gerekiyor. Marka, "Pasif", beden dagilimi, sinir aciklamasi BILGI
+    // notudur — alttaki silik satira iner.
+    // "Tukendi" (stok bitti) ile "Bugun tukendi" (personel elle isaretledi)
+    // AYRI islerdir: stogu doldurmak birincisini cozer, ikincisi Menu
+    // Yonetimi'nden kaldirilmadikca urun kasada kapali kalir. Ikisi de varsa
+    // ikisi de gorunur, yoksa yarim is kaliyordu.
+    const acilRozetler = [
+      u.seviye === "tukendi" ? ["Tükendi", C.down] : u.seviye === "azalan" ? ["Azalan", C.ink] : null,
+      u.sold_out_today ? ["Bugün tükendi", C.down] : null,
+      u.sayimGerekli ? ["Sayım gerekli", C.down] : null,
+    ].filter(Boolean);
+
+    // Bilgi notlari tek silik satirda birlesir. Sira ONEMLIYE gore: once
+    // sayilar (beden dagilimi, sinir), sonra ikincil bilgi — dar ekranda
+    // ellipsis once ikincil bilgiyi kirpsin.
+    const notlar = [];
+    // Beden dagilimi cip degil silik metin; stogu sifir olan beden daha silik,
+    // EKSI olan kirmizi — eksi bedeni gizlemek sayim gerektigini saklardi.
+    if (u.tur === "raf" && u.bedenler.length) notlar.push(
+      <>{u.bedenler.map((v, i) => {
+        const s = Number(v.stock) || 0;
+        return <span key={v.name} style={{ color: s < 0 ? C.down : s > 0 ? C.muted : C.faint }}>{i ? " · " : ""}{v.name} {s}</span>;
+      })}</>
+    );
+    // Adet basina tuketim de kalsin: "neden sadece 60 adet yapiyor"in cevabi o.
+    if (u.tur === "recete" && u.sinir) notlar.push(
+      `sınır: ${u.sinir.ad} · ${fmtN(Math.max(0, u.sinir.stok))} ${u.sinir.unit}` +
+      (u.sinir.birim !== 1 ? ` (${fmtN(u.sinir.birim)} ${u.sinir.unit}/adet)` : "")
+    );
+    if (u.tur === "yok") notlar.push("stok takibi yok — reçete ya da raf stoğu gir");
+    if (u.markaAd && gorunum === "kategori") notlar.push(u.markaAd);
+    // Menu Yonetimi'nde ayni alan "Kapalı" diyor; iki ekranda iki kelime olmasin.
+    if (u.is_available === false) notlar.push("Kapalı");
+
     return (
       <div key={u.id} onClick={() => tiklanir && setAcikUrun(acikBu ? null : u.id)}
-        style={{ padding: "10px 14px", borderTop: `1px solid ${C.cardLine}`, cursor: tiklanir ? "pointer" : "default", opacity: u.is_available === false ? 0.6 : 1 }}>
+        style={{ padding: "8px 14px", borderTop: `1px solid ${C.cardLine}`, cursor: tiklanir ? "pointer" : "default", opacity: u.is_available === false ? 0.6 : 1 }}>
         <div style={{ display: "flex", alignItems: "center", gap: 10 }}>
           <div style={{ flex: 1, minWidth: 0 }}>
-            <div style={{ fontSize: 14, fontWeight: 700, whiteSpace: "nowrap", overflow: "hidden", textOverflow: "ellipsis" }}>
-              {u.name}
-              {u.markaAd && gorunum === "kategori" && <span style={{ color: C.faint, fontWeight: 600 }}> · {u.markaAd}</span>}
+            <div style={{ display: "flex", alignItems: "baseline", gap: 7 }}>
+              <div style={{ fontSize: 14, fontWeight: 700, overflow: "hidden", textOverflow: "ellipsis", whiteSpace: "nowrap" }}>{u.name}</div>
+              {acilRozetler.map(([ad, renk]) => <span key={ad} style={{ ...rozet(renk), flexShrink: 0 }}>{ad}</span>)}
             </div>
-            <div style={{ display: "flex", gap: 5, flexWrap: "wrap", marginTop: 4, alignItems: "center" }}>
-              {u.is_available === false && <span style={rozet(C.faint)}>Pasif</span>}
-              {u.sold_out_today && <span style={rozet(C.down)}>Bugün tükendi</span>}
-              {u.sayimGerekli && <span style={rozet(C.down)}>Sayım gerekli</span>}
-              {u.tur === "raf" && u.bedenler.map(v => (
-                <span key={v.name} style={{ fontSize: 11, padding: "3px 8px", borderRadius: 8, fontWeight: 700, background: Number(v.stock) > 0 ? "#22262E" : "transparent", border: `1px solid ${Number(v.stock) > 0 ? "transparent" : C.cardLine}`, color: Number(v.stock) > 0 ? C.ink : C.faint }}>
-                  {v.name} {Math.max(0, Number(v.stock) || 0)}
-                </span>
-              ))}
-              {u.tur === "recete" && u.sinir && (
-                <span style={{ fontSize: 11, color: C.faint }}>
-                  sınır: {u.sinir.ad} · {fmtN(Math.max(0, u.sinir.stok))} {u.sinir.unit}{u.sinir.birim !== 1 ? ` (${fmtN(u.sinir.birim)} ${u.sinir.unit}/adet)` : ""}
-                </span>
-              )}
-              {u.tur === "yok" && <span style={{ fontSize: 11, color: C.faint }}>stok takibi yok — reçete ya da raf stoğu gir</span>}
-            </div>
+            {/* Not satiri SARAR, kirpilmaz: burada yazan sey beden dagilimi ve
+                "hangi bedende kac kaldi" listeden bakilan isin kendisi. Uc nokta
+                koysaydik son bedenler icin urunu tek tek acmak gerekirdi. */}
+            {notlar.length > 0 && (
+              <div style={{ fontSize: 11, color: C.faint, marginTop: 2, lineHeight: 1.6 }}>
+                {notlar.map((n, i) => <span key={i}>{i ? " · " : ""}{n}</span>)}
+              </div>
+            )}
           </div>
           <div style={{ display: "flex", alignItems: "center", gap: 8, flexShrink: 0 }}>
             <div style={{ textAlign: "right" }}>
@@ -210,7 +242,6 @@ export default function ProductStockPage() {
                   {u.tur === "recete" && "≈ "}{fmtN(u.adet)}<span style={{ fontSize: 11, fontFamily: cv, fontWeight: 600, color: C.muted, marginLeft: 3 }}>adet</span>
                 </div>
               )}
-              {seviyeAd[u.seviye] && <div style={{ fontSize: 10, color: seviyeRenk[u.seviye], marginTop: 3, fontWeight: 700, letterSpacing: 0.3 }}>{seviyeAd[u.seviye].toUpperCase()}</div>}
             </div>
             {/* Raf urunu: adedi buradan eklenir. Recete urununde stok malzemede
                 yasar — satir acilinca malzemenin yanindaki + kullanilir.
@@ -222,6 +253,12 @@ export default function ProductStockPage() {
                 <Ikon ad="ekle" boy={15} />
               </button>
             )}
+            {/* Satirin dokunulabildigi belli olsun: recete urununde dokununca
+                malzeme dokumu acilir. + dugmesinin kosulu !u.receteli oldugu
+                icin ikisi ayni satirda birlikte cikmaz. */}
+            {/* sag/asagi cifti "yerinde acilir" demek; oksag depoda "baska bir
+                sayfa/pencere acilir" icin kullaniliyor, burada satir acilıyor. */}
+            {tiklanir && <Ikon ad={acikBu ? "asagi" : "sag"} boy={14} style={{ color: "#555", flexShrink: 0 }} />}
           </div>
         </div>
         {acikBu && u.malzemeler.length > 0 && (
@@ -240,7 +277,9 @@ export default function ProductStockPage() {
                 </span>
               </div>
             ))}
-            <div style={{ marginTop: 4, fontSize: 11, color: C.faint }}>Malzeme stoğu ve sayım: <Link to="/stock-mgmt" style={{ color: C.muted }}>Stok Yönetimi</Link></div>
+            {/* stopPropagation: baglantiyi yeni sekmede acmak (cmd/ctrl+tik)
+                acik malzeme dokumunu kapatmasin. */}
+            <div style={{ marginTop: 4, fontSize: 11, color: C.faint }}>Malzeme stoğu ve sayım: <Link to="/stock-mgmt" onClick={(e) => e.stopPropagation()} style={{ color: C.muted }}>Stok Yönetimi</Link></div>
           </div>
         )}
       </div>
@@ -268,18 +307,21 @@ export default function ProductStockPage() {
       {!veri && !hata && <div style={{ padding: 40, textAlign: "center", color: C.muted }}>Yükleniyor…</div>}
 
       {veri && (<>
-        <div style={{ display: "grid", gridTemplateColumns: "repeat(auto-fit, minmax(120px, 1fr))", gap: 8, marginTop: 14 }}>
+        {/* Ozet alti buyuk kart olarak telefonda 600 pikseldi; urunu gormek icin
+            once ozeti kaydirmak gerekiyordu. Ayni alti sayi tek serit halinde:
+            aksiyon isteyenler (tukenen, azalan, sayim) once ve renkli. */}
+        <div style={{ ...kart, padding: "10px 12px", marginTop: 14, display: "flex", flexWrap: "wrap", gap: "6px 14px", alignItems: "baseline" }}>
           {[
-            ["Tükenen", ozet.tukenen, ozet.tukenen > 0 ? C.down : C.ink],
-            ["Azalan", ozet.azalan, C.ink],
-            ["Sayım gerekli", ozet.sayim, ozet.sayim > 0 ? C.down : C.ink],
+            ["Tükenen", ozet.tukenen, ozet.tukenen > 0 ? C.down : C.muted],
+            ["Azalan", ozet.azalan, ozet.azalan > 0 ? C.ink : C.muted],
+            ["Sayım gerekli", ozet.sayim, ozet.sayim > 0 ? C.down : C.muted],
             ["Raf stoğu", fmtN(ozet.rafAdet) + " adet", C.ink],
             ["Raf değeri", fmtTL(ozet.rafDeger), C.ink],
-            ["Takipsiz ürün", ozet.takipsiz, C.muted],
+            ["Takipsiz", ozet.takipsiz, C.muted],
           ].map(([l, v, col]) => (
-            <div key={l} style={{ ...kart, padding: 12 }}>
-              <div style={{ fontSize: 11, color: C.muted, letterSpacing: 1, textTransform: "uppercase", fontWeight: 600 }}>{l}</div>
-              <div style={{ fontSize: 22, fontWeight: 800, marginTop: 4, color: col, fontVariantNumeric: "tabular-nums" }}>{v}</div>
+            <div key={l} style={{ display: "flex", alignItems: "baseline", gap: 5, whiteSpace: "nowrap" }}>
+              <span style={{ fontSize: 11, color: C.faint }}>{l}</span>
+              <span style={{ fontSize: 14, fontWeight: 800, color: col, fontVariantNumeric: "tabular-nums" }}>{v}</span>
             </div>
           ))}
         </div>
