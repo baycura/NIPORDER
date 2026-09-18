@@ -1,5 +1,6 @@
 import{useState,useEffect,useRef}from"react";import{supabase}from"../../lib/supabase.js";import{useAuth}from"../../contexts/AuthContext.jsx";
 import Ikon from "../../components/Ikon.jsx";
+import SayiGirisi from "../../components/SayiGirisi.jsx";
 const cv="'Coolvetica','Bebas Neue',sans-serif";const cvc="'Coolvetica Condensed','Barlow Condensed',sans-serif";
 export default function MerchMgmtPage(){
   const{staffUser}=useAuth();
@@ -17,13 +18,17 @@ export default function MerchMgmtPage(){
   const toggleActive=async p=>{await supabase.from("merch_products").update({is_active:!p.is_active}).eq("id",p.id);load();};
   if(editing!==null)return(<div>
     <div style={{display:"flex",justifyContent:"space-between",alignItems:"center",marginBottom:24}}><h2 style={{color:"#F0EDE8",fontFamily:cv,fontSize:24,margin:0}}>{editing?.id?"DÜZENLE":"YENİ ÜRÜN"}</h2><div style={{display:"flex",gap:8}}><button onClick={()=>setEditing(null)} style={{padding:"9px 16px",background:"transparent",border:"1px solid #2A2A2A",color:"#888",borderRadius:8,cursor:"pointer",fontFamily:cvc,fontSize:12}}>İptal</button><button onClick={handleSave} disabled={saving} style={{padding:"9px 16px",background:saving?"#333":"#FFFFFF",border:"none",color:"#000",borderRadius:8,cursor:"pointer",fontFamily:cvc,fontSize:12,letterSpacing:"1px"}}>{saving?"KAYDEDİLİYOR...":"KAYDET"}</button></div></div>
-    {[["ÜRÜN ADI (EN)","name_en","NIP Classic Tee"],["ÜRÜN ADI (TR)","name_tr","NIP Classic Tee"],["FİYAT (₺)","price","850"]].map(([l,k,p])=>(<div key={k} style={{marginBottom:14}}><div style={{color:"#888",fontFamily:cvc,fontSize:12,letterSpacing:"0.2px",marginBottom:5}}>{l}</div><input value={form[k]||""} onChange={e=>setForm(f=>({...f,[k]:e.target.value}))} placeholder={p} style={{width:"100%",background:"#111",border:"1px solid #2A2A2A",borderRadius:8,padding:"9px 12px",color:"#F0EDE8",fontFamily:cvc,fontSize:13}}/></div>))}
+    {/* FIYAT ad alanlarindan AYRILDI: ortak map'te duz metin kutusuydu ve
+        handleSave'de +form.price ile okunuyordu — "1.250" yazan kisi urunu
+        1,25 TL'ye kaydediyordu, uyari da yoktu. Simdi SayiGirisi. */}
+    {[["ÜRÜN ADI (EN)","name_en","NIP Classic Tee"],["ÜRÜN ADI (TR)","name_tr","NIP Classic Tee"]].map(([l,k,p])=>(<div key={k} style={{marginBottom:14}}><div style={{color:"#888",fontFamily:cvc,fontSize:12,letterSpacing:"0.2px",marginBottom:5}}>{l}</div><input value={form[k]||""} onChange={e=>setForm(f=>({...f,[k]:e.target.value}))} placeholder={p} style={{width:"100%",background:"#111",border:"1px solid #2A2A2A",borderRadius:8,padding:"9px 12px",color:"#F0EDE8",fontFamily:cvc,fontSize:13}}/></div>))}
+    <div style={{marginBottom:14}}><div style={{color:"#888",fontFamily:cvc,fontSize:12,letterSpacing:"0.2px",marginBottom:5}}>FİYAT (₺)</div><SayiGirisi kip="para" min={0} value={form.price} onChange={deger=>setForm(f=>({...f,price:deger}))} placeholder="850" style={{width:"100%",background:"#111",border:"1px solid #2A2A2A",borderRadius:8,padding:"9px 12px",color:"#F0EDE8",fontFamily:cvc,fontSize:13,boxSizing:"border-box"}}/></div>
     <div style={{marginBottom:20}}><div style={{color:"#888",fontFamily:cvc,fontSize:12,letterSpacing:"0.2px",marginBottom:5}}>Tip</div><select value={form.type} onChange={e=>setForm(f=>({...f,type:e.target.value}))} style={{width:"100%",background:"#111",border:"1px solid #2A2A2A",borderRadius:8,padding:"9px 12px",color:"#F0EDE8",fontFamily:cvc,fontSize:13}}><option value="apparel">Giyim</option><option value="accessories">Aksesuar</option></select></div>
     <div style={{background:"#1E1E1E",border:"1px solid #2A2A2A",borderRadius:12,padding:16}}>
       <div style={{display:"flex",justifyContent:"space-between",alignItems:"center",marginBottom:14}}><div style={{color:"#F0EDE8",fontFamily:cv,fontSize:18}}>Bedenler</div><button onClick={()=>setVariants(v=>[...v,{size:"",stock:0}])} style={{padding:"5px 12px",background:"transparent",border:"1px solid #FFFFFF",color:"#8A8580",fontFamily:cvc,fontSize:12,letterSpacing:"0.2px",cursor:"pointer",borderRadius:5}}>+ EKLE</button></div>
       {variants.map((v,i)=>(<div key={i} style={{display:"grid",gridTemplateColumns:"1fr 1fr auto",gap:10,marginBottom:10,alignItems:"center"}}>
         <input value={v.size} placeholder="S / M / L" onChange={e=>setVariants(vs=>vs.map((x,j)=>j===i?{...x,size:e.target.value}:x))} style={{background:"#111",border:"1px solid #2A2A2A",borderRadius:8,padding:"8px 10px",color:"#F0EDE8",fontFamily:cvc,fontSize:13}}/>
-        <input type="number" value={v.stock} placeholder="Stok" onChange={e=>setVariants(vs=>vs.map((x,j)=>j===i?{...x,stock:e.target.value}:x))} style={{background:"#111",border:"1px solid #2A2A2A",borderRadius:8,padding:"8px 10px",color:"#F0EDE8",fontFamily:cvc,fontSize:13}}/>
+        <SayiGirisi kip="tam" value={v.stock} placeholder="Stok" onChange={deger=>setVariants(vs=>vs.map((x,j)=>j===i?{...x,stock:deger}:x))} style={{background:"#111",border:"1px solid #2A2A2A",borderRadius:8,padding:"8px 10px",color:"#F0EDE8",fontFamily:cvc,fontSize:13}}/>
         <button onClick={()=>setVariants(vs=>vs.filter((_,j)=>j!==i))} style={{background:"rgba(224,90,90,0.12)",border:"1px solid #2A2A2A",color:"#C87A6A",borderRadius:7,width:32,height:32,cursor:"pointer",fontSize:14}}>✕</button>
       </div>))}
     </div>

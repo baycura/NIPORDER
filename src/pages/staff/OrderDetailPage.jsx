@@ -6,6 +6,7 @@ import { optionsText, optionMod } from "../../lib/productOptions.js";
 import { useAuth } from "../../contexts/AuthContext.jsx";
 import Ikon from "../../components/Ikon.jsx";
 import UrunSecici from "../../components/UrunSecici.jsx";
+import SayiGirisi from "../../components/SayiGirisi.jsx";
 import { partiDurumOku } from "../../lib/parti.js";
 
 const cv = "-apple-system,BlinkMacSystemFont,'Segoe UI',Roboto,sans-serif";
@@ -24,6 +25,8 @@ export default function OrderDetailPage() {
   const [optModal, setOptModal] = useState(null); // {p, sel} — secenekli urun secimi
   const [treatModal, setTreatModal] = useState(null); // ikramda "kim veriyor?" secimi
   const [indirimModal, setIndirimModal] = useState(null); // {it, tutar, not} — kalem indirimi (adet basina TL)
+  const [bedenModal, setBedenModal] = useState(null);  // {p, selOpts} — bedenli raf urununde hangi beden
+  const [fiyatModal, setFiyatModal] = useState(null);  // {p, selOpts, variantName, tutar} — fiyati kasada belirlenen urun
   const [staffList, setStaffList] = useState([]);
   const [customers, setCustomers] = useState([]);
   const [memberPrices, setMemberPrices] = useState({});
@@ -315,7 +318,12 @@ export default function OrderDetailPage() {
       });
   }, [staffUser?.id, products.length]);
 
-  const addProduct = async (p, selOpts = null) => {
+  // ek = { variantName, price } — beden/tutar sayfasindan geri donerken dolu
+  // gelir. Eskiden ikisi de tarayicinin prompt() kutusuyla soruluyordu: kasada,
+  // musteri karsisinda, bedeni ELLE yazdiriyordu ("Gecersiz beden: M " diye
+  // geri ceviriyordu). Simdi ikisi de alt sayfa; addProduct oradan AYNI
+  // noktadan devam etsin diye yeniden girilebilir yazildi.
+  const addProduct = async (p, selOpts = null, ek = null) => {
     // Secenekli urun (sarap kadeh/sise, doner malzemeleri...): musteri menusundeki
     // gibi secim sart — yoksa sise sarap kadeh fiyatindan yazilirdi
     if (!selOpts && p.has_options && p.options_config?.groups?.length) {
@@ -323,33 +331,29 @@ export default function OrderDetailPage() {
       return;
     }
     // Bedenli raf urunu: hangi beden satildi?
-    let variantName = null;
+    let variantName = ek?.variantName ?? null;
     const vs = Array.isArray(p.variants) ? p.variants.filter(v => v?.name) : [];
     if (vs.length) {
-      const avail = vs.filter(v => Number(v.stock) > 0);
-      if (!avail.length) { alert(p.name + " — tüm bedenler tükendi"); return; }
-      // Secenek penceresinde beden zaten secildiyse (Shop tisortleri: "Beden"
-      // grubu ile variants ayni bedenleri tasir) ikinci kez sorulmaz. Secilen
-      // beden tukendiyse yine sorulur ki stokta olana yonlendirsin.
-      const secilenler = Object.values(selOpts || {}).flat().map(s => String(s ?? "").trim().toLowerCase());
-      let hit = avail.find(v => secilenler.includes(v.name.toLowerCase()));
-      if (!hit) {
-        const pick = prompt("Beden seç — " + p.name + "\n" + avail.map(v => v.name + " (" + v.stock + " adet)").join(" · "), avail[0].name);
-        if (pick == null) return;
-        hit = avail.find(v => v.name.toLowerCase() === String(pick).trim().toLowerCase());
-        if (!hit) { alert("Geçersiz beden: " + pick); return; }
+      if (!variantName) {
+        const avail = vs.filter(v => Number(v.stock) > 0);
+        if (!avail.length) { alert(p.name + " — tüm bedenler tükendi"); return; }
+        // Secenek penceresinde beden zaten secildiyse (Shop tisortleri: "Beden"
+        // grubu ile variants ayni bedenleri tasir) ikinci kez sorulmaz. Secilen
+        // beden tukendiyse yine sorulur ki stokta olana yonlendirsin.
+        const secilenler = Object.values(selOpts || {}).flat().map(s => String(s ?? "").trim().toLowerCase());
+        const hit = avail.find(v => secilenler.includes(v.name.toLowerCase()));
+        if (!hit) { setBedenModal({ p, selOpts }); return; }
+        variantName = hit.name;
       }
-      variantName = hit.name;
     } else if (p.track_stock && Number(p.retail_stock) <= 0) {
       if (!confirm(p.name + " stokta görünmüyor. Yine de eklensin mi?")) return;
     }
     // Fiyati 0 olan urunler (magaza: tisort, seramik...) icin tutar kasada sorulur
     let price = Number(p.price) || 0;
     if (price <= 0) {
-      const inp = prompt("Tutar (TL) — " + p.name + (p.brand ? " / " + p.brand : ""));
-      if (inp == null) return;
-      price = Number(String(inp).replace(",", "."));
-      if (!price || price <= 0) { alert("Geçerli bir tutar gir"); return; }
+      if (ek?.price == null) { setFiyatModal({ p, selOpts, variantName, tutar: "" }); return; }
+      price = Number(ek.price);
+      if (!price || price <= 0) return;
     }
     // Happy hour saatindeyse taban fiyat indirimli fiyattir (menu ile ayni hesap)
     if (hhPrices[p.id] != null && Number(p.price) > 0) price = Number(hhPrices[p.id]);
@@ -776,8 +780,8 @@ export default function OrderDetailPage() {
                   </button>
                 ))}
               </div>
-              <input type="number" inputMode="numeric" min="0" max={taban} step="1" autoFocus
-                value={indirimModal.tutar} onChange={e => setIndirimModal(m => ({ ...m, tutar: e.target.value }))}
+              <SayiGirisi kip="tam" min={0} max={taban} autoFocus
+                value={indirimModal.tutar} onChange={v => setIndirimModal(m => ({ ...m, tutar: v }))}
                 placeholder="İndirim (₺)" style={{...kutu, marginBottom:8, fontWeight:800}} />
               <input value={indirimModal.not} onChange={e => setIndirimModal(m => ({ ...m, not: e.target.value }))}
                 placeholder="Neden? (isteğe bağlı — hasar, gecikme, pazarlık…)" style={{...kutu, fontSize:13, marginBottom:12}} />
@@ -801,6 +805,80 @@ export default function OrderDetailPage() {
                 <button onClick={() => setIndirimModal(null)}
                   style={{flex:1,padding:"13px",background:"transparent",color:"#888",border:"1px solid #333",borderRadius:10,fontSize:13,fontWeight:700,cursor:"pointer",fontFamily:cv}}>
                   Vazgeç
+                </button>
+              </div>
+            </div>
+          </div>
+        );
+      })()}
+
+      {/* BEDEN — eskiden prompt() kutusuydu, bedeni elle yazdiriyordu. Stogu
+          sifir olan beden de gorunur ama basilamaz: "L yok" bilgisi, "L'yi
+          yazdim kabul etmedi" deneyiminden iyi. */}
+      {bedenModal && (() => {
+        const p = bedenModal.p;
+        const vs = (Array.isArray(p.variants) ? p.variants : []).filter(v => v?.name);
+        const kapat = () => setBedenModal(null);
+        const sec = (v) => { const m = bedenModal; kapat(); addProduct(m.p, m.selOpts, { variantName: v.name }); };
+        return (
+          <div onClick={kapat} style={{position:"fixed",inset:0,background:"rgba(0,0,0,0.75)",display:"flex",alignItems:"flex-end",justifyContent:"center",zIndex:100}}>
+            <div onClick={e => e.stopPropagation()} style={{background:"#161616",border:"1px solid #2A2A2A",borderRadius:"16px 16px 0 0",padding:20,width:"100%",maxWidth:500,maxHeight:"80vh",overflowY:"auto"}}>
+              <div style={{fontSize:16,fontWeight:800,color:"#F0EDE8",marginBottom:4}}>{p.name}{p.brand ? " · " + p.brand : ""}</div>
+              <div style={{fontSize:11,color:"#888",marginBottom:14}}>Hangi beden satıldı?</div>
+              <div style={{display:"flex",flexWrap:"wrap",gap:8,marginBottom:16}}>
+                {vs.map(v => {
+                  const kalan = Number(v.stock) || 0;
+                  const yok = kalan <= 0;
+                  return (
+                    <button key={v.name} onClick={() => !yok && sec(v)} disabled={yok}
+                      style={{minWidth:82,minHeight:62,padding:"10px 14px",borderRadius:10,cursor:yok?"not-allowed":"pointer",fontFamily:cv,
+                              background:yok?"transparent":"#222",color:yok?"#555":"#F0EDE8",
+                              border:"1px solid " + (yok?"#2A2A2A":"#3A3A3A"),display:"flex",flexDirection:"column",alignItems:"center",justifyContent:"center",gap:3}}>
+                      <span style={{fontSize:17,fontWeight:800}}>{v.name}</span>
+                      <span style={{fontSize:10,color:yok?"#555":"#8A8580"}}>{yok ? "tükendi" : kalan + " adet"}</span>
+                    </button>
+                  );
+                })}
+              </div>
+              <button onClick={kapat} style={{width:"100%",padding:"13px",background:"transparent",color:"#888",border:"1px solid #333",borderRadius:10,fontSize:14,fontWeight:700,cursor:"pointer",fontFamily:cv}}>Vazgeç</button>
+            </div>
+          </div>
+        );
+      })()}
+
+      {/* FIYATI KASADA BELIRLENEN URUN (tisort, seramik...) — eskiden prompt().
+          Maliyet varsa altinda gosterilir: kasadaki kisi zarara satmasin. */}
+      {fiyatModal && (() => {
+        const p = fiyatModal.p;
+        const tutar = Math.max(0, Number(String(fiyatModal.tutar).replace(",", ".")) || 0);
+        const maliyet = Number(p.cost_price) || 0;
+        const zarar = maliyet > 0 && tutar > 0 && tutar < maliyet;
+        const kapat = () => setFiyatModal(null);
+        const uygula = () => { const m = fiyatModal; kapat(); addProduct(m.p, m.selOpts, { variantName: m.variantName, price: tutar }); };
+        return (
+          <div onClick={kapat} style={{position:"fixed",inset:0,background:"rgba(0,0,0,0.75)",display:"flex",alignItems:"flex-end",justifyContent:"center",zIndex:100}}>
+            <div onClick={e => e.stopPropagation()} style={{background:"#161616",border:"1px solid #2A2A2A",borderRadius:"16px 16px 0 0",padding:20,width:"100%",maxWidth:500}}>
+              <div style={{fontSize:16,fontWeight:800,color:"#F0EDE8",marginBottom:4}}>{p.name}{p.brand ? " · " + p.brand : ""}</div>
+              <div style={{fontSize:11,color:"#888",marginBottom:14}}>
+                Fiyatı kasada belirlenir{fiyatModal.variantName ? " · beden " + fiyatModal.variantName : ""}
+              </div>
+              <SayiGirisi kip="para" autoFocus min={0} placeholder="₺ Tutar"
+                value={fiyatModal.tutar}
+                onChange={v => setFiyatModal(m => ({ ...m, tutar: v }))}
+                onKeyDown={e => { if (e.key === "Enter" && tutar > 0) uygula(); }}
+                style={{width:"100%",padding:"14px 16px",background:"#0C0C0C",border:"1px solid #2A2A2A",borderRadius:10,color:"#F0EDE8",
+                        fontSize:26,fontWeight:800,outline:"none",fontFamily:cv,boxSizing:"border-box",textAlign:"center",marginBottom:10}} />
+              {maliyet > 0 && (
+                <div style={{fontSize:12,color:zarar ? "#C87A6A" : "#8A8580",marginBottom:14,fontVariantNumeric:"tabular-nums"}}>
+                  {zarar ? `Maliyetin altında — bu ürün ₺${Math.round(maliyet)}'ye alındı` : `Maliyet ₺${Math.round(maliyet)}`}
+                </div>
+              )}
+              <div style={{display:"flex",gap:8}}>
+                <button onClick={kapat} style={{flex:1,padding:"13px",background:"transparent",color:"#888",border:"1px solid #333",borderRadius:10,fontSize:14,fontWeight:700,cursor:"pointer",fontFamily:cv}}>Vazgeç</button>
+                <button onClick={uygula} disabled={tutar <= 0}
+                  style={{flex:2,padding:"13px",background:tutar <= 0 ? "#333" : "#FFFFFF",color:tutar <= 0 ? "#777" : "#000",
+                          border:"none",borderRadius:10,fontSize:14,fontWeight:800,cursor:tutar <= 0 ? "not-allowed" : "pointer",fontFamily:cv}}>
+                  {tutar > 0 ? `Ekle · ₺${Math.round(tutar)}` : "Tutar gir"}
                 </button>
               </div>
             </div>

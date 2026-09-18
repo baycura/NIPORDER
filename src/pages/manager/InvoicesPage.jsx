@@ -4,6 +4,7 @@ import { supabase, hataMetni } from "../../lib/supabase.js";
 import { useAuth } from "../../contexts/AuthContext.jsx";
 import { ozellik } from "../../lib/profil.js";
 import Ikon from "../../components/Ikon.jsx";
+import SayiGirisi from "../../components/SayiGirisi.jsx";
 
 const cv = "-apple-system,BlinkMacSystemFont,'Segoe UI',Roboto,sans-serif";
 
@@ -611,12 +612,12 @@ export default function InvoicesPage() {
                     <div style={{display:"flex",gap:6,alignItems:"center",flexWrap:"wrap"}}>
                       <label style={{flex:"1 1 90px"}}>
                         <div style={{fontSize:9,color:"#888888",fontWeight:700,marginBottom:3}}>{koli ? "KAÇ KOLİ" : "KAÇ ADET"}</div>
-                        <input type="number" step="0.01" value={l.qty||0} onChange={e=>updateLine(idx,"qty",e.target.value)} style={{...inputS, padding:"8px"}}/>
+                        <SayiGirisi kip="ondalik" value={l.qty||0} onChange={v=>updateLine(idx,"qty",v)} style={{...inputS, padding:"8px"}}/>
                       </label>
                       {koli && (
                         <label style={{flex:"1 1 90px"}}>
                           <div style={{fontSize:9,color:"#888888",fontWeight:700,marginBottom:3}}>Koli içi şişe</div>
-                          <input type="number" step="1" value={l.pack_qty||1} onChange={e=>updateLine(idx,"pack_qty",e.target.value)} style={{...inputS, padding:"8px"}}/>
+                          <SayiGirisi kip="tam" value={l.pack_qty||1} onChange={v=>updateLine(idx,"pack_qty",v)} style={{...inputS, padding:"8px"}}/>
                         </label>
                       )}
                       {/* Icerik yalniz hacimle tutulan malzemede sorulur:
@@ -624,12 +625,12 @@ export default function InvoicesPage() {
                       {["ml","cl","l"].includes(c.unit) && (
                       <label style={{flex:"1 1 100px"}}>
                         <div style={{fontSize:9,color:"#888888",fontWeight:700,marginBottom:3}}>ŞİŞE / FIÇI İÇERİĞİ ({c.unit})</div>
-                        <input type="number" step="0.01" value={l.content||1} onChange={e=>updateLine(idx,"content",e.target.value)} placeholder={c.unit==="ml"?"70cl = 700":"1"} style={{...inputS, padding:"8px"}}/>
+                        <SayiGirisi kip="ondalik" value={l.content||1} onChange={v=>updateLine(idx,"content",v)} placeholder={c.unit==="ml"?"70cl = 700":"1"} style={{...inputS, padding:"8px"}}/>
                       </label>
                       )}
                       <label style={{flex:"1 1 110px"}}>
                         <div style={{fontSize:9,color:"#888888",fontWeight:700,marginBottom:3}}>{koli ? "KOLİ FİYATI ₺" : "ADET FİYATI ₺"} (KDV dahil)</div>
-                        <input type="number" step="0.01" value={l.unit_cost||0} onChange={e=>updateLine(idx,"unit_cost",e.target.value)} style={{...inputS, padding:"8px"}}/>
+                        <SayiGirisi kip="para" value={l.unit_cost||0} onChange={v=>updateLine(idx,"unit_cost",v)} style={{...inputS, padding:"8px"}}/>
                       </label>
                       <button onClick={()=>removeLine(idx)} style={{background:"transparent",color:"#C87A6A",border:"1px solid #2A2A2A",borderRadius:6,padding:"8px 10px",cursor:"pointer",fontSize:11,alignSelf:"flex-end"}}>Sil</button>
                     </div>

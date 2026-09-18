@@ -3,6 +3,7 @@ import { supabase, hataMetni } from "../../lib/supabase.js";
 import { useAuth } from "../../contexts/AuthContext.jsx";
 import { ozellik } from "../../lib/profil.js";
 import Ikon from "../../components/Ikon.jsx";
+import SayiGirisi from "../../components/SayiGirisi.jsx";
 
 const cv = "-apple-system,BlinkMacSystemFont,'Segoe UI',Roboto,sans-serif";
 const UNITS = ["ml", "cl", "l", "g", "kg", "adet", "şişe", "porsiyon"];
@@ -47,6 +48,7 @@ export default function RecipesMgmtPage() {
   const [aiPreview, setAiPreview] = useState(null);
   const [copyFrom, setCopyFrom] = useState("");
   const [listFilter, setListFilter] = useState("all");
+  const [birimModal, setBirimModal] = useState(null); // yeni malzemenin adi — birim cipleri acik
 
   const storeId = staffUser?.store_ids?.[0];
 
@@ -123,15 +125,18 @@ export default function RecipesMgmtPage() {
     return addIngredient(ing);
   };
 
-  // Aramada bulunamayan malzemeyi aninda olustur
-  const createIngredient = async (name) => {
-    if (busy) return;
-    const unit = prompt("Birim seç: " + UNITS.join(" / "), "ml");
-    if (unit === null) return;
-    if (!UNITS.includes(unit.trim())) { alert("Geçersiz birim"); return; }
+  // Aramada bulunamayan malzemeyi aninda olustur. Birim eskiden prompt() ile
+  // ELLE yaziliyordu: sekiz secenekten birini harfi harfine yazmak gerekiyor,
+  // "ML" ya da "adet " yazan "Gecersiz birim" duvarina toslluyordu. Simdi cip.
+  const createIngredient = (name) => { if (!busy) setBirimModal(name.trim()); };
+
+  const birimSec = async (unit) => {
+    const name = birimModal;
+    setBirimModal(null);
+    if (busy || !name) return;
     setBusy(true);
     const { data, error } = await supabase.from("ingredients")
-      .insert({ name: name.trim(), unit: unit.trim(), stock_qty: 0, cost_per_unit: 0, store_id: storeId })
+      .insert({ name, unit, stock_qty: 0, cost_per_unit: 0, store_id: storeId })
       .select().single();
     setBusy(false);
     if (error) { alert("Hata: " + error.message); return; }
@@ -384,7 +389,7 @@ export default function RecipesMgmtPage() {
               </div>
               <div style={{ display: "flex", alignItems: "center", gap: 8 }}>
                 <button onClick={() => setQty(r, Number(r.qty_per_unit) - step)} style={qtyBtn}>−</button>
-                <input type="number" step="0.01" value={r.qty_per_unit} onChange={e => setQty(r, e.target.value)}
+                <SayiGirisi kip="ondalik" min={0} value={r.qty_per_unit} onChange={v => setQty(r, v)}
                   style={{ width: 90, padding: "10px", background: "#0C0C0C", border: "1px solid #3A3A3A", borderRadius: 8, color: "#F0EDE8", fontSize: 16, textAlign: "center", outline: "none", fontFamily: "inherit", fontWeight: 700 }} />
                 <span style={{ color: "#888", fontSize: 13, fontWeight: 700 }}>{ing.unit}</span>
                 <button onClick={() => setQty(r, Number(r.qty_per_unit) + step)} style={qtyBtn}>+</button>
@@ -414,6 +419,25 @@ export default function RecipesMgmtPage() {
             </div>
           );
         })}
+
+        {birimModal && (
+          <div onClick={() => setBirimModal(null)} style={{ position: "fixed", inset: 0, background: "rgba(0,0,0,0.75)", display: "flex", alignItems: "flex-end", justifyContent: "center", zIndex: 100 }}>
+            <div onClick={e => e.stopPropagation()} style={{ background: "#161616", border: "1px solid #2A2A2A", borderRadius: "16px 16px 0 0", padding: 20, width: "100%", maxWidth: 500 }}>
+              <div style={{ fontSize: 16, fontWeight: 800, color: "#F0EDE8", marginBottom: 4 }}>{birimModal}</div>
+              <div style={{ fontSize: 11, color: "#888", marginBottom: 14 }}>Bu malzeme hangi birimle sayılıyor?</div>
+              <div style={{ display: "flex", flexWrap: "wrap", gap: 8, marginBottom: 16 }}>
+                {UNITS.map(u => (
+                  <button key={u} onClick={() => birimSec(u)} disabled={busy}
+                    style={{ minWidth: 72, minHeight: 46, padding: "10px 16px", borderRadius: 10, cursor: busy ? "wait" : "pointer", fontFamily: cv,
+                             background: "#222", color: "#F0EDE8", border: "1px solid #3A3A3A", fontSize: 15, fontWeight: 700 }}>
+                    {u}
+                  </button>
+                ))}
+              </div>
+              <button onClick={() => setBirimModal(null)} style={{ width: "100%", padding: "13px", background: "transparent", color: "#888", border: "1px solid #333", borderRadius: 10, fontSize: 14, fontWeight: 700, cursor: "pointer", fontFamily: cv }}>Vazgeç</button>
+            </div>
+          </div>
+        )}
       </div>
     );
   }

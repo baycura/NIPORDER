@@ -2,6 +2,7 @@ import { useState, useEffect } from "react";
 import { supabase } from "../../lib/supabase.js";
 import { useAuth } from "../../contexts/AuthContext.jsx";
 import Ikon from "../../components/Ikon.jsx";
+import SayiGirisi from "../../components/SayiGirisi.jsx";
 
 const cv = "-apple-system,BlinkMacSystemFont,'Segoe UI',Roboto,sans-serif";
 
@@ -109,7 +110,11 @@ export default function HappyHourPage() {
     if (newPrice === "" || newPrice == null) {
       delete po[pid];
     } else {
-      po[pid] = parseInt(newPrice, 10) || 0;
+      // parseInt KESIYORDU: "32.5" -> 32, ama kutuda "32,5" yazili kaldigi
+      // icin kimse fark etmiyordu (her satista 50 kurus eksik tahsilat).
+      // Bu sayfa bastan sona tam TL calisiyor (her yerde Math.round), o yuzden
+      // kesmek yerine YUVARLIYORUZ; kutu da kip="tam" ile ayni sayiyi gosterir.
+      po[pid] = Math.round(Number(newPrice)) || 0;
     }
     setForm(f => ({ ...f, product_overrides: po }));
   };
@@ -183,7 +188,7 @@ export default function HappyHourPage() {
             <div style={{ display: "flex", gap: 6, marginBottom: 8, flexWrap: "wrap" }}>
               <input value={search} onChange={e => setSearch(e.target.value)} placeholder="Ürün ara"
                 style={{ flex: 1, minWidth: 140, padding: 9, background: "#000", color: "#fff", border: "1px solid #333", borderRadius: 6 }} />
-              <input type="number" value={bulkPct} onChange={e => setBulkPct(e.target.value)}
+              <SayiGirisi kip="ondalik" min={1} max={99} value={bulkPct} onChange={v => setBulkPct(v)}
                 style={{ width: 60, padding: 9, background: "#000", color: "#FFFFFF", border: "1px solid #333", borderRadius: 6, fontWeight: 700 }} />
               <button onClick={applyBulkPct} style={{ padding: "9px 12px", background: "#222", color: "#FFFFFF", border: "1px solid #333", borderRadius: 6, fontSize: 12, fontWeight: 700, cursor: "pointer" }}>% indir</button>
               <button onClick={() => selectAllFiltered(shownProducts)} style={{ padding: "9px 12px", background: "#222", color: "#aaa", border: "1px solid #333", borderRadius: 6, fontSize: 12, fontWeight: 700, cursor: "pointer" }}>Tümünü seç</button>
@@ -202,7 +207,7 @@ export default function HappyHourPage() {
                     {isSelected && (
                       <div style={{ display: "flex", alignItems: "center", gap: 4 }}>
                         <span style={{ color: "#aaa", fontSize: 12 }}>₺</span>
-                        <input type="number" value={newPrice} onChange={e => setProductPrice(p.id, p.price, e.target.value)} style={{ width: 70, padding: 6, background: "#111", color: "#FFFFFF", border: "1px solid #FFFFFF", borderRadius: 4, fontWeight: 700, fontSize: 14 }} />
+                        <SayiGirisi kip="tam" min={0} value={newPrice} onChange={v => setProductPrice(p.id, p.price, v)} style={{ width: 70, padding: 6, background: "#111", color: "#FFFFFF", border: "1px solid #FFFFFF", borderRadius: 4, fontWeight: 700, fontSize: 14 }} />
                       </div>
                     )}
                   </div>

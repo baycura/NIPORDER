@@ -2,6 +2,7 @@ import { useEffect, useState } from "react";
 import { supabase } from "../../lib/supabase.js";
 import { useAuth } from "../../contexts/AuthContext.jsx";
 import Ikon from "../../components/Ikon.jsx";
+import SayiGirisi from "../../components/SayiGirisi.jsx";
 
 const cv = "-apple-system,BlinkMacSystemFont,'Segoe UI',Roboto,sans-serif";
 
@@ -222,8 +223,8 @@ export default function FixedExpensesPage() {
               ))}
             </div>
           </Field>
-          <Field label="AYLIK TUTAR (₺)"><input type="number" step="0.01" value={form.amount ?? ""} onChange={e => setForm(f => ({ ...f, amount: e.target.value }))} style={inputS} /></Field>
-          <Field label="ÖDEME GÜNÜ (opsiyonel, 1-31)"><input type="number" min="1" max="31" value={form.day_of_month ?? ""} onChange={e => setForm(f => ({ ...f, day_of_month: e.target.value }))} placeholder="örn: 5" style={inputS} /></Field>
+          <Field label="AYLIK TUTAR (₺)"><SayiGirisi kip="para" value={form.amount ?? ""} onChange={v => setForm(f => ({ ...f, amount: v }))} style={inputS} /></Field>
+          <Field label="ÖDEME GÜNÜ (opsiyonel, 1-31)"><SayiGirisi kip="tam" min={1} max={31} value={form.day_of_month ?? ""} onChange={v => setForm(f => ({ ...f, day_of_month: v }))} placeholder="örn: 5" style={inputS} /></Field>
           <Field label="NOT (opsiyonel)"><input value={form.notes || ""} onChange={e => setForm(f => ({ ...f, notes: e.target.value }))} placeholder="örn: kontrat Mart'ta yenilenecek" style={inputS} /></Field>
           <div style={{ display: "flex", gap: 8, marginTop: 10 }}>
             <button onClick={() => setModal(null)} style={cancelBtn}>İptal</button>

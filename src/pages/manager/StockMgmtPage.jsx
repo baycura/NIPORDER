@@ -4,6 +4,7 @@ import { supabase } from "../../lib/supabase.js";
 import { useAuth } from "../../contexts/AuthContext.jsx";
 import Ikon from "../../components/Ikon.jsx";
 import StokEkleSheet, { stokGeriAl } from "../../components/StokEkleSheet.jsx";
+import SayiGirisi from "../../components/SayiGirisi.jsx";
 import { paketIkilemi, ikilemMetni, birimYaz, anlasilirYaz } from "../../lib/birimMaliyet.js";
 import { GRUP_SIRASI, GRUPSUZ, RAF_URUN, raflaraAyir, siseKarsiligi, kapAdi, trKucuk } from "../../lib/malzemeGrup.js";
 import { ozellik } from "../../lib/profil.js";
@@ -337,7 +338,7 @@ export default function StockMgmtPage() {
             </Field>
           ) : (
             <Field label={"STOK MIKTARI (" + form.unit + ")" + (modal.mode === "edit" ? " — ÜZERİNE YAZAR" : "")}>
-              <input type="number" step="0.01" value={form.stock_qty||0} onChange={e=>setForm(f => ({...f,stock_qty:e.target.value}))} style={inputS}/>
+              <SayiGirisi kip="ondalik" value={form.stock_qty||0} onChange={v=>setForm(f => ({...f,stock_qty:v}))} style={inputS}/>
               {modal.mode === "edit" && (
                 <div style={{fontSize:11,color:"#C87A6A",marginTop:6,lineHeight:1.5}}>
                   Bu sayı mevcut stoğun yerine geçer. Eklemek için <button onClick={()=>setUzerineYaz(false)} style={{background:"transparent",border:"none",color:"#F0EDE8",textDecoration:"underline",cursor:"pointer",padding:0,font:"inherit"}}>+ Stok ekle</button>'ye dön.
@@ -346,7 +347,7 @@ export default function StockMgmtPage() {
             </Field>
           )}
           <Field label={"BIRIM MALIYET (₺ / " + form.unit + ")"}>
-            <input type="number" step="0.01" value={form.cost_per_unit||0} onChange={e=>setForm(f => ({...f,cost_per_unit:e.target.value}))} style={inputS}/>
+            <SayiGirisi kip="para" value={form.cost_per_unit||0} onChange={v=>setForm(f => ({...f,cost_per_unit:v}))} style={inputS}/>
             {/* Mililitre/gram maliyeti tek basina okunmaz; litre/kilo fiyatina
                 cevrilince yanlislik goze carpar (Sut ₺205/litre yaziyordu). */}
             {anlasilirYaz(form.cost_per_unit, form.unit) && (
@@ -367,7 +368,7 @@ export default function StockMgmtPage() {
               );
             })()}
           </Field>
-          <Field label="FIRE ORANI (%)"><input type="number" step="0.1" min="0" max="100" value={form.waste_pct||0} onChange={e=>setForm(f => ({...f,waste_pct:e.target.value}))} placeholder="orn: 3 = %3 dokulme/fire" style={inputS}/></Field>
+          <Field label="FIRE ORANI (%)"><SayiGirisi kip="ondalik" min={0} max={100} value={form.waste_pct||0} onChange={v=>setForm(f => ({...f,waste_pct:v}))} placeholder="orn: 3 = %3 dokulme/fire" style={inputS}/></Field>
 
           {/* AMBALAJ yalniz hacimle tutulan malzemede sorulur. Adetle tutulan
               sise bira icin sise hacmi, koli ici ve ambalaj fire hesabi ne
@@ -377,7 +378,7 @@ export default function StockMgmtPage() {
           <div style={{background:"#0C0C0C",border:"1px solid #2A2A2A",borderRadius:10,padding:12,marginBottom:12}}>
             <div style={{fontSize:12,color:"#8A8580",letterSpacing:"0.2px",fontWeight:600,marginBottom:8,display:"flex",alignItems:"center",gap:6}}><Ikon ad="stok" boy={13}/>ŞİŞE / FIÇI HESABI</div>
             <Field label="BIR SISE / FICI HACMI (ml)">
-              <input type="number" step="1" value={form.unit_volume_ml||""} onChange={e=>setForm(f => ({...f,unit_volume_ml:e.target.value}))} placeholder="70cl sise = 700 · 50L fici = 50000" style={inputS}/>
+              <SayiGirisi kip="ondalik" value={form.unit_volume_ml||""} onChange={v=>setForm(f => ({...f,unit_volume_ml:v}))} placeholder="70cl sise = 700 · 50L fici = 50000" style={inputS}/>
               {/* Sik boylar tek dokunusla: cin/viski/votka 50-70-100 cl gelir. */}
               <div style={{display:"flex",gap:6,flexWrap:"wrap",marginTop:7}}>
                 {[["35cl",350],["50cl",500],["70cl",700],["75cl",750],["100cl",1000],["30L fıçı",30000],["50L fıçı",50000]].map(([lbl,val]) => {
@@ -395,10 +396,10 @@ export default function StockMgmtPage() {
               </div>
             </Field>
             <Field label="KOLI ICI ADET (koli gelmiyorsa 1)">
-              <input type="number" min="1" step="1" value={form.pack_qty||1} onChange={e=>setForm(f => ({...f,pack_qty:e.target.value}))} placeholder="orn: 24 sise/koli" style={inputS}/>
+              <SayiGirisi kip="tam" min={1} value={form.pack_qty||1} onChange={v=>setForm(f => ({...f,pack_qty:v}))} placeholder="orn: 24 sise/koli" style={inputS}/>
             </Field>
             <Field label={"AMBALAJ BASINA FIRE (" + form.unit + ")"}>
-              <input type="number" step="1" value={form.waste_per_pack||0} onChange={e=>setForm(f => ({...f,waste_per_pack:e.target.value}))} placeholder="Fici: 5 bardak fire = 5 x bardak ml" style={inputS}/>
+              <SayiGirisi kip="ondalik" value={form.waste_per_pack||0} onChange={v=>setForm(f => ({...f,waste_per_pack:v}))} placeholder="Fici: 5 bardak fire = 5 x bardak ml" style={inputS}/>
             </Field>
             <div style={{display:"flex",gap:6,flexWrap:"wrap"}}>
               {[["5 x 500ml bardak",2500],["5 x 330ml bardak",1650],["Fire yok",0]].map(([lbl,val]) => (

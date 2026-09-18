@@ -3,6 +3,7 @@ import { useNavigate } from "react-router-dom";
 import { supabase } from "../../lib/supabase.js";
 import { useAuth } from "../../contexts/AuthContext.jsx";
 import Ikon from "../../components/Ikon.jsx";
+import SayiGirisi from "../../components/SayiGirisi.jsx";
 import { KUPURLER, BOZUKLAR, kupurToplam, fmtTL, NOT_ESIGI, farkRengi, TASLAK_KEY, denomsTemizle }
   from "../../lib/cashCount.js";
 
@@ -310,11 +311,10 @@ export default function CashCountPage() {
                 <div style={{ width: 62, fontSize: 15, fontWeight: 800, fontVariantNumeric: "tabular-nums" }}>
                   ₺{k % 1 === 0 ? k : k.toFixed(2)}
                 </div>
-                <input
-                  type="number" inputMode="numeric" min="0" step="1"
+                <SayiGirisi
+                  kip="tam" min={0}
                   value={adetler[k] ?? ""}
-                  onChange={e => {
-                    const v = e.target.value;
+                  onChange={v => {
                     setAdetler(a => ({ ...a, [k]: v === "" ? "" : Math.max(0, Math.trunc(Number(v) || 0)) }));
                   }}
                   placeholder="0"
@@ -414,8 +414,8 @@ export default function CashCountPage() {
           {kapanis && (
             <div style={{ ...kart, marginBottom: 10 }}>
               <div style={{ ...etiket, marginBottom: 8 }}>POS cihazı gün sonu (Z raporu)</div>
-              <input type="number" inputMode="decimal" min="0" value={pos}
-                     onChange={e => setPos(e.target.value)} placeholder="Cihazın yazdığı kart toplamı"
+              <SayiGirisi kip="para" min={0} value={pos}
+                     onChange={v => setPos(v)} placeholder="Cihazın yazdığı kart toplamı"
                      style={inputS} />
               <div style={{ display: "flex", justifyContent: "space-between", fontSize: 13,
                             color: C.muted, marginTop: 9, lineHeight: 1.8 }}>
@@ -447,8 +447,8 @@ export default function CashCountPage() {
           {kapanis && (
             <div style={{ ...kart, marginBottom: 10 }}>
               <div style={{ ...etiket, marginBottom: 8 }}>Çekmeceden alınan (bankaya/kasaya)</div>
-              <input type="number" inputMode="decimal" min="0" value={cekilen}
-                     onChange={e => setCekilen(e.target.value)} placeholder="0"
+              <SayiGirisi kip="para" min={0} value={cekilen}
+                     onChange={v => setCekilen(v)} placeholder="0"
                      style={inputS} />
               <div style={{ fontSize: 12, color: C.faint, marginTop: 6, lineHeight: 1.5 }}>
                 Çekmecede bıraktığın para yarının açılış kasası olur. Aldığın kadarını buraya yaz.

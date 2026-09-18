@@ -2,6 +2,7 @@ import { useEffect, useState } from "react";
 import { supabase, hataMetni } from "../../lib/supabase.js";
 import { useAuth } from "../../contexts/AuthContext.jsx";
 import Ikon from "../../components/Ikon.jsx";
+import SayiGirisi from "../../components/SayiGirisi.jsx";
 
 const cv = "-apple-system,BlinkMacSystemFont,'Segoe UI',Roboto,sans-serif";
 const inputS = {width:"100%",padding:"10px 12px",background:"#0C0C0C",border:"1px solid #2A2A2A",borderRadius:8,color:"#F0EDE8",fontSize:14,outline:"none",fontFamily:"inherit"};
@@ -245,7 +246,7 @@ export default function PollsPage() {
             </label>
 
             <div style={{display:"flex",gap:10}}>
-              <Field label="SIRA (küçük üstte)"><input type="number" value={form.sort_order} onChange={e=>setForm(f => ({...f,sort_order:e.target.value}))} style={{...inputS,width:90}}/></Field>
+              <Field label="SIRA (küçük üstte)"><SayiGirisi kip="tam" value={form.sort_order} onChange={v=>setForm(f => ({...f,sort_order:v}))} style={{...inputS,width:90}}/></Field>
               <Field label="BİTİŞ (opsiyonel)"><input type="datetime-local" value={form.ends_at} onChange={e=>setForm(f => ({...f,ends_at:e.target.value}))} style={inputS}/></Field>
             </div>
             <label style={{display:"flex",alignItems:"center",gap:8,fontSize:13,color:"#ddd",cursor:"pointer",marginBottom:14}}>

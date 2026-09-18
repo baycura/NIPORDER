@@ -1,6 +1,7 @@
 import { useMemo, useState } from "react";
 import { supabase } from "../lib/supabase.js";
 import { FICI_ML, boySecenekleri, boyYaz, kapAdi } from "../lib/stockCount.js";
+import { sayiya } from "../lib/sayi.js";
 import Ikon from "./Ikon.jsx";
 
 // STOK EKLE — "girdigim stogu ekleyebildigim bir dugme"
@@ -28,18 +29,6 @@ const cv = "-apple-system,BlinkMacSystemFont,'Segoe UI',Roboto,sans-serif";
 const hv = "'Bebas Neue','Barlow Condensed','Coolvetica Condensed',sans-serif";
 const C = { kart: "#161616", cizgi: "#2A2A2A", koyu: "#0C0C0C", ink: "#F0EDE8", soluk: "#8A8580", silik: "#666666", ak: "#FFFFFF", kirmizi: "#C87A6A", yesil: "#7A9E7E" };
 
-// Turkce yazim: "1.234,5" ve "30.000" (otuz bin) ikisi de gelir. Ekrandaki
-// sayilar tr-TR bicimiyle basildigi icin kullanici onu taklit ediyor; noktayi
-// ondalik sanip 30.000'i 30 diye okumak stok girisini sessizce yanlis yapardi.
-const sayiya = (s) => {
-  let t = String(s ?? "").trim();
-  if (!t) return null;                       // bos kutu 0 degil, "girilmedi"
-  if (/[eE]/.test(t)) return null;           // "1e3" gibi yazim kabul edilmez
-  if (t.includes(",")) t = t.replace(/\./g, "").replace(",", ".");
-  else if (/^-?\d{1,3}(\.\d{3})+$/.test(t)) t = t.replace(/\./g, "");
-  const n = Number(t);
-  return Number.isFinite(n) ? n : null;
-};
 const fmt = (n) => Number(n || 0).toLocaleString("tr-TR", { maximumFractionDigits: 2 });
 
 export default function StokEkleSheet({ kalem, storeId, ipucu, onKapat, onBitti }) {

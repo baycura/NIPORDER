@@ -3,6 +3,7 @@ import { supabase } from "../../lib/supabase.js";
 import { useAuth } from "../../contexts/AuthContext.jsx";
 import Ikon from "../../components/Ikon.jsx";
 import StokEkleSheet, { stokGeriAl } from "../../components/StokEkleSheet.jsx";
+import SayiGirisi from "../../components/SayiGirisi.jsx";
 
 const cv = "-apple-system,BlinkMacSystemFont,'Segoe UI',Roboto,sans-serif";
 const SIZE_SETS = {
@@ -322,7 +323,7 @@ export default function RetailPage() {
         <Modal onClose={() => setBrandModal(null)} title={brandModal.mode === "new" ? "Yeni Marka" : "Markayı Düzenle"}>
           <Field label="MARKA ADI"><input value={brandForm.name || ""} onChange={e => setBrandForm(f => ({ ...f, name: e.target.value }))} placeholder="örn: Not in Paris, Rapha, Seramik Atölyesi" style={inputS} /></Field>
           <Field label="AÇIKLAMA (opsiyonel)"><input value={brandForm.description || ""} onChange={e => setBrandForm(f => ({ ...f, description: e.target.value }))} placeholder="örn: kendi üretimimiz" style={inputS} /></Field>
-          <Field label="SIRA (küçük = önce)"><input type="number" value={brandForm.sort_order || 100} onChange={e => setBrandForm(f => ({ ...f, sort_order: e.target.value }))} style={inputS} /></Field>
+          <Field label="SIRA (küçük = önce)"><SayiGirisi kip="tam" value={brandForm.sort_order || 100} onChange={v => setBrandForm(f => ({ ...f, sort_order: v }))} style={inputS} /></Field>
           <div style={{ display: "flex", gap: 8, marginTop: 10 }}>
             <button onClick={() => setBrandModal(null)} style={cancelBtn}>İptal</button>
             <button onClick={saveBrand} disabled={busy} style={{ ...saveBtn, opacity: busy ? 0.6 : 1 }}>{busy ? "..." : "Kaydet"}</button>
@@ -346,7 +347,7 @@ export default function RetailPage() {
             </select>
           </Field>
           <Field label="SATIŞ FİYATI (₺) — 0 girersen kasada sorulur">
-            <input type="number" step="0.01" value={form.price ?? ""} onChange={e => setForm(f => ({ ...f, price: e.target.value }))} style={inputS} />
+            <SayiGirisi kip="para" value={form.price ?? ""} onChange={v => setForm(f => ({ ...f, price: v }))} style={inputS} />
           </Field>
 
           <Field label="BEDEN">
@@ -369,7 +370,7 @@ export default function RetailPage() {
                 {(form.variants || []).map(v => (
                   <div key={v.name} style={{ background: "#0C0C0C", border: "1px solid #2A2A2A", borderRadius: 8, padding: 8 }}>
                     <div style={{ fontSize: 11, color: "#FFFFFF", fontWeight: 800, marginBottom: 4, textAlign: "center" }}>{v.name}</div>
-                    <input type="number" min="0" value={v.stock} onChange={e => setVariantStock(v.name, e.target.value)} style={{ ...inputS, padding: "6px", textAlign: "center" }} />
+                    <SayiGirisi kip="tam" min={0} value={v.stock} onChange={deger => setVariantStock(v.name, deger)} style={{ ...inputS, padding: "6px", textAlign: "center" }} />
                   </div>
                 ))}
               </div>
@@ -378,7 +379,7 @@ export default function RetailPage() {
               </div>
             </Field>
           ) : (
-            <Field label="STOK (adet)"><input type="number" min="0" value={form.retail_stock || 0} onChange={e => setForm(f => ({ ...f, retail_stock: e.target.value }))} style={inputS} /></Field>
+            <Field label="STOK (adet)"><SayiGirisi kip="tam" min={0} value={form.retail_stock || 0} onChange={v => setForm(f => ({ ...f, retail_stock: v }))} style={inputS} /></Field>
           )}
 
           <label style={{ display: "flex", alignItems: "center", gap: 8, marginBottom: 12, cursor: "pointer" }}>
