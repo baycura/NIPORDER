@@ -4,6 +4,7 @@ import { gorselYukle } from "../../lib/gorsel.js";
 import { useAuth } from "../../contexts/AuthContext.jsx";
 import { PARIS_STORE_ID, DONER_STORE_ID, storeLabel } from "../../lib/stores.js";
 import Ikon from "../../components/Ikon.jsx";
+import SayiGirisi from "../../components/SayiGirisi.jsx";
 
 const cv = "-apple-system,BlinkMacSystemFont,'Segoe UI',Roboto,sans-serif";
 
@@ -431,15 +432,15 @@ export default function MenuMgmtPage() {
           {/* Urun basina 152 kayit yerine kategori basina bir varsayilan.
               Musteri menusundeki "~8 dk" rozeti boylece calisir hale gelir. */}
           <Field label="HAZIRLANMA SÜRESİ (dk — bu kategorinin varsayılanı)">
-            <input type="number" min="1" max="240" value={catForm.prep_time_minutes ?? ""}
-                   onChange={e=>setCatForm(f => ({...f,prep_time_minutes:e.target.value}))}
+            <SayiGirisi kip="tam" min={1} max={240} value={catForm.prep_time_minutes ?? ""}
+                   onChange={v=>setCatForm(f => ({...f,prep_time_minutes:v}))}
                    placeholder="örn: kahveler 4, kokteyller 7, mutfak 15" style={inputS}/>
             <div style={{fontSize:12,color:"#8A8580",marginTop:5,lineHeight:1.5}}>
               Ürünün kendi süresi girilmişse o kazanır. Boş bırakırsan o kategoride
               hazırlanma süresi hiç gösterilmez.
             </div>
           </Field>
-          <Field label="SIRA (kucuk=once)"><input type="number" value={catForm.sort_order||0} onChange={e=>setCatForm(f => ({...f,sort_order:e.target.value}))} style={inputS}/></Field>
+          <Field label="SIRA (kucuk=once)"><SayiGirisi kip="tam" value={catForm.sort_order||0} onChange={v=>setCatForm(f => ({...f,sort_order:v}))} style={inputS}/></Field>
           <Field label="UST KATEGORI">
             <select value={catForm.parent_id||""} onChange={e=>setCatForm(f => ({...f,parent_id:e.target.value||null}))} style={inputS}>
               <option value="">— Yok (menude sekme olur) —</option>
@@ -554,9 +555,9 @@ export default function MenuMgmtPage() {
                 ))}
               </div>
               {prodForm.currency === "EUR" ? (
-                <input type="number" step="0.01" value={prodForm.price_eur??''} onChange={e=>setProdForm(f => ({...f,price_eur:e.target.value}))} placeholder="örn: 25" style={inputS}/>
+                <SayiGirisi kip="para" value={prodForm.price_eur??''} onChange={v=>setProdForm(f => ({...f,price_eur:v}))} placeholder="örn: 25" style={inputS}/>
               ) : (
-                <input type="number" step="0.01" value={prodForm.price??''} onChange={e=>setProdForm(f => ({...f,price:e.target.value}))} style={inputS}/>
+                <SayiGirisi kip="para" value={prodForm.price??''} onChange={v=>setProdForm(f => ({...f,price:v}))} style={inputS}/>
               )}
             </div>
             {prodForm.currency === "EUR" && (
@@ -570,8 +571,8 @@ export default function MenuMgmtPage() {
           {/* Recetesi olmayan satis urunlerinin (tisort, gozluk, sapka) maliyeti
               baska hicbir yerde tutulmuyor; urun karliligi raporu bu alani okur. */}
           <Field label="ALIŞ FİYATI (₺ / adet — opsiyonel)">
-            <input type="number" step="0.01" min="0" value={prodForm.cost_price??''}
-                   onChange={e=>setProdForm(f => ({...f,cost_price:e.target.value}))}
+            <SayiGirisi kip="para" min={0} value={prodForm.cost_price??''}
+                   onChange={v=>setProdForm(f => ({...f,cost_price:v}))}
                    placeholder="örn: 950" style={inputS}/>
             <div style={{fontSize:12,color:"#8A8580",marginTop:5,lineHeight:1.5}}>
               Reçetesi olan ürünlerde boş bırak — orada maliyet reçeteden hesaplanır.
@@ -579,7 +580,7 @@ export default function MenuMgmtPage() {
               kârlılık raporu bu ürünü göremez.
             </div>
           </Field>
-          <Field label="ANLIK INDIRIM (%)"><input type="number" step="1" min="0" max="99" value={prodForm.instant_discount_pct??''} onChange={e=>setProdForm(f => ({...f,instant_discount_pct:e.target.value}))} style={inputS}/></Field>
+          <Field label="ANLIK INDIRIM (%)"><SayiGirisi kip="tam" min={0} max={99} value={prodForm.instant_discount_pct??''} onChange={v=>setProdForm(f => ({...f,instant_discount_pct:v}))} style={inputS}/></Field>
 
           {/* HAPPY HOUR */}
         <div style={{background:"#0C0C0C",border:"1px solid #222",borderRadius:10,padding:12,marginBottom:10}}>
@@ -597,7 +598,7 @@ export default function MenuMgmtPage() {
               {["Pzt","Sal","Çar","Per","Cum","Cmt","Paz"].map((d,i)=>{const dn=(i+1)%7;const days=Array.isArray(prodForm.hh_days)?prodForm.hh_days:[0,1,2,3,4,5,6];const on=days.includes(dn);return(<button key={d} type="button" onClick={()=>{const nd=on?days.filter(x=>x!==dn):[...days,dn];setProdForm(f => ({...f,hh_days:nd}));}} style={{padding:"6px 11px",borderRadius:8,fontSize:13,fontWeight:600,border:"1px solid "+(on?"#FFFFFF":"#333"),background:on?"#FFFFFF":"#1a1a1a",color:on?"#000":"#888",cursor:"pointer"}}>{d}</button>);})}
             </div>
             <div style={{fontSize:11,color:"#888",fontWeight:600,marginBottom:4}}>Happy hour fiyatı (₺)</div>
-            <input type="number" step="0.01" value={prodForm.hh_price??""} onChange={e=>setProdForm(f => ({...f,hh_price:e.target.value}))} placeholder="örn: 200" style={{width:"100%",padding:8,background:"#1a1a1a",border:"1px solid #333",borderRadius:8,color:"#fff",boxSizing:"border-box"}}/>
+            <SayiGirisi kip="para" value={prodForm.hh_price??""} onChange={v=>setProdForm(f => ({...f,hh_price:v}))} placeholder="örn: 200" style={{width:"100%",padding:8,background:"#1a1a1a",border:"1px solid #333",borderRadius:8,color:"#fff",boxSizing:"border-box"}}/>
           </div>)}
         </div>
 
@@ -694,7 +695,7 @@ export default function MenuMgmtPage() {
             </label>
             {prodForm.show_prep_time && (
               <div style={{display:"flex",alignItems:"center",gap:6}}>
-                <input type="number" min="1" max="240" placeholder="20" value={prodForm.prep_time_minutes||""} onChange={e=>setProdForm(f => ({...f,prep_time_minutes:e.target.value?parseInt(e.target.value,10):null}))} style={{width:70,padding:"6px 8px",background:"#000",color:"#F0EDE8",border:"1px solid #444",borderRadius:6,fontSize:13}}/>
+                <SayiGirisi kip="tam" min={1} max={240} placeholder="20" value={prodForm.prep_time_minutes||""} onChange={v=>setProdForm(f => ({...f,prep_time_minutes:v===""?null:Number(v)}))} style={{width:70,padding:"6px 8px",background:"#000",color:"#F0EDE8",border:"1px solid #444",borderRadius:6,fontSize:13}}/>
                 <span style={{color:"#888",fontSize:12}}>dakika</span>
               </div>
             )}

@@ -2,6 +2,7 @@ import { useEffect, useState } from "react";
 import { supabase } from "../../lib/supabase.js";
 import { useAuth } from "../../contexts/AuthContext.jsx";
 import Ikon from "../../components/Ikon.jsx";
+import SayiGirisi from "../../components/SayiGirisi.jsx";
 
 const cv = "-apple-system,BlinkMacSystemFont,'Segoe UI',Roboto,sans-serif";
 
@@ -271,7 +272,7 @@ export default function MembersPage() {
                     <div style={{flex:1,fontSize:12,color:"#ddd",minWidth:0,overflow:"hidden",textOverflow:"ellipsis",whiteSpace:"nowrap"}}>{p.name} <span style={{color:"#888888",fontSize:11}}>₺{liste}</span></div>
                     {sel && (<div style={{display:"flex",alignItems:"center",gap:3}}>
                       <span style={{color:"#888",fontSize:11}}>₺</span>
-                      <input type="number" min="0" value={val} onChange={e=>setProdDiscounts({...prodDiscounts, [p.id]: e.target.value})} style={{width:70,padding:5,background:"#0C0C0C",color:"#FFFFFF",border:"1px solid #FFFFFF",borderRadius:5,fontSize:12}}/>
+                      <SayiGirisi kip="tam" min={0} value={val} onChange={v=>setProdDiscounts({...prodDiscounts, [p.id]: v})} style={{width:70,padding:5,background:"#0C0C0C",color:"#FFFFFF",border:"1px solid #FFFFFF",borderRadius:5,fontSize:12}}/>
                       <span style={{color:val === "" ? "#666" : uye < liste ? "#FFFFFF" : "#C87A6A",fontSize:11,fontWeight:700,whiteSpace:"nowrap"}}>
                         {val === "" ? "fiyat gir" : uye < liste ? "−₺" + (liste - uye) : uye === liste ? "indirim yok" : "liste üstü!"}
                       </span>
@@ -286,7 +287,7 @@ export default function MembersPage() {
           <div style={{background:"#222",border:"1px solid #333",borderRadius:10,padding:12,marginBottom:12}}>
             <div style={{fontSize:12,color:"#888",letterSpacing:"0.2px",fontWeight:600,marginBottom:8}}>Özel indirim</div>
             <div style={{display:"flex",alignItems:"center",gap:8}}>
-              <input type="number" min="0" max="50" value={form.admin_discount||0} onChange={e=>setForm(f => ({...f,admin_discount:e.target.value}))} style={{...inputS,flex:1}}/>
+              <SayiGirisi kip="tam" min={0} max={50} value={form.admin_discount||0} onChange={v=>setForm(f => ({...f,admin_discount:v}))} style={{...inputS,flex:1}}/>
               <span style={{fontSize:20,color:"#FFFFFF",fontWeight:700}}>%</span>
             </div>
             <div style={{fontSize:10,color:"#888888",marginTop:6}}>NOT: Bu musteriye ozel indirim. Uye indirimi yerine bu uygulanir.</div>
@@ -295,7 +296,7 @@ export default function MembersPage() {
           <div style={{background:"#161616",border:"1px solid #2A2A2A",borderRadius:10,padding:12,marginBottom:12}}>
             <div style={{fontSize:12,color:"#C87A6A",letterSpacing:"0.2px",fontWeight:600,marginBottom:8}}>Açık borç</div>
             <div style={{display:"flex",alignItems:"center",gap:8,marginBottom:10}}>
-              <input type="number" value={form.outstanding_balance||0} onChange={e=>setForm(f => ({...f,outstanding_balance:e.target.value}))} style={{...inputS,flex:1}}/>
+              <SayiGirisi kip="para" value={form.outstanding_balance||0} onChange={v=>setForm(f => ({...f,outstanding_balance:v}))} style={{...inputS,flex:1}}/>
               <span style={{fontSize:16,color:"#FFFFFF",fontWeight:700}}>₺</span>
             </div>
             {modal.mode === "edit" && (
@@ -313,7 +314,7 @@ export default function MembersPage() {
                   ))}
                 </div>
                 <div style={{display:"flex",gap:6}}>
-                  <input type="number" value={payAmount} onChange={e=>setPayAmount(e.target.value)} placeholder="0" style={{...inputS,flex:1}}/>
+                  <SayiGirisi kip="para" value={payAmount} onChange={v=>setPayAmount(v)} placeholder="0" style={{...inputS,flex:1}}/>
                   <button onClick={recordPayment} style={{padding:"10px 14px",minHeight:44,background:"#FFFFFF",color:"#000",border:"none",borderRadius:8,fontSize:12,fontWeight:800,cursor:"pointer",whiteSpace:"nowrap"}}>Ödeme Al</button>
                 </div>
               </div>

@@ -4,6 +4,7 @@ import { reserve, reserveOturumAl, reserveCikis, RESERVATION_URL } from "../../l
 import { rezervasyonYerel, MARKA } from "../../lib/profil.js";
 import { useAuth } from "../../contexts/AuthContext.jsx";
 import Ikon from "../../components/Ikon.jsx";
+import SayiGirisi from "../../components/SayiGirisi.jsx";
 
 // YEREL MOD (profil "temel"): ayri rezervasyon projesi yok; events/reservations
 // bu veritabaninda (migration 20260911_yerel_etkinlik_rezervasyon). reserve
@@ -450,13 +451,13 @@ function Etkinlikler({ uyar }) {
           <Field label="TÜR"><input {...F("genre")} placeholder="HOUSE, TECH HOUSE…" /></Field>
           <Field label="ALT BAŞLIK"><input {...F("subtitle")} /></Field>
           <Field label="TARİH"><input type="date" {...F("date")} /></Field>
-          <Field label="KAPASİTE"><input type="number" min="1" {...F("capacity")} /></Field>
+          <Field label="KAPASİTE"><SayiGirisi kip="tam" min={1} value={form.capacity ?? ""} onChange={v => setForm(f => ({ ...f, capacity: v }))} style={inputS} /></Field>
           <Field label="BAŞLANGIÇ"><input type="time" {...F("time")} /></Field>
           <Field label="BİTİŞ"><input type="time" {...F("time_end")} /></Field>
           {!rezervasyonYerel && <>
           <Field label="ERİŞİM"><select {...F("access_type")}><option value="open">Herkese açık</option><option value="members_only">Yalnız üyeler</option></select></Field>
           <Field label="EN DÜŞÜK SEVİYE"><select {...F("min_tier")}>{Object.entries(SEVIYE).map(([k, v]) => <option key={k} value={k}>{v}</option>)}</select></Field>
-          <Field label="EN DÜŞÜK GÜVEN PUANI"><input type="number" min="0" {...F("min_trust")} /></Field>
+          <Field label="EN DÜŞÜK GÜVEN PUANI"><SayiGirisi kip="tam" min={0} value={form.min_trust ?? ""} onChange={v => setForm(f => ({ ...f, min_trust: v }))} style={inputS} /></Field>
           </>}
           <Field label="RENK (isteğe bağlı)"><input {...F("color")} placeholder="#C9A84C" /></Field>
           <Field label="ISINMA ADI"><input {...F("warmup_name")} placeholder="Warm-up DJ" /></Field>

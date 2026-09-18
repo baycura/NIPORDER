@@ -2,6 +2,7 @@ import { useEffect, useMemo, useRef, useState } from "react";
 import { supabase } from "../../lib/supabase.js";
 import { useAuth } from "../../contexts/AuthContext.jsx";
 import Ikon from "../../components/Ikon.jsx";
+import SayiGirisi from "../../components/SayiGirisi.jsx";
 import { raflaraAyir, grupAdi, RAF_URUN, trKucuk } from "../../lib/malzemeGrup.js";
 import {
   fmtTL, fmtMiktar, kapVar, kapAdi, boyYaz, boySecenekleri, ficiMi, kabaCevir, kabaGeri, farkTutari,
@@ -495,10 +496,10 @@ export default function StockCountPage() {
                       {h.kap && <> · 1 {h.birimAdi} = {boyYaz(h.boy)}</>}
                     </div>
                   </div>
-                  <input
-                    type="number" inputMode={i.urun ? "numeric" : "decimal"} min="0" step={i.urun ? "1" : "any"}
+                  <SayiGirisi
+                    kip={i.urun ? "tam" : "ondalik"}
                     value={sayimlar[i.id] ?? ""}
-                    onChange={e => setSayimlar(s => ({ ...s, [i.id]: e.target.value }))}
+                    onChange={v => setSayimlar(s => ({ ...s, [i.id]: v }))}
                     placeholder="—"
                     style={{ ...inputS, width: 96, flexShrink: 0, textAlign: "center", fontWeight: 700,
                              borderColor: h.girildi ? "#3D3D3D" : C.line }} />

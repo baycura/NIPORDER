@@ -4,6 +4,7 @@ import { PARIS_STORE_ID } from "../../lib/stores.js";
 import { ozellik } from "../../lib/profil.js";
 import Ikon from "../../components/Ikon.jsx";
 import ShopifyAyar from "../../components/ShopifyAyar.jsx";
+import SayiGirisi from "../../components/SayiGirisi.jsx";
 
 const cv = "-apple-system,BlinkMacSystemFont,'Segoe UI',Roboto,sans-serif";
 
@@ -120,7 +121,7 @@ export default function SettingsPage() {
       {/* Bar standart olcusu */}
       <Section icon="bira" title="Standart Ölçü" desc="Barda tek ölçünün kaç cl olduğu. Reçete sayfasındaki hazır düğmeler (Tek / Duble / Yarım) buna göre üretilir.">
         <Field label={"TEK ÖLÇÜ (cl) — şu an: " + (Number(settings.house_pour_cl) || 4) + " cl"}>
-          <input type="number" step="0.5" min="1" max="10" value={settings.house_pour_cl ?? 4} onChange={e=>setKey("house_pour_cl", Number(e.target.value))} style={inputS}/>
+          <SayiGirisi kip="ondalik" min={1} max={10} value={settings.house_pour_cl ?? 4} onChange={v=>setKey("house_pour_cl", Number(v))} style={inputS}/>
         </Field>
         <div style={{fontSize:11,color:"#888",marginTop:6}}>NOT: Bu yalniz kisayol dugmelerini etkiler; recetede istedigin miktari her zaman elle yazabilirsin.</div>
       </Section>
@@ -132,13 +133,13 @@ export default function SettingsPage() {
           onChange={v=>setKey("eur_rate_auto", v)} label="Kuru otomatik guncelle (her is gunu 17:00 — TCMB doviz satis)"/>
         <div style={{display:"flex",gap:8}}>
           <Field label="1 EURO KAC TL?" style={{flex:1}}>
-            <input type="number" step="0.01" value={settings.eur_rate || ""} onChange={e=>setKey("eur_rate", e.target.value)} placeholder="Orn: 55.24" style={inputS}/>
+            <SayiGirisi kip="para" value={settings.eur_rate || ""} onChange={v=>setKey("eur_rate", v)} placeholder="Orn: 55.24" style={inputS}/>
           </Field>
           <Field label="EK PAY (%)" style={{width:110}}>
-            <input type="number" step="0.5" value={settings.eur_rate_markup_pct ?? "0"} onChange={e=>setKey("eur_rate_markup_pct", e.target.value)} placeholder="0" style={inputS}/>
+            <SayiGirisi kip="ondalik" value={settings.eur_rate_markup_pct ?? "0"} onChange={v=>setKey("eur_rate_markup_pct", v)} placeholder="0" style={inputS}/>
           </Field>
           <Field label="GUVENLIK BANDI (%)" style={{width:130}}>
-            <input type="number" step="1" value={settings.eur_rate_max_jump_pct ?? "10"} onChange={e=>setKey("eur_rate_max_jump_pct", e.target.value)} placeholder="10" style={inputS}/>
+            <SayiGirisi kip="ondalik" value={settings.eur_rate_max_jump_pct ?? "10"} onChange={v=>setKey("eur_rate_max_jump_pct", v)} placeholder="10" style={inputS}/>
           </Field>
         </div>
         <button onClick={syncEurRate} disabled={eurBusy}
@@ -220,7 +221,7 @@ export default function SettingsPage() {
       <Section icon="uye" title="Uye Indirimi" desc="Sisteme kayitli musterilerin Google ile giris yapip otomatik indirim almalari icin.">
         <Toggle checked={memberEnabled} onChange={v=>setKey("member_discount_enabled", v)} label="Uye indirimi aktif"/>
         <Field label={"INDIRIM ORANI (%) - su an: %" + memberDiscount}>
-          <input type="number" min="0" max="50" value={memberDiscount} onChange={e=>setKey("member_discount_pct", Number(e.target.value))} style={inputS}/>
+          <SayiGirisi kip="ondalik" min={0} max={50} value={memberDiscount} onChange={v=>setKey("member_discount_pct", Number(v))} style={inputS}/>
         </Field>
         <div style={{fontSize:11,color:"#888",marginTop:6}}>NOT: Bir musteriye ozel "admin_discount" varsa, uye indirimi yerine o uygulanir.</div>
       </Section>

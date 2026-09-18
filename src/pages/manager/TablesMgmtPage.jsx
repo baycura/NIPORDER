@@ -1,6 +1,7 @@
 import { useEffect, useState } from "react";
 import { supabase } from "../../lib/supabase.js";
 import { useAuth } from "../../contexts/AuthContext.jsx";
+import SayiGirisi from "../../components/SayiGirisi.jsx";
 
 const cv = "-apple-system,BlinkMacSystemFont,'Segoe UI',Roboto,sans-serif";
 
@@ -51,7 +52,11 @@ export default function TablesMgmtPage() {
       name,
       capacity: Number(tCap) || 4,
       sort_order: Number(tSort) || 0,
-      store_id: editing?.store_id || staffUser?.store_ids?.[0],
+      // `editing` diye bir degisken yoktu: bu satir her kaydetmede
+      // ReferenceError firlatiyordu (optional chaining tanimsiz BINDING'i
+      // korumaz, yalnizca null degeri korur). Masa eklenmiyor, uyari da
+      // cikmiyordu — pencere acik kaliyor, kullanici tekrar tekrar basiyordu.
+      store_id: modal?.data?.store_id || staffUser?.store_ids?.[0],
       is_walkin: false,
     };
     if (modal.mode === "new") {
@@ -117,8 +122,8 @@ export default function TablesMgmtPage() {
             <div style={{fontSize:18,fontWeight:800,color:"#F0EDE8",marginBottom:16}}>{modal.mode==="new"?"Yeni Masa":"Masayi Duzenle"}</div>
             <Field label="MASA ADI"><input autoFocus value={tName} onChange={e=>setTName(e.target.value)} placeholder="Bar 1, Masa 3, Teras 2..." style={inputS}/></Field>
             <div style={{display:"flex",gap:8}}>
-              <Field label="KAPASITE" style={{flex:1}}><input type="number" value={tCap} onChange={e=>setTCap(e.target.value)} style={inputS}/></Field>
-              <Field label="SIRA" style={{flex:1}}><input type="number" value={tSort} onChange={e=>setTSort(e.target.value)} style={inputS}/></Field>
+              <Field label="KAPASITE" style={{flex:1}}><SayiGirisi kip="tam" value={tCap} onChange={v=>setTCap(v)} style={inputS}/></Field>
+              <Field label="SIRA" style={{flex:1}}><SayiGirisi kip="tam" value={tSort} onChange={v=>setTSort(v)} style={inputS}/></Field>
             </div>
             <div style={{display:"flex",gap:8,marginTop:10}}>
               <button onClick={() => setModal(null)} style={{flex:1,padding:"12px",background:"transparent",color:"#888",border:"1px solid #333",borderRadius:10,fontSize:14,fontWeight:700,cursor:"pointer"}}>Iptal</button>

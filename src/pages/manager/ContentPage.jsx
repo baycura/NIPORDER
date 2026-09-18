@@ -2,6 +2,7 @@ import { useEffect, useState } from "react";
 import { supabase, hataMetni } from "../../lib/supabase.js";
 import { kucult } from "../../lib/gorsel.js";
 import Ikon from "../../components/Ikon.jsx";
+import SayiGirisi from "../../components/SayiGirisi.jsx";
 
 const cv = "-apple-system,BlinkMacSystemFont,'Segoe UI',Roboto,sans-serif";
 
@@ -238,7 +239,7 @@ export default function ContentPage() {
             </div>
 
             <div style={{display:"flex",gap:10,alignItems:"center",marginBottom:14}}>
-              <Field label="SIRA (küçük üstte)"><input type="number" value={form.sort_order??0} onChange={e=>setForm(f => ({...f,sort_order:e.target.value}))} style={{...inputS,width:100}}/></Field>
+              <Field label="SIRA (küçük üstte)"><SayiGirisi kip="tam" value={form.sort_order??0} onChange={v=>setForm(f => ({...f,sort_order:v}))} style={{...inputS,width:100}}/></Field>
               <label style={{display:"flex",alignItems:"center",gap:8,fontSize:12,color:"#ddd",cursor:"pointer",marginTop:8}}>
                 <input type="checkbox" checked={form.is_active!==false} onChange={e=>setForm(f => ({...f,is_active:e.target.checked}))} style={{accentColor:"#FFFFFF"}}/> Aktif (menüde görünür)
               </label>

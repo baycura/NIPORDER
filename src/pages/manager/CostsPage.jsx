@@ -2,6 +2,7 @@ import { useEffect, useMemo, useState } from "react";
 import { supabase } from "../../lib/supabase.js";
 import { useAuth } from "../../contexts/AuthContext.jsx";
 import Ikon from "../../components/Ikon.jsx";
+import SayiGirisi from "../../components/SayiGirisi.jsx";
 import { paketIkilemi, birimYaz, anlasilirYaz } from "../../lib/birimMaliyet.js";
 
 const cv = "-apple-system,BlinkMacSystemFont,'Segoe UI',Roboto,sans-serif";
@@ -182,14 +183,14 @@ export default function CostsPage() {
                 {bitti ? (
                   <div style={{ fontSize: 13, color: C.ink, display: "flex", alignItems: "center", gap: 6 }}>
                     <Ikon ad="onay" boy={14} />
-                    {r.tip === "malzeme" ? "Birim maliyet" : "Alış fiyatı"} ₺{bitti} olarak kaydedildi
+                    {r.tip === "malzeme" ? "Birim maliyet" : "Alış fiyatı"} {birimYaz(bitti)} olarak kaydedildi
                   </div>
                 ) : (
                   <div style={{ display: "flex", gap: 6, alignItems: "center" }}>
-                    <input
-                      type="number" inputMode="decimal" min="0" step="0.01"
+                    <SayiGirisi
+                      kip="para" min={0}
                       value={degerler[r.kayit_id] ?? ""}
-                      onChange={e => setDegerler(d => ({ ...d, [r.kayit_id]: e.target.value }))}
+                      onChange={v => setDegerler(d => ({ ...d, [r.kayit_id]: v }))}
                       onKeyDown={e => { if (e.key === "Enter") kaydet(r); }}
                       placeholder={r.tip === "malzeme" ? `₺ / ${r.alt}` : "₺ / adet"}
                       style={{
