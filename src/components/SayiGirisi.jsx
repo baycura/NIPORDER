@@ -33,8 +33,16 @@ export default function SayiGirisi({
   // yansisin — ama KULLANICI YAZARKEN yazdigini ezmesin. Olcut sayinin
   // kendisi: "12," ile "12" ayni sayi, o yuzden kutuya dokunulmaz.
   // Kutudaki metin INSAN yazisi, gelen deger MAKINE yazisi — ayri okunur.
+  //
+  // BOS KUTU ISTISNASI: cagiran sayfalarin cogu value={form.x||0} yaziyor.
+  // Kutuyu silince yukari "" gidiyor, ||0 onu 0'a cevirip geri yolluyor ve
+  // kutuda "0" beliriyordu — sonra yazilan "30,85" ona eklenip "030,85"
+  // oluyordu. Kutu bos birakildiysa kendi yankimiz onu doldurmasin.
   useEffect(() => {
-    setHam(h => (sayiya(h) !== makineSayi(value) ? girisYaz(value) : h));
+    setHam(h => {
+      if (h === "" && (makineSayi(value) ?? 0) === 0) return h;
+      return sayiya(h) !== makineSayi(value) ? girisYaz(value) : h;
+    });
   }, [value]);
 
   const yaz = (metin) => {

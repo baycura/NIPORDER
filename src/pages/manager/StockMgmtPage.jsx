@@ -5,7 +5,7 @@ import { useAuth } from "../../contexts/AuthContext.jsx";
 import Ikon from "../../components/Ikon.jsx";
 import StokEkleSheet, { stokGeriAl } from "../../components/StokEkleSheet.jsx";
 import SayiGirisi from "../../components/SayiGirisi.jsx";
-import { paketIkilemi, ikilemMetni, birimYaz, anlasilirYaz } from "../../lib/birimMaliyet.js";
+import { paketIkilemi, ikilemMetni, kapIkilemi, kapIkilemMetni, birimYaz, kapYaz, anlasilirYaz } from "../../lib/birimMaliyet.js";
 import { GRUP_SIRASI, GRUPSUZ, RAF_URUN, raflaraAyir, siseKarsiligi, kapAdi, trKucuk } from "../../lib/malzemeGrup.js";
 import { ozellik } from "../../lib/profil.js";
 
@@ -99,6 +99,23 @@ export default function StockMgmtPage() {
         `İPTAL = adet fiyati, girdigim gibi kaydet`
       );
       if (paketMi) { maliyet = ik.birim; setForm(f => ({ ...f, cost_per_unit: ik.birim })); }
+    }
+
+    // Kap/olcu karisikligi. Soda bu yoldan gecip 200 kat sisik kaydedilmisti;
+    // hane ml basinayken sisenin fiyati yazilmisti ve hicbir ekran durdurmadi.
+    const kik = kapIkilemi(maliyet, { unit: form.unit, unit_volume_ml: form.unit_volume_ml });
+    if (kik?.yon === "olcude-kap") {
+      const kapMi = confirm(
+        kapIkilemMetni(kik) +
+        `\n\nTAMAM = kabin fiyati, ${birimYaz(kik.onerilen)} olarak kaydet\n` +
+        `İPTAL = girdigim gibi kaydet`
+      );
+      if (kapMi) { maliyet = kik.onerilen; setForm(f => ({ ...f, cost_per_unit: kik.onerilen })); }
+    } else if (kik?.yon === "kapta-olcu") {
+      // Buradaki duzeltme belirsiz: ya birim yanlis ya rakam. Karar bizim
+      // degil — yalnizca "gercekten boyle mi?" diye soruyoruz.
+      // (setBusy henuz cagrilmadi — asagida cagriliyor, burada donmek yeterli)
+      if (!confirm(kapIkilemMetni(kik) + `\n\nYine de girdigin gibi kaydedilsin mi?`)) return;
     }
 
     setBusy(true);
@@ -364,6 +381,27 @@ export default function StockMgmtPage() {
                 <div style={{fontSize:11,color:ik.kesin?"#C87A6A":"#666",marginTop:5,lineHeight:1.5}}>
                   {ik.paket}'li paket · girdigin rakam paket fiyatiysa birim maliyet <b style={{color:"#F0EDE8"}}>{birimYaz(ik.birim)}</b> olmali
                   {ik.kesin && <> — eskisinin tam {ik.paket} kati, kaydederken sorulacak</>}
+                </div>
+              );
+            })()}
+            {/* Kap fiyati ile olcu fiyatinin yer degistirmesi — Soda'yi 200 kat
+                sisiren, alti icki kaydinin stogunu bozan tuzak. */}
+            {(() => {
+              const ik = kapIkilemi(form.cost_per_unit, { unit: form.unit, unit_volume_ml: form.unit_volume_ml });
+              if (!ik) return null;
+              return (
+                <div style={{fontSize:11,color:"#C87A6A",marginTop:5,lineHeight:1.6}}>
+                  {ik.yon === "olcude-kap" ? (
+                    <>Bu rakam {ik.kap} {ik.unit}&apos;lik kabi <b>{kapYaz(ik.kapYazildigiGibi)}</b> yapiyor — kabin
+                    fiyatini yazdiysan hane <b style={{color:"#F0EDE8"}}>{birimYaz(ik.onerilen)}</b> olmali.{" "}
+                    <button type="button" onClick={() => setForm(f => ({ ...f, cost_per_unit: String(ik.onerilen) }))}
+                      style={{background:"transparent",border:"none",color:"#F0EDE8",textDecoration:"underline",cursor:"pointer",padding:0,font:"inherit"}}>
+                      bunu kullan
+                    </button></>
+                  ) : (
+                    <>Bir {ik.unit} {birimYaz(ik.deger)} olamaz. Bu ml fiyatiysa kap <b style={{color:"#F0EDE8"}}>{kapYaz(ik.kapYazildigiGibi)}</b> eder —
+                    ya birimi <b>ml</b> yap ya haneye kap fiyatini yaz.</>
+                  )}
                 </div>
               );
             })()}
