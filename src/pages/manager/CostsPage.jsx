@@ -3,7 +3,7 @@ import { supabase } from "../../lib/supabase.js";
 import { useAuth } from "../../contexts/AuthContext.jsx";
 import Ikon from "../../components/Ikon.jsx";
 import SayiGirisi from "../../components/SayiGirisi.jsx";
-import { paketIkilemi, birimYaz, anlasilirYaz } from "../../lib/birimMaliyet.js";
+import { paketIkilemi, kapIkilemi, birimYaz, kapYaz, anlasilirYaz } from "../../lib/birimMaliyet.js";
 
 const cv = "-apple-system,BlinkMacSystemFont,'Segoe UI',Roboto,sans-serif";
 const hv = "'Bebas Neue','Barlow Condensed','Coolvetica Condensed',sans-serif";
@@ -31,6 +31,7 @@ export default function CostsPage() {
   const [degerler, setDegerler] = useState({});
   const [kaydedilen, setKaydedilen] = useState({});
   const [paketler, setPaketler] = useState({});
+  const [kaplar, setKaplar] = useState({});   // { kayit_id: {unit, unit_volume_ml} } — kap/olcu ikilemi icin
   const [busy, setBusy] = useState(null);
 
   useEffect(() => {
@@ -52,11 +53,17 @@ export default function CostsPage() {
       // Paket adedi RPC'de yok ama paket/adet ikilemini gostermek icin lazim:
       // ilk maliyet girisi tam da bu hatanin yapildigi yer (bkz. birimMaliyet.js).
       const ids = list.filter(r => r.tip === "malzeme").map(r => r.kayit_id);
-      if (!ids.length) { setPaketler({}); return; }
-      supabase.from("ingredients").select("id,pack_qty").in("id", ids).then(({ data: ing }) => {
-        const m = {};
-        for (const i of ing || []) if (Number(i.pack_qty) > 1) m[i.id] = Number(i.pack_qty);
-        setPaketler(m);
+      if (!ids.length) { setPaketler({}); setKaplar({}); return; }
+      // unit_volume_ml de lazim: kap fiyatinin olcu hanesine yazilmasi
+      // (Soda: 200 ml sisenin 30,85 TL'si ml basina yazilmisti) ilk giriste
+      // de yapilabilen bir hata.
+      supabase.from("ingredients").select("id,pack_qty,unit,unit_volume_ml").in("id", ids).then(({ data: ing }) => {
+        const m = {}, k = {};
+        for (const i of ing || []) {
+          if (Number(i.pack_qty) > 1) m[i.id] = Number(i.pack_qty);
+          if (Number(i.unit_volume_ml) > 1) k[i.id] = { unit: i.unit, unit_volume_ml: Number(i.unit_volume_ml) };
+        }
+        setPaketler(m); setKaplar(k);
       });
     });
   };
@@ -66,6 +73,18 @@ export default function CostsPage() {
     const ham = degerler[r.kayit_id];
     const deger = Number(ham);
     if (!ham || !isFinite(deger) || deger <= 0) { alert("Sıfırdan büyük bir tutar gir"); return; }
+
+    // Kap/olcu karisikligi kaydedilmeden once bir kez sorulur. Ekranda zaten
+    // uyari var ama bu sayfa "hizli gec" sayfasi; rakam yazip Enter'a basan
+    // kisi ipucunu okumadan kaydedebiliyor.
+    const kik = kapIkilemi(deger, kaplar[r.kayit_id]);
+    if (kik && !confirm(
+      (kik.yon === "olcude-kap"
+        ? `${birimYaz(deger)} girdin. Bu hane ${kik.unit} BAŞINA, yani ${kik.kap} ${kik.unit}'lik kap ${kapYaz(kik.kapYazildigiGibi)} eder.\n\nKabın fiyatını yazdıysan ${birimYaz(kik.onerilen)} olmalı.`
+        : `${birimYaz(deger)} girdin. Bir ${kik.unit} bu kadar olamaz; ml fiyatıysa kap ${kapYaz(kik.kapYazildigiGibi)} eder.`)
+      + `\n\nYine de girdiğin gibi kaydedilsin mi?`
+    )) return;
+
     setBusy(r.kayit_id);
     const { error } = r.tip === "malzeme"
       ? await supabase.from("ingredients").update({ cost_per_unit: deger }).eq("id", r.kayit_id)
@@ -224,6 +243,28 @@ export default function CostsPage() {
                     <div style={{ fontSize: 11, color: C.faint, marginTop: 6, lineHeight: 1.5 }}>
                       {ik.paket}'li paket olarak kayıtlı — girdiğin rakam paketin fiyatıysa
                       birim maliyet <b style={{ color: C.ink }}>{birimYaz(ik.birim)}</b> olmalı.
+                    </div>
+                  );
+                })()}
+
+                {/* Kabin fiyatini olcu hanesine yazma tuzagi (Soda: 200 ml
+                    sisenin 30,85 TL'si ml basina yazilmisti, 200 kat). */}
+                {!bitti && (() => {
+                  const ik = kapIkilemi(degerler[r.kayit_id], kaplar[r.kayit_id]);
+                  if (!ik) return null;
+                  return (
+                    <div style={{ fontSize: 11, color: C.down, marginTop: 6, lineHeight: 1.6 }}>
+                      {ik.yon === "olcude-kap" ? (
+                        <>Bu rakam {ik.kap} {ik.unit}&apos;lik kabı <b>{kapYaz(ik.kapYazildigiGibi)}</b> yapıyor.
+                        Kabın fiyatını yazdıysan hane <b style={{ color: C.ink }}>{birimYaz(ik.onerilen)}</b> olmalı.{" "}
+                        <button type="button"
+                          onClick={() => setDegerler(d => ({ ...d, [r.kayit_id]: String(ik.onerilen) }))}
+                          style={{ background: "transparent", border: "none", color: C.ink, textDecoration: "underline", cursor: "pointer", padding: 0, font: "inherit" }}>
+                          bunu kullan
+                        </button></>
+                      ) : (
+                        <>Bir {ik.unit} {birimYaz(ik.deger)} olamaz — bu ml fiyatıysa kap <b style={{ color: C.ink }}>{kapYaz(ik.kapYazildigiGibi)}</b> eder.</>
+                      )}
                     </div>
                   );
                 })()}
