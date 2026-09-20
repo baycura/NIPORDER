@@ -1,0 +1,89 @@
+# ============================================================================
+# GOCUS — main'e giren gocusleri Supabase'e uygular
+# ============================================================================
+# NEDEN: 20.09.2026'ya kadar 82 gocusun tamami ELLE uygulaniyordu. Kod main'e
+# giriyor, gocus bekliyordu; repo ile veritabani sessizce ayrisiyordu. Tam
+# olarak bu oldu ve iki gocus uygulanamadan kaldi.
+#
+# GEREKEN TEK AYAR — bir kez:
+#   GitHub > Settings > Secrets and variables > Actions > New repository secret
+#     Ad    : SUPABASE_DB_URL
+#     Deger : Supabase > Project Settings > Database > Connection string > URI
+#             (Session/Direct baglanti; sifre yerine kendi sifren)
+#   Bu deger REPOYA YAZILMAZ, sohbete yapistirilmaz. Yalniz GitHub'in kasasinda
+#   durur ve bu is akisi disinda kimse okuyamaz.
+#
+# NE ZAMAN CALISIR
+#   · main'e supabase/migrations altinda degisiklik girdiginde
+#   · Actions sekmesinden elle ("Run workflow")
+#
+# GUVENLIK NOTLARI
+#   · Yalniz main. Dal ve PR'larda CALISMAZ — canli veritabanina yalniz
+#     birlestirilmis kod dokunur.
+#   · concurrency: ayni anda iki calistirma olmaz; iki merge ust uste gelirse
+#     ikincisi birincinin bitmesini bekler.
+#   · Her dosya kendi isleminde. Biri patlarsa sonrakiler calismaz, is kirmizi
+#     yanar ve deftere yazilmaz — duzeltip tekrar calistirinca oradan devam eder.
+
+name: Göçüş
+
+on:
+  push:
+    branches: [main]
+    paths:
+      - "supabase/migrations/**"
+      - "supabase/gocus/**"
+      - ".github/workflows/gocus.yml"
+  workflow_dispatch:
+    inputs:
+      liste:
+        description: "Yalnız bekleyenleri listele, uygulama"
+        type: boolean
+        default: false
+
+concurrency:
+  group: gocus-main
+  cancel-in-progress: false
+
+jobs:
+  uygula:
+    runs-on: ubuntu-latest
+    timeout-minutes: 15
+    steps:
+      - uses: actions/checkout@v4
+
+      - name: psql kur
+        run: |
+          sudo apt-get update -qq
+          sudo apt-get install -y -qq postgresql-client
+          psql --version
+
+      - name: Bekleyenleri listele
+        env:
+          DB_URL: ${{ secrets.SUPABASE_DB_URL }}
+        run: |
+          if [ -z "$DB_URL" ]; then
+            echo "::error::SUPABASE_DB_URL secret'i tanimli degil."
+            echo "GitHub > Settings > Secrets and variables > Actions > New repository secret"
+            exit 1
+          fi
+          ./supabase/gocus/uygula.sh --liste
+
+      - name: Uygula
+        if: ${{ github.event_name == 'push' || inputs.liste != true }}
+        env:
+          DB_URL: ${{ secrets.SUPABASE_DB_URL }}
+        run: ./supabase/gocus/uygula.sh
+
+      - name: Özet
+        if: always()
+        env:
+          DB_URL: ${{ secrets.SUPABASE_DB_URL }}
+        run: |
+          {
+            echo "### Göçüş durumu"
+            echo ""
+            echo '```'
+            ./supabase/gocus/uygula.sh --liste 2>&1 || true
+            echo '```'
+          } >> "$GITHUB_STEP_SUMMARY"
