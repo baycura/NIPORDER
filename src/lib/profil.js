@@ -53,12 +53,13 @@ const MODULLER = {
   rezervasyon:    true, // etkinlik + rezervasyon (kaynak asagida)
   happyHour:      true,
   uyeBorc:        true, // Uyeler & Borc (musteri karnesi, veresiye)
-  // KAPALI (20.09.2026): kasada kalem secerek bolunmus odeme. Sunucu tarafi
-  // (20260920_bolunmus_odeme.sql) YEREL POSTGRES'te 14 senaryoyla dogrulandi
-  // ama CANLI veritabanina henuz uygulanmadi — Supabase baglantisi dustugu
-  // icin uygulanamadi. Gocus uygulanip gercek bir masada denendikten sonra
-  // burayi true yap ya da VITE_OZELLIK_ACIK=bolunmusOdeme ile ac.
-  bolunmusOdeme:  false,
+  // ACIK (20.09.2026): kasada kalem secerek bolunmus odeme. Sunucu tarafi
+  // (20260920_bolunmus_odeme.sql) once yerel Postgres'te 14 senaryoyla, sonra
+  // CANLI veritabaninda personel rolu + gercek auth.uid() ile (yani RLS acikken)
+  // dogrulandi: 290 TL'lik hesabin 240'i tahsil edildi, hesap ACIK kaldi,
+  // payment_items defterine yazildi, kalan 50 ile kapandi. Test geri alindi.
+  // Kapatmak gerekirse: VITE_OZELLIK_KAPALI=bolunmusOdeme
+  bolunmusOdeme:  true,
 };
 
 const liste = (s) => String(s || "").split(",").map(x => x.trim()).filter(Boolean);
