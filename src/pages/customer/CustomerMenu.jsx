@@ -1303,40 +1303,37 @@ export default function CustomerMenu() {
     setSubmitting(true);
     try {
       if (customerName.trim()) { try { localStorage.setItem("nip_customer_name", customerName.trim()); } catch { /* gizli mod */ } }
-      const totalVal = cartTotal;
-      // Siparis numarasini ISTEMCI uretir: boylece INSERT ... RETURNING gerekmez.
-      // Misafirin siparis tablosunu okuma yetkisi yok (gizlilik) — RETURNING kullanilsaydi
-      // SELECT policy'si gerekirdi ve bu da tum siparislerin dokulmesine kapi acardi.
-      const newOrderId = (crypto.randomUUID && crypto.randomUUID()) ||
-        "xxxxxxxx-xxxx-4xxx-yxxx-xxxxxxxxxxxx".replace(/[xy]/g, ch => {
-          const r = Math.random() * 16 | 0;
-          return (ch === "x" ? r : (r & 0x3 | 0x8)).toString(16);
-        });
-      const { error: ordErr } = await supabase.from("orders").insert({
-        id: newOrderId,
-        table_id: table ? table.id : null,
-        customer_name: customerName.trim() || customer?.name || null,
-        customer_id: customer?.id || null,
-        subtotal: totalVal, total: totalVal, status: "open",
-        note: orderNote.trim() || null,
-        use_points: !!(usePoints && customer),
-        origin_store_id: currentStoreId,
-      });
-      if (ordErr) throw ordErr;
+      // Acik hesaba ekle (normal masa / ayni uye) veya yeni ac — sunucu RPC.
+      // Misafir orders SELECT edemez; birlestirme SECURITY DEFINER'da yapilir.
       const itemsPayload = cart.map(c => ({
-        order_id: newOrderId, product_id: c.product.id, product_name: c.product.name,
-        product_price: Number(c.product.price), final_price: calcPrice(c.product, c.options),
-        // Shop urunleri (sapka, kolye...) mutfak tabletine dusmez; siparis ekraninda gorunur
-        quantity: c.quantity, kitchen_status: "pending", sent_to_kitchen: !shopCatIds.has(c.product.category_id), kitchen_destination_store_id: c.product.kitchen_destination_store_id || c.product.store_id,
-        notes: c.note || null, selected_options: c.options || null,
+        product_id: c.product.id,
+        product_name: c.product.name,
+        product_price: Number(c.product.price),
+        final_price: calcPrice(c.product, c.options),
+        quantity: c.quantity,
+        // Shop urunleri mutfak tabletine dusmez
+        sent_to_kitchen: !shopCatIds.has(c.product.category_id),
+        kitchen_destination_store_id: c.product.kitchen_destination_store_id || c.product.store_id || null,
+        notes: c.note || null,
+        selected_options: c.options || null,
         store_id: c.product.store_id || currentStoreId,
         is_takeaway: !!c.takeaway && canTakeaway(c.product),
       }));
-      const { error: itErr } = await supabase.from("order_items").insert(itemsPayload);
-      if (itErr) throw itErr;
-      subscribePush(newOrderId); // arka planda; basarisiz olsa da siparis akisini etkilemez
+      const { data, error } = await supabase.rpc("musteri_sepet_gonder", {
+        p_items: itemsPayload,
+        p_table_id: table ? table.id : null,
+        p_customer_name: customerName.trim() || customer?.name || null,
+        p_customer_id: customer?.id || null,
+        p_note: orderNote.trim() || null,
+        p_use_points: !!(usePoints && customer),
+        p_origin_store_id: currentStoreId,
+      });
+      if (error) throw error;
+      const orderId = data?.order_id;
+      if (!orderId) throw new Error("Siparis numarasi alinamadi");
+      subscribePush(orderId);
       setOrderPaid(false); setPayToken(null);
-      setSuccessOrderId(newOrderId);
+      setSuccessOrderId(orderId);
       setOrderStage("pending");
       setBrowsing(false); setCustTab("menu");
       setCart([]); setOrderNote(""); setCheckoutOpen(false);
