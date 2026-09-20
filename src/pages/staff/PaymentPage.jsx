@@ -4,6 +4,14 @@ import { supabase } from "../../lib/supabase.js";
 import { useAuth } from "../../contexts/AuthContext.jsx";
 import Ikon from "../../components/Ikon.jsx";
 import SayiGirisi from "../../components/SayiGirisi.jsx";
+import { ozellik } from "../../lib/profil.js";
+
+// BOLUNMUS ODEME — kasadan gelen ihtiyac (20.09.2026):
+// "Masaya kalabalik oturup siparis veriyorlar, sonra ayri ayri odemek
+//  istiyorlar; kimisi oturmaya devam ediyor, kimisi gidiyor."
+// Sahip karari: bolme KALEM SECEREK ("kim ne yedi"). Sunucu tarafi
+// nip_odeme_al'in p_kalemler parametresi (20260920_bolunmus_odeme.sql).
+const BOL = ozellik("bolunmusOdeme");
 
 const cv = "-apple-system,BlinkMacSystemFont,'Segoe UI',Roboto,sans-serif";
 
@@ -46,6 +54,11 @@ export default function PaymentPage() {
   const [uyeAcik, setUyeAcik] = useState(false); // nakit/kartta uye secici kapali baslar
   const [customers, setCustomers] = useState([]);
   const [busy, setBusy] = useState(false);
+  // Bolunmus odeme: listedeki her hesabin kalani ve kac odeme alindigi
+  const [bolum, setBolum] = useState({});   // { order_id: {kalan, odemeSayisi} }
+  // Acik penceredeki hesabin kalemleri ve kasiyerin sectikleri
+  const [kalemler, setKalemler] = useState([]);
+  const [secim, setSecim] = useState({});   // { order_item_id: adet }
 
   const load = async () => {
     setLoading(true);
@@ -60,6 +73,25 @@ export default function PaymentPage() {
     setOrders(ords || []);
     setCustomers(custs || []);
     setLoading(false);
+
+    // Kalan tutarlar TEK sorguda: her hesap icin ayri RPC cagirmak 20 masali
+    // aksamda 20 gidis-donus ederdi. Hesap sunucudakiyle ayni (nip_kalan_tutar):
+    // odenmemis kalemlerin toplami.
+    if (BOL && (ords || []).length) {
+      const ids = ords.map(o => o.id);
+      const [{ data: its }, { data: pays }] = await Promise.all([
+        supabase.from("order_items").select("order_id, final_price, quantity, odenen_adet").in("order_id", ids),
+        supabase.from("payments").select("order_id").in("order_id", ids),
+      ]);
+      const m = {};
+      for (const id of ids) m[id] = { kalan: 0, odemeSayisi: 0 };
+      for (const i of its || []) {
+        const kalanAdet = Math.max(0, Number(i.quantity || 0) - Number(i.odenen_adet || 0));
+        if (m[i.order_id]) m[i.order_id].kalan += Number(i.final_price || 0) * kalanAdet;
+      }
+      for (const p of pays || []) if (m[p.order_id]) m[p.order_id].odemeSayisi += 1;
+      setBolum(m);
+    }
   };
   useEffect(() => { load(); }, []);
 
@@ -78,7 +110,18 @@ export default function PaymentPage() {
   const [memberPts, setMemberPts] = useState(null); // {points, name} — modal acilinca cekilir
   const [usePoints, setUsePoints] = useState(false);
   const openPay = (o) => {
-    setModal(o); setMethod("cash"); setAmount(String(o.total || 0));
+    // Tutar kutusu KALAN ile acilir: yarim odenmis masada tam tutari istemek
+    // kasiyerin en kolay yaptigi hata olurdu.
+    const kalan = BOL && bolum[o.id] ? bolum[o.id].kalan : null;
+    setKalemler([]); setSecim({});
+    if (BOL) {
+      supabase.from("order_items")
+        .select("id, product_name, variant_name, final_price, quantity, odenen_adet, is_treat")
+        .eq("order_id", o.id).order("created_at")
+        .then(({ data }) => setKalemler(data || []));
+    }
+    setModal(o); setMethod("cash");
+    setAmount(String(kalan != null && kalan > 0 ? Math.round(kalan) : (o.total || 0)));
     setCustomerId(null); setCustomerSearch(""); setUyeAcik(false);
     setUsePoints(!!o.use_points); setMemberPts(null); setFarkNedeni(""); setFarkTuru(null);
     setYeniKisi(null);
@@ -94,21 +137,59 @@ export default function PaymentPage() {
   const uyeId = modal?.customer_id || customerId;
   const uyeKilitli = !!modal?.customer_id;
 
+  // ---- BOLUNMUS ODEME ----------------------------------------------------
+  const kalanAdet = (k) => Math.max(0, Number(k.quantity || 0) - Number(k.odenen_adet || 0));
+  const secilenAdet = (k) => Number(secim[k.id] || 0);
+  // Kalemin uzerine dokunmak: hic secili degilse TAMAMINI sec (en sik hal),
+  // seciliyse birak. Adet ayari icin satirdaki −/+ var.
+  const kalemTikla = (k) => setSecim(s => {
+    const y = { ...s };
+    if (y[k.id]) delete y[k.id]; else y[k.id] = kalanAdet(k);
+    return y;
+  });
+  const adetDegis = (k, d) => setSecim(s => {
+    const yeni = Math.min(kalanAdet(k), Math.max(0, (s[k.id] || 0) + d));
+    const y = { ...s };
+    if (yeni <= 0) delete y[k.id]; else y[k.id] = yeni;
+    return y;
+  });
+  const secimListesi = kalemler.filter(k => secim[k.id] > 0)
+    .map(k => ({ id: k.id, adet: secim[k.id] }));
+  const secilenTL = kalemler.reduce((t, k) => t + Number(k.final_price || 0) * secilenAdet(k), 0);
+  const odenmemisTL = kalemler.reduce((t, k) => t + Number(k.final_price || 0) * kalanAdet(k), 0);
+  const odenenTLOnce = kalemler.reduce(
+    (t, k) => t + Number(k.final_price || 0) * Number(k.odenen_adet || 0), 0);
+  const bolunmus = BOL && kalemler.length > 0 && odenenTLOnce > 0.005;
+  // Bu odemeden SONRA kalan: hesap kapanacak mi onu soyler.
+  const kalacakTL = secimListesi.length ? odenmemisTL - secilenTL : 0;
+  const kismiOlacak = BOL && secimListesi.length > 0 && kalacakTL > 0.005;
+
+  // Beklenen tutar sunucudaki kuralla BIREBIR ayni olmali (nip_odeme_al):
+  // kalem secildiyse secilenler, hesap zaten bolunmusse kalan, yoksa toplam.
+  const beklenenTL = secimListesi.length ? secilenTL
+                   : bolunmus            ? odenmemisTL
+                   : Number(modal?.total || 0);
+
   // Fark tespiti sunucudaki kuralla BIREBIR ayni olmali, yoksa ekran "tamam"
   // derken sunucu reddeder: karsilastirma hesap toplamiyla (puan dusumuyle
   // degil), puanli odemede kural atlanir.
-  const farkTutari = modal ? Number(amount || 0) - Number(modal.total || 0) : 0;
+  const farkTutari = modal ? Number(amount || 0) - beklenenTL : 0;
   const farkVar = !!modal && Number(amount || 0) > 0
                   && !(usePoints && uyeId)
                   && Math.abs(farkTutari) > 0.005;
   // Tur secenekleri farkin yonune bagli; secim yonle uyusmuyorsa (tutar
   // degistirildi) ilk secenek varsayilir — sunucu da ayni varsayimi yapar.
+  // Bolunmus hesapta INDIRIM YOK: dagitim tabani tum kalemler oldugu icin
+  // once tam fiyattan odeyenin kalemi de geriye donuk ucuzlardi. Sunucu da
+  // reddediyor; secenegi hic gostermiyoruz ki kasiyer duvara toslamasin.
   const farkTurleri = farkTutari < 0
-    ? [["indirim", "İndirim"], ["eksik", "Eksik tahsilat / diğer"]]
+    ? (kismiOlacak || bolunmus
+        ? [["eksik", "Eksik tahsilat / diğer"]]
+        : [["indirim", "İndirim"], ["eksik", "Eksik tahsilat / diğer"]])
     : [["bahsis", "Bahşiş"], ["diger", "Diğer"]];
   const farkTuruEtkin = farkTurleri.some(([k]) => k === farkTuru) ? farkTuru : farkTurleri[0][0];
   const farkMutlak = Math.abs(Math.round(farkTutari));
-  const hesapTL = Math.round(Number(modal?.total || 0));
+  const hesapTL = Math.round(beklenenTL);
   const odenenTL = Math.round(Number(amount || 0));
   const farkOnizleme = farkTuruEtkin === "indirim"
     ? `Hesap ₺${hesapTL} → ₺${odenenTL} yazılacak · −₺${farkMutlak} indirim (ürünlere dağıtılır)`
@@ -123,6 +204,14 @@ export default function PaymentPage() {
     bahsis:  ["Bahşiş", "Üstü kalsın"],
     diger:   ["Kur farkı", "Yuvarlama"],
   }[farkTuruEtkin] || [];
+
+  // Kalem secimi degisince tutar kutusu kendiliginden dolar. Kasiyer isterse
+  // uzerine yazar (bahsis); sunucu secilenin ALTINA inmeyi reddeder.
+  useEffect(() => {
+    if (!BOL || !modal) return;
+    if (secimListesi.length) setAmount(String(Math.round(secilenTL)));
+    else if (odenmemisTL > 0) setAmount(String(Math.round(odenmemisTL)));
+  }, [JSON.stringify(secim), kalemler.length]);
 
   // Kasada secilen uyenin puani da cekilir ki "puanla ode" onun icin de calissin.
   const secUye = (id) => {
@@ -266,6 +355,9 @@ export default function PaymentPage() {
       p_use_points: !!(usePoints && uyeId),
       p_fark_nedeni: farkVar ? farkNedeni.trim() : null,
       p_fark_turu: farkVar ? farkTuruEtkin : null,
+      // Kalem secilmediyse null gonderilir: sunucu bugunku yolu izler
+      // (kalan ne ise hepsi tahsil edilir, hesap kapanir).
+      p_kalemler: secimListesi.length ? secimListesi : null,
     });
     setBusy(false);
     if (error) { alert("Tahsilat yapılamadı: " + error.message); return; }
@@ -286,6 +378,11 @@ export default function PaymentPage() {
       alert((method === "cash" ? "Nakit tahsil edildi" : "Kart ile tahsil edildi")
         + indirimNotu
         + (uyeId ? "\n· " + (memberPts?.name || "Üye") + " · +" + kazanilan + " puan" : ""));
+    }
+    // Hesap kapanmadiysa kasiyer bunu MUTLAKA bilmeli: masa listede kalacak.
+    if (sonuc && sonuc.kapandi === false) {
+      alert("₺" + Math.round(amt) + " alındı.\n\nHESAP AÇIK KALDI — kalan ₺"
+            + Math.round(Number(sonuc.kalan || 0)) + ".\nMasa listede duruyor, diğerleri ödeyince kapanır.");
     }
     setModal(null); load();
   };
@@ -335,6 +432,10 @@ export default function PaymentPage() {
         const storeBadge = storeSlug === "doner" ? "DÖNER" : storeSlug === "paris" ? "PARIS" : null;
         const storeBadgeColor = storeSlug === "doner" ? "#FFFFFF" : "#222222";
         const eski = bayatMi(o.created_at);
+        // Yarim odenmis masa: kasiyer listeye bakinca gormeli, yoksa tam
+        // tutari ister. Kalan ve kac odeme alindigi yan yana.
+        const b = BOL ? bolum[o.id] : null;
+        const yarim = !!b && b.odemeSayisi > 0 && b.kalan > 0.005;
         return (
           <div key={o.id} style={{background:"#1A1A1A",border:"1px solid "+(eski?"#FFFFFF":"#2A2A2A"),borderRadius:10,padding:14,marginBottom:8,display:"flex",alignItems:"center",gap:12}}>
             <div style={{flex:1,minWidth:0}}>
@@ -346,7 +447,16 @@ export default function PaymentPage() {
                 {eski && <> · <Ikon ad="bekleme" boy={11} style={{margin:"0 3px"}}/>{saatFarki(o.created_at)}</>}
               </div>
             </div>
-            <div style={{fontSize:16,fontWeight:800,color:"#F0EDE8"}}>₺{o.total || 0}</div>
+            <div style={{textAlign:"right",flexShrink:0}}>
+              <div style={{fontSize:16,fontWeight:800,color:"#F0EDE8",fontVariantNumeric:"tabular-nums"}}>
+                ₺{yarim ? Math.round(b.kalan) : (o.total || 0)}
+              </div>
+              {yarim && (
+                <div style={{fontSize:10,color:"#C87A6A",fontWeight:700,marginTop:2,whiteSpace:"nowrap"}}>
+                  kaldı · {b.odemeSayisi} ödeme
+                </div>
+              )}
+            </div>
             <div style={{display:"flex",flexDirection:"column",gap:5}}>
               <button onClick={() => openPay(o)} style={{padding:"8px 14px",background:"#FFFFFF",color:"#000",border:"none",borderRadius:8,fontSize:12,fontWeight:800,cursor:"pointer"}}>Tahsil Et</button>
               {eski && <button onClick={() => cancelOrder(o)} style={{padding:"6px 14px",background:"transparent",color:"#C87A6A",border:"1px solid #2A2A2A",borderRadius:8,fontSize:11,fontWeight:700,cursor:"pointer"}}>İptal</button>}
@@ -377,6 +487,23 @@ export default function PaymentPage() {
                   <div style={{display:"flex",justifyContent:"space-between",alignItems:"baseline"}}>
                     <span style={{fontSize:15,fontWeight:800}}>Kalan</span>
                     <span style={{fontSize:30,fontWeight:800,fontVariantNumeric:"tabular-nums"}}>₺{Math.max(0, Number(modal.total||0) - ptsCover(modal))}</span>
+                  </div>
+                </>
+              ) : bolunmus ? (
+                /* Yarim odenmis masada basliktaki EN BUYUK rakam hesabin
+                   toplamini gosterirse kasiyer tam tutari ister. Kalan ne
+                   ise o buyuk yazilir, odenen ustte kucuk durur. */
+                <>
+                  <div style={{display:"flex",justifyContent:"space-between",alignItems:"baseline",fontSize:12,color:"#888"}}>
+                    <span>Hesap toplamı</span><span style={{fontVariantNumeric:"tabular-nums"}}>₺{Math.round(odenenTLOnce + odenmemisTL)}</span>
+                  </div>
+                  <div style={{display:"flex",justifyContent:"space-between",alignItems:"baseline",fontSize:12,color:"#7FA88A",marginTop:4}}>
+                    <span>Daha önce ödenen</span><span style={{fontVariantNumeric:"tabular-nums"}}>−₺{Math.round(odenenTLOnce)}</span>
+                  </div>
+                  <div style={{height:1,background:"#2A2A2A",margin:"10px 0"}}></div>
+                  <div style={{display:"flex",justifyContent:"space-between",alignItems:"baseline"}}>
+                    <span style={{fontSize:15,fontWeight:800}}>Kalan</span>
+                    <span style={{fontSize:30,fontWeight:800,fontVariantNumeric:"tabular-nums"}}>₺{Math.round(odenmemisTL)}</span>
                   </div>
                 </>
               ) : (
@@ -491,6 +618,69 @@ export default function PaymentPage() {
                 <span style={{color:"#FFFFFF",fontWeight:800}}>Nakit/kart: ₺{Math.max(0, Number(modal.total||0) - ptsCover(modal))}</span>
               </div>
             )}
+            {/* ---- BOLUNMUS ODEME: kalan seridi + kalem secimi ---- */}
+            {BOL && kalemler.length > 0 && (odenenTLOnce > 0.005 || kalemler.length > 1) && (
+              <div style={{marginBottom:12,background:"#0C0C0C",border:"1px solid #2A2A2A",borderRadius:10,overflow:"hidden"}}>
+                <div style={{padding:"9px 13px",borderBottom:"1px solid #1E1E1E",fontSize:12,color:"#888",fontWeight:600}}>
+                  Kim ne ödüyor?
+                </div>
+
+                <div style={{maxHeight:210,overflowY:"auto"}}>
+                  {kalemler.map(k => {
+                    const kalanA = kalanAdet(k);
+                    const secA = secilenAdet(k);
+                    const bitti = kalanA <= 0;
+                    return (
+                      <div key={k.id}
+                        onClick={() => !bitti && kalemTikla(k)}
+                        role={bitti ? undefined : "button"}
+                        tabIndex={bitti ? undefined : 0}
+                        onKeyDown={e => { if (!bitti && (e.key === "Enter" || e.key === " ")) { e.preventDefault(); kalemTikla(k); } }}
+                        style={{display:"flex",alignItems:"center",gap:10,padding:"10px 13px",minHeight:44,
+                                borderBottom:"1px solid #161616",cursor:bitti?"default":"pointer",
+                                background: secA > 0 ? "#1C1C1C" : "transparent", opacity: bitti ? 0.45 : 1}}>
+                        <span style={{width:18,flexShrink:0,color:secA>0?"#FFFFFF":"#3A3A3A",display:"flex"}}>
+                          <Ikon ad={secA > 0 ? "onayli" : "bos"} boy={17}/>
+                        </span>
+                        <div style={{flex:1,minWidth:0}}>
+                          <div style={{fontSize:13,fontWeight:700,color:bitti?"#666":"#F0EDE8",textDecoration:bitti?"line-through":"none"}}>
+                            {k.product_name}{k.quantity > 1 ? ` ×${k.quantity}` : ""}
+                          </div>
+                          <div style={{fontSize:11,color:"#888",marginTop:1}}>
+                            {bitti ? "ödendi" : (k.odenen_adet > 0 ? `${k.odenen_adet} ödendi · ${kalanA} kaldı` : `₺${Math.round(k.final_price)}`)}
+                            {secA > 0 && kalanA > 1 && <> · seçilen {secA}</>}
+                          </div>
+                        </div>
+                        {/* Adet>1 olan satirda kac adedinin odendigini secmek sart:
+                            6 biralik tek satirda gidenin 1 birasi odenebilmeli. */}
+                        {!bitti && kalanA > 1 && secA > 0 && (
+                          <div onClick={e => e.stopPropagation()} style={{display:"flex",alignItems:"center",gap:4,flexShrink:0}}>
+                            <button onClick={() => adetDegis(k, -1)} style={{width:30,height:30,borderRadius:8,background:"#222",color:"#fff",border:"1px solid #333",fontSize:16,fontWeight:800,cursor:"pointer",lineHeight:1}}>−</button>
+                            <span style={{minWidth:16,textAlign:"center",fontSize:13,fontWeight:800}}>{secA}</span>
+                            <button onClick={() => adetDegis(k, +1)} style={{width:30,height:30,borderRadius:8,background:"#222",color:"#fff",border:"1px solid #333",fontSize:16,fontWeight:800,cursor:"pointer",lineHeight:1}}>+</button>
+                          </div>
+                        )}
+                        <span style={{fontSize:13,fontWeight:800,color:bitti?"#555":"#F0EDE8",flexShrink:0,fontVariantNumeric:"tabular-nums"}}>
+                          ₺{Math.round(Number(k.final_price) * (secA > 0 ? secA : kalanA || k.quantity))}
+                        </span>
+                      </div>
+                    );
+                  })}
+                </div>
+
+                <div style={{padding:"9px 13px",display:"flex",alignItems:"center",justifyContent:"space-between",gap:8,flexWrap:"wrap",borderTop:"1px solid #1E1E1E"}}>
+                  <span style={{fontSize:11,color:"#888"}}>
+                    {secimListesi.length
+                      ? <>Seçilen <b style={{color:"#F0EDE8"}}>₺{Math.round(secilenTL)}</b>{kismiOlacak && <> · sonra ₺{Math.round(kalacakTL)} kalacak</>}</>
+                      : "Kalemlere dokunarak kimin ne ödediğini seç — hiç seçmezsen kalanın tamamı tahsil edilir"}
+                  </span>
+                  {secimListesi.length > 0 && (
+                    <button onClick={() => setSecim({})} style={{padding:"6px 10px",background:"transparent",color:"#888",border:"1px solid #333",borderRadius:8,fontSize:11,fontWeight:700,cursor:"pointer",fontFamily:"inherit"}}>Seçimi temizle</button>
+                  )}
+                </div>
+              </div>
+            )}
+
             <div style={{marginBottom:12}}>
               <div style={{fontSize:12,color:"#888",letterSpacing:"0.2px",fontWeight:600,marginBottom:5}}>Tutar (₺)</div>
               <SayiGirisi kip="para" value={amount} onChange={v=>setAmount(v)} style={{width:"100%",padding:"14px 16px",background:"#0C0C0C",border:"1px solid #2A2A2A",borderRadius:10,color:"#F0EDE8",fontSize:20,fontWeight:700,outline:"none",fontFamily:"inherit"}}/>

@@ -78,6 +78,9 @@ const CIZ = {
   ara: <><circle cx="10.6" cy="10.6" r="6.4" /><path d="M15.4 15.4 20.4 20.4" /></>,
   onay: <><path d="M4.6 12.4l5 5 9.8-10.8" /></>,
   onayli: <><circle cx="12" cy="12" r="8.5" /><path d="M8.2 12.2l2.6 2.6 5-5.4" /></>,
+  // Bos secim halkasi — "onayli"nin isaretsiz esi. Kasada kalem secerken
+  // secili/secilsiz ikisi ayni cizgi kalinliginda olsun diye ayni yaricap.
+  bos: <><circle cx="12" cy="12" r="8.5" /></>,
   uyari: <><path d="M10.3 4.2a2 2 0 0 1 3.4 0l7.6 13.3a2 2 0 0 1-1.7 3H4.4a2 2 0 0 1-1.7-3z" /><path d="M12 9.4v4.4M12 17.2h.01" /></>,
   zil: <><path d="M18 9.4a6 6 0 0 0-12 0c0 4.8-2.4 6.4-2.4 6.4h16.8S18 14.2 18 9.4z" /><path d="M10.3 19a2 2 0 0 0 3.4 0" /></>,
   sepet: <><circle cx="9.6" cy="19.8" r="1.5" /><circle cx="18" cy="19.8" r="1.5" /><path d="M2.6 3.6h2.6l2.5 12.1a1.6 1.6 0 0 0 1.6 1.3h8.4a1.6 1.6 0 0 0 1.6-1.3l1.5-7.9H6.1" /></>,

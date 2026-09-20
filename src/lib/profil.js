@@ -53,6 +53,12 @@ const MODULLER = {
   rezervasyon:    true, // etkinlik + rezervasyon (kaynak asagida)
   happyHour:      true,
   uyeBorc:        true, // Uyeler & Borc (musteri karnesi, veresiye)
+  // KAPALI (20.09.2026): kasada kalem secerek bolunmus odeme. Sunucu tarafi
+  // (20260920_bolunmus_odeme.sql) YEREL POSTGRES'te 14 senaryoyla dogrulandi
+  // ama CANLI veritabanina henuz uygulanmadi — Supabase baglantisi dustugu
+  // icin uygulanamadi. Gocus uygulanip gercek bir masada denendikten sonra
+  // burayi true yap ya da VITE_OZELLIK_ACIK=bolunmusOdeme ile ac.
+  bolunmusOdeme:  false,
 };
 
 const liste = (s) => String(s || "").split(",").map(x => x.trim()).filter(Boolean);
