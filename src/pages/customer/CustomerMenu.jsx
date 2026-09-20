@@ -29,6 +29,23 @@ const CUST_TABS = [
   { key: "blog",   icon: "blog",     tr: "Blog",     en: "Blog",   ru: "Блог",    ozellik: "icerik" },
 ].filter(tab => ozellik(tab.ozellik));
 
+// SHOP GORSELI YALNIZ KENDI URUNUMUZDE (20.09.2026, sahip karari).
+// Gerekce veriden: raf tarafinda 69 urun var, yalnizca 16'sinda fotograf.
+// Onda biri resimli bir liste "eksik" gorunuyor — resmi olmayan satirlar
+// bos gri kareyle dolduruluyordu. Kendi urunlerimiz (Not in Paris) ayri:
+// orada fotograf urunun kendisi, tedarikci markalarinda (Pas Normal,
+// Murphy, Ceren Studio, Azqua...) zaten yok ve yazi olarak temiz duruyor.
+//
+// Kendi urunumuz mu: urunun markasi ya da bulundugu raf kategorisinin adi
+// isletmenin adiyla ayni mi. MARKA.ad profilden gelir, ikinci isletmede
+// kendi adiyla calisir — kategori adi sabit yazilmaz.
+const kendiMarkamiz = (urun, kategori) => {
+  const ad = String(MARKA.ad || "").toLocaleLowerCase("tr").trim();
+  if (!ad) return false;
+  const esle = (x) => String(x || "").toLocaleLowerCase("tr").trim() === ad;
+  return esle(urun?.brand) || esle(kategori?.name);
+};
+
 // Misafir de oy verebilsin: kimlik yerine telefonda saklanan anonim anahtar
 function getVoterKey() {
   try {
@@ -159,7 +176,7 @@ const T = {
     thanks: "Tekrar bekleriz ♥",
     new_order: "Yeni sipariş ver",
     submit_failed: "Sipariş gönderilemedi: ",
-    notif_title: "🔔 Siparişin hazır!",
+    notif_title: "Siparişin hazır!",
     notif_body: "Kasadan alabilirsin — " + MARKA.ad,
     happy_hour: "HAPPY HOUR",
   },
@@ -240,7 +257,7 @@ const T = {
     thanks: "See you soon ♥",
     new_order: "Place a new order",
     submit_failed: "Failed to send order: ",
-    notif_title: "🔔 Your order is ready!",
+    notif_title: "Your order is ready!",
     notif_body: "Pick it up from the cashier — " + MARKA.ad,
     happy_hour: "HAPPY HOUR",
   },
@@ -321,7 +338,7 @@ const T = {
     thanks: "Ждём вас снова ♥",
     new_order: "Новый заказ",
     submit_failed: "Не удалось отправить заказ: ",
-    notif_title: "🔔 Ваш заказ готов!",
+    notif_title: "Ваш заказ готов!",
     notif_body: "Заберите на кассе — " + MARKA.ad,
     happy_hour: "HAPPY HOUR",
   }
@@ -1598,8 +1615,10 @@ export default function CustomerMenu() {
             <div style={{fontSize:12,color:"#666666",letterSpacing:"0.2px",marginTop:2}}>
               {custTab !== "menu" ? (CUST_TABS.find(x=>x.key===custTab)?.[["en","ru"].includes(lang)?lang:"tr"] || "").toLocaleUpperCase(lang) : (table ? table.name?.toLocaleUpperCase(lang) : t.menu)}
               {partyMode && custTab === "menu" && <span style={{marginLeft:6,color:"#000000",fontWeight:700}}>· {t.partyMode}</span>}
-              {/* Kurun kendisi de gorunsun: "≈ €5" nereden cikti belli olsun. */}
-              {eurAcik && custTab === "menu" && <span style={{marginLeft:6,color:"#9A9A9A"}}>· 1 € ≈ {Math.round(eurKur)} ₺</span>}
+              {/* Baslik altindaki "· 1 € ≈ 56 ₺" satiri KALDIRILDI (20.09.2026,
+                  sahip karari): menunun en ustunde kur bilgisi fiyat listesi
+                  gibi okunuyordu. Fiyatlarin yanindaki silik "≈ €5" duruyor —
+                  ipucu orada yerinde, basligin isi degil. */}
             </div>
           </div>
           <div style={{display:"flex",alignItems:"center",gap:8}}>
@@ -1612,7 +1631,11 @@ export default function CustomerMenu() {
         <div style={{display:"flex",gap:6,overflowX:"auto",marginTop:12,paddingBottom:4}}>
           {visibleCategories.map(c => (
             <button key={c.id} onClick={() => setSelectedCat(c.id)} style={{flexShrink:0,padding:"8px 14px",border:"none",borderRadius:16,fontSize:12,fontWeight:700,background:selectedCat===c.id?"#000":"#f2f2f2",color:selectedCat===c.id?"#fff":"#333",cursor:"pointer",whiteSpace:"nowrap",letterSpacing:"0.3px"}}>
-              {c.icon && <span style={{marginRight:4}}>{c.icon}</span>}{cName(c)}
+              {/* Kategori emojisi cizilmiyor (20.09.2026, sahip karari). Emoji
+                  her cihazda baska gorunuyor ve paletin disinda kaliyor —
+                  components/Ikon.jsx'in basindaki gerekcenin aynisi. Veri
+                  duruyor (categories.icon), istenirse geri acilir. */}
+              {cName(c)}
             </button>
           ))}
         </div>
@@ -1845,7 +1868,7 @@ export default function CustomerMenu() {
                 return (
                   <div key={sc.id} style={{marginBottom:16,background:"#fafafa",border:"1px solid #eee",borderRadius:16,padding:"14px 12px 12px"}}>
                     <div style={{display:"flex",alignItems:"center",gap:8,flexWrap:"wrap",padding:"0 2px"}}>
-                      <div style={{fontSize:17,fontWeight:800,letterSpacing:"0.2px"}}>{sc.icon ? sc.icon + " " : ""}{cName(sc)}</div>
+                      <div style={{fontSize:17,fontWeight:800,letterSpacing:"0.2px"}}>{cName(sc)}</div>
                       {scTag && <span style={{fontSize:12,fontWeight:600,letterSpacing:"0.2px",padding:"3px 9px",background:"#000",color:"#fff",borderRadius:20,textTransform:"uppercase"}}>{scTag}</span>}
                     </div>
                     {scDesc && <div style={{fontSize:12,color:"#666",lineHeight:1.5,margin:"5px 2px 0"}}>{scDesc}</div>}
@@ -1893,9 +1916,10 @@ export default function CustomerMenu() {
                           <div key={p.id} style={{display:"flex",gap:12,padding:"13px 2px",alignItems:"center",
                                                   borderBottom: pi < dizi.length - 1 ? "1px solid #f0f0f0" : "none",
                                                   opacity:soldOut?0.4:1}}>
-                            {p.image_url
+                            {/* Gorsel yalniz kendi urunlerimizde — bkz. kendiMarkamiz() */}
+                            {kendiMarkamiz(p, sc) && (p.image_url
                               ? <img src={p.image_url} alt="" loading="lazy" decoding="async" style={{width:70,height:70,objectFit:"cover",borderRadius:8,flexShrink:0}}/>
-                              : <span style={{width:70,height:70,background:"#f2f2f2",borderRadius:8,flexShrink:0,display:"block"}}></span>}
+                              : <span style={{width:70,height:70,background:"#f2f2f2",borderRadius:8,flexShrink:0,display:"block"}}></span>)}
                             <div style={{flex:1,minWidth:0}}>
                               <div style={{fontSize:15,fontWeight:700,lineHeight:1.3}}>{pName(p)}</div>
                               {pDesc(p) && <div style={{fontSize:12,color:"#666",lineHeight:1.35,marginTop:2}}>{pDesc(p)}</div>}
@@ -1919,7 +1943,10 @@ export default function CustomerMenu() {
                                 <button onClick={() => updateQty(cartIdx, +1)} style={{width:44,height:44,background:"transparent",color:"#fff",border:"none",fontSize:17,cursor:"pointer",fontWeight:700,padding:0}}>+</button>
                               </div>
                             ) : (
-                              <button onClick={() => onProductTap(p)} style={{width:44,height:44,flexShrink:0,background:"#fff",color:"#000",border:"2px solid #000",borderRadius:9,fontSize:22,fontWeight:900,cursor:"pointer",display:"flex",alignItems:"center",justifyContent:"center",padding:0,lineHeight:1}}>+</button>
+                              <button onClick={() => onProductTap(p)} aria-label={L("Sepete ekle","Add to cart","В корзину")}
+                                style={{width:44,height:44,flexShrink:0,background:"transparent",color:"#000",border:"none",borderRadius:8,cursor:"pointer",display:"flex",alignItems:"center",justifyContent:"center",padding:0}}>
+                                <Ikon ad="ekle" boy={22}/>
+                              </button>
                             ))}
                           </div>
                         );
@@ -2054,7 +2081,13 @@ export default function CustomerMenu() {
                       <button onClick={() => updateQty(cartIdx, +1)} style={{width:44,height:44,background:"transparent",color:"#fff",border:"none",borderRadius:"50%",fontSize:18,cursor:"pointer",fontWeight:700}}>+</button>
                     </div>
                   ) : (
-                    <button onClick={() => onProductTap(p)} style={{width:44,height:44,flexShrink:0,background:"#fff",color:"#000",border:"2px solid #000",borderRadius:8,fontSize:22,cursor:"pointer",fontWeight:900,display:"flex",alignItems:"center",justifyContent:"center",padding:0,lineHeight:1}}>+</button>
+                    // Ekle dugmesi: 2px cerceveli, 900 kalinlikta "+" fazla sertti.
+                    // Cizgi ikon (Ikon "ekle") ayni 44px dokunma alanini korur,
+                    // satirin icinde bagirmaz.
+                    <button onClick={() => onProductTap(p)} aria-label={L("Sepete ekle","Add to cart","В корзину")}
+                      style={{width:44,height:44,flexShrink:0,background:"transparent",color:"#000",border:"none",borderRadius:8,cursor:"pointer",display:"flex",alignItems:"center",justifyContent:"center",padding:0}}>
+                      <Ikon ad="ekle" boy={22}/>
+                    </button>
                   )}
                 </div>
               )}
