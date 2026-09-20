@@ -45,6 +45,13 @@ psqlc -c "
   );
   comment on table public.nip_gocusler is
     'Hangi gocus dosyasi ne zaman uygulandi. supabase/gocus/uygula.sh yazar.';
+
+  -- Defter public semasinda oldugu icin PostgREST onu disariya acardi. Icerigi
+  -- sir degil ama semanin gecmisini anonime servis etmenin gereği yok: RLS acik,
+  -- politika yok, grant yok. Tablo sahibi postgres (bu betigin baglandigi
+  -- kullanici) RLS'ten muaf oldugu icin betik yazmaya devam eder.
+  alter table public.nip_gocusler enable row level security;
+  revoke all on table public.nip_gocusler from anon, authenticated, public;
 " >/dev/null
 
 ILK_KURULUM=0
