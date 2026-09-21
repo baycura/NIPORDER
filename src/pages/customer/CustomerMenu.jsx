@@ -749,15 +749,19 @@ export default function CustomerMenu() {
   useEffect(() => {
     const today = new Date(Date.now() + 3 * 3600 * 1000).toISOString().slice(0, 10); // TR gunu
     if (custTab === "events" && !feeds.events) {
+      // LIMIT 12 -> 40 (21.09.2026): takvim aralik basina kadar girilince 25
+      // aktif etkinlik oldu ve 13'u listede hic gorunmedi — sorgu ilk 12'yi
+      // cekiyordu. Sinir tamamen kalkmiyor: liste gelecege dogru buyuyor,
+      // telefonda tek seferde 40 satir zaten fazlasiyla yeter.
       if (rezervasyonYerel) {
         // Yerel: bu veritabanindaki events tablosu (anon yalniz aktif olanlari gorur)
         supabase.from("events")
           .select("id,name,subtitle,date,time,genre,access_type,capacity,approved_count")
           .eq("status", "active").gte("date", today)
-          .order("date", { ascending: true }).limit(12)
+          .order("date", { ascending: true }).limit(40)
           .then(({ data }) => setFeeds(f => ({ ...f, events: data || [] })));
       } else {
-        fetch(RESERVE_URL + "/rest/v1/events?select=name,subtitle,date,time,genre,access_type&status=eq.active&date=gte." + today + "&order=date.asc&limit=12",
+        fetch(RESERVE_URL + "/rest/v1/events?select=name,subtitle,date,time,genre,access_type&status=eq.active&date=gte." + today + "&order=date.asc&limit=40",
           { headers: { apikey: RESERVE_KEY } })
           .then(r => r.json())
           .then(d => setFeeds(f => ({ ...f, events: Array.isArray(d) ? d : [] })))
