@@ -33,7 +33,7 @@ const ZEMIN = "#0A0A0A", PANEL = "#161616", CIZGI = "#2A2A2A", METIN = "#F0EDE8"
 
 export default function PartiKasa({
   order, items = [], products = [], categories = [], hhPrices = {},
-  onEkle, onAdet, onOdeme, onTahsil, tahsilBusy = false, kapali = false,
+  onEkle, onAdet, onOdeme, onTahsil, tahsilBusy = false, onYeniHesap, kapali = false,
   sonEklenen, sonKalem, onSonAdet, onGeriAl,
   partiAdet = 0, tumMenu = false, onTumMenu,
   onListe, staffUser, where, uyeAdi,
@@ -119,6 +119,7 @@ export default function PartiKasa({
   // degisirse (biri urun eklediyse) kurulum ANINDA duser — eski tutari
   // onaylama ihtimali kalmasin.
   const [kurulu, setKurulu] = useState(null); // "card" | "cash" | null
+  const [yeniBusy, setYeniBusy] = useState(false);
   useEffect(() => { setKurulu(null); }, [toplam, items.length, order?.id]);
   useEffect(() => {
     if (!kurulu) return;
@@ -258,10 +259,15 @@ export default function PartiKasa({
               </button>
             );
           })}
-          <button onClick={() => navigate("/tables")}
+          {/* Siradaki musteriyi IZGARADAN acar: numarayi kendi verir, masa
+              listesine ugramaz. Tezgah satisi pesi sira geldigi icin aradaki
+              iki ekran degisimi en pahali gezinmeydi. */}
+          <button onClick={async () => { if (yeniBusy || !onYeniHesap) return; setYeniBusy(true); await onYeniHesap(); setYeniBusy(false); }}
+            disabled={yeniBusy}
             style={{ flexShrink: 0, fontSize: 11, fontWeight: 800, borderRadius: 18, padding: "8px 10px", whiteSpace: "nowrap",
-                     background: "#0C0C0C", color: "#6E6A66", border: "1px dashed " + CIZGI, cursor: "pointer", fontFamily: "inherit" }}>
-            + Yeni hesap
+                     background: "#0C0C0C", color: "#6E6A66", border: "1px dashed " + CIZGI,
+                     cursor: yeniBusy ? "wait" : "pointer", fontFamily: "inherit" }}>
+            {yeniBusy ? "Açılıyor…" : "+ Yeni hesap"}
           </button>
         </div>
 
