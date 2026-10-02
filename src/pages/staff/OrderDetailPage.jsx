@@ -7,7 +7,9 @@ import { useAuth } from "../../contexts/AuthContext.jsx";
 import Ikon from "../../components/Ikon.jsx";
 import UrunSecici from "../../components/UrunSecici.jsx";
 import SayiGirisi from "../../components/SayiGirisi.jsx";
+import PartiKasa from "../../components/PartiKasa.jsx";
 import { partiDurumOku } from "../../lib/parti.js";
+import { useMasaustu, useGenisEkran, useDokunmatik } from "../../lib/ekran.js";
 
 const cv = "-apple-system,BlinkMacSystemFont,'Segoe UI',Roboto,sans-serif";
 
@@ -297,6 +299,28 @@ export default function OrderDetailPage() {
     return () => { iptal = true; };
   }, [staffUser?.id]);
 
+  // PARTI IZGARASI — yatay tablette liste yerine serit duzeni (PartiKasa).
+  // Uc kosul birden: genis ekran + parti modu acik + bu cihaz icin acik.
+  //
+  // CIHAZ TERCIHI neden ayri: genis ekran tek basina yetmiyor, mutfaktaki
+  // dizustu de 1366px. Varsayilan kural "genis VE dokunmatik" — yani yatay
+  // tablet kendiliginden izgaraya gecer, fareli ekran gecmez. Tercih
+  // localStorage'da, yani CIHAZA ait: tablet izgarada kalirken ayni hesabi
+  // telefondan acan garson listeyi gorur. Degistirmek: izgarada "Liste",
+  // listede "Parti ızgarası" dugmesi.
+  const masaustu = useMasaustu();
+  const genisEkran = useGenisEkran();
+  const dokunmatik = useDokunmatik();
+  const [izgaraTercihi, setIzgaraTercihi] = useState(() => {
+    try { return localStorage.getItem("nip_parti_izgara"); } catch (e) { return null; }
+  });
+  const izgaraSec = (deger) => {
+    setIzgaraTercihi(deger);
+    try { localStorage.setItem("nip_parti_izgara", deger); } catch (e) { /* gizli sekme: oturumluk kalsin */ }
+  };
+  const izgaraUygun = genisEkran && partiAktif;
+  const partiKasaAcik = izgaraUygun && (izgaraTercihi === "acik" || (izgaraTercihi == null && dokunmatik));
+
   // Aksam trafiginde "latte" yazip aramak yerine tek dokunus.
   const [sikUrunler, setSikUrunler] = useState([]);
   useEffect(() => {
@@ -468,8 +492,13 @@ export default function OrderDetailPage() {
   const kapali = order.status === "paid" || order.status === "cancelled";
   // Masaustu: StaffLayout kenar menusu 240px ve alt tab bar yok. Mobilde sabit
   // cubuk tab barin USTUNE oturur (nav ~74px), icerigi ve sekmeleri ortmez.
-  const masaustu = typeof window !== "undefined" && window.matchMedia("(min-width:900px)").matches;
+  // (masaustu artik useMasaustu() ile yukarida; render sirasinda bir kez
+  //  okunurken tablet cevrilince eski olcude kaliyordu.)
   const cubukAlt = masaustu ? 14 : 78;
+  // Urun alt sayfasinin genisligi: telefonda tam, masaustunde 500px kolon.
+  // Yatay tablette (>=1000px) 500'de kilitlemek ekranin yarisini bos
+  // birakiyordu — orada alt sayfa da genisler.
+  const sayfaEni = genisEkran ? 760 : (masaustu ? 500 : undefined);
   const uyeAdi = order.customer_id
     ? (customers.find(c => c.id === order.customer_id)?.name || order.customer_name || "Üye")
     : null;
@@ -531,8 +560,30 @@ export default function OrderDetailPage() {
 
   return (
     <div style={{fontFamily:cv,color:"#F0EDE8",paddingBottom:100}}>
+      {/* PARTI IZGARASI — yatay tablette sayfa govdesinin YERINE gecer.
+          Pencereler (secenek/ikram/indirim/beden/fiyat) asagida ortak kalir:
+          izgaradaki kart da sayfadaki urunEkle'yi cagirdigi icin secenekli
+          urun ayni pencereyi acar, ikinci bir akis yok. */}
+      {partiKasaAcik && (
+        <PartiKasa
+          order={order} items={items} products={products} categories={categories} hhPrices={hhPrices}
+          onEkle={urunEkle} onAdet={changeQty} onOdeme={goToPayment} kapali={kapali}
+          sonEklenen={sonEklenen} sonKalem={sonKalem} onSonAdet={sonAdet} onGeriAl={sonEklenenGeriAl}
+          partiAdet={partiAdet} tumMenu={tumMenu} onTumMenu={setTumMenu}
+          onListe={() => izgaraSec("kapali")}
+          staffUser={staffUser} where={where} uyeAdi={uyeAdi}
+        />
+      )}
+
+      {!partiKasaAcik && (<>
       <div style={{display:"flex",justifyContent:"space-between",alignItems:"center",marginBottom:10,flexWrap:"wrap",gap:8}}>
         <button onClick={() => navigate(-1)} style={{background:"none",border:"none",color:"#FFFFFF",fontSize:13,cursor:"pointer",padding:0,display:"inline-flex",alignItems:"center",gap:5}}><Ikon ad="oksol" boy={14}/>Geri</button>
+        {izgaraUygun && (
+          <button onClick={() => izgaraSec("acik")}
+            style={{background:"none",border:"1px solid #2A2A2A",color:"#F0EDE8",fontSize:11,fontWeight:700,borderRadius:6,padding:"5px 10px",cursor:"pointer",fontFamily:"inherit"}}>
+            Parti ızgarası
+          </button>
+        )}
         {order.status !== "cancelled" && order.status !== "paid" && (
           <button onClick={cancelOrder} style={{background:"none",border:"1px solid #2A2A2A",color:"#C87A6A",fontSize:11,borderRadius:6,padding:"5px 10px",cursor:"pointer"}}>İptal Et</button>
         )}
@@ -669,7 +720,7 @@ export default function OrderDetailPage() {
           gitmesin. Mobilde tab barin ustunde, masaustunde kenar menunun saginda. */}
       {!kapali && (
         <div style={{position:"fixed",bottom:cubukAlt,left:masaustu?240:0,right:0,zIndex:40,padding:"0 14px",pointerEvents:"none"}}>
-          <div style={{display:"flex",gap:8,maxWidth:masaustu?500:undefined,margin:"0 auto",pointerEvents:"auto"}}>
+          <div style={{display:"flex",gap:8,maxWidth:sayfaEni,margin:"0 auto",pointerEvents:"auto"}}>
             <button onClick={() => setEkleAcik(true)}
               style={{flex:3,minWidth:0,padding:"14px 10px",minHeight:50,background:"#FFFFFF",color:"#000",border:"none",borderRadius:12,fontSize:14,fontWeight:800,cursor:"pointer",
                       boxShadow:"0 4px 16px rgba(0,0,0,0.5)",display:"inline-flex",alignItems:"center",justifyContent:"center",gap:6,fontFamily:"inherit",whiteSpace:"nowrap"}}>
@@ -699,7 +750,7 @@ export default function OrderDetailPage() {
         <div onClick={() => setEkleAcik(false)}
           style={{position:"fixed",top:0,bottom:0,right:0,left:masaustu?240:0,background:"rgba(0,0,0,0.75)",display:"flex",alignItems:"flex-end",justifyContent:"center",zIndex:90}}>
           <div onClick={e => e.stopPropagation()}
-            style={{background:"#161616",border:"1px solid #2A2A2A",borderBottom:"none",borderRadius:"16px 16px 0 0",width:"100%",maxWidth:masaustu?500:undefined,
+            style={{background:"#161616",border:"1px solid #2A2A2A",borderBottom:"none",borderRadius:"16px 16px 0 0",width:"100%",maxWidth:sayfaEni,
                     maxHeight:"88vh",display:"flex",flexDirection:"column",color:"#F0EDE8",fontFamily:cv}}>
             <div style={{display:"flex",alignItems:"center",gap:10,padding:"12px 14px",borderBottom:"1px solid #2A2A2A",flexShrink:0}}>
               <div style={{flex:1,minWidth:0}}>
@@ -736,6 +787,8 @@ export default function OrderDetailPage() {
           </div>
         </div>
       )}
+
+      </>)}
 
       {treatModal && (
         <div onClick={() => setTreatModal(null)} style={{position:"fixed",inset:0,background:"rgba(0,0,0,0.75)",display:"flex",alignItems:"flex-end",justifyContent:"center",zIndex:100}}>
