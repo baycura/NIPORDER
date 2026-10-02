@@ -9,6 +9,7 @@ import UrunSecici from "../../components/UrunSecici.jsx";
 import SayiGirisi from "../../components/SayiGirisi.jsx";
 import PartiKasa from "../../components/PartiKasa.jsx";
 import { partiDurumOku } from "../../lib/parti.js";
+import { businessDayStart } from "../../lib/businessDay.js";
 import { useMasaustu, useGenisEkran, useDokunmatik } from "../../lib/ekran.js";
 
 const cv = "-apple-system,BlinkMacSystemFont,'Segoe UI',Roboto,sans-serif";
@@ -57,6 +58,10 @@ export default function OrderDetailPage() {
   // siparis verisi hafif sorguyla tazelenir — her dokunusta tam yukleme YOK.
   const load = async () => {
     setLoading(true);
+    // BASKA BIR HESABA GECILDI: "son eklenen" onceki hesabin kalemini
+    // gosteriyordu. Parti izgarasinda tahsilattan sonra siradaki hesap aynı
+    // sayfada aciliyor; eski urun adi serit'te asili kalmasin.
+    setSonEklenen(null);
     const [{data: o}, {data: its}, {data: cats}, {data: prods}, {data: tabs}, {data: custs}, {data: stf}] = await Promise.all([
       supabase.from("orders").select("*, stores:origin_store_id(slug, name)").eq("id", orderId).maybeSingle(),
       supabase.from("order_items").select("*").eq("order_id", orderId).order("created_at"),
@@ -569,13 +574,42 @@ export default function OrderDetailPage() {
     if (error) { alert("Tahsilat yapılamadı: " + error.message); return; }
     const sonuc = Array.isArray(data) ? data[0] : data;
     // Baska bir cihazdan kismi tahsilat yapilmissa hesap kapanmayabilir.
-    // Kasiyer bunu MUTLAKA bilmeli, sessizce masalara donmeyelim.
+    // Kasiyer bunu MUTLAKA bilmeli, sessizce ilerlemeyelim.
     if (sonuc && sonuc.kapandi === false) {
       alert("₺" + Math.round(tutar) + " alındı.\n\nHESAP AÇIK KALDI — kalan ₺"
             + Math.round(Number(sonuc.kalan || 0)) + ".");
       return;
     }
-    navigate("/tables");
+    // Tahsilattan sonra siradaki musteri icin bos hesap acip IZGARADA KALIR.
+    // Masalara donup "+ Misafir"e basmak, pesi sira gelen tezgah satisinda
+    // her seferinde iki ekran degisimi demekti. Acilamazsa masalara doner —
+    // tahsilat zaten tamamlandi, kasiyer ortada kalmasin.
+    if (!(await yeniHesap())) navigate("/tables");
+  };
+
+  // YENI HESAP — parti izgarasindan cikmadan siradaki musteriyi ac.
+  // Numaralama TablesPage ile AYNI kural: isletme gunu icindeki en buyuk
+  // "Misafir N"in bir fazlasi. Numara etiketten ibaret ama tezgahta ise
+  // yariyor ("3 numara hazır" diye seslenebiliyorlar).
+  const yeniHesap = async () => {
+    const magaza = staffUser?.store_ids?.[0];
+    if (!magaza) { alert("Mağaza bulunamadı"); return false; }
+    const { data: gunun } = await supabase.from("orders").select("customer_name")
+      .in("origin_store_id", staffUser.store_ids)
+      .gte("created_at", businessDayStart().toISOString())
+      .like("customer_name", "Misafir %");
+    const enBuyuk = (gunun || []).reduce((m, o) => {
+      const n = parseInt(String(o.customer_name).replace("Misafir ", ""), 10);
+      return isFinite(n) && n > m ? n : m;
+    }, 0);
+    const { data: yeni, error } = await supabase.from("orders").insert({
+      table_id: null, customer_name: "Misafir " + (enBuyuk + 1),
+      origin_store_id: magaza, staff_id: staffUser?.id,
+      status: "open", subtotal: 0, total: 0, discount_amount: 0,
+    }).select().single();
+    if (error) { alert("Hesap açılamadı: " + error.message); return false; }
+    navigate("/orders/" + yeni.id);
+    return true;
   };
 
   if (loading) return (<div style={{color:"#888",fontFamily:cv,padding:20}}>Yukleniyor...</div>);
@@ -665,7 +699,7 @@ export default function OrderDetailPage() {
         <PartiKasa
           order={order} items={items} products={products} categories={categories} hhPrices={hhPrices}
           onEkle={urunEkle} onAdet={changeQty} onOdeme={goToPayment} kapali={kapali}
-          onTahsil={hizliTahsil} tahsilBusy={tahsilBusy}
+          onTahsil={hizliTahsil} tahsilBusy={tahsilBusy} onYeniHesap={yeniHesap}
           sonEklenen={sonEklenen} sonKalem={sonKalem} onSonAdet={sonAdet} onGeriAl={sonEklenenGeriAl}
           partiAdet={partiAdet} tumMenu={tumMenu} onTumMenu={setTumMenu}
           onListe={() => izgaraSec("kapali")}
