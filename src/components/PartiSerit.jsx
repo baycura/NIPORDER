@@ -36,6 +36,13 @@ import { useRef, useState } from "react";
 
 const KART = 128;   // kart genisligi; 5 tanesi + yarim altinci yatay tablete sigar
 const ARA = 8;
+// SERIT YUKSEKLIK TABANI. Seritler esit bolunur (flex), bu da en az ne kadar
+// alcalabilecekleri. iPad 11" yatayda (834px) serit alanina 686px kaliyor;
+// yedi serit = 91px her biri, yani taban devreye girmeden hepsi ekrana
+// sigiyor — dikey kaydirma yok. Sahip sekizinci kategoriyi de parti
+// menusune eklerse taban devreye girer ve alan dikey kayar.
+// 84 denendi: 9px dolgu x2 + 3 satir isim (46px) + fiyat (19px) = 83.
+const TABAN = 84;
 
 // Gece yarisi dort haneli tutari bir bakista okumak icin binlik ayraci: 3600
 // yerine 3.600. Tutar her zaman tam sayi gosterilir (kurus kasada yok).
@@ -61,14 +68,19 @@ export default function PartiSerit({
   };
 
   return (
-    <div style={{ display: "flex", gap: ARA, alignItems: "stretch", flex: "1 1 0", minHeight: 112 }}>
+    <div style={{ display: "flex", gap: ARA, alignItems: "stretch", flex: "1 1 0", minHeight: TABAN }}>
       {/* Sol etiket: kategori + kac urun oldugu. Sayi "serit devam ediyor"
           bilgisini kenardaki yarim karttan bagimsiz olarak da verir. */}
-      <div style={{ width: 62, flexShrink: 0, display: "flex", flexDirection: "column", justifyContent: "center", gap: 4 }}>
-        <span style={{ fontSize: 9.5, fontWeight: 800, letterSpacing: "1px", color: "#66625E", lineHeight: 1.35 }}>
+      {/* Etiket olugu 76px: menudeki en uzun tek kelimelik kategori adi
+          "MEŞRUBATLAR" (11 harf) tek satira sigsin diye — 70px'te
+          "MEŞRUBATL / AR" diye kelime ortasindan boluyordu. Bosluklu adlar
+          ("SOĞUK KAHVELER") boslugundan sarar; overflowWrap ise hicbir adin
+          kirpilmamasini garanti eder. */}
+      <div style={{ width: 76, flexShrink: 0, display: "flex", flexDirection: "column", justifyContent: "center", gap: 3 }}>
+        <span style={{ fontSize: 9, fontWeight: 800, letterSpacing: "0.5px", color: "#66625E", lineHeight: 1.3, overflowWrap: "anywhere" }}>
           {String(baslik || "").toLocaleUpperCase("tr-TR")}
         </span>
-        <span style={{ fontSize: 9.5, fontWeight: 700, color: "#4A4642" }}>{urunler.length} ürün</span>
+        <span style={{ fontSize: 9, fontWeight: 700, color: "#4A4642" }}>{urunler.length} ürün</span>
       </div>
 
       <div style={{ flex: 1, minWidth: 0, position: "relative" }}>
@@ -102,7 +114,7 @@ export default function PartiSerit({
                   background: adet > 0 ? "#1E1E1E" : "#161616",
                   border: "1px solid " + (adet > 0 ? "#5A5A5A" : "#2A2A2A"),
                   borderRadius: 12,
-                  padding: "10px 9px",
+                  padding: "9px 9px",
                   display: "flex",
                   flexDirection: "column",
                   justifyContent: "space-between",
@@ -117,11 +129,12 @@ export default function PartiSerit({
                 {secenekliMi && secenekliMi(p) && (
                   <span style={{ position: "absolute", top: 9, right: 9, width: 7, height: 7, borderRadius: "50%", background: "#C87A6A" }} />
                 )}
-                <span style={{ fontSize: 13.5, fontWeight: 700, lineHeight: 1.22, letterSpacing: "-0.2px", paddingRight: 11 }}>
+                <span style={{ fontSize: 13, fontWeight: 700, lineHeight: 1.18, letterSpacing: "-0.2px", paddingRight: 11,
+                               display: "-webkit-box", WebkitLineClamp: 3, WebkitBoxOrient: "vertical", overflow: "hidden" }}>
                   {p.name}
                 </span>
                 <span style={{ display: "flex", alignItems: "center", justifyContent: "space-between", gap: 5 }}>
-                  <span style={{ fontSize: 17, fontWeight: 700, letterSpacing: "-0.5px" }}>
+                  <span style={{ fontSize: 16, fontWeight: 700, letterSpacing: "-0.5px" }}>
                     {Number(fiyatOf ? fiyatOf(p) : p.price) > 0 ? tl(fiyatOf ? fiyatOf(p) : p.price) : "Serbest"}
                   </span>
                   {adet > 0 && (

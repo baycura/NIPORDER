@@ -113,15 +113,15 @@ export default function PartiKasa({
 
   const hayaletDugme = {
     fontSize: 12, fontWeight: 700, color: "#C9C4BE", background: "transparent",
-    border: "1px solid " + CIZGI, borderRadius: 9, padding: "0 14px", height: 42,
+    border: "1px solid " + CIZGI, borderRadius: 9, padding: "0 13px", height: 40,
     display: "inline-flex", alignItems: "center", gap: 6, cursor: "pointer", fontFamily: "inherit",
   };
 
   return (
-    <div style={{ position: "fixed", inset: 0, background: ZEMIN, color: METIN, display: "flex", gap: 12, padding: 16, zIndex: 50 }}>
+    <div style={{ position: "fixed", inset: 0, background: ZEMIN, color: METIN, display: "flex", gap: 12, padding: 12, zIndex: 50 }}>
       {/* ---------------- SOL: urun seritleri ---------------- */}
       <div style={{ flex: 1, minWidth: 0, display: "flex", flexDirection: "column", gap: 10 }}>
-        <div style={{ height: 66, flexShrink: 0, background: PANEL, border: "1px solid " + CIZGI, borderRadius: 12,
+        <div style={{ height: 58, flexShrink: 0, background: PANEL, border: "1px solid " + CIZGI, borderRadius: 12,
                       display: "flex", alignItems: "center", gap: 11, padding: "0 14px" }}>
           <button onClick={() => navigate("/tables")} aria-label="Masalara dön"
             style={{ ...hayaletDugme, padding: "0 11px" }}><Ikon ad="oksol" boy={14} /></button>
@@ -142,7 +142,7 @@ export default function PartiKasa({
               {tumMenu ? `TÜM MENÜ · PARTİ ${partiAdet}` : `PARTİ MODU · ${partiAdet} ÜRÜN`}
             </div>
             <input value={ara} onChange={(e) => setAra(e.target.value)} placeholder="Ara"
-              style={{ width: 140, height: 42, background: "#0C0C0C", border: "1px solid " + CIZGI, borderRadius: 9,
+              style={{ width: 132, height: 40, background: "#0C0C0C", border: "1px solid " + CIZGI, borderRadius: 9,
                        color: METIN, fontSize: 13, padding: "0 12px", outline: "none", fontFamily: "inherit" }} />
             <button onClick={() => onTumMenu && onTumMenu(!tumMenu)} style={hayaletDugme}>
               {tumMenu ? "Parti menüsü" : "Tüm menü"}
@@ -192,7 +192,7 @@ export default function PartiKasa({
 
         {/* Son eklenen + geri al: hizda yanlis dokunus olur, 300 TL'lik hatayi
             kalem listesinde aramadan geri alabilmek lazim. */}
-        <div style={{ height: 52, flexShrink: 0, background: PANEL, border: "1px solid " + CIZGI, borderRadius: 12,
+        <div style={{ height: 46, flexShrink: 0, background: PANEL, border: "1px solid " + CIZGI, borderRadius: 12,
                       display: "flex", alignItems: "center", gap: 11, padding: "0 14px", fontSize: 12.5 }}>
           {sonEklenen && !kapali ? (
             <>
@@ -203,10 +203,10 @@ export default function PartiKasa({
               {sonKalem && (
                 <div style={{ display: "flex", alignItems: "center", gap: 4, background: "#000", borderRadius: 18, padding: "3px 4px" }}>
                   <button onClick={() => onSonAdet(-1)} aria-label="Azalt"
-                    style={{ width: 34, height: 34, borderRadius: "50%", background: CIZGI, color: "#fff", border: "none", fontSize: 18, fontWeight: 800, cursor: "pointer" }}>−</button>
+                    style={{ width: 32, height: 32, borderRadius: "50%", background: CIZGI, color: "#fff", border: "none", fontSize: 18, fontWeight: 800, cursor: "pointer" }}>−</button>
                   <div style={{ minWidth: 20, textAlign: "center", fontSize: 14, fontWeight: 800 }}>{sonKalem.quantity}</div>
                   <button onClick={() => onSonAdet(+1)} aria-label="Artır"
-                    style={{ width: 34, height: 34, borderRadius: "50%", background: CIZGI, color: "#fff", border: "none", fontSize: 18, fontWeight: 800, cursor: "pointer" }}>+</button>
+                    style={{ width: 32, height: 32, borderRadius: "50%", background: CIZGI, color: "#fff", border: "none", fontSize: 18, fontWeight: 800, cursor: "pointer" }}>+</button>
                 </div>
               )}
               <button onClick={onGeriAl}
