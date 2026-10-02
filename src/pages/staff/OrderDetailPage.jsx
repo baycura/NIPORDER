@@ -409,6 +409,49 @@ export default function OrderDetailPage() {
       // Haftalik lig: kalemi kim ekledi. Siparisi baskasi acmis olabilir.
       added_by: staffUser?.id || null,
     };
+    // AYNI KALEMI BIRLESTIR. Her dokunus yeni satir aciyordu: parti izgarasinda
+    // uc bira icin karta uc kez dokunulunca hesapta uc ayri "Efes Fıçı" satiri
+    // cikiyor, kasiyer bir bakista "kac bira?" sorusunu cevaplayamiyordu.
+    // Garson zaten bugun de tek satir + adet uretiyor (listede ekleyip + ile
+    // artirarak), yani bu veri sekli yeni degil — dokunarak eklemeyi ayni
+    // sekle getiriyoruz.
+    //
+    // Birlesme KOSULLARI dar tutuldu, her biri bir seyi korur:
+    //   kitchen_status "pending"  -> mutfaga gitmis/hazirlanan kalemi sessizce
+    //                                degistirmeyelim; mutfak eski adedi gordu.
+    //   odenen_adet 0             -> bolunmus odemede kismi odenmis satirin
+    //                                adedini artirmak odenen/kalan hesabini bozar.
+    //   fiyat + secenek + beden + paket ayni, ikram ve elle indirim yok
+    //                             -> farkli fiyatli ya da ikram edilmis ayni
+    //                                urun ayri satir kalmali.
+    const ayniMi = (i) =>
+      i.product_id === row.product_id &&
+      i.product_name === row.product_name &&
+      Number(i.final_price) === Number(row.final_price) &&
+      (i.kitchen_status === "pending") &&
+      !Number(i.odenen_adet) &&
+      !i.is_treat &&
+      !Number(i.manual_discount) &&
+      !!i.is_takeaway === !!row.is_takeaway &&
+      JSON.stringify(i.selected_options ?? null) === JSON.stringify(row.selected_options ?? null) &&
+      String(i.id).slice(0, 5) !== "temp-"; // daha kaydedilmemis satira dokunma
+    const mevcut = items.find(ayniMi);
+    if (mevcut) {
+      const yeni = Number(mevcut.quantity || 0) + 1;
+      const iyimser = items.map(i => i.id === mevcut.id ? { ...i, quantity: yeni } : i);
+      setItems(iyimser); syncTotal(iyimser);
+      const { error: hata } = await supabase.from("order_items")
+        .update({ quantity: yeni }).eq("id", mevcut.id);
+      if (hata) {
+        const geri = items.map(i => i.id === mevcut.id ? { ...i, quantity: mevcut.quantity } : i);
+        setItems(geri); syncTotal(geri);
+        alert("Ürün eklenemedi: " + hata.message);
+        return;
+      }
+      setSonEklenen({ id: mevcut.id, ad: mevcut.product_name, adet: yeni });
+      return;
+    }
+
     // Once ekranda goster (aninda tepki), sonra kaydet
     const tempId = "temp-" + Date.now();
     const optimistic = [...items, { ...row, id: tempId, created_at: new Date().toISOString() }];
@@ -434,6 +477,19 @@ export default function OrderDetailPage() {
     if (it.kitchen_status !== "pending") {
       alert("Bu ürün mutfağa gitti, geri alınamaz. İptal ya da İkram kullanın.");
       setSonEklenen(null);
+      return;
+    }
+    // "Geri al" = SON DOKUNUSU geri al, satiri silmek degil. Ayni kalem artik
+    // birlestigi icin (ucuncu biranin adedi 3 olur) satiri komple silmek uc
+    // birayi birden ucururdu — kasiyer bir fazla dokundugu icin. Adet 1'den
+    // buyukse bir dusurulur, 1 ise satir silinir.
+    if (Number(it.quantity) > 1) {
+      const azalt = Number(it.quantity) - 1;
+      const iyimser = items.map(i => i.id === it.id ? { ...i, quantity: azalt } : i);
+      setItems(iyimser); syncTotal(iyimser);
+      setSonEklenen({ id: it.id, ad: it.product_name, adet: azalt });
+      const { error: hata } = await supabase.from("order_items").update({ quantity: azalt }).eq("id", it.id);
+      if (hata) { alert("Geri alınamadı: " + hata.message); loadOrderOnly(); }
       return;
     }
     const next = items.filter(i => i.id !== sonEklenen.id);
@@ -480,6 +536,47 @@ export default function OrderDetailPage() {
 
   // Kasada devamlilik: bu siparisin odeme penceresi direkt acilir
   const goToPayment = () => navigate("/payment?order=" + orderId);
+
+  // HIZLI TAHSILAT — parti izgarasindan tek dokunusla tamamini al.
+  // NEDEN: 139 parti hesabinin 76'si (%55) TEK KALEM, 90'i (%65) acildiktan
+  // sonraki 3 dakika icinde odenmis, 120'si (%86) kartla. Yani parti gecesi
+  // "adisyon" degil tezgah satisi. Bunun icin ayri bir odeme ekranina gidip
+  // yontem secip tutar onaylamak sirf gezinme.
+  //
+  // KENDI ODEME YOLUNU ACMIYOR: PaymentPage ile BIREBIR ayni nip_odeme_al
+  // cagrisi, p_kalemler = null (= kalanin tamami, hesap kapanir). Defter,
+  // puan, vardiya ozeti, borc — hepsi ayni transaction'da, tek kaynak.
+  // Bolme / indirim / borc / puan gerekiyorsa "Diğer ödeme" ekranina gider.
+  // ONAY burada DEGIL: dugmenin kendisi iki asamali (PartiKasa). Native
+  // confirm() ekranin ortasinda acilip parmagi kosedeki dugmeden koparirdi.
+  const [tahsilBusy, setTahsilBusy] = useState(false);
+  const hizliTahsil = async (yontem) => {
+    if (tahsilBusy) return;
+    const tutar = Number(order?.total || 0);
+    if (!(tutar > 0)) { alert("Hesapta tahsil edilecek tutar yok"); return; }
+    setTahsilBusy(true);
+    const { data, error } = await supabase.rpc("nip_odeme_al", {
+      p_order_id: orderId,
+      p_method: yontem,
+      p_amount: tutar,
+      p_customer_id: order?.customer_id || null,
+      p_use_points: false,
+      p_fark_nedeni: null,
+      p_fark_turu: null,
+      p_kalemler: null,
+    });
+    setTahsilBusy(false);
+    if (error) { alert("Tahsilat yapılamadı: " + error.message); return; }
+    const sonuc = Array.isArray(data) ? data[0] : data;
+    // Baska bir cihazdan kismi tahsilat yapilmissa hesap kapanmayabilir.
+    // Kasiyer bunu MUTLAKA bilmeli, sessizce masalara donmeyelim.
+    if (sonuc && sonuc.kapandi === false) {
+      alert("₺" + Math.round(tutar) + " alındı.\n\nHESAP AÇIK KALDI — kalan ₺"
+            + Math.round(Number(sonuc.kalan || 0)) + ".");
+      return;
+    }
+    navigate("/tables");
+  };
 
   if (loading) return (<div style={{color:"#888",fontFamily:cv,padding:20}}>Yukleniyor...</div>);
   if (!order) return (<div style={{color:"#888",fontFamily:cv,padding:20}}>Sipariş bulunamadı</div>);
@@ -568,6 +665,7 @@ export default function OrderDetailPage() {
         <PartiKasa
           order={order} items={items} products={products} categories={categories} hhPrices={hhPrices}
           onEkle={urunEkle} onAdet={changeQty} onOdeme={goToPayment} kapali={kapali}
+          onTahsil={hizliTahsil} tahsilBusy={tahsilBusy}
           sonEklenen={sonEklenen} sonKalem={sonKalem} onSonAdet={sonAdet} onGeriAl={sonEklenenGeriAl}
           partiAdet={partiAdet} tumMenu={tumMenu} onTumMenu={setTumMenu}
           onListe={() => izgaraSec("kapali")}

@@ -33,7 +33,10 @@ export default function PaymentPage() {
   const [tables, setTables] = useState({});
   const [loading, setLoading] = useState(true);
   const [modal, setModal] = useState(null);
-  const [method, setMethod] = useState("cash");
+  // Kart varsayilan: parti saatinde odemelerin %86'si (120/140) kart, gun
+  // genelinde de kart basta. Varsayilan "cash" iken her tahsilatta bir fazla
+  // dokunus gerekiyordu.
+  const [method, setMethod] = useState("card");
   const [amount, setAmount] = useState("");
   // Tutar kilidi: hesap toplamindan farkli tutar ancak gerekceyle gecer.
   // Canli olcum: ciro (orders.total) ile kasa (payments.amount) tum zamanlarda
