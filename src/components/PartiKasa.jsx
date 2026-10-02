@@ -33,7 +33,7 @@ const ZEMIN = "#0A0A0A", PANEL = "#161616", CIZGI = "#2A2A2A", METIN = "#F0EDE8"
 
 export default function PartiKasa({
   order, items = [], products = [], categories = [], hhPrices = {},
-  onEkle, onAdet, onOdeme, kapali = false,
+  onEkle, onAdet, onOdeme, onTahsil, tahsilBusy = false, kapali = false,
   sonEklenen, sonKalem, onSonAdet, onGeriAl,
   partiAdet = 0, tumMenu = false, onTumMenu,
   onListe, staffUser, where, uyeAdi,
@@ -108,6 +108,28 @@ export default function PartiKasa({
   }, [ara, products]);
 
   const toplam = order?.total || 0;
+  const tahsilEdilebilir = items.length > 0 && !kapali;
+
+  // TAHSILAT ONAYI iki asamali dugme, native confirm() DEGIL.
+  // confirm() iPad'de ekranin ORTASINDA aciliyor: parmagi sag alt kosedeki
+  // dugmeden 600px oteye goturup kucuk bir "Tamam"a nisan almak gerekiyor.
+  // Gece elli kez yapilacak is icin yanlis. Burada ilk dokunus dugmeyi
+  // KURAR (yazi ve renk degisir), ikinci dokunus ayni yerde tahsil eder.
+  // Yanlislikla dokunulursa dort saniyede kendiliginden geri doner; hesap
+  // degisirse (biri urun eklediyse) kurulum ANINDA duser — eski tutari
+  // onaylama ihtimali kalmasin.
+  const [kurulu, setKurulu] = useState(null); // "card" | "cash" | null
+  useEffect(() => { setKurulu(null); }, [toplam, items.length, order?.id]);
+  useEffect(() => {
+    if (!kurulu) return;
+    const z = setTimeout(() => setKurulu(null), 4000);
+    return () => clearTimeout(z);
+  }, [kurulu]);
+  const tahsilBas = (yontem) => {
+    if (!tahsilEdilebilir || tahsilBusy) return;
+    if (kurulu === yontem) { setKurulu(null); onTahsil && onTahsil(yontem); return; }
+    setKurulu(yontem);
+  };
   const toplamAdet = items.reduce((s, i) => s + (i.quantity || 0), 0);
   const baslik = order?.customer_name || where || "Hesap";
 
@@ -286,14 +308,39 @@ export default function PartiKasa({
           <span style={{ fontSize: 29, fontWeight: 800, letterSpacing: "-1.2px" }}>{tl(toplam)}</span>
         </div>
 
-        {/* Odeme sayfasina gidiyor: bolunmus odeme, ikram ve indirim orada —
-            ikinci bir odeme akisi acmiyoruz. */}
-        <button onClick={onOdeme} disabled={items.length === 0 || kapali}
-          style={{ height: 58, flexShrink: 0, background: items.length && !kapali ? "#fff" : "#2A2A2A",
-                   color: items.length && !kapali ? "#000" : "#777", border: "none", borderRadius: 13,
-                   fontSize: 16, fontWeight: 800, cursor: items.length && !kapali ? "pointer" : "not-allowed", fontFamily: "inherit" }}>
-          {items.length === 0 ? "Sepet boş" : `Ödeme · ${tl(toplam)}`}
+        {/* TAHSILAT. Parti gecesi odemelerinin %86'si KART, %65'i hesap
+            acildiktan sonraki 3 dakika icinde. O yuzden kart buyuk ve tek
+            dokunus; nakit yaninda; bolme/indirim/borc/puan "Diğer" ile
+            odeme ekraninda. Tahsilatin kendisi sayfadaki hizliTahsil —
+            PaymentPage ile ayni nip_odeme_al cagrisi. */}
+        <button onClick={() => tahsilBas("card")} disabled={!tahsilEdilebilir || tahsilBusy}
+          style={{ height: 58, flexShrink: 0, borderRadius: 13, border: "none", fontSize: 16, fontWeight: 800,
+                   fontFamily: "inherit", cursor: tahsilEdilebilir && !tahsilBusy ? "pointer" : "not-allowed",
+                   background: !tahsilEdilebilir || tahsilBusy ? "#2A2A2A" : kurulu === "card" ? "#C87A6A" : "#fff",
+                   color: !tahsilEdilebilir || tahsilBusy ? "#777" : kurulu === "card" ? "#0A0A0A" : "#000" }}>
+          {items.length === 0 ? "Sepet boş"
+            : tahsilBusy ? "Tahsil ediliyor…"
+            : kurulu === "card" ? `Onayla — kart · ${tl(toplam)}`
+            : `Kart ile al · ${tl(toplam)}`}
         </button>
+        <div style={{ display: "flex", gap: 7, flexShrink: 0 }}>
+          <button onClick={() => tahsilBas("cash")} disabled={!tahsilEdilebilir || tahsilBusy}
+            style={{ flex: 1, height: 44, borderRadius: 11, fontSize: 13, fontWeight: 800, fontFamily: "inherit",
+                     background: kurulu === "cash" ? "#C87A6A" : "#0C0C0C",
+                     border: "1px solid " + (kurulu === "cash" ? "#C87A6A" : CIZGI),
+                     color: kurulu === "cash" ? "#0A0A0A" : tahsilEdilebilir ? "#C9C4BE" : "#55514D",
+                     cursor: tahsilEdilebilir && !tahsilBusy ? "pointer" : "not-allowed" }}>
+            {kurulu === "cash" ? `Onayla — nakit · ${tl(toplam)}` : "Nakit"}
+          </button>
+          {kurulu !== "cash" && (
+            <button onClick={onOdeme} disabled={items.length === 0}
+              style={{ flex: 1, height: 44, background: "#0C0C0C", border: "1px solid " + CIZGI, borderRadius: 11,
+                       color: items.length ? "#C9C4BE" : "#55514D", fontSize: 13, fontWeight: 800,
+                       cursor: items.length ? "pointer" : "not-allowed", fontFamily: "inherit" }}>
+              Diğer ödeme
+            </button>
+          )}
+        </div>
       </div>
     </div>
   );
