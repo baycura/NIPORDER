@@ -696,14 +696,20 @@ export default function CustomerMenu() {
     setProfileOpen(true); setProfileStats(null);
     try {
       const [{ data: cust }, { data: ords }, { data: openOrds }] = await Promise.all([
-        supabase.from("customers").select("name, email, avatar_url, points, outstanding_balance, created_at").eq("id", customer.id).maybeSingle(),
+        // total_spent / visit_count: seviye ve harcama bunlardan; orders RLS
+        // gecici olarak bos donse bile cuzdanla tutarli gorunsun.
+        supabase.from("customers").select("name, email, avatar_url, points, total_spent, visit_count, outstanding_balance, created_at").eq("id", customer.id).maybeSingle(),
         supabase.from("orders").select("id, total, created_at").eq("customer_id", customer.id).in("status", ["paid", "completed", "served", "closed", "debt"]).order("created_at", { ascending: false }).limit(200),
         // Acik hesap: kapatilmamis siparisler. Uye bunu gorsun ki kasada
         // "benim siparisim su" diyebilsin — kapanmayan siparis puan da kazandirmaz.
         supabase.from("orders").select("id, total, status, created_at").eq("customer_id", customer.id).in("status", ["open", "sent", "preparing", "ready"]).order("created_at", { ascending: false }).limit(20),
       ]);
       const paid = ords || [];
-      const totalSpent = paid.reduce((s, o) => s + Number(o.total || 0), 0);
+      const spentFromDb = Number(cust?.total_spent || 0);
+      const spentFromOrders = paid.reduce((s, o) => s + Number(o.total || 0), 0);
+      // Kaynak: tetikleyicinin yazdigi total_spent; yoksa siparis toplami.
+      const totalSpent = spentFromDb > 0 ? spentFromDb : spentFromOrders;
+      const orderCount = Math.max(paid.length, Number(cust?.visit_count || 0));
       let top = [];
       if (paid.length) {
         const { data: its } = await supabase.from("order_items").select("product_name, quantity").in("order_id", paid.slice(0, 100).map(o => o.id));
@@ -711,7 +717,7 @@ export default function CustomerMenu() {
         (its || []).forEach(i => { cnt[i.product_name] = (cnt[i.product_name] || 0) + Number(i.quantity || 1); });
         top = Object.entries(cnt).sort((a, b) => b[1] - a[1]).slice(0, 3);
       }
-      setProfileStats({ cust: cust || customer, orders: paid.length, totalSpent, top, last: paid[0]?.created_at || null, open: openOrds || [] });
+      setProfileStats({ cust: cust || customer, orders: orderCount, totalSpent, top, last: paid[0]?.created_at || null, open: openOrds || [] });
     } catch {
       setProfileStats({ cust: customer, orders: 0, totalSpent: 0, top: [], last: null, open: [] });
     }
