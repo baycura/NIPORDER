@@ -44,7 +44,30 @@ Aşağıdakilerden biri varsa **hemen** bu dosyayı uygula:
 5. RPC `nip_kvkk_kabul(p_version, p_source)` — kabul yazar; sürüm `is_current` olmalı
 6. UI: kayıtta checkbox; dil değişince metin yeniden çekilir; sürüm eksikse yeniden onay
 
-**Dil:** Resmi metin TR. EN/RU bilgilendirme çevirisi — yeni sürümde üç dili de güncelle.
+## Dil desteği (zorunlu)
+
+Üye **kayıt/girişten önce** menüden dil seçer (`tr` / `en` / `ru`). KVKK
+checkbox özeti ve tam aydınlatma metni **seçili dile göre** gelmeli.
+
+| Kural | Detay |
+|-------|--------|
+| Depolama | `title`, `summary`, `body` → jsonb `{ "tr", "en", "ru" }` |
+| API | `nip_kvkk_guncel(p_lang)` — istemci `kvkkGuncelGetir(lang)` |
+| UI | `CustomerMenu`: `useEffect(..., [lang])` dil değişince yeniden çeker |
+| Fallback | İstenen dil boşsa `tr` |
+| Resmi dil | Hukuki esas **TR**; EN/RU bilgilendirme çevirisi |
+| Yeni sürüm | **Üç dili birden** yaz — yalnız TR bırakma |
+
+Yeni metin / amaç değişikliğinde EN ve RU’yu “sonra”ya bırakmak **yasak**:
+PR’da `tr` + `en` + `ru` dolu olmalı.
+
+Doğrulama örneği:
+
+```sql
+select nip_kvkk_guncel('tr');
+select nip_kvkk_guncel('en');
+select nip_kvkk_guncel('ru');
+```
 
 ## Zorunlu adımlar — veri kullanımı değiştiyse
 
@@ -54,13 +77,13 @@ Aşağıdakilerden biri varsa **hemen** bu dosyayı uygula:
 2. **Yeni migration** yaz (`YYYYMMDD_kvkk_....sql`), eski dosyayı rewrite etme.
 3. Migration içinde:
    - `update kvkk_documents set is_current = false where is_current;`
-   - `insert into kvkk_documents (version, title, summary, body, is_current) values ('YYYY-MM-DD', …, true);`
+   - `insert` ile `title`/`summary`/`body` **jsonb tr+en+ru** ve `is_current = true`
    - `version` benzersiz olsun (örn. `2026-11-01`).
-4. `summary` checkbox yanında görünen kısa rıza cümlesi; `body` tam aydınlatma.
-5. Göçüş / SQL Editor ile uygula; `select * from nip_kvkk_guncel();` doğrula.
+4. `summary` checkbox yanında görünen kısa rıza cümlesi; `body` tam aydınlatma — **her dilde**.
+5. Göçüş / SQL Editor ile uygula; `nip_kvkk_guncel('tr'|'en'|'ru')` doğrula.
 6. Mevcut üyeler otomatik olarak yeniden onay görür (`kvkk_version` eşleşmez).
    Ekstra “herkese logout” gerekmez.
-7. PR açıklamasında yaz: **KVKK sürümü X → Y, yeniden onay tetiklenir.**
+7. PR açıklamasında yaz: **KVKK sürümü X → Y, yeniden onay tetiklenir; tr/en/ru güncellendi.**
 
 ## Küçük metin düzeltmesi (yeniden onay gerekmez)
 
@@ -74,8 +97,9 @@ Yalnız yazım / format, hukuki anlam aynı kalıyorsa:
 ## UI kuralları
 
 - Açık rıza = **checkbox** (zorunlu işaret). “Devam ederek kabul” yok.
-- Aydınlatma metni link/sheet ile okunabilir olmalı.
+- Aydınlatma metni link/sheet ile okunabilir olmalı; içerik **seçili dilde**.
 - Sürüm numarası UI’da görülebilir (`v2026-10-11`).
+- Dil değiştirilince `kvkkGuncelGetir(lang)` tekrar çağrılmalı.
 - Migration henüz yoksa girişi tamamen kilitleme (mevcut `kvkkHazirla` gevşekliği).
 
 ## Yeni sürüm SQL şablonu
@@ -100,11 +124,15 @@ values (
 - Onay geçmişini (`customer_kvkk_consents`) silmek
 - Anon’a consent yazma yetkisi vermek (yalnız RPC / authenticated)
 - Hukuki metni uydurup “nihai” diye sunmak — taslak + danışman notu bırak
+- Yeni sürümü yalnız TR yazıp EN/RU’yu boş bırakmak
+- Metni `T.tr` / sabit string olarak UI’ye gömmek (kaynak DB + RPC olmalı)
 
 ## PR self-check
 
 - [ ] Veri amacı değiştiyse yeni `kvkk_documents` sürümü var
 - [ ] Tek `is_current = true`
+- [ ] `title` / `summary` / `body` içinde **tr + en + ru** dolu
+- [ ] Dil değiştirince metin değişiyor (`nip_kvkk_guncel` / `kvkkGuncelGetir(lang)`)
 - [ ] Checkbox / yeniden onay akışı bozulmadı
 - [ ] Migration `supabase/migrations/` altında; Göçüş’e uygun
 - [ ] `docs/kvkk-onay.md` gerekirse güncellendi

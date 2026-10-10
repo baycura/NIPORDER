@@ -42,11 +42,17 @@ gerekir. “Kayıt olarak kabul etmiş sayılırsınız” kullanılmaz.
 
 SQL şablonu skill dosyasında.
 
+## Dil
+
+Üye kayıt öncesi dil seçer. Metin `nip_kvkk_guncel(p_lang)` ile gelir.
+Yeni sürümde **tr + en + ru** birlikte güncellenir (TR resmi, EN/RU bilgilendirme).
+
 ## Kontrol listesi (PR)
 
 - [ ] Veri amacı / toplanan veri değiştiyse yeni KVKK sürümü var
 - [ ] Tek `is_current`
-- [ ] Checkbox akışı duruyor
+- [ ] tr / en / ru metinleri dolu
+- [ ] Checkbox akışı duruyor; dil değişince metin değişiyor
 - [ ] PR notunda sürüm X → Y yazılmış
 
 ## Not
