@@ -688,7 +688,7 @@ export default function CustomerMenu() {
   const [kvkkOk, setKvkkOk] = useState(false);
   const [kvkkMetinOpen, setKvkkMetinOpen] = useState(false);
   const [kvkkBusy, setKvkkBusy] = useState(false);
-  useEffect(() => { kvkkGuncelGetir().then(d => setKvkkDoc(d)); }, []);
+  useEffect(() => { kvkkGuncelGetir(lang).then(d => setKvkkDoc(d)); }, [lang]);
   const needsKvkk = !!(customer && kvkkDoc?.version && kvkkEksikMi(customer, kvkkDoc.version));
   const kvkkHazirla = () => {
     // Metin henuz DB'de yoksa (gocus bekleniyor) girisi kilitleme.

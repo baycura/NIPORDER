@@ -37,12 +37,14 @@ Aşağıdakilerden biri varsa **hemen** bu dosyayı uygula:
 
 ## Sistem nasıl çalışır (kısa)
 
-1. `kvkk_documents` — sürümler (`version`, `title`, `summary`, `body`, `is_current`)
+1. `kvkk_documents` — sürümler; `title`/`summary`/`body` = jsonb `{tr,en,ru}`
 2. `customer_kvkk_consents` — üye × sürüm kabul geçmişi
 3. `customers.kvkk_version` / `kvkk_accepted_at` — son kabul (hızlı kontrol)
-4. RPC `nip_kvkk_guncel()` — güncel metin
+4. RPC `nip_kvkk_guncel(p_lang)` — seçili dile göre metin (yoksa `tr`)
 5. RPC `nip_kvkk_kabul(p_version, p_source)` — kabul yazar; sürüm `is_current` olmalı
-6. UI: kayıtta checkbox; `customer.kvkk_version !== guncel` → yeniden onay modalı
+6. UI: kayıtta checkbox; dil değişince metin yeniden çekilir; sürüm eksikse yeniden onay
+
+**Dil:** Resmi metin TR. EN/RU bilgilendirme çevirisi — yeni sürümde üç dili de güncelle.
 
 ## Zorunlu adımlar — veri kullanımı değiştiyse
 
@@ -85,11 +87,9 @@ update public.kvkk_documents set is_current = false where is_current;
 insert into public.kvkk_documents (version, title, summary, body, is_current)
 values (
   '2026-11-01',
-  'Kişisel Verilerin Korunması — Aydınlatma ve Üyelik Açık Rızası',
-  '…checkbox özeti…',
-  $kvkk$
-  …tam aydınlatma…
-  $kvkk$,
+  jsonb_build_object('tr', '…', 'en', '…', 'ru', '…'),
+  jsonb_build_object('tr', '…checkbox…', 'en', '…', 'ru', '…'),
+  jsonb_build_object('tr', $kvkk$…$kvkk$, 'en', $kvkk$…$kvkk$, 'ru', $kvkk$…$kvkk$),
   true
 );
 ```

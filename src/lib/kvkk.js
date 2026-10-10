@@ -1,5 +1,5 @@
 // KVKK aydinlatma + uyelik acik rizasi.
-// Guncel metin DB'de (kvkk_documents.is_current); bu dosya istemci yardimcilari.
+// Guncel metin DB'de (kvkk_documents.is_current); dil: nip_kvkk_guncel(p_lang).
 // Checkbox zorunlu — "kayit olarak kabul" metni KULLANILMAZ (acik riza).
 
 import { supabase } from "./supabase.js";
@@ -18,9 +18,11 @@ export function kvkkPendingTemizle() {
   try { sessionStorage.removeItem(PENDING_KEY); } catch { /* gizli mod */ }
 }
 
-/** Guncel KVKK belgesi (RPC). Yoksa null. */
-export async function kvkkGuncelGetir() {
-  const { data, error } = await supabase.rpc("nip_kvkk_guncel");
+/** Guncel KVKK belgesi — secili dile gore (tr|en|ru), yoksa tr. */
+export async function kvkkGuncelGetir(lang = "tr") {
+  const { data, error } = await supabase.rpc("nip_kvkk_guncel", {
+    p_lang: ["tr", "en", "ru"].includes(lang) ? lang : "tr",
+  });
   if (error) {
     console.warn("kvkk guncel okunamadi", error.message);
     return null;

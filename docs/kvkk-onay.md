@@ -15,14 +15,14 @@ gerekir. “Kayıt olarak kabul etmiş sayılırsınız” kullanılmaz.
 
 | Tablo / kolon | Rol |
 |---------------|-----|
-| `kvkk_documents` | Sürümlü metin (`version`, `summary`, `body`, `is_current`) |
+| `kvkk_documents` | Sürümlü metin; `title`/`summary`/`body` = jsonb `{tr,en,ru}` |
 | `customer_kvkk_consents` | Üyenin hangi sürümü ne zaman kabul ettiği |
 | `customers.kvkk_version` | Son kabul edilen sürüm |
 | `customers.kvkk_accepted_at` | Son kabul zamanı |
 
 ## RPC
 
-- `nip_kvkk_guncel()` → güncel belge (JSON)
+- `nip_kvkk_guncel(p_lang)` → güncel belge, seçili dil (`tr`/`en`/`ru`, yoksa `tr`)
 - `nip_kvkk_kabul(p_version, p_source)` → kabul kaydı (`signup` / `reaccept` / `profile`)
 
 ## Kod

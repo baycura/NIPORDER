@@ -5,8 +5,12 @@
 -- kabul etti tutulur. Yeni surum yayinlaninca is_current degisir —
 -- uygulama yeniden onay ister.
 --
+-- Metinler jsonb: { "tr", "en", "ru" }. Resmi metin TR; EN/RU bilgilendirme.
+-- RPC nip_kvkk_guncel(p_lang) secili dile gore cozumler, yoksa tr.
+--
 -- Geri alma:
 --   drop function if exists public.nip_kvkk_kabul(text, text);
+--   drop function if exists public.nip_kvkk_guncel(text);
 --   drop function if exists public.nip_kvkk_guncel();
 --   drop table if exists public.customer_kvkk_consents;
 --   drop table if exists public.kvkk_documents;
@@ -25,17 +29,17 @@ comment on column public.customers.kvkk_accepted_at is
 
 create table if not exists public.kvkk_documents (
   version      text primary key,
-  title        text not null,
-  summary      text not null,
-  body         text not null,
+  -- { "tr": "...", "en": "...", "ru": "..." }
+  title        jsonb not null,
+  summary      jsonb not null,
+  body         jsonb not null,
   published_at timestamptz not null default now(),
   is_current   boolean not null default false
 );
 
 comment on table public.kvkk_documents is
-  'KVKK aydinlatma + uyelik acik riza metinleri (surumlu).';
+  'KVKK aydinlatma + uyelik acik riza metinleri (surumlu, tr/en/ru jsonb).';
 
--- Ayni anda tek guncel surum
 create unique index if not exists kvkk_documents_tek_guncel
   on public.kvkk_documents ((is_current)) where is_current;
 
@@ -78,29 +82,49 @@ revoke insert, update, delete on public.customer_kvkk_consents from anon, authen
 grant select on public.kvkk_documents to anon, authenticated;
 grant select on public.customer_kvkk_consents to authenticated;
 
--- Guncel surum (istemci checkbox / yeniden onay icin)
-create or replace function public.nip_kvkk_guncel()
+-- Dil secimine gore guncel metin (yoksa tr)
+drop function if exists public.nip_kvkk_guncel();
+drop function if exists public.nip_kvkk_guncel(text);
+
+create or replace function public.nip_kvkk_guncel(p_lang text default 'tr')
 returns jsonb
-language sql
+language plpgsql
 stable
 security definer
 set search_path to 'public'
 as $$
-  select jsonb_build_object(
-    'version', version,
-    'title', title,
-    'summary', summary,
-    'body', body,
-    'published_at', published_at
-  )
-  from public.kvkk_documents
-  where is_current
-  limit 1;
+declare
+  r record;
+  lang text := lower(coalesce(nullif(trim(p_lang), ''), 'tr'));
+  pick text;
+begin
+  if lang not in ('tr', 'en', 'ru') then
+    lang := 'tr';
+  end if;
+
+  select * into r from public.kvkk_documents where is_current limit 1;
+  if not found then
+    return null;
+  end if;
+
+  pick := lang;
+  if coalesce(r.title ->> pick, '') = '' then
+    pick := 'tr';
+  end if;
+
+  return jsonb_build_object(
+    'version', r.version,
+    'lang', pick,
+    'title', coalesce(r.title ->> pick, r.title ->> 'tr', ''),
+    'summary', coalesce(r.summary ->> pick, r.summary ->> 'tr', ''),
+    'body', coalesce(r.body ->> pick, r.body ->> 'tr', ''),
+    'published_at', r.published_at
+  );
+end;
 $$;
 
-grant execute on function public.nip_kvkk_guncel() to anon, authenticated;
+grant execute on function public.nip_kvkk_guncel(text) to anon, authenticated;
 
--- Kabul kaydi
 create or replace function public.nip_kvkk_kabul(
   p_version text,
   p_source  text default 'signup'
@@ -162,14 +186,24 @@ revoke all on function public.nip_kvkk_kabul(text, text) from anon, public;
 grant execute on function public.nip_kvkk_kabul(text, text) to authenticated;
 
 -- ---------------------------------------------------------------------------
--- Tohum: v2026-10-11 (isletme avukati / danismani gozden gecirmeli)
+-- Tohum: v2026-10-11 — tr resmi; en/ru bilgilendirme cevirisi
+-- (isletme avukati / danismani gozden gecirmeli)
 -- ---------------------------------------------------------------------------
 insert into public.kvkk_documents (version, title, summary, body, is_current)
 values (
   '2026-10-11',
-  'Kişisel Verilerin Korunması — Aydınlatma ve Üyelik Açık Rızası',
-  'Üyelik, sipariş, puan ve iletişim için kişisel verilerinizin işlenmesine ilişkin aydınlatma metnini okudum; üyelik kapsamında açık rızamı veriyorum.',
-  $kvkk$
+  jsonb_build_object(
+    'tr', 'Kişisel Verilerin Korunması — Aydınlatma ve Üyelik Açık Rızası',
+    'en', 'Protection of Personal Data — Notice and Membership Consent',
+    'ru', 'Защита персональных данных — Уведомление и согласие участника'
+  ),
+  jsonb_build_object(
+    'tr', 'Üyelik, sipariş, puan ve iletişim için kişisel verilerinizin işlenmesine ilişkin aydınlatma metnini okudum; üyelik kapsamında açık rızamı veriyorum.',
+    'en', 'I have read the privacy notice on processing my personal data for membership, orders, points and communications, and I give my explicit consent for membership purposes.',
+    'ru', 'Я ознакомился(лась) с уведомлением об обработке персональных данных для членства, заказов, баллов и связи, и даю согласие в рамках членства.'
+  ),
+  jsonb_build_object(
+    'tr', $kvkk$
 NOT IN PARIS / ilgili işletme (“Veri Sorumlusu”), 6698 sayılı Kişisel Verilerin Korunması Kanunu (“KVKK”) kapsamında sizi bilgilendirir.
 
 1) İşlenen veriler
@@ -201,6 +235,71 @@ Checkbox ile verdiğiniz onay; üyelik hesabı, puan/cüzdan, sipariş geçmişi
 
 Bu metin bilgilendirme amaçlıdır; güncellemelerde yeni sürüm yayınlanır ve gerekirse yeniden onay istenir.
 $kvkk$,
+    'en', $kvkk$
+NOT IN PARIS / the relevant business (“Data Controller”) informs you under Türkiye’s Personal Data Protection Law No. 6698 (“KVKK”).
+
+1) Data processed
+Identity and contact (name, surname, email, phone), membership and login data, order and payment-related records, points/wallet and tier data, ride RSVP preferences, and technical device/session data (for security and service delivery).
+
+2) Purposes
+• Creating and managing your membership account
+• Taking, preparing and tracking orders
+• Applying points, wallet balance and member discounts
+• Managing ride/event sign-ups (where the feature is enabled)
+• Customer support and transaction security
+• Complying with legal obligations
+• Informational and campaign messages where you have given consent
+
+3) Legal bases
+KVKK art. 5/2 (contract, legal obligation, legitimate interest) and, for membership/loyalty processing that requires it, art. 5/1 explicit consent.
+
+4) Transfers
+To essential service providers (hosting, authentication, notifications) and competent authorities as required by law; cross-border transfers only with KVKK-compliant safeguards where applicable.
+
+5) Retention
+Membership and transaction records are kept for the periods required by law and by the service, then deleted, destroyed or anonymised.
+
+6) Your rights (KVKK art. 11)
+You may request information, correction, deletion/destruction, objection and compensation for unlawful processing via the channels published by the business.
+
+7) Membership consent
+By ticking the checkbox you consent to linking your membership, points/wallet and order history to your profile for those purposes. Withdrawing consent may limit membership features; mandatory legal retention still applies.
+
+This notice is for information; updates are published as a new version and may require fresh consent.
+$kvkk$,
+    'ru', $kvkk$
+NOT IN PARIS / соответствующее предприятие («Оператор данных») информирует вас в соответствии с Законом Турции № 6698 о защите персональных данных («KVKK»).
+
+1) Обрабатываемые данные
+Идентификационные и контактные данные (имя, фамилия, e-mail, телефон), данные членства и входа, записи о заказах и оплате, баллы/кошелёк и уровень, предпочтения RSVP на заезды, технические данные устройства/сессии (для безопасности и оказания услуги).
+
+2) Цели
+• Создание и ведение аккаунта участника
+• Приём, приготовление и отслеживание заказов
+• Применение баллов, кошелька и скидок участника
+• Управление записями на заезды/события (если функция включена)
+• Поддержка клиентов и безопасность операций
+• Исполнение законных обязанностей
+• Информационные и рекламные сообщения при наличии согласия
+
+3) Правовые основания
+KVKK ст. 5/2 (договор, законная обязанность, законный интерес) и при необходимости для членства/лояльности — ст. 5/1 явное согласие.
+
+4) Передача
+Необходимым поставщикам услуг (хостинг, аутентификация, уведомления) и уполномоченным органам; трансграничная передача — только с гарантиями по KVKK.
+
+5) Хранение
+Данные членства и операций хранятся в сроки, требуемые законом и услугой, затем удаляются, уничтожаются или обезличиваются.
+
+6) Ваши права (KVKK ст. 11)
+Вы можете запросить информацию, исправление, удаление/уничтожение, возражение и возмещение ущерба через каналы, указанные предприятием.
+
+7) Согласие участника
+Отметка в чекбоксе означает согласие на привязку членства, баллов/кошелька и истории заказов к вашему профилю для этих целей. Отзыв согласия может ограничить функции членства; обязательные сроки хранения сохраняются.
+
+Это уведомление носит информационный характер; обновления публикуются новой версией и могут требовать повторного согласия.
+$kvkk$
+  ),
   true
 )
 on conflict (version) do update set
