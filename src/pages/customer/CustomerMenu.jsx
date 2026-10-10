@@ -707,8 +707,12 @@ export default function CustomerMenu() {
       const paid = ords || [];
       const spentFromDb = Number(cust?.total_spent || 0);
       const spentFromOrders = paid.reduce((s, o) => s + Number(o.total || 0), 0);
-      // Kaynak: tetikleyicinin yazdigi total_spent; yoksa siparis toplami.
-      const totalSpent = spentFromDb > 0 ? spentFromDb : spentFromOrders;
+      // Kaynak onceligi: DB total_spent, sonra okunabilen siparisler.
+      // Ikisi de 0 ama cuzdan doluysa (eski kayitlarda total_spent yazilmamis
+      // olabiliyor) cuzdandan asgari harcama tahmini: puan * 20 TL.
+      let totalSpent = Math.max(spentFromDb, spentFromOrders);
+      const cuzdan = Number(cust?.points || customer?.points || 0);
+      if (totalSpent <= 0 && cuzdan > 0) totalSpent = cuzdan * PUAN_ORANI;
       const orderCount = Math.max(paid.length, Number(cust?.visit_count || 0));
       let top = [];
       if (paid.length) {
@@ -717,7 +721,9 @@ export default function CustomerMenu() {
         (its || []).forEach(i => { cnt[i.product_name] = (cnt[i.product_name] || 0) + Number(i.quantity || 1); });
         top = Object.entries(cnt).sort((a, b) => b[1] - a[1]).slice(0, 3);
       }
-      setProfileStats({ cust: cust || customer, orders: orderCount, totalSpent, top, last: paid[0]?.created_at || null, open: openOrds || [] });
+      // cust'a total_spent'i ekran hesabina yaz — seviye karti ayni kaynagi kullansin.
+      const custView = { ...(cust || customer), total_spent: totalSpent, points: cuzdan };
+      setProfileStats({ cust: custView, orders: orderCount, totalSpent, top, last: paid[0]?.created_at || null, open: openOrds || [] });
     } catch {
       setProfileStats({ cust: customer, orders: 0, totalSpent: 0, top: [], last: null, open: [] });
     }
@@ -2234,7 +2240,8 @@ export default function CustomerMenu() {
                 {(() => {
                   // Seviye KAZANILAN TOPLAM PUANDAN. Cuzdandaki bakiye ayri
                   // gosterilir — puanini harcayan musteri seviye kaybetmesin.
-                  const pts = kazanilanPuan(profileStats.cust?.total_spent);
+                  // totalSpent: openProfile'da DB / siparis / cuzdan yedegi ile hesaplandi
+                  const pts = kazanilanPuan(profileStats.totalSpent ?? profileStats.cust?.total_spent);
                   const cur = [...TIERS].reverse().find(t => pts >= t.min) || TIERS[0];
                   const next = TIERS.find(t => t.min > pts);
                   const pct = next ? Math.min(100, Math.round(((pts - cur.min) / (next.min - cur.min)) * 100)) : 100;
