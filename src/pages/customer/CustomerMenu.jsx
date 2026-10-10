@@ -10,6 +10,7 @@ import { ozellik, MARKA, rezervasyonYerel, PROFIL } from "../../lib/profil.js";
 import { euroKuru, euroGosterilsin, euroAdimi, euroYaz } from "../../lib/euro.js";
 import { STORE_SLUG } from "../../lib/stores.js";
 import { RESERVE_URL, RESERVE_KEY, RESERVATION_URL } from "../../lib/reserve.js";
+import { kvkkGuncelGetir, kvkkPendingKaydet, kvkkEksikMi } from "../../lib/kvkk.js";
 import Ikon from "../../components/Ikon.jsx";
 
 const cv = "-apple-system,BlinkMacSystemFont,'Segoe UI',Roboto,sans-serif";
@@ -132,6 +133,14 @@ const T = {
     login_inapp: "Instagram/WhatsApp içinden açtın — Google girişi bu tarayıcıda çalışmaz. E-posta ile gir ya da sayfayı Safari/Chrome'da aç.",
     login_bad_email: "E-posta adresini kontrol eder misin?",
     login_note: "Puan biriktir, üye fiyatlarından ve happy hour'dan yararlan.",
+    kvkk_need: "Devam etmek için aydınlatma metnini okuyup onay kutusunu işaretle.",
+    kvkk_check: "Aydınlatma metnini okudum; üyelik kapsamında kişisel verilerimin işlenmesine açık rıza veriyorum.",
+    kvkk_read: "Aydınlatma metni",
+    kvkk_close: "Kapat",
+    kvkk_re_title: "KVKK güncellendi",
+    kvkk_re_note: "Üyeliğine devam etmek için yeni aydınlatma metnini onaylaman gerekiyor.",
+    kvkk_re_cta: "Okudum, onaylıyorum",
+    kvkk_re_later: "Çıkış yap",
     order_hours: "sipariş saatleri",
     order_between: "arası sipariş verilebilir",
     closed_now: "Şu an bu saatler dışındasın",
@@ -213,6 +222,14 @@ const T = {
     login_inapp: "You opened this inside Instagram/WhatsApp — Google sign-in does not work here. Use email, or open the page in Safari/Chrome.",
     login_bad_email: "Could you check your email address?",
     login_note: "Collect points, get member prices and happy hour deals.",
+    kvkk_need: "Please read the notice and tick the consent box to continue.",
+    kvkk_check: "I have read the privacy notice and consent to processing of my personal data for membership.",
+    kvkk_read: "Privacy notice",
+    kvkk_close: "Close",
+    kvkk_re_title: "Privacy terms updated",
+    kvkk_re_note: "Please approve the new notice to keep using your membership.",
+    kvkk_re_cta: "I agree",
+    kvkk_re_later: "Sign out",
     order_hours: "ordering hours",
     order_between: "for ordering",
     closed_now: "Outside ordering hours right now",
@@ -294,6 +311,14 @@ const T = {
     login_inapp: "Страница открыта внутри Instagram/WhatsApp — вход через Google здесь не работает. Войдите по e-mail или откройте в Safari/Chrome.",
     login_bad_email: "Проверьте адрес почты, пожалуйста.",
     login_note: "Копите баллы, получайте цены для участников и happy hour.",
+    kvkk_need: "Отметьте согласие, чтобы продолжить.",
+    kvkk_check: "Я ознакомился(лась) с уведомлением и даю согласие на обработку персональных данных для членства.",
+    kvkk_read: "Уведомление о данных",
+    kvkk_close: "Закрыть",
+    kvkk_re_title: "Условия обновлены",
+    kvkk_re_note: "Чтобы продолжить пользоваться членством, подтвердите новое уведомление.",
+    kvkk_re_cta: "Согласен(на)",
+    kvkk_re_later: "Выйти",
     order_hours: "часы заказа",
     order_between: "приём заказов",
     closed_now: "Сейчас вне часов заказа",
@@ -541,7 +566,7 @@ export default function CustomerMenu() {
     isInRange(now, settings.party_mode_from, settings.party_mode_until));
 
   // Uye sistemi: Google ile giren musteri + urun bazli sabit (₺) indirimleri
-  const { customer, signInWithGoogle, signOut, loading: authLoading, refreshCustomer } = useAuth();
+  const { customer, signInWithGoogle, signOut, loading: authLoading, refreshCustomer, acceptKvkk } = useAuth();
 
   // Karsilama ekrani UYE OLMAYANA her aciliste cikar, uyeye hic cikmaz.
   // Cihazda "gordum" kaydi tutmuyoruz: ekranin isi uye olmayana ne
@@ -658,9 +683,24 @@ export default function CustomerMenu() {
   const [otpCode, setOtpCode] = useState("");
   const [otpSent, setOtpSent] = useState(false);
   const [otpBusy, setOtpBusy] = useState(false);
+  // KVKK: guncel metin + kayit checkbox + yeniden onay
+  const [kvkkDoc, setKvkkDoc] = useState(null);
+  const [kvkkOk, setKvkkOk] = useState(false);
+  const [kvkkMetinOpen, setKvkkMetinOpen] = useState(false);
+  const [kvkkBusy, setKvkkBusy] = useState(false);
+  useEffect(() => { kvkkGuncelGetir().then(d => setKvkkDoc(d)); }, []);
+  const needsKvkk = !!(customer && kvkkDoc?.version && kvkkEksikMi(customer, kvkkDoc.version));
+  const kvkkHazirla = () => {
+    // Metin henuz DB'de yoksa (gocus bekleniyor) girisi kilitleme.
+    if (!kvkkDoc?.version) return true;
+    if (!kvkkOk) { alert(t.kvkk_need); return false; }
+    kvkkPendingKaydet(kvkkDoc.version);
+    return true;
+  };
   const inAppBrowser = typeof navigator !== "undefined" && /Instagram|FBAN|FBAV|FB_IAB|WhatsApp|Line\//i.test(navigator.userAgent);
 
   const sendOtp = async () => {
+    if (!kvkkHazirla()) return;
     const email = otpEmail.trim().toLowerCase();
     if (!/^[^\s@]+@[^\s@]+\.[^\s@]{2,}$/.test(email)) { alert(t.login_bad_email); return; }
     setOtpBusy(true);
@@ -674,6 +714,7 @@ export default function CustomerMenu() {
 
   const dogrulaOtp = async () => {
     if (otpBusy) return;
+    if (!kvkkHazirla()) return;
     const kod = otpCode.trim();
     if (kod.length < 6) { alert(t.login_code_ph); return; }
     setOtpBusy(true);
@@ -681,7 +722,17 @@ export default function CustomerMenu() {
     setOtpBusy(false);
     if (error) { alert(errorText(error, lang)); return; }
     // Oturum degisikligini AuthContext yakalar; profil eksikse tamamlama ekrani gelir
-    setLoginSheet(false); setOtpSent(false); setOtpCode("");
+    setLoginSheet(false); setOtpSent(false); setOtpCode(""); setKvkkOk(false);
+  };
+
+  const kvkkYenidenOnayla = async () => {
+    if (!kvkkDoc?.version || kvkkBusy) return;
+    if (!kvkkOk) { alert(t.kvkk_need); return; }
+    setKvkkBusy(true);
+    const { ok, error } = await acceptKvkk(kvkkDoc.version, "reaccept");
+    setKvkkBusy(false);
+    if (!ok) { alert((t.pf_error || "") + " " + (error?.message || "")); return; }
+    setKvkkOk(false);
   };
 
   // Cuzdan: sepette "puanla ode" istegi. Miktara sunucu karar verir (bakiye
@@ -2379,13 +2430,34 @@ export default function CustomerMenu() {
               </div>
             )}
 
+            {/* KVKK: acik riza checkbox — "kayit olarak kabul" YOK */}
+            {kvkkDoc?.version && (
+              <label style={{display:"flex",gap:10,alignItems:"flex-start",marginBottom:14,cursor:"pointer"}}>
+                <input type="checkbox" checked={kvkkOk} onChange={e=>setKvkkOk(e.target.checked)}
+                  style={{marginTop:3,width:18,height:18,flexShrink:0}}/>
+                <span style={{fontSize:12,color:"#333",lineHeight:1.45}}>
+                  {kvkkDoc.summary || t.kvkk_check}
+                  {" "}
+                  <button type="button" onClick={(e)=>{e.preventDefault();setKvkkMetinOpen(true);}}
+                    style={{background:"none",border:"none",padding:0,color:"#000",fontWeight:800,textDecoration:"underline",cursor:"pointer",fontFamily:"inherit",fontSize:12}}>
+                    {t.kvkk_read}
+                  </button>
+                  <span style={{color:"#999"}}> · v{kvkkDoc.version}</span>
+                </span>
+              </label>
+            )}
+
             {!otpSent ? (
               <>
                 {/* Google HER ZAMAN gorunur ve ilk sirada. Ic tarayicida (Instagram/
                     WhatsApp) Google'in kendisi OAuth'u reddettigi icin dokununca
                     bozuk Google sayfasi yerine yol gosteren aciklama cikar. */}
-                <button onClick={() => inAppBrowser ? alert(t.login_inapp) : signInWithGoogle()}
-                  style={{width:"100%",padding:"14px",background:"#000",color:"#fff",border:"none",borderRadius:12,fontSize:14,fontWeight:800,cursor:"pointer",fontFamily:"inherit"}}>
+                <button onClick={() => {
+                  if (inAppBrowser) { alert(t.login_inapp); return; }
+                  if (!kvkkHazirla()) return;
+                  signInWithGoogle();
+                }}
+                  style={{width:"100%",padding:"14px",background:(!kvkkDoc?.version||kvkkOk)?"#000":"#DDDDDD",color:(!kvkkDoc?.version||kvkkOk)?"#fff":"#666",border:"none",borderRadius:12,fontSize:14,fontWeight:800,cursor:(!kvkkDoc?.version||kvkkOk)?"pointer":"default",fontFamily:"inherit"}}>
                   {t.login_google}
                 </button>
                 <div style={{display:"flex",alignItems:"center",gap:10,margin:"14px 0",color:"#666666",fontSize:11,fontWeight:700}}>
@@ -2394,8 +2466,8 @@ export default function CustomerMenu() {
                 <input value={otpEmail} onChange={e=>setOtpEmail(e.target.value)} placeholder={t.login_email_ph}
                   type="email" inputMode="email" autoComplete="email"
                   style={{width:"100%",padding:"13px 14px",background:"#f7f7f7",border:"1px solid #eee",borderRadius:12,fontSize:15,outline:"none",fontFamily:"inherit",marginBottom:10}}/>
-                <button onClick={sendOtp} disabled={otpBusy}
-                  style={{width:"100%",padding:"14px",background:otpBusy?"#DDDDDD":"#000000",color:otpBusy?"#666666":"#FFFFFF",border:"none",borderRadius:12,fontSize:14,fontWeight:800,cursor:otpBusy?"default":"pointer",fontFamily:"inherit"}}>
+                <button onClick={sendOtp} disabled={otpBusy || !!(kvkkDoc?.version && !kvkkOk)}
+                  style={{width:"100%",padding:"14px",background:(otpBusy||(kvkkDoc?.version&&!kvkkOk))?"#DDDDDD":"#000000",color:(otpBusy||(kvkkDoc?.version&&!kvkkOk))?"#666666":"#FFFFFF",border:"none",borderRadius:12,fontSize:14,fontWeight:800,cursor:(otpBusy||(kvkkDoc?.version&&!kvkkOk))?"default":"pointer",fontFamily:"inherit"}}>
                   {otpBusy ? "..." : t.login_send}
                 </button>
               </>
@@ -2413,6 +2485,54 @@ export default function CustomerMenu() {
                 <button onClick={()=>{setOtpSent(false);setOtpCode("");}} style={{width:"100%",marginTop:8,background:"none",border:"none",color:"#666666",fontSize:12,cursor:"pointer",fontFamily:"inherit",display:"flex",justifyContent:"center"}}><Ikon ad="oksol" boy={15}/></button>
               </>
             )}
+          </div>
+        </div>
+      )}
+
+      {/* KVKK metni (aydinlatma) */}
+      {kvkkMetinOpen && kvkkDoc && (
+        <div onClick={() => setKvkkMetinOpen(false)} style={{position:"fixed",inset:0,background:"rgba(0,0,0,0.5)",display:"flex",alignItems:"flex-end",justifyContent:"center",zIndex:140}}>
+          <div onClick={e=>e.stopPropagation()} style={{background:"#fff",borderRadius:"18px 18px 0 0",padding:"22px 20px 28px",width:"100%",maxWidth:520,maxHeight:"85vh",display:"flex",flexDirection:"column"}}>
+            <div style={{fontSize:17,fontWeight:800,marginBottom:4}}>{kvkkDoc.title}</div>
+            <div style={{fontSize:11,color:"#999",marginBottom:12}}>v{kvkkDoc.version}</div>
+            <div style={{flex:1,overflowY:"auto",fontSize:13,lineHeight:1.55,color:"#333",whiteSpace:"pre-wrap",paddingRight:4}}>
+              {kvkkDoc.body}
+            </div>
+            <button onClick={() => setKvkkMetinOpen(false)}
+              style={{marginTop:16,width:"100%",padding:"14px",background:"#000",color:"#fff",border:"none",borderRadius:12,fontSize:14,fontWeight:800,cursor:"pointer",fontFamily:"inherit"}}>
+              {t.kvkk_close}
+            </button>
+          </div>
+        </div>
+      )}
+
+      {/* KVKK surum guncellendi — yeniden onay (mevcut uyeler) */}
+      {needsKvkk && (
+        <div style={{position:"fixed",inset:0,background:"rgba(0,0,0,0.55)",display:"flex",alignItems:"flex-end",justifyContent:"center",zIndex:130}}>
+          <div style={{background:"#fff",borderRadius:"18px 18px 0 0",padding:"22px 20px 30px",width:"100%",maxWidth:520}}>
+            <div style={{fontSize:18,fontWeight:800,marginBottom:6}}>{t.kvkk_re_title}</div>
+            <div style={{fontSize:13,color:"#666",lineHeight:1.5,marginBottom:14}}>{t.kvkk_re_note}</div>
+            <label style={{display:"flex",gap:10,alignItems:"flex-start",marginBottom:14,cursor:"pointer"}}>
+              <input type="checkbox" checked={kvkkOk} onChange={e=>setKvkkOk(e.target.checked)}
+                style={{marginTop:3,width:18,height:18,flexShrink:0}}/>
+              <span style={{fontSize:12,color:"#333",lineHeight:1.45}}>
+                {kvkkDoc?.summary || t.kvkk_check}
+                {" "}
+                <button type="button" onClick={(e)=>{e.preventDefault();setKvkkMetinOpen(true);}}
+                  style={{background:"none",border:"none",padding:0,color:"#000",fontWeight:800,textDecoration:"underline",cursor:"pointer",fontFamily:"inherit",fontSize:12}}>
+                  {t.kvkk_read}
+                </button>
+                {kvkkDoc?.version ? <span style={{color:"#999"}}> · v{kvkkDoc.version}</span> : null}
+              </span>
+            </label>
+            <button onClick={kvkkYenidenOnayla} disabled={kvkkBusy || !kvkkOk}
+              style={{width:"100%",padding:"14px",background:(kvkkBusy||!kvkkOk)?"#DDD":"#000",color:(kvkkBusy||!kvkkOk)?"#666":"#fff",border:"none",borderRadius:12,fontSize:14,fontWeight:800,cursor:(kvkkBusy||!kvkkOk)?"default":"pointer",fontFamily:"inherit"}}>
+              {kvkkBusy ? "..." : t.kvkk_re_cta}
+            </button>
+            <button onClick={signOut}
+              style={{width:"100%",marginTop:10,background:"none",border:"none",color:"#666",fontSize:12,cursor:"pointer",fontFamily:"inherit"}}>
+              {t.kvkk_re_later}
+            </button>
           </div>
         </div>
       )}

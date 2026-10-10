@@ -1,5 +1,6 @@
 import { createContext, useContext, useEffect, useState } from "react";
 import { supabase } from "../lib/supabase.js";
+import { kvkkPendingOku, kvkkPendingTemizle, kvkkKabulEt } from "../lib/kvkk.js";
 
 const AuthContext = createContext(null);
 
@@ -34,19 +35,30 @@ export function AuthProvider({ children }) {
             avatar_url: md.avatar_url || md.picture,
             name: c.name || md.full_name || md.name,
           }).eq("id", c.id);
+          c = { ...c, auth_user_id: userId };
         }
-        return c;
+      } else {
+        const newRes = await supabase.from("customers").insert({
+          name: md.full_name || md.name || userEmail,
+          email: userEmail,
+          auth_user_id: userId,
+          avatar_url: md.avatar_url || md.picture,
+          tier: "bronze",
+        }).select().single();
+        if (newRes && newRes.error) console.error("Musteri kaydi acilamadi", newRes.error);
+        c = (newRes && newRes.data) || null;
       }
 
-      const newRes = await supabase.from("customers").insert({
-        name: md.full_name || md.name || userEmail,
-        email: userEmail,
-        auth_user_id: userId,
-        avatar_url: md.avatar_url || md.picture,
-        tier: "bronze",
-      }).select().single();
-      if (newRes && newRes.error) console.error("Musteri kaydi acilamadi", newRes.error);
-      return (newRes && newRes.data) || null;
+      // Login sheet'te checkbox ile birakilan bekleyen KVKK surumu
+      const pending = kvkkPendingOku();
+      if (c && pending) {
+        const { ok } = await kvkkKabulEt(pending, c.kvkk_version ? "reaccept" : "signup");
+        if (ok) {
+          c = { ...c, kvkk_version: pending, kvkk_accepted_at: new Date().toISOString() };
+          kvkkPendingTemizle();
+        }
+      }
+      return c;
     };
 
     const loadSession = async (sess) => {
@@ -126,9 +138,20 @@ export function AuthProvider({ children }) {
   // yoksa "ad ve telefon eksik" penceresi kaydedilmis olmasina ragmen kaliyor.
   const refreshCustomer = (patch) => setCustomer(prev => prev ? { ...prev, ...patch } : prev);
 
+  const acceptKvkk = async (version, source = "reaccept") => {
+    const { ok, error, data } = await kvkkKabulEt(version, source);
+    if (!ok) return { ok: false, error };
+    refreshCustomer({
+      kvkk_version: version,
+      kvkk_accepted_at: data?.accepted_at || new Date().toISOString(),
+    });
+    kvkkPendingTemizle();
+    return { ok: true };
+  };
+
   return (
     <AuthContext.Provider value={{
-      session, staffUser, customer, loading, refreshCustomer,
+      session, staffUser, customer, loading, refreshCustomer, acceptKvkk,
       signIn, signInWithGoogle, signOut,
       isAdmin, isManager, isWaiter, isKitchen, isCashier, isViewer, isParttime,
     }}>
