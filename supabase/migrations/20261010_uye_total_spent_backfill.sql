@@ -15,7 +15,8 @@ with siparis_ozet as (
     count(*)::int as ziyaret
   from public.orders o
   where o.customer_id is not null
-    and o.status in ('paid', 'completed', 'served', 'closed', 'debt')
+    -- order_status enum: open/sent/preparing/ready/paid/cancelled/debt
+    and o.status in ('paid', 'debt')
   group by o.customer_id
 )
 update public.customers c

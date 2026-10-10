@@ -699,7 +699,7 @@ export default function CustomerMenu() {
         // total_spent / visit_count: seviye ve harcama bunlardan; orders RLS
         // gecici olarak bos donse bile cuzdanla tutarli gorunsun.
         supabase.from("customers").select("name, email, avatar_url, points, total_spent, visit_count, outstanding_balance, created_at").eq("id", customer.id).maybeSingle(),
-        supabase.from("orders").select("id, total, created_at").eq("customer_id", customer.id).in("status", ["paid", "completed", "served", "closed", "debt"]).order("created_at", { ascending: false }).limit(200),
+        supabase.from("orders").select("id, total, created_at").eq("customer_id", customer.id).in("status", ["paid", "debt"]).order("created_at", { ascending: false }).limit(200),
         // Acik hesap: kapatilmamis siparisler. Uye bunu gorsun ki kasada
         // "benim siparisim su" diyebilsin — kapanmayan siparis puan da kazandirmaz.
         supabase.from("orders").select("id, total, status, created_at").eq("customer_id", customer.id).in("status", ["open", "sent", "preparing", "ready"]).order("created_at", { ascending: false }).limit(20),
