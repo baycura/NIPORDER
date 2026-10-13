@@ -8,6 +8,7 @@ import { ozellik } from "../../lib/profil.js";
 import { BorclularPaneli, tl } from "../../components/BorcTahsil.jsx";
 import { telefonNormalize } from "../../lib/telefon.js";
 import KasaSayKarti from "../../components/KasaSayKarti.jsx";
+import { IptalPenceresi } from "../../components/HesapDuzelt.jsx";
 import Bildirim from "../../components/Bildirim.jsx";
 
 // BOLUNMUS ODEME — kasadan gelen ihtiyac (20.09.2026):
@@ -125,14 +126,9 @@ export default function PaymentPage() {
   // Unutulmus hesap: gun icinde kapatilmayip ekranda kalan siparis. Odeme
   // alinmadigi icin "tahsil et" yanlis olur; kasa gecmisine sahte ciro yazmasin
   // diye iptal ediyoruz. Silmiyoruz — kalemler ve saat kaydi duruyor.
-  const cancelOrder = async (o) => {
-    const nerede = o.table_id ? (tables[o.table_id] || "Masa") : (o.customer_name || "Misafir");
-    const uyeNotu = o.customer_id ? "\n· Bu sipariş bir ÜYEYE bağlı — iptal edilirse puan kazanamaz." : "";
-    if (!confirm(`"${nerede}" hesabı iptal edilsin mi?\n₺${o.total || 0} · ${saatFarki(o.created_at)}${uyeNotu}\n\nCiroya YAZILMAZ. Ödeme alındıysa bunun yerine "Tahsil Et" kullan.`)) return;
-    const { error } = await supabase.from("orders").update({ status: "cancelled" }).eq("id", o.id);
-    if (error) { alert("İptal edilemedi: " + error.message); return; }
-    setOrders(prev => prev.filter(x => x.id !== o.id));
-  };
+  // Iptal nedeni zorunlu (20261013_hesap_duzeltme.sql): neden penceresi acilir.
+  const [iptalHesap, setIptalHesap] = useState(null);
+  const cancelOrder = (o) => setIptalHesap(o);
 
   // {points, name, borc} — modal acilinca cekilir. Borcu olan kisi puan
   // HARCAYAMAZ (20261013_borc_puan.sql); dugme gizlenir, sunucu da reddeder.
@@ -412,6 +408,21 @@ export default function PaymentPage() {
       </div>
 
       {bildirim && <Bildirim metin={bildirim.metin} key={bildirim.id}/>}
+      {iptalHesap && (() => {
+        const o = iptalHesap;
+        const nerede = o.table_id ? (tables[o.table_id] || "Masa") : (o.customer_name || "Misafir");
+        return (
+          <IptalPenceresi order={o} ad={`${nerede} · ${saatFarki(o.created_at)}`}
+            varsayilanNeden="Unutulmuş / eski hesap"
+            uyari={o.customer_id ? "Bu hesap bir üyeye bağlı. İptal edilirse puan kazanmaz. Ödeme alındıysa iptal etme: \"Tahsil Et\" kullan." : "Ödeme alındıysa iptal etme: \"Tahsil Et\" kullan."}
+            onKapat={() => setIptalHesap(null)}
+            onBitti={() => {
+              setOrders(prev => prev.filter(x => x.id !== o.id));
+              setIptalHesap(null);
+              setBildirim({ metin: `${nerede}: hesap iptal edildi`, id: Date.now() });
+            }}/>
+        );
+      })()}
 
       {acikKaldi && (
         <div role="alert" style={{display:"flex",alignItems:"center",gap:10,padding:"12px 14px",marginBottom:12,border:"1px solid #C87A6A",borderRadius:12,fontSize:13,background:"#161616"}}>
