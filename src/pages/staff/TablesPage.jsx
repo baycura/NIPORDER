@@ -7,6 +7,7 @@ import HaftalikLig from "../../components/HaftalikLig.jsx";
 import { businessDayStart } from "../../lib/businessDay.js";
 import { partiDurumOku, biterYazi } from "../../lib/parti.js";
 import { ozellik } from "../../lib/profil.js";
+import TelegramBagla from "../../components/TelegramBagla.jsx";
 
 const cv = "-apple-system,BlinkMacSystemFont,'Segoe UI',Roboto,sans-serif";
 
@@ -223,6 +224,10 @@ export default function TablesPage() {
       {/* Haftalik lig, tek satir: herkesin ilk actigi ekran burasi. Dokununca
           acilir; part-time'in Vardiyam sayfasi yok, ligi buradan gorur. */}
       <HaftalikLig compact />
+
+      {/* Telegram'i bagli olmayan personel (cogu part-time) QR siparisini
+          kacirmasin: baglanti kutusu burada da cikar, baglaninca kaybolur. */}
+      <TelegramBagla style={{marginBottom:12}}/>
 
       {/* PARTI DUGMESI. Acikken belirgin, kapaliyken sakin bir satir —
           gece 22:00'de aranan sey bu, gunduz gozu tirmalamasin. */}

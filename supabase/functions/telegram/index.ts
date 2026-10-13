@@ -10,6 +10,8 @@
 //
 // Hedefleme kurali: bildirim SADECE "su an vardiyasi aktif" (shifts.status='active'),
 // is_active=true VE Telegram'a bagli (staff.telegram_chat_id dolu) personele gider.
+// Yeni siparis bildirimi siparisi GIREN kisiye gitmez; sahibe yedek yalniz QR
+// siparisinde (20261013_telegram_gurultu.sql).
 // Izinli/mesai disi kimse rahatsiz edilmez. Sabah ozeti: admin + viewer (aile) bagli olanlara.
 // YEDEK: hedeflerin hicbirine ulasilamazsa bildirim sahiplere duser ve her deneme
 // tg_notify_log'a yazilir (kime, kac kisiye) — "bildirim gelmedi" bakilabilir olsun.
@@ -139,18 +141,33 @@ Deno.serve(async (req) => {
       const staff = await activeStaff();
 
       if (kind === "items_sent") {
-        // Yeni siparis -> vardiyadaki mutfak personeli; mutfakci yoksa herkese
+        // Kimin girdigi (20261013_telegram_gurultu.sql): added_by = siparisi
+        // giren personelin staff.id listesi, qr = musteri kalemi var mi.
+        // Eski tetik bu alanlari gondermez; o zaman siparis QR sayilir ve
+        // bugunku davranis surer.
+        const ekleyenler: string[] = Array.isArray(payload.added_by) ? payload.added_by : [];
+        const qr = payload.qr === true || (payload.qr === undefined && ekleyenler.length === 0);
         const kitchen = staff.filter((s: any) => s.role === "kitchen");
-        const targets = (kitchen.length ? kitchen : staff).map((s: any) => s.telegram_chat_id);
-        let n = await sendTo(targets, `🆕 Yeni sipariş — ${label}\n${itemsText(items)}`);
-        let hedef = kitchen.length ? "mutfak" : "vardiya";
-        // Kimseye ulasmadiysa siparis sahipsiz kalmasin.
-        if (n === 0) {
+        // QR siparisi vardiyadaki HERKESE gider: musteri bekliyor, kim gorurse
+        // alsin. Personelin girdigi siparis mutfaga (yoksa vardiyaya) gider ama
+        // GIREN KISIYE gitmez: zaten biliyor (30 gunde 1.398 mesajin 828'i
+        // girene gidiyordu).
+        const havuz = (qr ? staff : (kitchen.length ? kitchen : staff))
+          .filter((s: any) => !ekleyenler.includes(s.id));
+        const baslik = qr ? `📱 QR sipariş — ${label}` : `🆕 Yeni sipariş — ${label}`;
+        let n = havuz.length
+          ? await sendTo(havuz.map((s: any) => s.telegram_chat_id), `${baslik}\n${itemsText(items)}`)
+          : 0;
+        let hedef = havuz.length ? (qr ? "vardiya" : (kitchen.length ? "mutfak" : "vardiya")) : "giren_kisi";
+        // Sahibe yedek YALNIZ QR siparisinde. Personelin girdigi sipariste
+        // personel zaten dukkanda; "kimse yok" uyarisi yanlis alarmdi (30 gunde
+        // 170 kez).
+        if (n === 0 && qr) {
           n = await sendTo(await ownerChats(),
-            `⚠️ VARDİYADA KİMSE YOK — yeni sipariş\n${label}\n${itemsText(items)}`);
+            `⚠️ VARDİYADA KİMSE YOK — QR sipariş\n${label}\n${itemsText(items)}`);
           hedef = n ? "sahip_yedek" : "kimse";
         }
-        await logNotify(payload.order_id, kind, n, hedef);
+        await logNotify(payload.order_id, kind, n, hedef, qr ? "qr" : "personel");
         return Response.json({ ok: true, sent: n, target: hedef });
       }
 
