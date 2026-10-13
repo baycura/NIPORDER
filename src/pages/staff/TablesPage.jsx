@@ -8,6 +8,8 @@ import { businessDayStart } from "../../lib/businessDay.js";
 import { partiDurumOku, biterYazi } from "../../lib/parti.js";
 import { ozellik } from "../../lib/profil.js";
 import TelegramBagla from "../../components/TelegramBagla.jsx";
+import Bildirim, { useSonListe } from "../../components/Bildirim.jsx";
+import { misafirHesapAc } from "../../lib/misafirHesap.js";
 
 const cv = "-apple-system,BlinkMacSystemFont,'Segoe UI',Roboto,sans-serif";
 
@@ -27,6 +29,7 @@ export default function TablesPage() {
   // bu yuzden isimsiz acmak TEK DOKUNUS, isim yazmak istege bagli.
   const [uyeler, setUyeler] = useState([]);
   const [sonrakiMisafir, setSonrakiMisafir] = useState(1);
+  useSonListe("/tables");
   const [secilenUye, setSecilenUye] = useState(null);
   const [aciliyor, setAciliyor] = useState(false);
   // Parti menusu: vardiyadaki calisan tek dokunusla acar. Ana ekranda duruyor
@@ -103,18 +106,15 @@ export default function TablesPage() {
   };
 
   // TEK DOKUNUS: modal yok, klavye yok, isim yok. Tezgahtaki normal hal bu.
+  // Numara dokunus aninda sunucudan hesaplanir (lib/misafirHesap.js); dugmedeki
+  // numara yalniz onizleme.
   const misafirAc = async (table = null) => {
     if (aciliyor) return;
     setAciliyor(true);
-    const ad = "Misafir " + sonrakiMisafir;
-    const { data: newOrd, error } = await supabase.from("orders").insert({
-      table_id: table?.id || null, customer_name: ad,
-      origin_store_id: table?.store_id || staffUser?.store_ids?.[0],
-      staff_id: staffUser?.id, status: "open", subtotal: 0, total: 0, discount_amount: 0,
-    }).select().single();
+    const { data: newOrd, error, no } = await misafirHesapAc({ staffUser, table });
     setAciliyor(false);
-    if (error) { alert("Hata: " + error.message); return; }
-    setSonrakiMisafir(n => n + 1);
+    if (error || !newOrd) { alert("Hata: " + (error?.message || "")); return; }
+    setSonrakiMisafir((no || 0) + 1);
     navigate("/orders/" + newOrd.id);
   };
 
@@ -214,6 +214,7 @@ export default function TablesPage() {
 
   return (
     <div style={{fontFamily:cv,color:"#F0EDE8"}}>
+      <Bildirim/>
       <div style={{marginBottom:14}}>
         <div style={{fontSize:24,fontWeight:800,color:"#F0EDE8",letterSpacing:"-0.4px"}}>Masalar</div>
         <div style={{fontSize:11,color:"#8A8580",letterSpacing:"1.5px",fontWeight:700,marginTop:3,textTransform:"uppercase"}}>

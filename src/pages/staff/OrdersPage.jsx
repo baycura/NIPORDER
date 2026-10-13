@@ -3,6 +3,8 @@ import { useNavigate } from "react-router-dom";
 import { supabase } from "../../lib/supabase.js";
 import { useAuth } from "../../contexts/AuthContext.jsx";
 import Ikon from "../../components/Ikon.jsx";
+import Bildirim, { useSonListe } from "../../components/Bildirim.jsx";
+import { misafirHesapAc } from "../../lib/misafirHesap.js";
 
 const cv = "-apple-system,BlinkMacSystemFont,'Segoe UI',Roboto,sans-serif";
 
@@ -28,6 +30,7 @@ export default function OrdersPage() {
   const [newMode, setNewMode] = useState("table"); // table | walkin
   const [newTableId, setNewTableId] = useState("");
   const [newCustomerName, setNewCustomerName] = useState("");
+  useSonListe("/orders");
   const [busy, setBusy] = useState(false);
 
   const firstLoad = useRef(true);
@@ -104,6 +107,20 @@ export default function OrdersPage() {
     };
   }, [filter]);
 
+  // TEK DOKUNUS "Misafir N" (lib/misafirHesap.js). Eskiden ana dugme
+  // "Misafir / Paket" penceresini aciyor ve numarasiz "Misafir" yaziyordu:
+  // 30 gunde 758 hesabin 367'si ayni adla acildi, listede birbirine karisti.
+  // Masa ya da isim gerekiyorsa yandaki "Masa / İsim" bugunku pencereyi acar.
+  const [misafirBusy, setMisafirBusy] = useState(false);
+  const misafirAc = async () => {
+    if (misafirBusy) return;
+    setMisafirBusy(true);
+    const { data, error } = await misafirHesapAc({ staffUser });
+    setMisafirBusy(false);
+    if (error || !data) { alert("Hata: " + (error?.message || "")); return; }
+    navigate("/orders/" + data.id);
+  };
+
   const createOrder = async () => {
     if (busy) return;
     if (newMode === "table" && !newTableId) { alert("Masa seç"); return; }
@@ -137,12 +154,16 @@ export default function OrdersPage() {
 
   return (
     <div style={{fontFamily:cv,color:"#F0EDE8"}}>
+      <Bildirim/>
       <div style={{display:"flex",justifyContent:"space-between",alignItems:"flex-start",marginBottom:10,flexWrap:"wrap",gap:10}}>
         <div>
           <div style={{fontSize:24,fontWeight:800}}>Siparişler</div>
           <div style={{fontSize:11,color:"#888",letterSpacing:"1px"}}>{orders.length} SIPARIS</div>
         </div>
-        <button onClick={() => setNewModal(true)} style={{padding:"10px 16px",background:"#FFFFFF",color:"#000",border:"none",borderRadius:10,fontSize:13,fontWeight:800,cursor:"pointer"}}>+ Yeni Sipariş</button>
+        <div style={{display:"flex",gap:6}}>
+          <button onClick={() => setNewModal(true)} style={{padding:"10px 12px",background:"transparent",color:"#F0EDE8",border:"1px solid #3A3A3A",borderRadius:10,fontSize:12.5,fontWeight:700,cursor:"pointer"}}>Masa / İsim</button>
+          <button onClick={misafirAc} disabled={misafirBusy} style={{padding:"10px 16px",background:"#FFFFFF",color:"#000",border:"none",borderRadius:10,fontSize:13,fontWeight:800,cursor:"pointer",opacity:misafirBusy?0.6:1}}>{misafirBusy ? "Açılıyor…" : "+ Misafir"}</button>
+        </div>
       </div>
 
       <div style={{display:"flex",gap:6,marginBottom:14,overflowX:"auto"}}>

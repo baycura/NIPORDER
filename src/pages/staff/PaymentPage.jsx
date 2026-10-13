@@ -7,6 +7,7 @@ import SayiGirisi from "../../components/SayiGirisi.jsx";
 import { ozellik } from "../../lib/profil.js";
 import { BorclularPaneli, tl } from "../../components/BorcTahsil.jsx";
 import { telefonNormalize } from "../../lib/telefon.js";
+import Bildirim from "../../components/Bildirim.jsx";
 
 // BOLUNMUS ODEME — kasadan gelen ihtiyac (20.09.2026):
 // "Masaya kalabalik oturup siparis veriyorlar, sonra ayri ayri odemek
@@ -71,6 +72,8 @@ export default function PaymentPage() {
   const [kalemler, setKalemler] = useState([]);
   const [secim, setSecim] = useState({});   // { order_item_id: adet }
   // Borclular: tahsilat kasada alinir (20261013_borc_tahsilat.sql).
+  const [bildirim, setBildirim] = useState(null);   // { metin, id } — kisa yazi
+  const [acikKaldi, setAcikKaldi] = useState(null); // { ad, alinan, kalan } — kalici serit
   const [borclular, setBorclular] = useState([]);
   const [borcHata, setBorcHata] = useState(false);
   const [borcPaneli, setBorcPaneli] = useState(false);
@@ -388,23 +391,23 @@ export default function PaymentPage() {
     // Indirimde hesap odenen tutara iner; puan da o tutardan hesaplanir.
     const indirimli = farkVar && farkTuruEtkin === "indirim";
     const hesap = indirimli ? amt : Number(modal.total || 0);
-    const indirimNotu = indirimli
-      ? "\n· ₺" + farkMutlak + " indirim yazıldı — hesap ₺" + Math.round(hesap) + " oldu (" + farkNedeni.trim() + ")"
-      : "";
+    const indirimNotu = indirimli ? ` · ₺${farkMutlak} indirim` : "";
+    // Onay "Tamam" penceresi DEGIL, kisa yazi (components/Bildirim). Pencere
+    // her tahsilatta bir dokunus daha istiyordu.
+    const ad = modal.table_id ? (tables[modal.table_id] || "Masa") : (modal.customer_name || "Misafir");
+    let yazi;
     if (method === "debt") {
-      alert("Borç kaydedildi: ₺" + amt + " (Kalan: ₺" + Math.round(Number(sonuc?.kalan_borc || 0)) + ")" + indirimNotu);
+      yazi = `${ad}: ₺${Math.round(amt)} borca yazıldı · ${memberPts?.name || "kişi"} borcu ₺${Math.round(Number(sonuc?.kalan_borc || 0))}` + indirimNotu;
     } else {
-      const kazanilan = uyeId
-        ? Math.floor((hesap - Number(sonuc?.puan || 0)) / 20)
-        : 0;
-      alert((method === "cash" ? "Nakit tahsil edildi" : "Kart ile tahsil edildi")
-        + indirimNotu
-        + (uyeId ? "\n· " + (memberPts?.name || "Üye") + " · +" + kazanilan + " puan" : ""));
+      const kazanilan = uyeId ? Math.floor((hesap - Number(sonuc?.puan || 0)) / 20) : 0;
+      yazi = `${ad}: ₺${Math.round(amt)} ${method === "cash" ? "nakit" : method === "card" ? "kart" : ""} alındı` + indirimNotu
+        + (uyeId && kazanilan > 0 ? ` · ${memberPts?.name || "Üye"} +${kazanilan} puan` : "");
     }
+    setBildirim({ metin: yazi, id: Date.now() });
     // Hesap kapanmadiysa kasiyer bunu MUTLAKA bilmeli: masa listede kalacak.
+    // Kisa yazi kaybolur; bu uyari KALICI serittir, kasiyer kapatir.
     if (sonuc && sonuc.kapandi === false) {
-      alert("₺" + Math.round(amt) + " alındı.\n\nHESAP AÇIK KALDI — kalan ₺"
-            + Math.round(Number(sonuc.kalan || 0)) + ".\nMasa listede duruyor, diğerleri ödeyince kapanır.");
+      setAcikKaldi({ ad, alinan: Math.round(amt), kalan: Math.round(Number(sonuc.kalan || 0)) });
     }
     setModal(null); load();
   };
@@ -430,6 +433,22 @@ export default function PaymentPage() {
         {orders.filter(o => bayatMi(o.created_at)).length > 0 &&
           <span style={{color:"#FFFFFF"}}> · {orders.filter(o => bayatMi(o.created_at)).length} UNUTULMUŞ</span>}
       </div>
+
+      {bildirim && <Bildirim metin={bildirim.metin} key={bildirim.id}/>}
+
+      {acikKaldi && (
+        <div role="alert" style={{display:"flex",alignItems:"center",gap:10,padding:"12px 14px",marginBottom:12,border:"1px solid #C87A6A",borderRadius:12,fontSize:13,background:"#161616"}}>
+          <span style={{color:"#C87A6A",display:"flex"}}><Ikon ad="uyari" boy={17}/></span>
+          <span style={{flex:1,lineHeight:1.45}}>
+            <b>{acikKaldi.ad}: hesap açık kaldı.</b> ₺{acikKaldi.alinan} alındı, ₺{acikKaldi.kalan} kaldı.
+            <span style={{color:"#888",display:"block",fontSize:12}}>Diğerleri ödeyince hesap kapanır.</span>
+          </span>
+          <button onClick={() => setAcikKaldi(null)} aria-label="Kapat"
+            style={{width:34,height:34,flexShrink:0,borderRadius:9,background:"transparent",border:"1px solid #2A2A2A",color:"#888",cursor:"pointer",display:"flex",alignItems:"center",justifyContent:"center"}}>
+            <Ikon ad="kapat" boy={14}/>
+          </button>
+        </div>
+      )}
 
       {sayimYok && (
         <div onClick={() => navigate("/cash-count")}
