@@ -738,7 +738,9 @@ export default function CustomerMenu() {
   // Cuzdan: sepette "puanla ode" istegi. Miktara sunucu karar verir (bakiye
   // odeme aninda degisebilir); buradaki rakam yalnizca onizlemedir.
   const [usePoints, setUsePoints] = useState(false);
-  const walletBalance = Number(customer?.points || 0);
+  // Borcu olan uye puan harcayamaz (20261013_borc_puan.sql); sepette
+  // "puanla ode" hic gorunmez, kasa da reddeder.
+  const walletBalance = Number(customer?.outstanding_balance || 0) > 0.005 ? 0 : Number(customer?.points || 0);
 
   const [profileOpen, setProfileOpen] = useState(false);
   const [profileStats, setProfileStats] = useState(null);

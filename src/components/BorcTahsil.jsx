@@ -261,9 +261,11 @@ export function BorcTahsilPenceresi({ kisi, onKapat, onBitti }) {
         </div>
 
         <div style={{fontSize:12,color:fazla?"#C87A6A":"#888",marginBottom:10,lineHeight:1.5,fontVariantNumeric:"tabular-nums"}}>
+          {/* Borcun puani borc gunu verilmez; odenen tutar kadar simdi verilir
+              (20 TL = 1 puan, 20261013_borc_puan.sql). */}
           {fazla ? `Borç ${tl(bakiye)}. Fazlasını alma; para üstünü ver.`
-            : tamami ? "Borç sıfırlanır. Puan verilmez: puan borç günü verildi."
-            : t > 0 ? `Kısmi ödeme. ${tl(kalacak)} borç kalır.` : ""}
+            : tamami ? `Borç sıfırlanır. Kişi +${Math.floor(t / 20)} puan kazanır.`
+            : t > 0 ? `Kısmi ödeme. ${tl(kalacak)} borç kalır. Kişi +${Math.floor(t / 20)} puan kazanır.` : ""}
         </div>
 
         <input value={not} onChange={e => setNot(e.target.value)} placeholder="Not (isteğe bağlı)"
