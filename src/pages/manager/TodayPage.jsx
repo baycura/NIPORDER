@@ -17,6 +17,15 @@ export default function TodayPage() {
   const navigate = useNavigate();
   const [loading, setLoading] = useState(true);
   const [veri, setVeri] = useState(null);
+  // Musteri aliskanligi (20261013_aliskanlik_ozet.sql): son 4 hafta, isimsiz.
+  const [aliskanlik, setAliskanlik] = useState(null);
+  useEffect(() => {
+    let iptal = false;
+    supabase.rpc("nip_aliskanlik_ozet", { p_hafta: 4 }).then(({ data, error }) => {
+      if (!iptal && !error) setAliskanlik((data || []).slice().reverse());
+    });
+    return () => { iptal = true; };
+  }, [staffUser?.id]);
 
   useEffect(() => {
     let iptal = false;
@@ -172,6 +181,36 @@ export default function TodayPage() {
         veri.cokSatan.length === 0
           ? <div style={{ fontSize: 13, color: "#8A8580" }}>Henüz satış yok.</div>
           : <div style={{ fontSize: 13.5 }}>{veri.cokSatan.map(([ad, n]) => `${ad} ×${n}`).join(" · ")}</div>} />
+
+      {/* Musteri aliskanligi: musteri kendi telefonundan siparis veriyor mu,
+          uye oluyor mu, geri geliyor mu. Isim yok, yalniz sayi. */}
+      {aliskanlik && aliskanlik.length > 0 && (
+        <Kart baslik="Müşteri alışkanlığı · son 4 hafta" cocuk={<>
+          <div style={{ display: "grid", gridTemplateColumns: "1.3fr repeat(4, 1fr)", gap: "6px 8px",
+                        fontSize: 12.5, marginTop: 6, fontVariantNumeric: "tabular-nums" }}>
+            {["", "QR", "Üye", "Yeni üye", "Geri gelen"].map(b => (
+              <div key={b} style={{ color: "#8A8580", fontWeight: 700, fontSize: 11 }}>{b}</div>
+            ))}
+            {aliskanlik.map((h, i) => {
+              const yuzde = (n) => h.hesap > 0 ? "%" + Math.round(100 * n / h.hesap) : "—";
+              const etiket = i === 0 ? "Bu hafta"
+                : new Date(h.hafta_bas + "T12:00").toLocaleDateString("tr-TR", { day: "numeric", month: "short" });
+              const renk = i === 0 ? "#F0EDE8" : "#B5B0AA";
+              return [
+                <div key={h.hafta_bas + "a"} style={{ color: renk, fontWeight: i === 0 ? 800 : 500 }}>{etiket}</div>,
+                <div key={h.hafta_bas + "b"} style={{ color: renk }}>{yuzde(h.qr_hesap)}</div>,
+                <div key={h.hafta_bas + "c"} style={{ color: renk }}>{yuzde(h.uye_hesap)}</div>,
+                <div key={h.hafta_bas + "d"} style={{ color: renk }}>{h.yeni_uye}</div>,
+                <div key={h.hafta_bas + "e"} style={{ color: renk }}>{h.geri_gelen}</div>,
+              ];
+            })}
+          </div>
+          <div style={{ fontSize: 11, color: "#8A8580", marginTop: 8, lineHeight: 1.5 }}>
+            QR: müşterinin kendi telefonundan verdiği sipariş. Üye: personel dışı üyeye bağlı hesap.
+            Geri gelen: o hafta gelen ve daha önce de gelmiş üye.
+          </div>
+        </>} />
+      )}
     </div>
   );
 }

@@ -7,6 +7,9 @@ import Ikon from "../../components/Ikon.jsx";
 import SayiGirisi from "../../components/SayiGirisi.jsx";
 
 const cv = "-apple-system,BlinkMacSystemFont,'Segoe UI',Roboto,sans-serif";
+// Adi yalniz rakam (6-14 hane) olan urun: buyuk olasilikla barkod. Musteri
+// menusunde oldugu gibi gorunur (IZIPIZI, Ekim 2026).
+const barkodAd = (ad) => /^\s*[0-9]{6,14}\s*$/.test(String(ad || ""));
 
 export default function MenuMgmtPage() {
   const { staffUser } = useAuth();
@@ -56,7 +59,10 @@ export default function MenuMgmtPage() {
   useEffect(() => { load(); }, []);
 
   // -------- CATEGORIES --------
-  const openNewCat = () => { setCatModal({mode:"new"}); setCatForm({name:"", name_en:"", name_ru:"", icon:"", sort_order:100, available_from:"", available_until:"", show_in_party_menu:true, staff_only:false, show_in_shop:false, show_in_paris_menu:false, is_active:true, description:"", description_en:"", description_ru:"", shop_tag:"", shop_tag_en:"", shop_tag_ru:"", prep_time_minutes:""}); };
+  // Yeni kategori YALNIZ PERSONEL baslar (musteri onerisi 6, sahip onayi 13.10):
+  // IZIPIZI 26 urunuyle barkod adlariyla musteri menusune dusmustu. Adlar ve
+  // fiyatlar hazir olunca "Kim gorsun?" secimiyle menuye ya da Shop'a acilir.
+  const openNewCat = () => { setCatModal({mode:"new"}); setCatForm({name:"", name_en:"", name_ru:"", icon:"", sort_order:100, available_from:"", available_until:"", show_in_party_menu:true, staff_only:true, show_in_shop:false, show_in_paris_menu:false, is_active:true, description:"", description_en:"", description_ru:"", shop_tag:"", shop_tag_en:"", shop_tag_ru:"", prep_time_minutes:""}); };
   const openEditCat = (c) => { setCatModal({mode:"edit", data:c}); setCatForm({name:c.name||"", name_en:c.name_en||"", name_ru:c.name_ru||"", icon:c.icon||"", sort_order:c.sort_order||100, available_from:c.available_from||"", available_until:c.available_until||"", show_in_party_menu:c.show_in_party_menu!==false, staff_only:!!c.staff_only, show_in_shop:!!c.show_in_shop, show_in_paris_menu:!!c.show_in_paris_menu, parent_id:c.parent_id||"", is_active:c.is_active!==false, description:c.description||"", description_en:c.description_en||"", description_ru:c.description_ru||"", shop_tag:c.shop_tag||"", shop_tag_en:c.shop_tag_en||"", shop_tag_ru:c.shop_tag_ru||"", prep_time_minutes:c.prep_time_minutes??""}); };
 
   const saveCat = async () => {
@@ -317,10 +323,35 @@ export default function MenuMgmtPage() {
           <button key={c.id} onClick={() => setSelectedCat(c.id)} style={{flexShrink:0,padding:"8px 12px",border:"1px solid "+(selectedCat===c.id?"#FFFFFF":"#333"),borderRadius:14,fontSize:12,fontWeight:700,background:selectedCat===c.id?"rgba(255,255,255,0.2)":"#1A1A1A",color:selectedCat===c.id?"#FFFFFF":"#aaa",cursor:"pointer",whiteSpace:"nowrap",opacity:c.is_active===false?0.5:1}}>
             {c.parent_id && <span style={{color:"#888888",marginRight:4}}>—</span>}
             {c.icon && <span style={{marginRight:4}}>{c.icon}</span>}{c.name}
+            {(c.staff_only || c.show_in_shop) && (
+              <span style={{marginLeft:5,fontSize:10,fontWeight:700,color:"#888"}}>{c.staff_only ? "personel" : "shop"}</span>
+            )}
           </button>
         ))}
         <button onClick={openNewCat} style={{flexShrink:0,padding:"8px 12px",border:"1px dashed #555",borderRadius:14,fontSize:12,fontWeight:700,background:"transparent",color:"#888",cursor:"pointer",whiteSpace:"nowrap"}}>+ Kategori</button>
       </div>
+
+      {/* Musteriye acik kategoride adi yalniz rakam olan urun: barkod adi
+          menude oldugu gibi gorunur (IZIPIZI 26 urun, Ekim 2026). */}
+      {(() => {
+        const acikBarkod = categories
+          .filter(c => !c.staff_only && c.is_active !== false)
+          .map(c => ({ c, n: products.filter(p => p.category_id === c.id && barkodAd(p.name)).length }))
+          .filter(x => x.n > 0);
+        if (!acikBarkod.length) return null;
+        return (
+          <div style={{marginBottom:12,padding:"11px 13px",borderRadius:12,background:"#1C1512",border:"1px solid #C87A6A",fontSize:12.5,lineHeight:1.5}}>
+            <b>Müşteri menüsünde barkod adlı ürün var:</b>{" "}
+            {acikBarkod.map(({ c, n }, i) => (
+              <span key={c.id}>{i > 0 && ", "}
+                <button onClick={() => setSelectedCat(c.id)} style={{background:"none",border:"none",color:"#FFFFFF",textDecoration:"underline",cursor:"pointer",padding:0,fontFamily:"inherit",fontSize:12.5}}>
+                  {c.name} ({n})
+                </button>
+              </span>
+            ))}. Ürünlere gerçek ad ver ya da kategoriyi "Yalnız personel" yap.
+          </div>
+        );
+      })()}
 
       {selectedCat && (() => {
         const cat = categories.find(c => c.id === selectedCat);
@@ -462,14 +493,45 @@ export default function MenuMgmtPage() {
             <input type="checkbox" checked={catForm.show_in_party_menu!==false} onChange={e=>setCatForm(f => ({...f,show_in_party_menu:e.target.checked}))}/>
             <span style={{fontSize:13,color:"#F0EDE8"}}>Parti menusunde goster</span>
           </label>
-          <label style={{display:"flex",alignItems:"center",gap:8,marginBottom:12,cursor:"pointer"}}>
-            <input type="checkbox" checked={!!catForm.staff_only} onChange={e=>setCatForm(f => ({...f,staff_only:e.target.checked}))}/>
-            <span style={{fontSize:13,color:"#F0EDE8"}}>Yalnız kasada (müşteri menüsünde gizli — tişört, seramik gibi satış ürünleri için)</span>
-          </label>
-          <label style={{display:"flex",alignItems:"center",gap:8,marginBottom:12,cursor:"pointer"}}>
-            <input type="checkbox" checked={!!catForm.show_in_shop} onChange={e=>setCatForm(f => ({...f,show_in_shop:e.target.checked}))}/>
-            <span style={{fontSize:13,color:"#F0EDE8"}}>Müşteride SHOP sekmesinde göster (menüde değil — kişisel bakım, şapka, kolye, marka ürünleri)</span>
-          </label>
+          {/* KIM GORSUN? Tek secim: eskiden iki ayri onay kutusu vardi ve ikisi
+              de bos kalinca kategori sessizce musteri menusune dusuyordu. */}
+          {(() => {
+            const secim = catForm.staff_only ? "personel" : catForm.show_in_shop ? "shop" : "menu";
+            const sec = (v) => setCatForm(f => ({...f, staff_only: v === "personel", show_in_shop: v === "shop"}));
+            const barkodlu = catModal.mode === "edit"
+              ? products.filter(p => p.category_id === catModal.data?.id && barkodAd(p.name)) : [];
+            return (
+              <div style={{marginBottom:12}}>
+                <div style={{fontSize:12,color:"#888",letterSpacing:"0.2px",fontWeight:600,marginBottom:6}}>KİM GÖRSÜN?</div>
+                <div style={{display:"flex",flexDirection:"column",gap:6}}>
+                  {[["personel","Yalnız personel","Kasada satılır. Müşteri görmez."],
+                    ["menu","Müşteri menüsü","QR menüde sekme olur."],
+                    ["shop","Shop sekmesi","Raf ürünü. Müşteri Shop'ta görür, mutfağa gitmez."]].map(([k, ad, alt]) => (
+                    <button key={k} type="button" onClick={() => sec(k)}
+                      style={{display:"flex",alignItems:"center",gap:10,padding:"10px 12px",borderRadius:10,cursor:"pointer",textAlign:"left",fontFamily:"inherit",
+                              background:secim===k?"#FFFFFF":"#161616",color:secim===k?"#000":"#F0EDE8",border:"1px solid "+(secim===k?"#FFFFFF":"#2A2A2A")}}>
+                      <span style={{fontSize:13,fontWeight:800,minWidth:118}}>{ad}</span>
+                      <span style={{fontSize:12,opacity:0.75}}>{alt}</span>
+                    </button>
+                  ))}
+                </div>
+                {catModal.mode === "new" && (
+                  <div style={{fontSize:12,color:"#8A8580",marginTop:6,lineHeight:1.5}}>
+                    Yeni kategori önce yalnız personelde başlar. Ürün adları ve fiyatlar hazır olunca menüye ya da Shop'a aç.
+                  </div>
+                )}
+                {barkodlu.length > 0 && (
+                  <div style={{marginTop:8,padding:"10px 12px",borderRadius:10,fontSize:12.5,lineHeight:1.5,
+                               background:"#1C1512",border:"1px solid "+(secim==="personel"?"#3A2E2A":"#C87A6A"),color:"#F0EDE8"}}>
+                    <b>{barkodlu.length} ürünün adı yalnız rakam</b> (ör. {barkodlu[0].name}).
+                    {secim === "personel"
+                      ? " Müşteriye açmadan önce ürünlere gerçek ad ver."
+                      : " Müşteri bu adı barkod olarak görür. Önce ürünlere gerçek ad ver."}
+                  </div>
+                )}
+              </div>
+            );
+          })()}
           {catModal.data?.store_id === DONER_STORE_ID && (
             <label style={{display:"flex",alignItems:"center",gap:8,marginBottom:10,cursor:"pointer"}}>
               <input type="checkbox" checked={!!catForm.show_in_paris_menu} onChange={e=>setCatForm(f => ({...f,show_in_paris_menu:e.target.checked}))}/>
@@ -510,7 +572,14 @@ export default function MenuMgmtPage() {
       {/* PRODUCT MODAL */}
       {prodModal && (
         <Modal onClose={()=>setProdModal(null)} title={prodModal.mode==="new"?"Yeni Ürün":"Ürünü Düzenle"}>
-          <Field label="AD (Türkçe)"><input value={prodForm.name||""} onChange={e=>setProdForm(f => ({...f,name:e.target.value}))} style={inputS}/></Field>
+          <Field label="AD (Türkçe)">
+            <input value={prodForm.name||""} onChange={e=>setProdForm(f => ({...f,name:e.target.value}))} style={inputS}/>
+            {barkodAd(prodForm.name) && (
+              <div style={{fontSize:12,color:"#C87A6A",marginTop:5,lineHeight:1.5}}>
+                Ad yalnız rakam. Müşteri bunu barkod olarak görür. Ürünün gerçek adını yaz; barkodu açıklamaya ekleyebilirsin.
+              </div>
+            )}
+          </Field>
           <Field label="NAME (English)"><input value={prodForm.name_en||""} onChange={e=>setProdForm(f => ({...f,name_en:e.target.value}))} placeholder="Optional - shown when customer selects EN" style={inputS}/></Field>
           <Field label="НАЗВАНИЕ (Rusca)"><input value={prodForm.name_ru||""} onChange={e=>setProdForm(f => ({...f,name_ru:e.target.value}))} placeholder="Opsiyonel - RU secilince gorunur" style={inputS}/></Field>
           <Field label="MARKA (opsiyonel)"><input value={prodForm.brand||""} onChange={e=>setProdForm(f => ({...f,brand:e.target.value}))} placeholder="Orn: Rapha, Le Bon Bain..." style={inputS}/></Field>
