@@ -83,8 +83,6 @@ export default function SettingsPage() {
   const partyDays = Array.isArray(settings.party_days) ? settings.party_days : [];
   const toggleDay = (n) => setKey("party_days",
     partyDays.includes(n) ? partyDays.filter(d => d !== n) : [...partyDays, n].sort((a,b)=>a-b));
-  const memberDiscount = Number(settings.member_discount_pct) || 0;
-  const memberEnabled = settings.member_discount_enabled === true || settings.member_discount_enabled === "true";
 
   return (
     <div style={{fontFamily:cv,color:"#F0EDE8"}}>
@@ -216,16 +214,10 @@ export default function SettingsPage() {
       </Section>
       )}
 
-      {/* Member indirimi — profil modulu (uyelik) */}
-      {ozellik("uyelik") && (
-      <Section icon="uye" title="Uye Indirimi" desc="Sisteme kayitli musterilerin Google ile giris yapip otomatik indirim almalari icin.">
-        <Toggle checked={memberEnabled} onChange={v=>setKey("member_discount_enabled", v)} label="Uye indirimi aktif"/>
-        <Field label={"INDIRIM ORANI (%) - su an: %" + memberDiscount}>
-          <SayiGirisi kip="ondalik" min={0} max={50} value={memberDiscount} onChange={v=>setKey("member_discount_pct", Number(v))} style={inputS}/>
-        </Field>
-        <div style={{fontSize:11,color:"#888",marginTop:6}}>NOT: Bir musteriye ozel "admin_discount" varsa, uye indirimi yerine o uygulanir.</div>
-      </Section>
-      )}
+      {/* "Uye indirimi (%)" ayari KALDIRILDI (13.10): hicbir ekran bu orani
+          uygulamiyordu, musteriye bos vaat gibi duruyordu. Uyeye ozel fiyat
+          Uyeler'de urun bazli girilir (member_discounts); puan kurali 20 TL =
+          1 puan (fn_award_member_points). app_settings anahtarlari yerinde. */}
 
       {/* Shopify baglantisi: yalniz sahip gorur, kendi kaydet dugmesi var — profil modulu (shopify) */}
       {ozellik("shopify") && <ShopifyAyar />}

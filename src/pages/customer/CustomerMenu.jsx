@@ -72,6 +72,22 @@ const rideLink = (r) =>
   : (r?.route_url && /strava\.com/.test(r.route_url)) ? r.route_url
   : RIDES_URL;
 const FIND_BIKE_URL = "https://notinparis.me/pages/find-a-bike";
+
+// MENU DURUMU: sepet, takip edilen siparis ve donulecek adres. Google girisi
+// /menu'ye doner: masa (qrToken) ve sepet kayboluyordu (musteri onerisi 1).
+// E-posta baglantisi yeni sekmede acildigi icin sessionStorage yetmez:
+// localStorage + sure siniri (sepet 2 saat, siparis 12 saat).
+const DURUM_KEY = "nip_menu_durum";
+const SEPET_SURE = 2 * 3600 * 1000;
+const SIPARIS_SURE = 12 * 3600 * 1000;
+const durumOku = () => {
+  try { return JSON.parse(localStorage.getItem(DURUM_KEY) || "null") || {}; } catch { return {}; }
+};
+const durumYaz = (ek) => {
+  try { localStorage.setItem(DURUM_KEY, JSON.stringify({ ...durumOku(), ...ek })); } catch { /* gizli mod */ }
+};
+// 20 TL = 1 puan (fn_award_member_points ile ayni kural).
+const puanHesap = (tl) => Math.max(0, Math.floor((Number(tl) || 0) / 20));
 const INSTAGRAM_URL = "https://instagram.com/notinparis.me";
 // Kazanc: 20 TL = 1 puan (%5); 1 puan = 1 TL olarak kasada harcanir (cuzdan).
 // SEVIYE PUANDAN gelir, ama CUZDAN BAKIYESINDEN degil KAZANILAN TOPLAM PUANDAN.
@@ -132,7 +148,7 @@ const T = {
     login_link_hint: "Kod yerine e-postadaki bağlantıya dokunman da yeterli.",
     login_inapp: "Instagram/WhatsApp içinden açtın — Google girişi bu tarayıcıda çalışmaz. E-posta ile gir ya da sayfayı Safari/Chrome'da aç.",
     login_bad_email: "E-posta adresini kontrol eder misin?",
-    login_note: "Puan biriktir, üye fiyatlarından ve happy hour'dan yararlan.",
+    login_note: "Her 20 TL'ye 1 puan kazan. Puanını kasada TL gibi harca.",
     kvkk_need: "Devam etmek için aydınlatma metnini okuyup onay kutusunu işaretle.",
     kvkk_check: "Aydınlatma metnini okudum; üyelik kapsamında kişisel verilerimin işlenmesine açık rıza veriyorum.",
     kvkk_read: "Aydınlatma metni",
@@ -221,7 +237,7 @@ const T = {
     login_link_hint: "Tapping the link in the email works too.",
     login_inapp: "You opened this inside Instagram/WhatsApp — Google sign-in does not work here. Use email, or open the page in Safari/Chrome.",
     login_bad_email: "Could you check your email address?",
-    login_note: "Collect points, get member prices and happy hour deals.",
+    login_note: "Earn 1 point for every 20 TL. Spend your points like lira at the till.",
     kvkk_need: "Please read the notice and tick the consent box to continue.",
     kvkk_check: "I have read the privacy notice and consent to processing of my personal data for membership.",
     kvkk_read: "Privacy notice",
@@ -310,7 +326,7 @@ const T = {
     login_link_hint: "Можно также нажать на ссылку в письме.",
     login_inapp: "Страница открыта внутри Instagram/WhatsApp — вход через Google здесь не работает. Войдите по e-mail или откройте в Safari/Chrome.",
     login_bad_email: "Проверьте адрес почты, пожалуйста.",
-    login_note: "Копите баллы, получайте цены для участников и happy hour.",
+    login_note: "1 балл за каждые 20 TL. Тратьте баллы на кассе как лиры.",
     kvkk_need: "Отметьте согласие, чтобы продолжить.",
     kvkk_check: "Я ознакомился(лась) с уведомлением и даю согласие на обработку персональных данных для членства.",
     kvkk_read: "Уведомление о данных",
@@ -701,6 +717,8 @@ export default function CustomerMenu() {
 
   const sendOtp = async () => {
     if (!kvkkHazirla()) return;
+    // E-postadaki baglanti yeni sekmede acilabilir: donus bilgisi kayitli kalsin.
+    durumYaz({ giris: true, yol: window.location.pathname + window.location.search });
     const email = otpEmail.trim().toLowerCase();
     if (!/^[^\s@]+@[^\s@]+\.[^\s@]{2,}$/.test(email)) { alert(t.login_bad_email); return; }
     setOtpBusy(true);
@@ -1018,6 +1036,12 @@ export default function CustomerMenu() {
 
   useEffect(() => { load(); }, [qrToken, storeSlugParam]);
 
+  // Takip edilen siparisin sunucu durumu: odendi mi, uyeye bagli mi, kac
+  // puan kazandirdi, uyelige baglanabilir mi (20261013_qr_uyelik.sql).
+  const [siparisDurum, setSiparisDurum] = useState(null);
+  const [bagliPuan, setBagliPuan] = useState(null);   // sahiplenince: odeyince kac puan
+  useEffect(() => { setSiparisDurum(null); setBagliPuan(null); }, [successOrderId]);
+
   useEffect(() => {
     if (!successOrderId) return;
     let stopped = false;
@@ -1026,6 +1050,13 @@ export default function CustomerMenu() {
       // Misafir siparis listesini okuyamaz (gizlilik) — durum RPC ile sorulur
       const { data: st } = await supabase.rpc("order_public_status", { p_order_id: successOrderId });
       if (!st || !st.item_count) return;
+      setSiparisDurum(st);
+      // Kasada odendiyse ekran "Hazirlaniyor"da kalmasin: odendi + afiyet olsun.
+      if (st.status === "paid") {
+        setOrderPaid(true);
+        setOrderStage(prev => prev === "served" ? prev : "served");
+        return;
+      }
       const allServed = !!st.all_served;
       const anyReady = !!st.any_ready;
       if (allServed) {
@@ -1048,6 +1079,77 @@ export default function CustomerMenu() {
       .subscribe();
     return () => { stopped = true; clearInterval(poller); supabase.removeChannel(ch); };
   }, [successOrderId, lang]);
+
+  // Girisle donus: Google /menu'ye doner. Kayitli adres masaliysa oraya git.
+  useEffect(() => {
+    const d = durumOku();
+    if (d.giris && window.location.pathname === "/menu" && typeof d.yol === "string"
+        && d.yol.startsWith("/menu/")) {
+      navigate(d.yol, { replace: true });
+    }
+  }, []);
+
+  // Urunler gelince sepeti, notu ve takip edilen siparisi geri kur. Ayni
+  // adres (ayni masa) degilse sepet kurulmaz: baska masanin QR'i okutuldu.
+  const durumHazir = useRef(false);
+  useEffect(() => {
+    if (durumHazir.current || loading || !products.length) return;
+    const d = durumOku();
+    const burasi = window.location.pathname + window.location.search;
+    if (d.yol === burasi) {
+      if (Array.isArray(d.sepet) && d.sepet.length && Date.now() - (d.sepetTs || 0) < SEPET_SURE) {
+        const geri = d.sepet
+          .map(x => ({ product: products.find(p => p.id === x.pid), quantity: Number(x.quantity) || 0,
+                       options: x.options || null, note: x.note || null, takeaway: !!x.takeaway }))
+          .filter(c => c.product && c.quantity > 0);
+        if (geri.length) setCart(geri);
+        if (d.not) setOrderNote(d.not);
+      }
+      if (d.siparis && Date.now() - (d.siparisTs || 0) < SIPARIS_SURE) setSuccessOrderId(d.siparis);
+    }
+    if (d.giris) durumYaz({ giris: false });
+    durumHazir.current = true;
+  }, [loading, products]);
+
+  // Her degisiklikte kaydet (geri yukleme bitmeden yazma: bos sepet eskisini ezmesin).
+  useEffect(() => {
+    if (!durumHazir.current) return;
+    const d = durumOku();
+    durumYaz({
+      yol: window.location.pathname + window.location.search,
+      sepet: cart.map(c => ({ pid: c.product?.id, quantity: c.quantity, options: c.options || null,
+                              note: c.note || null, takeaway: !!c.takeaway })),
+      sepetTs: Date.now(),
+      not: orderNote,
+      siparis: successOrderId || null,
+      siparisTs: successOrderId ? (d.siparis === successOrderId ? d.siparisTs : Date.now()) : null,
+    });
+  }, [cart, orderNote, successOrderId]);
+
+  // Giris yapan uye: takip edilen misafir QR siparisini uyeligine baglar.
+  // Puan odeme aninda yazilir. Kosul tutmazsa sessiz gecer (sunucu kurali).
+  const sahiplenDenendi = useRef(null);
+  useEffect(() => {
+    if (!customer || !kvkkDoc?.version || needsKvkk || !successOrderId || !siparisDurum?.sahiplenebilir) return;
+    // Anahtarda onay surumu var: KVKK onayi sonradan verilirse yeniden denenir.
+    const anahtar = successOrderId + ":" + (customer.kvkk_version || "");
+    if (sahiplenDenendi.current === anahtar) return;
+    sahiplenDenendi.current = anahtar;
+    supabase.rpc("nip_qr_siparis_sahiplen", { p_order_id: successOrderId }).then(({ data, error }) => {
+      if (error) return;
+      setBagliPuan(Number(data?.puan) || 0);
+      setSiparisDurum(d => d ? { ...d, uye: true, sahiplenebilir: false } : d);
+    });
+  }, [customer?.id, customer?.kvkk_version, kvkkDoc?.version, needsKvkk, successOrderId, siparisDurum?.sahiplenebilir]);
+
+  // Uye olmayan musteriyi giris penceresine goturur; donuste sepet ve siparis
+  // geri kurulur. Takip ekranindaysa once menuye gecer (pencere orada).
+  const uyeOlAc = () => {
+    durumYaz({ yol: window.location.pathname + window.location.search });
+    setCheckoutOpen(false);
+    if (successOrderId) setBrowsing(true);
+    setLoginSheet(true);
+  };
 
   const unlockAudio = async () => {
     if (audioUnlockedRef.current) return;
@@ -1501,16 +1603,16 @@ export default function CustomerMenu() {
     const W = (PROFIL === "nip" ? {
       tr: { h: ["BU SADECE", "BİR MENÜ", "DEĞİL."],
             p1: "Sürüşleri görebilir, etkinlikler için rezervasyon yapabilir, yarının kahve çekirdeğini seçebilir ve mağazadaki ürünler hakkında bilgi alabilirsin.",
-            p2: "Üye olup puan biriktirebilir, üyelere özel happy hour indirimlerinden yararlanabilirsin.",
-            go: "Başla" },
+            p2: "Üye ol: her 20 TL'ye 1 puan kazan. 1 puan kasada 1 TL değerinde.",
+            go: "Başla", uye: "Üye ol, puan biriktir", menu: "Menüye geç" },
       en: { h: ["THIS IS", "NOT JUST", "A MENU."],
             p1: "See the rides, book a place at events, pick tomorrow’s coffee beans and read up on everything in the shop.",
-            p2: "Become a member to collect points and use the members-only happy hour discounts.",
-            go: "Start" },
+            p2: "Join: earn 1 point for every 20 TL. 1 point is worth 1 TL at the till.",
+            go: "Start", uye: "Join and collect points", menu: "Go to the menu" },
       ru: { h: ["ЭТО", "НЕ ПРОСТО", "МЕНЮ."],
             p1: "Смотрите заезды, бронируйте места на события, выбирайте кофе на завтра и узнавайте о товарах магазина.",
-            p2: "Станьте участником: копите баллы и пользуйтесь скидками happy hour.",
-            go: "Начать" },
+            p2: "Вступите: 1 балл за каждые 20 TL. 1 балл = 1 TL на кассе.",
+            go: "Начать", uye: "Вступить и копить баллы", menu: "Перейти в меню" },
     } : {
       tr: { h: ["SİPARİŞİN", "BİR DOKUNUŞ", "UZAKTA."],
             p1: "Menüye göz at, siparişini masandan ver. Hazır olunca haber veririz.",
@@ -1558,9 +1660,22 @@ export default function CustomerMenu() {
                         color:lang===k?"#101214":"#B8BCC1"}}>{k.toUpperCase()}</button>
             ))}
           </div>
-          <button onClick={dismissWelcome} style={{width:"100%",padding:17,borderRadius:999,background:"#101214",color:"#fff",border:"none",fontSize:15,fontWeight:700,letterSpacing:"0.02em",cursor:"pointer",fontFamily:"inherit"}}>
-            {W.go}
-          </button>
+          {/* Uyelik acik profilde iki yol: uye ol (giris penceresi) ya da menuye
+              gec. Eskiden tek "Basla" vardi; Eylul-Ekim yeni uye sayisi 1'e dustu. */}
+          {W.uye && ozellik("uyelik") ? (
+            <>
+              <button onClick={() => { dismissWelcome(); setLoginSheet(true); }} style={{width:"100%",padding:17,borderRadius:999,background:"#101214",color:"#fff",border:"none",fontSize:15,fontWeight:700,letterSpacing:"0.02em",cursor:"pointer",fontFamily:"inherit"}}>
+                {W.uye}
+              </button>
+              <button onClick={dismissWelcome} style={{width:"100%",marginTop:10,padding:15,borderRadius:999,background:"transparent",color:"#101214",border:"1.5px solid #101214",fontSize:15,fontWeight:700,letterSpacing:"0.02em",cursor:"pointer",fontFamily:"inherit"}}>
+                {W.menu}
+              </button>
+            </>
+          ) : (
+            <button onClick={dismissWelcome} style={{width:"100%",padding:17,borderRadius:999,background:"#101214",color:"#fff",border:"none",fontSize:15,fontWeight:700,letterSpacing:"0.02em",cursor:"pointer",fontFamily:"inherit"}}>
+              {W.go}
+            </button>
+          )}
         </div>
       </div>
     );
@@ -1581,15 +1696,57 @@ export default function CustomerMenu() {
     const bg = orderStage === "ready" ? "#FAF6EE" : orderStage === "served" ? "#F5F5F5" : "#fff";
     const isReady = orderStage === "ready";
     const isServed = orderStage === "served";
+    const kazanilan = siparisDurum?.uye ? Number(siparisDurum?.puan) || 0 : 0;
     const PayBlock = () => orderPaid ? (
       <div style={{padding:"12px 18px",background:"#F5F5F5",border:"1px solid #E5E5E5",borderRadius:12,fontSize:14,fontWeight:800,color:"#444444",marginBottom:14}}>
         <Ikon ad="onayli" boy={15} style={{marginRight:6}}/>{L("Ödendi — teşekkürler!","Paid — thank you!","Оплачено — спасибо!")}
+        {kazanilan > 0 && (
+          <div style={{fontSize:13,fontWeight:700,marginTop:4,color:"#5A5348"}}>
+            <Ikon ad="yildiz" boy={13} style={{marginRight:5}}/>
+            {L(`+${kazanilan} puan hesabına eklendi`, `+${kazanilan} points added to your account`, `+${kazanilan} баллов начислено на ваш счёт`)}
+          </div>
+        )}
       </div>
     ) : onlinePayEnabled ? (
       <button onClick={startPay} disabled={payBusy} style={{padding:"14px 28px",background:"#000",color:"#fff",border:"none",borderRadius:12,fontSize:14,fontWeight:800,cursor:"pointer",marginBottom:14,opacity:payBusy?0.6:1}}>
         {payBusy ? L("Açılıyor...","Opening...","Открывается...") : <><Ikon ad="kart" boy={15} style={{marginRight:7}}/>{L("Kart ile Öde","Pay by Card","Оплатить картой")}</>}
       </button>
     ) : null;
+    // Uyelik karti: misafire "uye ol, +N puan"; giris yapinca siparis uyelige
+    // baglanir (nip_qr_siparis_sahiplen) ve "odeyince +N puan" yazar.
+    const UyeKarti = () => {
+      if (!ozellik("uyelik") || !siparisDurum) return null;
+      const n = puanHesap(siparisDurum.total);
+      const kart = {display:"block",width:"100%",boxSizing:"border-box",padding:"12px 16px",background:"#FAF6EE",border:"1px solid #EDE6D8",
+                    borderRadius:12,fontSize:13.5,fontWeight:700,color:"#5A5348",marginBottom:14,lineHeight:1.5,fontFamily:"inherit",textAlign:"center"};
+      if (customer && siparisDurum.uye && !orderPaid) {
+        const p = bagliPuan ?? n;
+        return p > 0 ? (
+          <div style={kart}><Ikon ad="yildiz" boy={13} style={{marginRight:5}}/>
+            {L(`Sipariş üyeliğine bağlı. Ödeyince +${p} puan kazanırsın.`, `Linked to your membership. You earn +${p} points when you pay.`, `Заказ привязан к вашему аккаунту. После оплаты: +${p} баллов.`)}
+          </div>
+        ) : null;
+      }
+      if (!customer && siparisDurum.sahiplenebilir && n > 0) {
+        return (
+          <button onClick={uyeOlAc} style={{...kart,cursor:"pointer"}}>
+            <Ikon ad="yildiz" boy={13} style={{marginRight:5}}/>
+            {L(`Üye ol, bu siparişten +${n} puan kazan`, `Join and earn +${n} points on this order`, `Вступите и получите +${n} баллов за этот заказ`)}
+            <Ikon ad="oksag" boy={13} style={{marginLeft:5}}/>
+          </button>
+        );
+      }
+      if (!customer && orderPaid && !siparisDurum.uye && n > 0) {
+        return (
+          <button onClick={uyeOlAc} style={{...kart,cursor:"pointer",fontWeight:600}}>
+            {L(`Üye olsaydın bu siparişten +${n} puan kazanırdın. Bir dahaki sefere puanını al: üye ol.`,
+               `As a member you would have earned +${n} points. Join to collect next time.`,
+               `Участник получил бы +${n} баллов. Вступите, чтобы копить в следующий раз.`)}
+          </button>
+        );
+      }
+      return null;
+    };
     return (
       <div className="nip-customer" style={{fontFamily:cv,background:bg,minHeight:"100vh",padding:"40px 20px",color:"#000",transition:"background 0.4s"}}>
         {payToken && (
@@ -1610,6 +1767,7 @@ export default function CustomerMenu() {
                 {table ? (table.name + " · ") : ""}{t.pick_from_cashier}
               </div>
               <PayBlock/>
+              <UyeKarti/>
               <div><button onClick={() => { playDing(); vibrate(); }} style={{padding:"12px 24px",background:"#000000",color:"#FFFFFF",border:"none",borderRadius:12,fontSize:13,fontWeight:800,cursor:"pointer"}}>{t.play_again}</button></div>
             </>
           ) : isServed ? (
@@ -1617,6 +1775,8 @@ export default function CustomerMenu() {
               <Ikon ad="kalp" boy={68} kalin={1.15} style={{display:"block",margin:"0 auto 14px"}}/>
               <div style={{fontSize:26,fontWeight:800,marginBottom:8}}>{t.enjoy}</div>
               <div style={{fontSize:14,color:"#555",marginBottom:24,lineHeight:1.5}}>{t.thanks}</div>
+              <PayBlock/>
+              <UyeKarti/>
               <button onClick={() => { setSuccessOrderId(null); setOrderStage("pending"); load(); }} style={{padding:"14px 28px",background:"#000000",color:"#FFFFFF",border:"none",borderRadius:12,fontSize:14,fontWeight:800,cursor:"pointer"}}>{t.new_order}</button>
             </>
           ) : (
@@ -1640,6 +1800,7 @@ export default function CustomerMenu() {
                 )}
               </div>
               <PayBlock/>
+              <UyeKarti/>
               {CUST_TABS.length > 1 && (<>
               <button onClick={() => setBrowsing(true)} style={{padding:"12px 24px",background:orderPaid?"#000":"#f2f2f2",color:orderPaid?"#fff":"#333",border:"none",borderRadius:12,fontSize:13,fontWeight:700,cursor:"pointer"}}>
                 {L("Beklerken göz at","Browse while you wait","Полистайте, пока ждёте")}<Ikon ad="oksag" boy={14} style={{marginLeft:6}}/>
@@ -2457,6 +2618,8 @@ export default function CustomerMenu() {
                 <button onClick={() => {
                   if (inAppBrowser) { alert(t.login_inapp); return; }
                   if (!kvkkHazirla()) return;
+                  // Google /menu'ye doner: masa, sepet ve siparis geri kurulsun.
+                  durumYaz({ giris: true, yol: window.location.pathname + window.location.search });
                   signInWithGoogle();
                 }}
                   style={{width:"100%",padding:"14px",background:(!kvkkDoc?.version||kvkkOk)?"#000":"#DDDDDD",color:(!kvkkDoc?.version||kvkkOk)?"#fff":"#666",border:"none",borderRadius:12,fontSize:14,fontWeight:800,cursor:(!kvkkDoc?.version||kvkkOk)?"pointer":"default",fontFamily:"inherit"}}>
@@ -2616,6 +2779,28 @@ export default function CustomerMenu() {
                 <span>{walletBalance} {L("puan","pts","б.")} = ₺{walletBalance}</span>
               </button>
             )}
+            {/* Misafire: bu siparisten kac puan kazanacagi. Giris sepeti silmez
+                (menu durumu kaydi); donuste sepet ve masa geri kurulur. */}
+            {!customer && ozellik("uyelik") && (() => {
+              const n = puanHesap(cartTotal);
+              return (
+                <div style={{marginTop:14}}>
+                  <button onClick={uyeOlAc}
+                    style={{width:"100%",padding:"12px 14px",display:"flex",justifyContent:"space-between",alignItems:"center",gap:10,
+                            background:"#FAF6EE",color:"#5A5348",border:"1px solid #EDE6D8",borderRadius:12,fontSize:13,fontWeight:800,
+                            cursor:"pointer",fontFamily:"inherit",textAlign:"left"}}>
+                    <span><Ikon ad="yildiz" boy={14} style={{marginRight:6}}/>
+                      {n > 0 ? L(`Üye ol, bu siparişten +${n} puan kazan`, `Join and earn +${n} points on this order`, `Вступите и получите +${n} баллов за этот заказ`)
+                             : L("Üye ol, puan biriktir", "Join and collect points", "Вступите и копите баллы")}
+                    </span>
+                    <span style={{whiteSpace:"nowrap",display:"flex",alignItems:"center"}}>{L("Üye ol","Join","Вступить")}<Ikon ad="oksag" boy={13} style={{marginLeft:4}}/></span>
+                  </button>
+                  <div style={{fontSize:11,color:"#888888",marginTop:6}}>
+                    {L("Sepetin korunur. Girişten sonra buraya dönersin.","Your cart is kept. You come back here after signing in.","Корзина сохранится. После входа вы вернётесь сюда.")}
+                  </div>
+                </div>
+              );
+            })()}
             <div style={{display:"flex",justifyContent:"space-between",alignItems:"center",marginTop:16,padding:"14px 0",borderTop:"2px solid #000"}}>
               <div style={{fontSize:13,color:"#333",letterSpacing:"1px",fontWeight:700}}>{t.total}</div>
               <div style={{fontSize:22,fontWeight:800}}>
