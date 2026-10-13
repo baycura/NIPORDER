@@ -149,10 +149,16 @@ export default function CashCountsPage() {
                 </div>
               </div>
               <div style={{ textAlign: "right" }}>
+                {/* Yeni baslangic: onceki geceler sayilmamisti, acilis bilinmiyordu.
+                    Fark anlamsiz; gosterilmez (20261013_kasa_yeniden_baslangic). */}
+                {gecerli.yeniden_baslangic ? (
+                  <div style={{ fontSize: 13, fontWeight: 800, color: C.muted }}>Yeni başlangıç</div>
+                ) : (
                 <div style={{ fontSize: 17, fontWeight: 800, fontVariantNumeric: "tabular-nums",
                               color: farkRengi(gecerli.difference) }}>
                   {Number(gecerli.difference) > 0 ? "+" : ""}{fmtTL(gecerli.difference)}
                 </div>
+                )}
                 <div style={{ fontSize: 12, color: C.faint, fontVariantNumeric: "tabular-nums" }}>
                   {fmtTL(gecerli.counted_total)} sayıldı
                 </div>
@@ -162,6 +168,12 @@ export default function CashCountsPage() {
             {acikBu && (
               <div style={{ marginTop: 12, paddingTop: 12, borderTop: `1px solid ${C.line}`,
                             fontSize: 13, color: C.muted, lineHeight: 1.9 }}>
+                {gecerli.yeniden_baslangic && (
+                  <div style={{ color: C.ink, lineHeight: 1.6, marginBottom: 8 }}>
+                    Yeni başlangıç: önceki geceler sayılmamıştı, açılış bilinmiyordu.
+                    Aşağıdaki fark bilgi içindir, hesaba katılmaz.
+                  </div>
+                )}
                 {[["Dünden devreden", gecerli.opening_float],
                   ["Nakit tahsilat", gecerli.cash_sales],
                   ["Kasadan gider", -Number(gecerli.cash_expenses || 0)],
@@ -215,7 +227,9 @@ export default function CashCountsPage() {
                                                marginBottom: 4, lineHeight: 1.5 }}>
                         {i + 1}. {z.tur === "devir" ? "DEVİR · " : ""}
                         {new Date(z.created_at).toLocaleTimeString("tr-TR", { hour: "2-digit", minute: "2-digit" })}
-                        {" · "}{fmtTL(z.counted_total)} · fark {Number(z.difference) > 0 ? "+" : ""}{fmtTL(z.difference)}
+                        {" · "}{fmtTL(z.counted_total)}
+                        {z.yeniden_baslangic ? " · yeni başlangıç"
+                          : <> · fark {Number(z.difference) > 0 ? "+" : ""}{fmtTL(z.difference)}</>}
                         {" · "}{z.counted_by_person}
                         {z.reason && <> — {z.reason}</>}
                         {z.id === gecerli.id && <span style={{ fontWeight: 700 }}> · geçerli</span>}

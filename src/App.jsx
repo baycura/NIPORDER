@@ -84,7 +84,7 @@ function AppRoutes() {
         <Route path="cash-count"       element={<PrivateRoute deny={["viewer","kitchen"]}><CashCountPage /></PrivateRoute>} />
         <Route path="cash-history"     element={<PrivateRoute managerOnly><CashCountsPage /></PrivateRoute>} />
         <Route path="stock"            element={<PrivateRoute deny={["parttime"]}><StockViewPage /></PrivateRoute>} />
-        <Route path="myshift"          element={<PrivateRoute deny={["viewer","parttime"]}><MyShiftPage /></PrivateRoute>} />
+        <Route path="myshift"          element={<PrivateRoute deny={["viewer"]}><MyShiftPage /></PrivateRoute>} />
         <Route path="stock-mgmt"       element={<PrivateRoute managerOnly><StockMgmtPage /></PrivateRoute>} />
         <Route path="product-stock"    element={<PrivateRoute managerOnly><ProductStockPage /></PrivateRoute>} />
         {/* Sayim yoneticiye kilitli DEGIL: rafi fiilen sayan bar personeli.

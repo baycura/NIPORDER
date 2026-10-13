@@ -11,6 +11,8 @@ import PartiKasa from "../../components/PartiKasa.jsx";
 import { partiDurumOku } from "../../lib/parti.js";
 import { businessDayStart } from "../../lib/businessDay.js";
 import { useMasaustu, useGenisEkran, useDokunmatik } from "../../lib/ekran.js";
+import { misafirHesapAc } from "../../lib/misafirHesap.js";
+import { sonListe } from "../../components/Bildirim.jsx";
 
 const cv = "-apple-system,BlinkMacSystemFont,'Segoe UI',Roboto,sans-serif";
 
@@ -555,9 +557,16 @@ export default function OrderDetailPage() {
   // ONAY burada DEGIL: dugmenin kendisi iki asamali (PartiKasa). Native
   // confirm() ekranin ortasinda acilip parmagi kosedeki dugmeden koparirdi.
   const [tahsilBusy, setTahsilBusy] = useState(false);
+  // Tahsil edilecek tutar: hesap daha once bolunmusse (biri kendi kalemini
+  // odediyse) KALAN, degilse hesabin toplami. Sunucudaki kural (nip_odeme_al)
+  // ile ayni; aksi halde "tutar farkli, neden yaz" hatasi alinirdi.
+  const odenmisVar = items.some(i => Number(i.odenen_adet || 0) > 0);
+  const hizliTutar = odenmisVar
+    ? Math.round(items.reduce((t, i) => t + Number(i.final_price || 0) * Math.max(0, Number(i.quantity || 0) - Number(i.odenen_adet || 0)), 0) * 100) / 100
+    : Number(order?.total || 0);
   const hizliTahsil = async (yontem) => {
     if (tahsilBusy) return;
-    const tutar = Number(order?.total || 0);
+    const tutar = hizliTutar;
     if (!(tutar > 0)) { alert("Hesapta tahsil edilecek tutar yok"); return; }
     setTahsilBusy(true);
     const { data, error } = await supabase.rpc("nip_odeme_al", {
@@ -580,11 +589,41 @@ export default function OrderDetailPage() {
             + Math.round(Number(sonuc.kalan || 0)) + ".");
       return;
     }
-    // Tahsilattan sonra siradaki musteri icin bos hesap acip IZGARADA KALIR.
-    // Masalara donup "+ Misafir"e basmak, pesi sira gelen tezgah satisinda
-    // her seferinde iki ekran degisimi demekti. Acilamazsa masalara doner —
-    // tahsilat zaten tamamlandi, kasiyer ortada kalmasin.
-    if (!(await yeniHesap())) navigate("/tables");
+    // PARTI IZGARASI: tahsilattan sonra siradaki musteri icin bos hesap acip
+    // IZGARADA KALIR. Masalara donup "+ Misafir"e basmak, pesi sira gelen
+    // tezgah satisinda her seferinde iki ekran degisimi demekti. Acilamazsa
+    // masalara doner — tahsilat zaten tamamlandi, kasiyer ortada kalmasin.
+    if (partiKasaAcik) {
+      if (!(await yeniHesap())) navigate("/tables");
+      return;
+    }
+    // GUNDUZ: bos hesap ACILMAZ (gunduz bos hesaplar listeyi dolduruyordu).
+    // Personel geldigi listeye doner; kisa bir yazi tahsilati onaylar.
+    const ad = order?.table_id ? (tables[order.table_id] || "Masa") : (order?.customer_name || "Hesap");
+    navigate(sonListe(), { state: { bildirim: `${ad}: ₺${Math.round(tutar).toLocaleString("tr-TR")} ${yontem === "card" ? "kart" : "nakit"} alındı` } });
+  };
+
+  // HIZLI ODEME DUGMELERI (gunduz alt cubugu). Iki asamali: ilk dokunus
+  // KURAR, ikinci dokunus tahsil eder (PartiKasa ile ayni kalip). Hizli cift
+  // dokunus kurulumu atlamasin diye ilk 450 ms icindeki dokunus sayilmaz.
+  // Olcum: son 30 gunde 758 hesabin 691'i (%91) tek seferde kart ya da nakit;
+  // eskiden her biri Kasa ekranini ve "Tamam" penceresini geciyordu.
+  const [hizliKurulu, setHizliKurulu] = useState(null); // "card" | "cash" | null
+  const hizliKurulumAni = useRef(0);
+  useEffect(() => { setHizliKurulu(null); }, [hizliTutar, items.length, orderId]);
+  useEffect(() => {
+    if (!hizliKurulu) return;
+    const z = setTimeout(() => setHizliKurulu(null), 4000);
+    return () => clearTimeout(z);
+  }, [hizliKurulu]);
+  const hizliBas = (yontem) => {
+    if (tahsilBusy || !(hizliTutar > 0)) return;
+    if (hizliKurulu === yontem) {
+      if (Date.now() - hizliKurulumAni.current < 450) return;
+      setHizliKurulu(null); hizliTahsil(yontem); return;
+    }
+    hizliKurulumAni.current = Date.now();
+    setHizliKurulu(yontem);
   };
 
   // YENI HESAP — parti izgarasindan cikmadan siradaki musteriyi ac.
@@ -592,22 +631,8 @@ export default function OrderDetailPage() {
   // "Misafir N"in bir fazlasi. Numara etiketten ibaret ama tezgahta ise
   // yariyor ("3 numara hazır" diye seslenebiliyorlar).
   const yeniHesap = async () => {
-    const magaza = staffUser?.store_ids?.[0];
-    if (!magaza) { alert("Mağaza bulunamadı"); return false; }
-    const { data: gunun } = await supabase.from("orders").select("customer_name")
-      .in("origin_store_id", staffUser.store_ids)
-      .gte("created_at", businessDayStart().toISOString())
-      .like("customer_name", "Misafir %");
-    const enBuyuk = (gunun || []).reduce((m, o) => {
-      const n = parseInt(String(o.customer_name).replace("Misafir ", ""), 10);
-      return isFinite(n) && n > m ? n : m;
-    }, 0);
-    const { data: yeni, error } = await supabase.from("orders").insert({
-      table_id: null, customer_name: "Misafir " + (enBuyuk + 1),
-      origin_store_id: magaza, staff_id: staffUser?.id,
-      status: "open", subtotal: 0, total: 0, discount_amount: 0,
-    }).select().single();
-    if (error) { alert("Hesap açılamadı: " + error.message); return false; }
+    const { data: yeni, error } = await misafirHesapAc({ staffUser });
+    if (error || !yeni) { alert("Hesap açılamadı: " + (error?.message || "")); return false; }
     navigate("/orders/" + yeni.id);
     return true;
   };
@@ -852,19 +877,46 @@ export default function OrderDetailPage() {
           gitmesin. Mobilde tab barin ustunde, masaustunde kenar menunun saginda. */}
       {!kapali && (
         <div style={{position:"fixed",bottom:cubukAlt,left:masaustu?240:0,right:0,zIndex:40,padding:"0 14px",pointerEvents:"none"}}>
+          {/* Uyeye bagli hesap: kasiyer hizli odemede de kimin puan kazanacagini gorsun. */}
+          {order.customer_id && items.length > 0 && (
+            <div style={{maxWidth:sayfaEni,margin:"0 auto 6px",display:"flex",justifyContent:"flex-end"}}>
+              <span style={{pointerEvents:"auto",fontSize:11.5,fontWeight:700,color:"#F0EDE8",background:"#161616",border:"1px solid #2A2A2A",borderRadius:20,padding:"4px 10px",display:"inline-flex",alignItems:"center",gap:4}}>
+                <Ikon ad="yildiz" boy={11}/>{uyeAdi || order.customer_name || "Üye"} · puan kazanır
+              </span>
+            </div>
+          )}
           <div style={{display:"flex",gap:8,maxWidth:sayfaEni,margin:"0 auto",pointerEvents:"auto"}}>
             <button onClick={() => setEkleAcik(true)}
-              style={{flex:3,minWidth:0,padding:"14px 10px",minHeight:50,background:"#FFFFFF",color:"#000",border:"none",borderRadius:12,fontSize:14,fontWeight:800,cursor:"pointer",
-                      boxShadow:"0 4px 16px rgba(0,0,0,0.5)",display:"inline-flex",alignItems:"center",justifyContent:"center",gap:6,fontFamily:"inherit",whiteSpace:"nowrap"}}>
-              <Ikon ad="ekle" boy={16}/>Ürün Ekle
+              style={{flex:items.length > 0 ? 1.4 : 3,minWidth:0,padding:"14px 8px",minHeight:50,borderRadius:12,fontSize:14,fontWeight:800,cursor:"pointer",
+                      background:items.length > 0 ? "#2A2A2A" : "#FFFFFF",color:items.length > 0 ? "#F0EDE8" : "#000",border:"none",
+                      boxShadow:"0 4px 16px rgba(0,0,0,0.5)",display:"inline-flex",alignItems:"center",justifyContent:"center",gap:5,fontFamily:"inherit",whiteSpace:"nowrap"}}>
+              <Ikon ad="ekle" boy={16}/>{items.length > 0 ? "Ürün" : "Ürün Ekle"}
             </button>
-            {items.length > 0 ? (
-              <button onClick={goToPayment}
-                style={{flex:2,minWidth:0,padding:"14px 10px",minHeight:50,background:allReady?"#FFFFFF":"#2A2A2A",color:allReady?"#000":"#F0EDE8",border:"none",borderRadius:12,fontSize:13.5,fontWeight:800,cursor:"pointer",
-                        boxShadow:"0 4px 16px rgba(0,0,0,0.5)",display:"inline-flex",alignItems:"center",justifyContent:"center",gap:5,fontFamily:"inherit",whiteSpace:"nowrap",overflow:"hidden",textOverflow:"ellipsis"}}>
-                <Ikon ad={allReady ? "onay" : "kasa"} boy={15}/>Ödeme · ₺{order.total || 0}
+            {items.length > 0 ? (<>
+              {/* Kart (ana) · Nakit · Diger. Bolme, uye, puan, borc ve indirim
+                  "Diger"de: bugunku Kasa ekrani. */}
+              <button onClick={() => hizliBas("card")} disabled={tahsilBusy || !(hizliTutar > 0)}
+                style={{flex:2.6,minWidth:0,padding:"14px 8px",minHeight:50,border:"none",borderRadius:12,fontSize:13.5,fontWeight:800,cursor:"pointer",
+                        background:hizliKurulu==="card"?"#C87A6A":"#FFFFFF",color:"#000",opacity:tahsilBusy?0.6:1,
+                        boxShadow:"0 4px 16px rgba(0,0,0,0.5)",display:"inline-flex",alignItems:"center",justifyContent:"center",gap:5,fontFamily:"inherit",whiteSpace:"nowrap",overflow:"hidden",textOverflow:"ellipsis",fontVariantNumeric:"tabular-nums"}}>
+                {hizliKurulu === "card"
+                  ? <>Onayla ₺{Math.round(hizliTutar).toLocaleString("tr-TR")}</>
+                  : <><Ikon ad="kart" boy={15}/>Kart ₺{Math.round(hizliTutar).toLocaleString("tr-TR")}</>}
               </button>
-            ) : (
+              <button onClick={() => hizliBas("cash")} disabled={tahsilBusy || !(hizliTutar > 0)}
+                style={{flex:1.3,minWidth:0,padding:"14px 6px",minHeight:50,borderRadius:12,fontSize:13,fontWeight:800,cursor:"pointer",
+                        background:hizliKurulu==="cash"?"#C87A6A":"#161616",color:hizliKurulu==="cash"?"#000":"#F0EDE8",
+                        border:"1px solid "+(hizliKurulu==="cash"?"#C87A6A":"#3A3A3A"),opacity:tahsilBusy?0.6:1,
+                        boxShadow:"0 4px 16px rgba(0,0,0,0.5)",display:"inline-flex",alignItems:"center",justifyContent:"center",gap:4,fontFamily:"inherit",whiteSpace:"nowrap",overflow:"hidden"}}>
+                {hizliKurulu === "cash" ? "Onayla" : <><Ikon ad="nakit" boy={14}/>Nakit</>}
+              </button>
+              <button onClick={goToPayment} aria-label="Diğer ödeme: bölme, üye, puan, borç, indirim"
+                style={{flex:1.1,minWidth:0,padding:"14px 6px",minHeight:50,borderRadius:12,fontSize:12.5,fontWeight:700,cursor:"pointer",
+                        background:"#161616",color:"#aaa",border:"1px solid #2A2A2A",
+                        boxShadow:"0 4px 16px rgba(0,0,0,0.5)",display:"inline-flex",alignItems:"center",justifyContent:"center",fontFamily:"inherit",whiteSpace:"nowrap"}}>
+                Diğer
+              </button>
+            </>) : (
               <div style={{flex:2,minWidth:0,padding:"14px 10px",minHeight:50,boxSizing:"border-box",background:"#161616",color:"#666",border:"1px solid #2A2A2A",borderRadius:12,fontSize:12.5,fontWeight:700,
                            display:"inline-flex",alignItems:"center",justifyContent:"center",whiteSpace:"nowrap"}}>
                 Sepet boş · ₺0
