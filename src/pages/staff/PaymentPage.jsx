@@ -131,7 +131,10 @@ export default function PaymentPage() {
     setOrders(prev => prev.filter(x => x.id !== o.id));
   };
 
-  const [memberPts, setMemberPts] = useState(null); // {points, name} — modal acilinca cekilir
+  // {points, name, borc} — modal acilinca cekilir. Borcu olan kisi puan
+  // HARCAYAMAZ (20261013_borc_puan.sql); dugme gizlenir, sunucu da reddeder.
+  const [memberPts, setMemberPts] = useState(null);
+  const uyeOf = (c) => c ? { name: c.name, points: Number(c.points || 0), borc: Number(c.outstanding_balance || 0) } : null;
   const [usePoints, setUsePoints] = useState(false);
   // yontem: "Borca aktar" pencereyi Borc secili acar. Varsayilan kart
   // (20261002 karari); eskiden burada "cash" yaziliyordu ve useState'teki
@@ -156,8 +159,8 @@ export default function PaymentPage() {
     setYeniKisi(null);
     // Uyeye bagli siparis: cuzdan bakiyesi gosterilir, kasiyer puanla kapatabilir
     if (o.customer_id) {
-      supabase.from("customers").select("name, points").eq("id", o.customer_id).maybeSingle()
-        .then(({ data }) => setMemberPts(data ? { name: data.name, points: Number(data.points || 0) } : null));
+      supabase.from("customers").select("name, points, outstanding_balance").eq("id", o.customer_id).maybeSingle()
+        .then(({ data }) => setMemberPts(uyeOf(data)));
     }
   };
 
@@ -248,14 +251,14 @@ export default function PaymentPage() {
     setCustomerId(yeni);
     if (!yeni) { setMemberPts(null); setUsePoints(false); return; }
     const c = customers.find(x => x.id === yeni);
-    setMemberPts(c ? { name: c.name, points: Number(c.points || 0) } : null);
+    setMemberPts(uyeOf(c));
   };
   // Yeni acilan ya da telefondan bulunan kisiyi listeye koyup dogrudan secer
   // (secUye toggle'dir; burada "kaldir" anlami istenmez).
   const kisiSecDirekt = (row) => {
     setCustomers(prev => prev.some(c => c.id === row.id) ? prev : [...prev, row].sort((a, b) => String(a.name).localeCompare(String(b.name), "tr")));
     setCustomerId(row.id);
-    setMemberPts({ name: row.name, points: Number(row.points || 0) });
+    setMemberPts(uyeOf(row));
     setYeniKisi(null); setCustomerSearch("");
   };
 
@@ -343,6 +346,8 @@ export default function PaymentPage() {
   // YALNIZCA puan kullaniliyorken guncellenir. Aksi halde kasiyerin elle
   // yazdigi tutar, uye secildigi anda sessizce siparis toplamina donerdi.
   useEffect(() => {
+    // Musteri QR'dan "puanla ode" isaretlemis olabilir; borcu varsa kapatilir.
+    if (memberPts?.borc > 0.005 && usePoints) { setUsePoints(false); return; }
     if (!modal || !usePoints) return;
     setAmount(String(Math.max(0, Number(modal.total || 0) - ptsCover(modal))));
   }, [memberPts]);
@@ -641,7 +646,13 @@ export default function PaymentPage() {
               </button>
             )}
 
-            {uyeId && memberPts && memberPts.points > 0 && method !== "debt" && (
+            {uyeId && memberPts && memberPts.borc > 0.005 && method !== "debt" && (
+              <div style={{marginBottom:12,padding:"10px 12px",border:"1px solid #2A2A2A",borderRadius:10,fontSize:12,color:"#aaa",lineHeight:1.5}}>
+                <Ikon ad="veresiye" boy={13} style={{marginRight:5}}/>{memberPts.name} kişisinin ₺{Math.round(memberPts.borc)} borcu var.
+                Borcunu ödemeden puan kullanamaz. Bu hesaptan kazandığı puan birikir.
+              </div>
+            )}
+            {uyeId && memberPts && memberPts.points > 0 && !(memberPts.borc > 0.005) && method !== "debt" && (
               <button onClick={() => setUsePoints(!usePoints)}
                 style={{width:"100%",marginBottom:12,padding:"12px 14px",display:"flex",justifyContent:"space-between",alignItems:"center",
                         background:usePoints?"#000":"#161616",color:"#FFFFFF",
