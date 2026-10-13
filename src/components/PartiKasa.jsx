@@ -1,4 +1,4 @@
-import { useEffect, useMemo, useState } from "react";
+import { useEffect, useMemo, useRef, useState } from "react";
 import { useNavigate } from "react-router-dom";
 import { supabase } from "../lib/supabase";
 import { optionsText } from "../lib/productOptions.js";
@@ -118,7 +118,12 @@ export default function PartiKasa({
   // Yanlislikla dokunulursa dort saniyede kendiliginden geri doner; hesap
   // degisirse (biri urun eklediyse) kurulum ANINDA duser — eski tutari
   // onaylama ihtimali kalmasin.
+  //
+  // CIFT DOKUNUS: hizli iki dokunus kurulumu ATLAYIP tahsil ediyordu (React
+  // ilk dokunusun durumunu ikinciden once islemeye yetisiyor). Kurulumdan
+  // sonraki 450 ms icindeki dokunus onay sayilmaz.
   const [kurulu, setKurulu] = useState(null); // "card" | "cash" | null
+  const kurulumAni = useRef(0);
   const [yeniBusy, setYeniBusy] = useState(false);
   useEffect(() => { setKurulu(null); }, [toplam, items.length, order?.id]);
   useEffect(() => {
@@ -128,7 +133,11 @@ export default function PartiKasa({
   }, [kurulu]);
   const tahsilBas = (yontem) => {
     if (!tahsilEdilebilir || tahsilBusy) return;
-    if (kurulu === yontem) { setKurulu(null); onTahsil && onTahsil(yontem); return; }
+    if (kurulu === yontem) {
+      if (Date.now() - kurulumAni.current < 450) return;
+      setKurulu(null); onTahsil && onTahsil(yontem); return;
+    }
+    kurulumAni.current = Date.now();
     setKurulu(yontem);
   };
   const toplamAdet = items.reduce((s, i) => s + (i.quantity || 0), 0);

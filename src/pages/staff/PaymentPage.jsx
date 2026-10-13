@@ -5,6 +5,8 @@ import { useAuth } from "../../contexts/AuthContext.jsx";
 import Ikon from "../../components/Ikon.jsx";
 import SayiGirisi from "../../components/SayiGirisi.jsx";
 import { ozellik } from "../../lib/profil.js";
+import { BorclularPaneli, tl } from "../../components/BorcTahsil.jsx";
+import { telefonNormalize } from "../../lib/telefon.js";
 
 // BOLUNMUS ODEME — kasadan gelen ihtiyac (20.09.2026):
 // "Masaya kalabalik oturup siparis veriyorlar, sonra ayri ayri odemek
@@ -25,6 +27,12 @@ const saatFarki = (iso) => {
   return Math.floor(sa / 24) + " gün önce açıldı";
 };
 const bayatMi = (iso) => (Date.now() - new Date(iso).getTime()) > BAYAT_SAAT * 3600 * 1000;
+
+// Masasiz, adi yazilmis ve bir gunden uzun acik hesap fiilen veresiyedir ama
+// borc defterinde gorunmez (canli: Ilya 28 gun, Devo 14 gun). "Misafir N"
+// parti hesabidir, veresiye degil.
+const veresiyeMi = (o) => !o.table_id && !!o.customer_name && !/^misafir\b/i.test(o.customer_name.trim())
+  && Number(o.total || 0) > 0 && (Date.now() - new Date(o.created_at).getTime()) > 24 * 3600 * 1000;
 
 export default function PaymentPage() {
   const navigate = useNavigate();
@@ -62,9 +70,22 @@ export default function PaymentPage() {
   // Acik penceredeki hesabin kalemleri ve kasiyerin sectikleri
   const [kalemler, setKalemler] = useState([]);
   const [secim, setSecim] = useState({});   // { order_item_id: adet }
+  // Borclular: tahsilat kasada alinir (20261013_borc_tahsilat.sql).
+  const [borclular, setBorclular] = useState([]);
+  const [borcHata, setBorcHata] = useState(false);
+  const [borcPaneli, setBorcPaneli] = useState(false);
+  // Hata bos liste sayilmaz: "kimsenin borcu yok" yazip borclu musteriye
+  // yanlis bilgi verdirmesin.
+  const borclulariYukle = () => supabase.rpc("nip_borclular")
+    .then(({ data, error }) => {
+      setBorcHata(!!error);
+      if (!error) setBorclular(Array.isArray(data) ? data : []);
+    });
+  const borcAcik = borclular.filter(b => Number(b.bakiye) > 0.005);
 
   const load = async () => {
     setLoading(true);
+    borclulariYukle();
     const [{data: ords}, {data: tabs}, {data: custs}] = await Promise.all([
       supabase.from("orders").select("id, table_id, customer_name, customer_id, use_points, staff_id, total, status, created_at, origin_store_id, stores:origin_store_id(slug, name)").in("origin_store_id", staffUser?.store_ids?.length ? staffUser.store_ids : ["00000000-0000-0000-0000-000000000000"]).in("status", ["open","sent","preparing","ready"]).order("created_at", { ascending: false }),
       supabase.from("cafe_tables").select("id, name").in("store_id", staffUser?.store_ids?.length ? staffUser.store_ids : ["00000000-0000-0000-0000-000000000000"]),
@@ -112,7 +133,10 @@ export default function PaymentPage() {
 
   const [memberPts, setMemberPts] = useState(null); // {points, name} — modal acilinca cekilir
   const [usePoints, setUsePoints] = useState(false);
-  const openPay = (o) => {
+  // yontem: "Borca aktar" pencereyi Borc secili acar. Varsayilan kart
+  // (20261002 karari); eskiden burada "cash" yaziliyordu ve useState'teki
+  // kart varsayilanini her pencerede eziyordu.
+  const openPay = (o, yontem = "card") => {
     // Tutar kutusu KALAN ile acilir: yarim odenmis masada tam tutari istemek
     // kasiyerin en kolay yaptigi hata olurdu.
     const kalan = BOL && bolum[o.id] ? bolum[o.id].kalan : null;
@@ -123,9 +147,11 @@ export default function PaymentPage() {
         .eq("order_id", o.id).order("created_at")
         .then(({ data }) => setKalemler(data || []));
     }
-    setModal(o); setMethod("cash");
+    setModal(o); setMethod(yontem);
     setAmount(String(kalan != null && kalan > 0 ? Math.round(kalan) : (o.total || 0)));
-    setCustomerId(null); setCustomerSearch(""); setUyeAcik(false);
+    // Borca aktarirken kisi aramasi hesabin adiyla baslar: kisi kayitliysa
+    // tek dokunusla secilir, degilse "+ Yeni kisi" adi hazir getirir.
+    setCustomerId(null); setCustomerSearch(yontem === "debt" ? (o.customer_name || "") : ""); setUyeAcik(false);
     setUsePoints(!!o.use_points); setMemberPts(null); setFarkNedeni(""); setFarkTuru(null);
     setYeniKisi(null);
     // Uyeye bagli siparis: cuzdan bakiyesi gosterilir, kasiyer puanla kapatabilir
@@ -231,18 +257,6 @@ export default function PaymentPage() {
     setCustomerId(row.id);
     setMemberPts({ name: row.name, points: Number(row.points || 0) });
     setYeniKisi(null); setCustomerSearch("");
-  };
-
-  // Telefonu uyelerle ayni bicime getir (+90…): uye kaydi E.164 tutar
-  // (save_member_profile). Kasada "0555 123 45 67" yazilip sonra ayni kisi
-  // uye olursa iki kayit olusmasin. Kisa/anlamsiz giris oldugu gibi kalir.
-  const telefonNormalize = (s) => {
-    const d = String(s || "").replace(/\D/g, "");
-    if (!d) return "";
-    if (d.length === 10 && d.startsWith("5")) return "+90" + d;
-    if (d.length === 11 && d.startsWith("05")) return "+9" + d;
-    if (d.length === 12 && d.startsWith("90")) return "+" + d;
-    return String(s || "").trim().startsWith("+") ? "+" + d : d;
   };
 
   const yeniKisiAc = () => {
@@ -427,6 +441,27 @@ export default function PaymentPage() {
         </div>
       )}
 
+      {(borclular.length > 0 || borcHata || orders.some(veresiyeMi)) && (() => {
+        const toplam = borcAcik.reduce((t, b) => t + Number(b.bakiye || 0), 0);
+        return (
+          <button onClick={() => { borclulariYukle(); setBorcPaneli(true); }}
+            style={{width:"100%",background:"#161616",border:"1px solid #2A2A2A",borderRadius:12,padding:"12px 14px",
+                    marginBottom:12,cursor:"pointer",display:"flex",alignItems:"center",gap:10,fontSize:13,
+                    color:"#F0EDE8",fontFamily:"inherit",textAlign:"left"}}>
+            <Ikon ad="veresiye" boy={17}/>
+            <span style={{flex:1}}>
+              <b>Borçlular</b>
+              <span style={{color:"#888",display:"block",fontSize:12,marginTop:2}}>
+                {borcAcik.length ? `${borcAcik.length} kişi · borcunu ödeyen buradan tahsil edilir`
+                  : borclular.length ? "Bugün borcunu kapatanlar" : "Uzun süredir açık hesaplar var"}
+              </span>
+            </span>
+            {toplam > 0 && <span style={{fontWeight:800,fontVariantNumeric:"tabular-nums"}}>{tl(toplam)}</span>}
+            <Ikon ad="oksag" boy={13}/>
+          </button>
+        );
+      })()}
+
       {orders.length === 0 && <div style={{textAlign:"center",padding:40,color:"#888888",fontSize:13}}>Bekleyen hesap yok</div>}
 
       {orders.map(o => {
@@ -591,7 +626,7 @@ export default function PaymentPage() {
                 </div>
                 <div style={{fontSize:10,color:"#888",marginTop:6}}>
                   {method==="debt"
-                    ? "NOT: Ödeme alınmaz, tutar bu kişinin borç hesabına yazılır. Tahsilatı Üyeler & Borçlular ekranından yaparsın."
+                    ? "NOT: Ödeme alınmaz, tutar bu kişinin borcuna yazılır. Kişi ödeyince Kasa > Borçlular'dan tahsil et."
                     : "Üye seçilirse bu hesap ona yazılır ve puan kazanır. En hızlısı: “telefonunuzun son 4 hanesi?”"}
                 </div>
               </div>
@@ -764,6 +799,16 @@ export default function PaymentPage() {
             </div>
           </div>
         </div>
+      )}
+
+      {borcPaneli && (
+        <BorclularPaneli
+          borclular={borclular}
+          hata={borcHata}
+          acikHesaplar={orders.filter(veresiyeMi).map(o => ({ ...o, ad: o.customer_name }))}
+          onKapat={() => setBorcPaneli(false)}
+          onYenile={borclulariYukle}
+          onBorcaAktar={(o) => { setBorcPaneli(false); openPay(o, "debt"); }}/>
       )}
     </div>
   );

@@ -1,8 +1,9 @@
 import { useEffect, useState } from "react";
 import { supabase } from "../../lib/supabase.js";
 import { useAuth } from "../../contexts/AuthContext.jsx";
-import Ikon from "../../components/Ikon.jsx";
 import SayiGirisi from "../../components/SayiGirisi.jsx";
+import { BorcTahsilPenceresi, BorcEkstrePenceresi, tl } from "../../components/BorcTahsil.jsx";
+import { telefonNormalize } from "../../lib/telefon.js";
 
 const cv = "-apple-system,BlinkMacSystemFont,'Segoe UI',Roboto,sans-serif";
 
@@ -14,10 +15,9 @@ export default function MembersPage() {
   const [search, setSearch] = useState("");
   const [modal, setModal] = useState(null);
   const [form, setForm] = useState({});
-  const [payAmount, setPayAmount] = useState("");
-  // Veresiye tahsilati NAKIT de olabilir; hangisi oldugu kasa sayimini
-  // dogrudan etkiliyor, o yuzden secim zorunlu bir alan.
-  const [payMethod, setPayMethod] = useState("cash");
+  // Borc penceresi: { tur: "tahsil" | "ekstre", kisi }. Tahsilat ve dokum
+  // kasadakiyle AYNI pencere (components/BorcTahsil.jsx).
+  const [borcPenceresi, setBorcPenceresi] = useState(null);
   const [busy, setBusy] = useState(false);
   const [products, setProducts] = useState([]);
   const [prodSearch, setProdSearch] = useState("");
@@ -57,7 +57,7 @@ export default function MembersPage() {
 
   const openNew = () => {
     setModal({ mode: "new" });
-    setForm({ name:"", email:"", phone:"", tier:"bronze", admin_discount:0, outstanding_balance:0, notes:"" });
+    setForm({ name:"", email:"", phone:"", tier:"bronze", admin_discount:0, notes:"" });
     setProdSearch(""); setProdDiscounts({}); setStats(null);
   };
 
@@ -67,10 +67,8 @@ export default function MembersPage() {
       name: m.name || "", email: m.email || "", phone: m.phone || "",
       tier: m.tier || "bronze",
       admin_discount: Number(m.admin_discount) || 0,
-      outstanding_balance: Number(m.outstanding_balance) || 0,
       notes: m.notes || "",
     });
-    setPayAmount("");
     setProdSearch(""); setProdDiscounts({}); setStats(null);
     supabase.from("member_discounts").select("product_id, amount, price").eq("customer_id", m.id).eq("is_active", true)
       .then(({ data }) => {
@@ -97,10 +95,16 @@ export default function MembersPage() {
     const payload = {
       name: form.name.trim(),
       email: form.email?.trim() || null,
-      phone: form.phone?.trim() || null,
+      // Kasadaki gibi +90 bicimi: dokumun WhatsApp dugmesi numarayi ancak
+      // boyle tanir, ayni kisi uye olunca ikinci kayit da acilmaz.
+      phone: telefonNormalize(form.phone) || null,
       tier: form.tier,
       admin_discount: Number(form.admin_discount) || 0,
-      outstanding_balance: Number(form.outstanding_balance) || 0,
+      // outstanding_balance BILEREK YOK. Eskiden form borcu da yaziyordu:
+      // pencere acikken kasada borc yazilir ya da tahsil edilirse "Kaydet"
+      // eski rakami geri yaziyordu; elle sifirlanan borc icin de kasaya
+      // hicbir kayit dusmuyordu. Borc yalniz kasadan degisir (Borca yaz /
+      // Tahsil et); veritabani da personelin dogrudan yazmasini yok sayar.
       notes: form.notes?.trim() || null,
     };
     let customerId = modal.mode === "edit" ? modal.data.id : null;
@@ -128,29 +132,20 @@ export default function MembersPage() {
     setModal(null); setBusy(false); load();
   };
 
-  // Veresiye tahsilati da tek islemde: bakiye dusumu + payments satiri birlikte
-  // yazilir. payments satiri olmadan cekmeceye giren nakit hicbir yerde
-  // gorunmuyordu ve gun sonu kasa sayimi sistematik "fazla" verirdi.
-  const recordPayment = async () => {
-    const amt = Number(payAmount);
-    if (!amt || amt <= 0) { alert("Geçerli tutar gir"); return; }
-    if (busy) return;
-    const newBalance = Math.max(0, Number(modal.data.outstanding_balance || 0) - amt);
-    if (!confirm('"' + modal.data.name + '" için ₺' + amt + ' ödeme alındı. Kalan borç: ₺' + newBalance)) return;
-    setBusy(true);
-    const { data, error } = await supabase.rpc("nip_borc_tahsil", {
-      p_customer_id: modal.data.id, p_amount: amt, p_method: payMethod,
-    });
-    setBusy(false);
-    if (error) { alert("Tahsilat yapılamadı: " + error.message); return; }
-    const kalan = Number(data ?? newBalance);
-    setPayAmount("");
-    setForm(f => ({ ...f, outstanding_balance: kalan }));
-    alert("Ödeme kaydedildi. Yeni borç: ₺" + kalan);
+  // Tahsilat, silme, geri alma ya da geri yazma bitti: acik penceredeki
+  // rakam ve liste tazelenir. (Eskiden geri almadan sonra pencere eski
+  // rakamla kaliyor, "Sil" dugmesi borclu kisi icin gorunuyordu.)
+  const bakiyeGuncelle = (kalan) => {
+    if (kalan == null) { load(); return; }
+    setModal(md => md && md.data ? { ...md, data: { ...md.data, outstanding_balance: kalan } } : md);
     load();
   };
+  const borcBitti = ({ kalan }) => { setBorcPenceresi(null); bakiyeGuncelle(kalan); };
 
   const deleteMember = async (m) => {
+    // Borclu silinemez: siparisleri ve odemeleri ona bagli (veritabani da
+    // reddeder, ama ham hata mesaji yerine ne yapilacagini soyleyelim).
+    if (Number(m.outstanding_balance) > 0) { alert('"' + m.name + '" kişisinin ' + tl(m.outstanding_balance) + ' borcu var. Önce tahsil et ya da borcu sil.'); return; }
     if (!confirm('"' + m.name + '" silinsin mi?')) return;
     const { error } = await supabase.from("customers").delete().eq("id", m.id);
     if (error) { alert("Hata: " + error.message); return; }
@@ -171,7 +166,9 @@ export default function MembersPage() {
   const totalDebt = members.reduce((s, m) => s + Number(m.outstanding_balance || 0), 0);
   const debtorCount = members.filter(m => Number(m.outstanding_balance) > 0).length;
 
-  if (loading) return (<div style={{color:"#888",fontFamily:cv,padding:20}}>Yukleniyor...</div>);
+  // Yukleniyor ekrani yalniz ILK yuklemede: yenileme sirasinda acik pencereler
+  // (tahsilat, dokum) kapanip yeniden acilmasin.
+  if (loading && !members.length) return (<div style={{color:"#888",fontFamily:cv,padding:20}}>Yukleniyor...</div>);
 
   return (
     <div style={{fontFamily:cv,color:"#F0EDE8"}}>
@@ -293,42 +290,50 @@ export default function MembersPage() {
             <div style={{fontSize:10,color:"#888888",marginTop:6}}>NOT: Bu musteriye ozel indirim. Uye indirimi yerine bu uygulanir.</div>
           </div>
 
-          <div style={{background:"#161616",border:"1px solid #2A2A2A",borderRadius:10,padding:12,marginBottom:12}}>
-            <div style={{fontSize:12,color:"#C87A6A",letterSpacing:"0.2px",fontWeight:600,marginBottom:8}}>Açık borç</div>
-            <div style={{display:"flex",alignItems:"center",gap:8,marginBottom:10}}>
-              <SayiGirisi kip="para" value={form.outstanding_balance||0} onChange={v=>setForm(f => ({...f,outstanding_balance:v}))} style={{...inputS,flex:1}}/>
-              <span style={{fontSize:16,color:"#FFFFFF",fontWeight:700}}>₺</span>
-            </div>
-            {modal.mode === "edit" && (
-              <div>
-                <div style={{fontSize:12,color:"#888",letterSpacing:"0.2px",fontWeight:600,marginBottom:5}}>Ödeme al (borçtan düş)</div>
-                <div style={{display:"flex",gap:6,marginBottom:6}}>
-                  {[["cash","nakit","Nakit"],["card","kart","Kart"]].map(([k,ik,l]) => (
-                    <button key={k} onClick={()=>setPayMethod(k)} style={{flex:1,minHeight:40,padding:"10px",
-                            background:payMethod===k?"#FFFFFF":"transparent",color:payMethod===k?"#000":"#888888",
-                            border:"1px solid "+(payMethod===k?"#FFFFFF":"#2A2A2A"),borderRadius:8,fontSize:12,
-                            fontWeight:700,cursor:"pointer",fontFamily:"inherit",display:"flex",
-                            alignItems:"center",justifyContent:"center",gap:6}}>
-                      <Ikon ad={ik} boy={14}/>{l}
-                    </button>
-                  ))}
+          {modal.mode === "edit" && (() => {
+            const borc = Number(modal.data?.outstanding_balance) || 0;
+            const kisi = { id: modal.data.id, ad: modal.data.name, bakiye: borc, telefon: modal.data.phone };
+            return (
+              <div style={{background:"#161616",border:"1px solid "+(borc > 0 ? "#C87A6A" : "#2A2A2A"),borderRadius:10,padding:12,marginBottom:12}}>
+                <div style={{display:"flex",justifyContent:"space-between",alignItems:"baseline",gap:10}}>
+                  <div style={{fontSize:12,color:borc > 0 ? "#C87A6A" : "#888",letterSpacing:"0.2px",fontWeight:600}}>Açık borç</div>
+                  <div style={{fontSize:22,fontWeight:800,fontVariantNumeric:"tabular-nums"}}>{tl(borc)}</div>
                 </div>
-                <div style={{display:"flex",gap:6}}>
-                  <SayiGirisi kip="para" value={payAmount} onChange={v=>setPayAmount(v)} placeholder="0" style={{...inputS,flex:1}}/>
-                  <button onClick={recordPayment} style={{padding:"10px 14px",minHeight:44,background:"#FFFFFF",color:"#000",border:"none",borderRadius:8,fontSize:12,fontWeight:800,cursor:"pointer",whiteSpace:"nowrap"}}>Ödeme Al</button>
+                <div style={{fontSize:11,color:"#888",marginTop:4,lineHeight:1.5}}>
+                  Borç elle değişmez. Kasada "Borç" ile yazılır, "Tahsil et" ile düşer.
+                </div>
+                <div style={{display:"flex",gap:6,marginTop:10}}>
+                  <button onClick={() => setBorcPenceresi({ tur: "ekstre", kisi })}
+                    style={{flex:1,minHeight:42,background:"transparent",color:"#F0EDE8",border:"1px solid #2A2A2A",borderRadius:9,fontSize:12,fontWeight:700,cursor:"pointer",fontFamily:"inherit"}}>
+                    Döküm
+                  </button>
+                  {borc > 0 && (
+                    <button onClick={() => setBorcPenceresi({ tur: "tahsil", kisi })}
+                      style={{flex:2,minHeight:42,background:"#FFFFFF",color:"#000",border:"none",borderRadius:9,fontSize:13,fontWeight:800,cursor:"pointer",fontFamily:"inherit"}}>
+                      Tahsil et
+                    </button>
+                  )}
                 </div>
               </div>
-            )}
-          </div>
+            );
+          })()}
 
           <Field label="NOTLAR"><textarea value={form.notes||""} onChange={e=>setForm(f => ({...f,notes:e.target.value}))} rows={3} style={{...inputS,resize:"vertical"}}/></Field>
 
           <div style={{display:"flex",gap:8,marginTop:10}}>
             <button onClick={() => setModal(null)} style={cancelBtn}>Iptal</button>
-            {modal.mode==="edit" && <button onClick={() => { deleteMember(modal.data); setModal(null); }} style={{padding:"12px 14px",background:"transparent",color:"#C87A6A",border:"1px solid #2A2A2A",borderRadius:10,fontSize:12,fontWeight:700,cursor:"pointer"}}>Sil</button>}
+            {modal.mode==="edit" && !(Number(modal.data?.outstanding_balance) > 0) && <button onClick={() => { deleteMember(modal.data); setModal(null); }} style={{padding:"12px 14px",background:"transparent",color:"#C87A6A",border:"1px solid #2A2A2A",borderRadius:10,fontSize:12,fontWeight:700,cursor:"pointer"}}>Sil</button>}
             <button onClick={saveMember} disabled={busy} style={{...saveBtn,opacity:busy?0.6:1}}>{busy?"...":"Kaydet"}</button>
           </div>
         </Modal>
+      )}
+
+      {borcPenceresi?.tur === "tahsil" && (
+        <BorcTahsilPenceresi kisi={borcPenceresi.kisi} onKapat={() => setBorcPenceresi(null)} onBitti={borcBitti}/>
+      )}
+      {borcPenceresi?.tur === "ekstre" && (
+        <BorcEkstrePenceresi kisi={borcPenceresi.kisi} onKapat={() => setBorcPenceresi(null)}
+          onDegisti={({ kalan } = {}) => bakiyeGuncelle(kalan)}/>
       )}
     </div>
   );
