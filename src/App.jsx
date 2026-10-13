@@ -45,6 +45,7 @@ import HubPage from "./pages/staff/HubPage.jsx";
 import TodayPage from "./pages/manager/TodayPage.jsx";
 import ShiftsOverviewPage from "./pages/manager/ShiftsOverviewPage.jsx";
 import DiscountsPage from "./pages/manager/DiscountsPage.jsx";
+import CorrectionsPage from "./pages/manager/CorrectionsPage.jsx";
 import MutfakRaporPage from "./pages/MutfakRaporPage.jsx";
 
 function PrivateRoute({ children, managerOnly = false, adminOnly = false, allowViewer = false, deny = [] }) {
@@ -121,6 +122,7 @@ function AppRoutes() {
         <Route path="shifts"           element={<PrivateRoute adminOnly><ShiftsOverviewPage /></PrivateRoute>} />
         {/* Kim ne kadar indirim yapti: yalniz sahip. RPC icinde de is_admin() var. */}
         <Route path="discounts"        element={<PrivateRoute adminOnly><DiscountsPage /></PrivateRoute>} />
+        <Route path="corrections"      element={<PrivateRoute adminOnly><CorrectionsPage /></PrivateRoute>} />
       </Route>
       <Route path="*" element={<Navigate to="/" replace />} />
     </Routes>

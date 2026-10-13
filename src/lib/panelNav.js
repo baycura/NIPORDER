@@ -73,6 +73,7 @@ export const GRUPLAR = [
       { to: "/cash-history",   icon: "takvim", label: "Kasa Geçmişi" },
       { to: "/shifts",         icon: "takvim", label: "Vardiyalar" },
       { to: "/discounts",      icon: "kampanya", label: "İndirimler" },
+      { to: "/corrections",    icon: "cop", label: "İptal & Düzeltme" },
       { to: "/settlement",     icon: "mutfakodeme", label: "Mutfağa Ödenecek", ozellik: "mutfakHakedis" },
       { to: "/fixed-expenses", icon: "kilit", label: "Sabit Giderler" },
       { to: "/staff-mgmt",     icon: "personel", label: "Personel" },

@@ -12,7 +12,8 @@ import { partiDurumOku } from "../../lib/parti.js";
 import { businessDayStart } from "../../lib/businessDay.js";
 import { useMasaustu, useGenisEkran, useDokunmatik } from "../../lib/ekran.js";
 import { misafirHesapAc } from "../../lib/misafirHesap.js";
-import { sonListe } from "../../components/Bildirim.jsx";
+import Bildirim, { sonListe } from "../../components/Bildirim.jsx";
+import { IptalPenceresi, KaldirPenceresi, TasiPenceresi, MasaPenceresi } from "../../components/HesapDuzelt.jsx";
 
 const cv = "-apple-system,BlinkMacSystemFont,'Segoe UI',Roboto,sans-serif";
 
@@ -30,6 +31,13 @@ export default function OrderDetailPage() {
   const [optModal, setOptModal] = useState(null); // {p, sel} — secenekli urun secimi
   const [treatModal, setTreatModal] = useState(null); // ikramda "kim veriyor?" secimi
   const [indirimModal, setIndirimModal] = useState(null); // {it, tutar, not} — kalem indirimi (adet basina TL)
+  // Hesabi iptal etmeden duzelt (20261013_hesap_duzeltme.sql): iptal nedeni,
+  // mutfaga gitmis urunu kaldirma, baska hesaba tasima, masa degistirme.
+  const [iptalAcik, setIptalAcik] = useState(false);
+  const [kaldirKalem, setKaldirKalem] = useState(null);
+  const [tasiKalem, setTasiKalem] = useState(null);
+  const [masaAcik, setMasaAcik] = useState(false);
+  const [duzBilgi, setDuzBilgi] = useState(null); // {metin, id}
   const [bedenModal, setBedenModal] = useState(null);  // {p, selOpts} — bedenli raf urununde hangi beden
   const [fiyatModal, setFiyatModal] = useState(null);  // {p, selOpts, variantName, tutar} — fiyati kasada belirlenen urun
   const [staffList, setStaffList] = useState([]);
@@ -395,9 +403,12 @@ export default function OrderDetailPage() {
     let fp = price * (100 - Number(p.instant_discount_pct || 0)) / 100;
     const mp = memberPriceFor(p);
     if (mp != null) fp = Math.min(fp, mp);
-    // Magaza (staff_only kategori) urunleri mutfaga gitmez, bildirim tetiklemez
+    // Raf urunleri mutfaga gitmez, bildirim tetiklemez: yalniz personel
+    // kategorisi, Shop kategorisi ya da stok takipli urun. Sunucu da ayni
+    // kurali zorlar (20261013_izipizi_raf.sql); bu satir ekranin hemen dogru
+    // gostermesi icin.
     const cat = categories.find(c => c.id === p.category_id);
-    const isRetail = !!cat?.staff_only || !!p.track_stock;
+    const isRetail = !!cat?.staff_only || !!cat?.show_in_shop || !!p.track_stock;
     const row = {
       order_id: orderId,
       product_id: p.id,
@@ -481,9 +492,10 @@ export default function OrderDetailPage() {
     if (!sonEklenen) return;
     const it = items.find(i => i.id === sonEklenen.id);
     if (!it) { setSonEklenen(null); return; }
-    if (it.kitchen_status !== "pending") {
-      alert("Bu ürün mutfağa gitti, geri alınamaz. İptal ya da İkram kullanın.");
+    // Mutfaga gitmis ya da odenmis kalem: neden sorulur (sunucu kaydeder).
+    if (it.kitchen_status !== "pending" || Number(it.odenen_adet) > 0) {
       setSonEklenen(null);
+      setKaldirKalem(it);
       return;
     }
     // "Geri al" = SON DOKUNUSU geri al, satiri silmek degil. Ayni kalem artik
@@ -509,11 +521,13 @@ export default function OrderDetailPage() {
     const it = items.find(i => i.id === itemId);
     if (!it) return;
     const newQty = it.quantity + delta;
+    // Mutfaga gitmis (ya da raf) ve odenmis kalem dogrudan azaltilmaz: neden
+    // sorulur, sunucu kaydeder ve mutfak ekranini gunceller.
+    if (delta < 0 && (it.kitchen_status !== "pending" || Number(it.odenen_adet) > 0)) {
+      setKaldirKalem(it);
+      return;
+    }
     if (newQty <= 0) {
-      if (it.kitchen_status !== "pending") {
-        alert("Mutfağa giden urun silinemez. Iptal butonunu kullanin.");
-        return;
-      }
       const next = items.filter(i => i.id !== itemId);
       setItems(next); syncTotal(next);
       const { error } = await supabase.from("order_items").delete().eq("id", itemId);
@@ -535,11 +549,8 @@ export default function OrderDetailPage() {
     loadOrderOnly();
   };
 
-  const cancelOrder = async () => {
-    if (!confirm("Bu siparişi iptal edilsin mi?")) return;
-    await supabase.from("orders").update({ status: "cancelled" }).eq("id", orderId);
-    navigate("/orders");
-  };
+  // Iptal nedeni zorunlu: sunucu dogrudan "cancelled" yazmayi reddeder.
+  const cancelOrder = () => setIptalAcik(true);
 
   // Kasada devamlilik: bu siparisin odeme penceresi direkt acilir
   const goToPayment = () => navigate("/payment?order=" + orderId);
@@ -761,6 +772,12 @@ export default function OrderDetailPage() {
             </div>
           )}
           <div style={{fontSize:12,padding:"3px 8px",background:"#2A2A2A",color:"#aaa",borderRadius:6,fontWeight:600,letterSpacing:"0.2px"}}>{order.status?.toUpperCase()}</div>
+          {order.status !== "cancelled" && order.status !== "paid" && order.status !== "debt" && (
+            <button onClick={() => setMasaAcik(true)}
+              style={{display:"inline-flex",alignItems:"center",gap:5,minHeight:30,padding:"4px 10px",background:"transparent",border:"1px solid #3A3A3A",borderRadius:8,color:"#F0EDE8",fontSize:12,fontWeight:700,cursor:"pointer",fontFamily:"inherit"}}>
+              <Ikon ad="masa" boy={13}/>{order.table_id ? "Masa değiştir" : "Masaya al"}
+            </button>
+          )}
         </div>
         <div style={{fontSize:11,color:"#888",marginTop:4}}>{totalItems} ürün · ₺{order.total || 0}</div>
       </div>
@@ -856,6 +873,14 @@ export default function OrderDetailPage() {
                     </button>
                   );
                 })()}
+                {/* Yanlis hesaba girilen urun: hesabi iptal etmeden tasinir. */}
+                {order.status !== "cancelled" && order.status !== "paid" && order.status !== "debt" && Number(it.quantity) > Number(it.odenen_adet || 0) && String(it.id).slice(0, 5) !== "temp-" && (
+                  <button onClick={() => setTasiKalem(it)}
+                    style={{marginTop:6,padding:"6px 12px",background:"transparent",color:"#888",
+                            border:"1px solid #3A3A3A",borderRadius:20,fontSize:11,fontWeight:700,cursor:"pointer",fontFamily:"inherit"}}>
+                    <Ikon ad="oksag" boy={12} style={{marginRight:4}}/>Taşı
+                  </button>
+                )}
                 </div>
               </div>
               <div style={{display:"flex",alignItems:"center",gap:6,background:"#0C0C0C",borderRadius:20,padding:"3px 5px"}}>
@@ -974,6 +999,50 @@ export default function OrderDetailPage() {
 
       </>)}
 
+      {duzBilgi && <Bildirim key={duzBilgi.id} metin={duzBilgi.metin}/>}
+      {iptalAcik && (
+        <IptalPenceresi order={order} ad={order.table_id ? (tables[order.table_id] || "Masa") : (order.customer_name || "Hesap")}
+          kalemSayisi={items.length}
+          onKapat={() => setIptalAcik(false)}
+          onBitti={() => {
+            setIptalAcik(false);
+            const ad = order.table_id ? (tables[order.table_id] || "Masa") : (order.customer_name || "Hesap");
+            navigate(sonListe(), { state: { bildirim: `${ad}: hesap iptal edildi` } });
+          }}/>
+      )}
+      {kaldirKalem && (
+        <KaldirPenceresi kalem={kaldirKalem}
+          onKapat={() => setKaldirKalem(null)}
+          onBitti={(sonuc) => {
+            const ad = kaldirKalem.product_name;
+            setKaldirKalem(null);
+            if (sonuc?.hesap_kapandi) {
+              navigate(sonListe(), { state: { bildirim: `${ad} kaldırıldı · hesap ödendi, kapandı` } });
+              return;
+            }
+            setDuzBilgi({ metin: `${ad} kaldırıldı`, id: Date.now() });
+            loadOrderOnly();
+          }}/>
+      )}
+      {tasiKalem && (
+        <TasiPenceresi kalem={tasiKalem} order={order}
+          onKapat={() => setTasiKalem(null)}
+          onBitti={({ hedefAdi, adet }) => {
+            const ad = tasiKalem.product_name;
+            setTasiKalem(null);
+            setDuzBilgi({ metin: `${adet} × ${ad} → ${hedefAdi}`, id: Date.now() });
+            loadOrderOnly();
+          }}/>
+      )}
+      {masaAcik && (
+        <MasaPenceresi order={order}
+          onKapat={() => setMasaAcik(false)}
+          onBitti={(masaAdi) => {
+            setMasaAcik(false);
+            setDuzBilgi({ metin: masaAdi ? `Hesap ${masaAdi} masasına geçti` : "Hesap masasız oldu", id: Date.now() });
+            load();
+          }}/>
+      )}
       {treatModal && (
         <div onClick={() => setTreatModal(null)} style={{position:"fixed",inset:0,background:"rgba(0,0,0,0.75)",display:"flex",alignItems:"flex-end",justifyContent:"center",zIndex:100}}>
           <div onClick={e => e.stopPropagation()} style={{background:"#161616",border:"1px solid #2A2A2A",borderRadius:"16px 16px 0 0",padding:20,width:"100%",maxWidth:500}}>
