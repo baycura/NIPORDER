@@ -395,9 +395,12 @@ export default function OrderDetailPage() {
     let fp = price * (100 - Number(p.instant_discount_pct || 0)) / 100;
     const mp = memberPriceFor(p);
     if (mp != null) fp = Math.min(fp, mp);
-    // Magaza (staff_only kategori) urunleri mutfaga gitmez, bildirim tetiklemez
+    // Raf urunleri mutfaga gitmez, bildirim tetiklemez: yalniz personel
+    // kategorisi, Shop kategorisi ya da stok takipli urun. Sunucu da ayni
+    // kurali zorlar (20261013_izipizi_raf.sql); bu satir ekranin hemen dogru
+    // gostermesi icin.
     const cat = categories.find(c => c.id === p.category_id);
-    const isRetail = !!cat?.staff_only || !!p.track_stock;
+    const isRetail = !!cat?.staff_only || !!cat?.show_in_shop || !!p.track_stock;
     const row = {
       order_id: orderId,
       product_id: p.id,
