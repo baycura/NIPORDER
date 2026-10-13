@@ -881,7 +881,7 @@ export default function OrderDetailPage() {
           {order.customer_id && items.length > 0 && (
             <div style={{maxWidth:sayfaEni,margin:"0 auto 6px",display:"flex",justifyContent:"flex-end"}}>
               <span style={{pointerEvents:"auto",fontSize:11.5,fontWeight:700,color:"#F0EDE8",background:"#161616",border:"1px solid #2A2A2A",borderRadius:20,padding:"4px 10px",display:"inline-flex",alignItems:"center",gap:4}}>
-                <Ikon ad="yildiz" boy={11}/>{order.customer_name || "Üye"} · puan kazanır
+                <Ikon ad="yildiz" boy={11}/>{uyeAdi || order.customer_name || "Üye"} · puan kazanır
               </span>
             </div>
           )}

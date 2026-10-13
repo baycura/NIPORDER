@@ -4,6 +4,7 @@ import { supabase } from "../../lib/supabase.js";
 import { useAuth } from "../../contexts/AuthContext.jsx";
 import Ikon from "../../components/Ikon.jsx";
 import Bildirim, { useSonListe } from "../../components/Bildirim.jsx";
+import KasaSayKarti from "../../components/KasaSayKarti.jsx";
 import { misafirHesapAc } from "../../lib/misafirHesap.js";
 
 const cv = "-apple-system,BlinkMacSystemFont,'Segoe UI',Roboto,sans-serif";
@@ -165,6 +166,8 @@ export default function OrdersPage() {
           <button onClick={misafirAc} disabled={misafirBusy} style={{padding:"10px 16px",background:"#FFFFFF",color:"#000",border:"none",borderRadius:10,fontSize:13,fontWeight:800,cursor:"pointer",opacity:misafirBusy?0.6:1}}>{misafirBusy ? "Açılıyor…" : "+ Misafir"}</button>
         </div>
       </div>
+
+      <KasaSayKarti/>
 
       <div style={{display:"flex",gap:6,marginBottom:14,overflowX:"auto"}}>
         {[["active","AKTIF"],["paid","ODENMIS"],["all","HEPSI"]].map(([k,l]) => (

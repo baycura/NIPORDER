@@ -1,5 +1,5 @@
 import { useEffect, useState, useRef } from "react";
-import { useNavigate, useSearchParams } from "react-router-dom";
+import { useSearchParams } from "react-router-dom";
 import { supabase } from "../../lib/supabase.js";
 import { useAuth } from "../../contexts/AuthContext.jsx";
 import Ikon from "../../components/Ikon.jsx";
@@ -7,6 +7,7 @@ import SayiGirisi from "../../components/SayiGirisi.jsx";
 import { ozellik } from "../../lib/profil.js";
 import { BorclularPaneli, tl } from "../../components/BorcTahsil.jsx";
 import { telefonNormalize } from "../../lib/telefon.js";
+import KasaSayKarti from "../../components/KasaSayKarti.jsx";
 import Bildirim from "../../components/Bildirim.jsx";
 
 // BOLUNMUS ODEME — kasadan gelen ihtiyac (20.09.2026):
@@ -36,7 +37,6 @@ const veresiyeMi = (o) => !o.table_id && !!o.customer_name && !/^misafir\b/i.tes
   && Number(o.total || 0) > 0 && (Date.now() - new Date(o.created_at).getTime()) > 24 * 3600 * 1000;
 
 export default function PaymentPage() {
-  const navigate = useNavigate();
   const { staffUser } = useAuth();
   const [orders, setOrders] = useState([]);
   const [tables, setTables] = useState({});
@@ -306,29 +306,6 @@ export default function PaymentPage() {
   const ptsCover = (o) => Math.min(Number(memberPts?.points || 0), Math.floor(Number(o?.total || 0)));
 
   // Siparis ekranindaki "Odeme Al" butonundan gelindi: ?order=<id> ile modali direkt ac
-  // Aksam 21:00'den itibaren kapanis sayimi yoksa "Dukkani kapat" seridi
-  // gosterilir. Kapanis SAATE bagli degil (bazen 00:30, bazen 01:30, bazen
-  // 03:00 sonrasi) — dugme kasada durur, kapatan kim olursa olsun oradan
-  // sayar. Sayim muhurlenince serit kaybolur.
-  const [sayimYok, setSayimYok] = useState(false);
-  useEffect(() => {
-    const saat = new Date().getHours();
-    if (saat < 21 && saat >= 7) return;
-    const magaza = staffUser?.store_ids?.[0];
-    if (!magaza) return;
-    let iptal = false;
-    supabase.rpc("kasa_gun_ozeti", { p_store_id: magaza }).then(({ data }) => {
-      if (iptal) return;
-      const o = Array.isArray(data) ? data[0] : data;
-      if (!o?.isletme_gunu) return;
-      supabase.from("cash_counts").select("id")
-        .eq("store_id", magaza).eq("business_day", o.isletme_gunu)
-        .eq("tur", "kapanis").limit(1)
-        .then(({ data: c }) => { if (!iptal) setSayimYok(!(c || []).length); });
-    });
-    return () => { iptal = true; };
-  }, [staffUser?.id]);
-
   const [searchParams] = useSearchParams();
   const autoOpened = useRef(false);
   useEffect(() => {
@@ -450,20 +427,8 @@ export default function PaymentPage() {
         </div>
       )}
 
-      {sayimYok && (
-        <div onClick={() => navigate("/cash-count")}
-             style={{background:"#161616",border:"1px solid #FFFFFF",borderRadius:12,padding:"12px 14px",
-                     marginBottom:12,cursor:"pointer",display:"flex",alignItems:"center",gap:10,fontSize:13}}>
-          <Ikon ad="nakit" boy={17}/>
-          <span style={{flex:1}}>
-            <b>Dükkanı kapatıyorsan buradan:</b> kasayı say, mühür dükkanı kapatır
-            <span style={{color:"#888",display:"block",fontSize:12,marginTop:2}}>Sayım ve vardiyalar tek dokunuşta kapanır — saat kaç olursa olsun</span>
-          </span>
-          <span style={{fontWeight:800,whiteSpace:"nowrap",display:"flex",alignItems:"center",gap:4}}>
-            Kapat<Ikon ad="oksag" boy={13}/>
-          </span>
-        </div>
-      )}
+      {/* Gece kapanis karti: Masalar ve Siparisler'de de ayni kart var. */}
+      <KasaSayKarti/>
 
       {(borclular.length > 0 || borcHata || orders.some(veresiyeMi)) && (() => {
         const toplam = borcAcik.reduce((t, b) => t + Number(b.bakiye || 0), 0);

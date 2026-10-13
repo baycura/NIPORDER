@@ -8,6 +8,7 @@ import { businessDayStart } from "../../lib/businessDay.js";
 import { partiDurumOku, biterYazi } from "../../lib/parti.js";
 import { ozellik } from "../../lib/profil.js";
 import TelegramBagla from "../../components/TelegramBagla.jsx";
+import KasaSayKarti from "../../components/KasaSayKarti.jsx";
 import Bildirim, { useSonListe } from "../../components/Bildirim.jsx";
 import { misafirHesapAc } from "../../lib/misafirHesap.js";
 
@@ -225,6 +226,10 @@ export default function TablesPage() {
       {/* Haftalik lig, tek satir: herkesin ilk actigi ekran burasi. Dokununca
           acilir; part-time'in Vardiyam sayfasi yok, ligi buradan gorur. */}
       <HaftalikLig compact />
+
+      {/* Gece kapanis karti: 21:00-07:00, kasa sayilmamissa. Hizli odeme
+          siparis ekranina gelince kasa ekranina ugranmayabiliyor. */}
+      <KasaSayKarti/>
 
       {/* Telegram'i bagli olmayan personel (cogu part-time) QR siparisini
           kacirmasin: baglanti kutusu burada da cikar, baglaninca kaybolur. */}

@@ -2,6 +2,7 @@ import { useEffect, useMemo, useState } from "react";
 import { supabase } from "../../lib/supabase.js";
 import { useAuth } from "../../contexts/AuthContext.jsx";
 import Ikon from "../../components/Ikon.jsx";
+import { GIDER_KATEGORILERI } from "../../lib/gider.js";
 
 const cv = "-apple-system,BlinkMacSystemFont,'Segoe UI',Roboto,sans-serif";
 const hv = "'Bebas Neue','Barlow Condensed','Coolvetica Condensed',sans-serif";
@@ -10,15 +11,7 @@ const C = {
   faint: "#5A5A56", accent: "#FFFFFF", green: "#FFFFFF", red: "#C87A6A",
 };
 
-const CATS = [
-  { key: "gida", label: "Gıda", emoji: "yaprak" },
-  { key: "icecek", label: "İçecek", emoji: "bardak" },
-  { key: "alkol", label: "Alkol", emoji: "bira" },
-  { key: "kahve", label: "Kahve & Çay", emoji: "kahve" },
-  { key: "temizlik", label: "Temizlik", emoji: "temizlik" },
-  { key: "ekipman", label: "Ekipman", emoji: "alet" },
-  { key: "diger", label: "Diğer", emoji: "stok" },
-];
+const CATS = GIDER_KATEGORILERI;
 const catOf = (k) => CATS.find(c => c.key === k) || CATS[CATS.length - 1];
 
 const fmtTL = (n) => "₺" + Number(n || 0).toLocaleString("tr-TR", { maximumFractionDigits: 2 });

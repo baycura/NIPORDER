@@ -6,9 +6,14 @@
 export const KUPURLER = [200, 100, 50, 20, 10];
 export const BOZUKLAR = [5, 1, 0.5, 0.25];
 
+// "toplam" anahtari: kupur saymadan yazilan cekmece toplami (DB'de
+// nip_denom_total ayni kurali uygular).
 export const kupurToplam = (denoms) =>
   Object.entries(denoms || {}).reduce(
-    (t, [k, v]) => t + (Number(k) || 0) * (Number(v) || 0), 0);
+    (t, [k, v]) => t + (k === "toplam" ? 1 : Number(k) || 0) * (Number(v) || 0), 0);
+
+// "Toplami yaz" kipinin DB bicimi: {"toplam": 12345.5}. En fazla 2 ondalik.
+export const toplamDenoms = (tutar) => ({ toplam: Math.round(Number(tutar || 0) * 100) / 100 });
 
 export const fmtTL = (n) =>
   "₺" + Number(n || 0).toLocaleString("tr-TR", { maximumFractionDigits: 2 });

@@ -4,8 +4,10 @@ import { supabase } from "../../lib/supabase.js";
 import { useAuth } from "../../contexts/AuthContext.jsx";
 import Ikon from "../../components/Ikon.jsx";
 import SayiGirisi from "../../components/SayiGirisi.jsx";
-import { KUPURLER, BOZUKLAR, kupurToplam, fmtTL, NOT_ESIGI, farkRengi, TASLAK_KEY, denomsTemizle }
-  from "../../lib/cashCount.js";
+import { sonListe } from "../../components/Bildirim.jsx";
+import { KUPURLER, BOZUKLAR, kupurToplam, fmtTL, NOT_ESIGI, farkRengi, TASLAK_KEY, denomsTemizle,
+  toplamDenoms } from "../../lib/cashCount.js";
+import { GIDER_KATEGORILERI } from "../../lib/gider.js";
 
 const cv = "-apple-system,BlinkMacSystemFont,'Segoe UI',Roboto,sans-serif";
 const hv = "'Bebas Neue','Barlow Condensed','Coolvetica Condensed',sans-serif";
@@ -32,6 +34,18 @@ export default function CashCountPage() {
   const [ozetHata, setOzetHata] = useState(null);
   const [adetler, setAdetler] = useState({});
   const [bozukAcik, setBozukAcik] = useState(false);
+  // "Toplami yaz" varsayilan: gece yorgun personel 9 kupur alani yerine tek
+  // sayi girer. Kupur kupur saymak isteyen ikinci kipi secer.
+  const [kip, setKip] = useState("toplam");
+  const [toplamElle, setToplamElle] = useState("");
+  // Yeniden baslangic (nip_kasa_durumu). undefined = yukleniyor; null =
+  // alinamadi, ekran eski kurallarla calisir.
+  const [durum, setDurum] = useState(undefined);
+  // "+ Gider": kasadan odenen gideri sayim ekranindan cikmadan girmek.
+  const [giderAcik, setGiderAcik] = useState(false);
+  const [gider, setGider] = useState({ tutar: "", aciklama: "", kategori: "gida" });
+  const [giderBusy, setGiderBusy] = useState(false);
+  const [giderBilgi, setGiderBilgi] = useState(null);
   const [cekilen, setCekilen] = useState("");
   // POS cihazinin gunsonu (Z) kart toplami — kartin BAGIMSIZ dogrulamasi.
   // Kasa sayimi nakdi dogruluyor, stok sayimi tuketimi; kart tarafinda
@@ -62,14 +76,29 @@ export default function CashCountPage() {
 
   // Ozet SUNUCUDAN gelir. p_gun gonderilmez — isletme gununu cihaz saati degil
   // sunucu belirler (businessDay.js cihaz saatine bakiyor, sayim ona guvenemez).
+  // sessiz: gider eklendikten sonra yenileme; form kaybolup geri gelmesin.
+  const ozetYukle = (sessiz) => {
+    if (!storeId) return () => {};
+    let iptal = false;
+    if (!sessiz) { setOzet(null); setOzetHata(null); }
+    supabase.rpc("kasa_gun_ozeti", { p_store_id: storeId }).then(({ data, error }) => {
+      if (iptal) return;
+      if (error) { if (!sessiz) setOzetHata(error.message); return; }
+      setOzet(Array.isArray(data) ? data[0] : data);
+    });
+    return () => { iptal = true; };
+  };
+  useEffect(() => ozetYukle(false), [storeId]);
+
+  // Onceki gece(ler) sayilmadiysa bu sayim "yeni baslangic"tir: beklenen
+  // bilinmez, fark aciklamasi istenmez. Bosluk tutari yalniz sahibe gelir.
   useEffect(() => {
     if (!storeId) return;
     let iptal = false;
-    setOzet(null); setOzetHata(null);
-    supabase.rpc("kasa_gun_ozeti", { p_store_id: storeId }).then(({ data, error }) => {
+    setDurum(undefined);
+    supabase.rpc("nip_kasa_durumu", { p_store_id: storeId }).then(({ data, error }) => {
       if (iptal) return;
-      if (error) { setOzetHata(error.message); return; }
-      setOzet(Array.isArray(data) ? data[0] : data);
+      setDurum(error ? null : ((Array.isArray(data) ? data[0] : data) || null));
     });
     return () => { iptal = true; };
   }, [storeId]);
@@ -94,6 +123,8 @@ export default function CashCountPage() {
       if (ham) {
         const t = JSON.parse(ham);
         setAdetler(t.adetler || {});
+        if (t.kip === "kupur" || t.kip === "toplam") setKip(t.kip);
+        setToplamElle(t.toplamElle || "");
         setCekilen(t.cekilen || "");
         setNot(t.not || "");
         if (t.sayan) setSayan(t.sayan);
@@ -105,13 +136,21 @@ export default function CashCountPage() {
     if (!storeId || !gun) return;
     try {
       localStorage.setItem(TASLAK_KEY(storeId, gun),
-        JSON.stringify({ adetler, cekilen, not, sayan }));
+        JSON.stringify({ adetler, kip, toplamElle, cekilen, not, sayan }));
     } catch (e) { /* kota dolu olabilir, sayimi engelleme */ }
-  }, [adetler, cekilen, not, sayan, storeId, gun]);
+  }, [adetler, kip, toplamElle, cekilen, not, sayan, storeId, gun]);
 
-  const sayilan = useMemo(() => kupurToplam(adetler), [adetler]);
-  const beklenen = ozet ? Number(ozet.beklenen || 0) : null;
-  const fark = beklenen === null ? null : sayilan - beklenen;
+  const sayilan = useMemo(
+    () => kip === "toplam" ? (Number(toplamElle) || 0) : kupurToplam(adetler),
+    [kip, toplamElle, adetler]);
+  const yeniden = !!durum?.yeniden;
+  // Yeni baslangicta beklenen bilinmez: fark hic hesaplanmaz, gosterilmez.
+  const beklenen = ozet && !yeniden ? Number(ozet.beklenen || 0) : null;
+  // Sayi girilmeden fark gosterilmez: bos kutu "−₺10.440 eksik" diye korkutmasin.
+  const sayimGirildi = kip === "toplam"
+    ? String(toplamElle).trim() !== ""
+    : Object.values(adetler).some(v => v !== "" && v != null);
+  const fark = beklenen === null || !sayimGirildi ? null : sayilan - beklenen;
   const notGerekli = fark !== null && Math.abs(fark) > NOT_ESIGI;
   // KAPANIS SONRASI kurali — YALNIZ kapanis sayiminda: gunun acik hesabi
   // varsa servis bitmemis demektir; o hesabin nakdi henuz kayitlarda olmadigi
@@ -129,6 +168,12 @@ export default function CashCountPage() {
     if (busy) return;
     if (!storeId) { alert("Önce mağaza seç"); return; }
     if (!sayan.trim() || sayan.trim().length < 2) { alert("Sayan kişinin adını yaz"); return; }
+    if (!bosOnay && !sayimGirildi) {
+      alert(kip === "toplam"
+        ? "Çekmecedeki toplam nakdi yaz. Çekmece boşsa 0 yaz."
+        : "Kupür adetlerini gir. Çekmece boşsa \"Toplamı yaz\" kutusuna 0 yaz.");
+      return;
+    }
     if (acikVar && not.trim().length < 3) {
       alert(ozet.acik_bugun_adet + " hesap hâlâ açık — kapanıştan sonra sayılır.\nÖnce hesapları kapat; kapatamıyorsan (borçlu gitti vs.) sebebini açıklamaya yaz.");
       return;
@@ -141,18 +186,38 @@ export default function CashCountPage() {
     const { data, error } = await supabase.from("cash_counts").insert({
       store_id: storeId,
       tur,
-      denoms: bosOnay ? {} : denomsTemizle(adetler),
+      denoms: bosOnay ? {} : kip === "toplam" ? toplamDenoms(toplamElle) : denomsTemizle(adetler),
       // Devirde para cekmecede kalir; "cekmeceden alinan" yalniz kapanista.
       withdrawn: kapanis ? Number(cekilen) || 0 : 0,
       // POS gunsonu yalniz kapanista anlamli (Z raporu gun sonu isi).
       pos_gunsonu: kapanis && pos !== "" && isFinite(Number(pos)) ? Number(pos) : null,
       counted_by_person: sayan.trim(),
       note: not.trim() || null,
-    }).select("counted_total,expected_cash,difference,business_day,tur,pos_gunsonu,kart_satis").single();
+    }).select("counted_total,expected_cash,difference,business_day,tur,pos_gunsonu,kart_satis,yeniden_baslangic").single();
     setBusy(false);
     if (error) { alert("Kaydedilemedi: " + error.message); return; }
     try { localStorage.removeItem(TASLAK_KEY(storeId, gun)); } catch (e) { /* onemsiz */ }
     setBitti(data);
+  };
+
+  const giderKaydet = async () => {
+    if (giderBusy) return;
+    const tutar = Number(String(gider.tutar).replace(",", "."));
+    if (!tutar || tutar <= 0) { alert("Gider tutarını yaz"); return; }
+    if (gider.aciklama.trim().length < 2) { alert("Ne aldığını yaz (örn. Süt 12 lt)"); return; }
+    setGiderBusy(true);
+    const { error } = await supabase.from("expenses").insert({
+      store_id: storeId, staff_id: staffUser.id, category: gider.kategori,
+      description: gider.aciklama.trim(), amount: tutar, payment_method: "kasa",
+      // Gider sayilan kasa gunune yazilir (gece 01:00'de girilse de).
+      ...(gun ? { expense_date: gun } : {}),
+    });
+    setGiderBusy(false);
+    if (error) { alert("Gider kaydedilemedi: " + error.message); return; }
+    setGiderAcik(false);
+    setGider(g => ({ tutar: "", aciklama: "", kategori: g.kategori }));
+    setGiderBilgi(fmtTL(tutar) + " gider eklendi." + (yeniden ? "" : " Beklenen tutar güncellendi."));
+    ozetYukle(true);
   };
 
   const kart = { background: C.card, border: `1px solid ${C.line}`, borderRadius: 12, padding: 14 };
@@ -163,33 +228,93 @@ export default function CashCountPage() {
     outline: "none", fontFamily: cv, boxSizing: "border-box",
   };
 
+  // "+ Gider": kasadan odenen alisveris sayim ekranindan girilir. Girilmeyen
+  // gider gece "eksik" olarak cikiyordu.
+  const giderAlani = (
+    <div style={{ marginTop: 12 }}>
+      {giderBilgi && !giderAcik && (
+        <div style={{ fontSize: 12.5, color: C.up, marginBottom: 8, lineHeight: 1.5 }}>{giderBilgi}</div>
+      )}
+      {!giderAcik ? (
+        <button onClick={() => { setGiderAcik(true); setGiderBilgi(null); }} style={{
+          width: "100%", minHeight: 44, background: "transparent", color: C.ink,
+          border: `1px solid ${C.line}`, borderRadius: 10, fontSize: 13, fontWeight: 700,
+          cursor: "pointer", fontFamily: cv, display: "flex", alignItems: "center",
+          justifyContent: "center", gap: 7,
+        }}><Ikon ad="ekle" boy={14} />Gider ekle — kasadan ödenen</button>
+      ) : (
+        <div style={{ border: `1px solid ${C.line}`, borderRadius: 10, padding: 12 }}>
+          <div style={{ ...etiket, marginBottom: 8 }}>Kasadan ödenen gider</div>
+          <SayiGirisi kip="para" min={0} value={gider.tutar}
+                 onChange={v => setGider(g => ({ ...g, tutar: v }))} placeholder="Tutar"
+                 style={{ ...inputS, marginBottom: 8 }} />
+          <input value={gider.aciklama} onChange={e => setGider(g => ({ ...g, aciklama: e.target.value }))}
+                 placeholder="Ne aldın? Örn. Süt 12 lt" style={{ ...inputS, marginBottom: 8 }} />
+          <div style={{ display: "flex", gap: 6, flexWrap: "wrap", marginBottom: 10 }}>
+            {GIDER_KATEGORILERI.map(c => (
+              <button key={c.key} onClick={() => setGider(g => ({ ...g, kategori: c.key }))} style={{
+                minHeight: 36, padding: "7px 11px", borderRadius: 9, cursor: "pointer", fontFamily: cv,
+                fontSize: 12.5, fontWeight: 700,
+                background: gider.kategori === c.key ? C.accent : "transparent",
+                color: gider.kategori === c.key ? "#000" : C.muted,
+                border: `1px solid ${gider.kategori === c.key ? C.accent : C.line}`,
+              }}>{c.label}</button>
+            ))}
+          </div>
+          <div style={{ display: "flex", gap: 8 }}>
+            <button onClick={() => setGiderAcik(false)} style={{
+              flex: 1, minHeight: 44, background: "transparent", color: C.muted,
+              border: `1px solid ${C.line}`, borderRadius: 10, fontSize: 13, fontWeight: 700,
+              cursor: "pointer", fontFamily: cv,
+            }}>Vazgeç</button>
+            <button onClick={giderKaydet} disabled={giderBusy} style={{
+              flex: 2, minHeight: 44, background: C.accent, color: "#000", border: "none",
+              borderRadius: 10, fontSize: 13, fontWeight: 800, cursor: "pointer", fontFamily: cv,
+              opacity: giderBusy ? 0.6 : 1,
+            }}>{giderBusy ? "Kaydediliyor…" : "Gideri kaydet"}</button>
+          </div>
+        </div>
+      )}
+    </div>
+  );
+
   if (bitti) {
     return (
       <div style={{ fontFamily: cv, color: C.ink, maxWidth: 520, margin: "0 auto", padding: "40px 16px", textAlign: "center" }}>
         <Ikon ad="onayli" boy={64} kalin={1.3} style={{ display: "block", margin: "0 auto 16px" }} />
         <div style={{ fontSize: 22, fontWeight: 800, marginBottom: 6 }}>
-          {bitti.tur === "devir" ? "Devir sayımı kaydedildi" : "Kasa kapandı"}
+          {bitti.tur === "devir" ? "Devir sayımı kaydedildi"
+            : bitti.yeniden_baslangic ? "Kasa kapandı · yeni başlangıç" : "Kasa kapandı"}
         </div>
         {bitti.tur !== "devir" && (
           <div style={{ fontSize: 13, color: C.muted, marginBottom: 8 }}>
             Günün vardiyaları da kapatıldı. İyi geceler.
           </div>
         )}
-        <div style={{ fontSize: 14, color: C.muted, lineHeight: 1.7 }}>
-          Sayılan {fmtTL(bitti.counted_total)} · beklenen {fmtTL(bitti.expected_cash)}
-          <br />
-          Fark <span style={{ color: farkRengi(bitti.difference), fontWeight: 800 }}>
-            {Number(bitti.difference) > 0 ? "+" : ""}{fmtTL(bitti.difference)}
-          </span>
-        </div>
+        {bitti.yeniden_baslangic ? (
+          <div style={{ fontSize: 14, color: C.muted, lineHeight: 1.7 }}>
+            Sayılan {fmtTL(bitti.counted_total)}
+            <br />
+            Önceki geceler sayılmadığı için fark hesaplanmadı.
+            {bitti.tur !== "devir" && <><br />Yarından itibaren fark bu sayıma göre hesaplanır.</>}
+          </div>
+        ) : (
+          <div style={{ fontSize: 14, color: C.muted, lineHeight: 1.7 }}>
+            Sayılan {fmtTL(bitti.counted_total)} · beklenen {fmtTL(bitti.expected_cash)}
+            <br />
+            Fark <span style={{ color: farkRengi(bitti.difference), fontWeight: 800 }}>
+              {Number(bitti.difference) > 0 ? "+" : ""}{fmtTL(bitti.difference)}
+            </span>
+          </div>
+        )}
         <div style={{ fontSize: 12, color: C.faint, marginTop: 14, lineHeight: 1.6 }}>
           Kayıt mühürlendi — silinemez. Yanlış saydıysan aynı gece üstüne
           gerekçeli düzeltme girebilirsin.
         </div>
-        <button onClick={() => navigate("/payment")} style={{
+        <button onClick={() => navigate(sonListe())} style={{
           marginTop: 22, minHeight: 44, padding: "12px 24px", background: C.accent, color: "#000",
           border: "none", borderRadius: 12, fontSize: 14, fontWeight: 800, cursor: "pointer", fontFamily: cv,
-        }}>Kasa'ya dön</button>
+        }}>Tamam</button>
       </div>
     );
   }
@@ -254,11 +379,11 @@ export default function CashCountPage() {
         </div>
       )}
 
-      {storeId && !ozetHata && !ozet && (
+      {storeId && !ozetHata && (!ozet || durum === undefined) && (
         <div style={{ ...kart, color: C.muted, fontSize: 13 }}>Gün özeti alınıyor…</div>
       )}
 
-      {storeId && ozet && (<>
+      {storeId && ozet && durum !== undefined && (<>
         {/* Nakitsiz gece: 9 alanlik form yerine tek dugme. */}
         {nakitsizGun ? (
           <div style={{ ...kart, marginBottom: 10 }}>
@@ -276,7 +401,27 @@ export default function CashCountPage() {
             }}>Kasa boş — onayla</button>
           </div>
         ) : (<>
-          {/* Beklenen tutarin nereden geldigi kalem kalem gorunur. */}
+          {/* Yeni baslangic: onceki gece(ler) sayilmadi, acilis bilinmiyor.
+              Beklenen ve fark gosterilmez; bosluk yalniz sahibe gorunur. */}
+          {yeniden ? (
+          <div style={{ ...kart, marginBottom: 10, borderColor: "#3A3A3A" }}>
+            <div style={{ fontSize: 16, fontWeight: 800, marginBottom: 6 }}>Yeni başlangıç sayımı</div>
+            <div style={{ fontSize: 13, color: C.muted, lineHeight: 1.65 }}>
+              Önceki gecelerin kapanış sayımı eksik. Bu yüzden çekmecede olması
+              gereken tutar bilinmiyor. Bu sayım yeni başlangıç olur: yarından
+              itibaren fark bu sayıma göre hesaplanır. Fark için açıklama gerekmez.
+            </div>
+            {durum?.son_kapanis && (
+              <div style={{ marginTop: 10, paddingTop: 10, borderTop: `1px solid ${C.line}`,
+                            fontSize: 12.5, color: C.muted, lineHeight: 1.65 }}>
+                <b style={{ color: C.ink }}>Yalnız sen görüyorsun:</b>{" "}
+                son kapanış sayımı {new Date(durum.son_kapanis + "T12:00").toLocaleDateString("tr-TR", { day: "numeric", month: "long" })}.
+                {" "}Arada {durum.bosluk_gece} gece sayılmadı. Bu gecelerde {fmtTL(durum.bosluk_nakit)} nakit tahsilat var.
+              </div>
+            )}
+            {giderAlani}
+          </div>
+          ) : (
           <div style={{ ...kart, marginBottom: 10 }}>
             <div style={etiket}>Çekmecede olması gereken</div>
             <div style={{ fontSize: 40, fontWeight: 900, fontFamily: hv, lineHeight: 1, margin: "6px 0 10px" }}>
@@ -298,13 +443,36 @@ export default function CashCountPage() {
             {Number(ozet.gider_adet) === 0 && (
               <div style={{ fontSize: 12, color: C.faint, marginTop: 8, lineHeight: 1.5 }}>
                 Bugün kasadan hiç gider girilmemiş — doğru mu? Kasadan alışveriş
-                yaptıysan Giderler'e gir, yoksa fark orada çıkar.
+                yaptıysan aşağıdan ekle, yoksa fark orada çıkar.
               </div>
             )}
+            {giderAlani}
           </div>
+          )}
 
-          {/* Kupur izgarasi. Buyuk dokunma hedefleri: gece, tek elle. */}
+          {/* Sayim: varsayilan "Toplami yaz" (tek kutu). Kupur izgarasi ikinci
+              kip. Buyuk dokunma hedefleri: gece, tek elle. */}
           <div style={{ ...kart, marginBottom: 10 }}>
+            <div style={{ display: "flex", gap: 6, marginBottom: 12 }}>
+              {[["toplam", "Toplamı yaz"], ["kupur", "Kupür kupür say"]].map(([k, l]) => (
+                <button key={k} onClick={() => setKip(k)} style={{
+                  flex: 1, minHeight: 40, padding: "8px 6px", borderRadius: 9, cursor: "pointer",
+                  fontFamily: cv, fontSize: 13, fontWeight: 800,
+                  background: kip === k ? C.accent : "transparent",
+                  color: kip === k ? "#000" : C.muted,
+                  border: `1px solid ${kip === k ? C.accent : C.line}`,
+                }}>{l}</button>
+              ))}
+            </div>
+            {kip === "toplam" ? (<>
+              <div style={{ ...etiket, marginBottom: 8 }}>Çekmecedeki toplam nakit</div>
+              <SayiGirisi kip="para" min={0} value={toplamElle}
+                     onChange={v => setToplamElle(v)} placeholder="Örn. 6450"
+                     style={{ ...inputS, minHeight: 56, fontSize: 24, fontWeight: 800, textAlign: "center" }} />
+              <div style={{ fontSize: 12, color: C.faint, marginTop: 7, lineHeight: 1.5 }}>
+                Banknotların ve bozuk paraların hepsini say. Toplamı yaz.
+              </div>
+            </>) : (<>
             <div style={{ ...etiket, marginBottom: 10 }}>Çekmecedeki kupürler</div>
             {[...KUPURLER, ...(bozukAcik ? BOZUKLAR : [])].map(k => (
               <div key={k} style={{ display: "flex", alignItems: "center", gap: 10, marginBottom: 8 }}>
@@ -338,9 +506,12 @@ export default function CashCountPage() {
               <span style={{ fontSize: 14, fontWeight: 700 }}>Sayılan</span>
               <span style={{ fontSize: 24, fontWeight: 900, fontVariantNumeric: "tabular-nums" }}>{fmtTL(sayilan)}</span>
             </div>
+            </>)}
           </div>
 
-          {/* FARK — ekranin karar noktasi. */}
+          {/* FARK — ekranin karar noktasi. Yeni baslangicta ve sayi
+              girilmeden fark yok. */}
+          {fark !== null && (
           <div style={{ ...kart, marginBottom: 10, borderColor: notGerekli ? "#3A2E2A" : C.line }}>
             <div style={{ display: "flex", justifyContent: "space-between", alignItems: "baseline" }}>
               <span style={etiket}>Fark</span>
@@ -357,6 +528,7 @@ export default function CashCountPage() {
               </div>
             )}
           </div>
+          )}
 
           {/* Fiste yazandan az tahsil edilmis siparisler farka karismaz ama
               gorunmezse gercek bir acik "kasa farki" sanilir. */}
