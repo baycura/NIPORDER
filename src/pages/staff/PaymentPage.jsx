@@ -6,6 +6,7 @@ import Ikon from "../../components/Ikon.jsx";
 import SayiGirisi from "../../components/SayiGirisi.jsx";
 import { ozellik } from "../../lib/profil.js";
 import { BorclularPaneli, tl } from "../../components/BorcTahsil.jsx";
+import { telefonNormalize } from "../../lib/telefon.js";
 
 // BOLUNMUS ODEME — kasadan gelen ihtiyac (20.09.2026):
 // "Masaya kalabalik oturup siparis veriyorlar, sonra ayri ayri odemek
@@ -71,9 +72,16 @@ export default function PaymentPage() {
   const [secim, setSecim] = useState({});   // { order_item_id: adet }
   // Borclular: tahsilat kasada alinir (20261013_borc_tahsilat.sql).
   const [borclular, setBorclular] = useState([]);
+  const [borcHata, setBorcHata] = useState(false);
   const [borcPaneli, setBorcPaneli] = useState(false);
+  // Hata bos liste sayilmaz: "kimsenin borcu yok" yazip borclu musteriye
+  // yanlis bilgi verdirmesin.
   const borclulariYukle = () => supabase.rpc("nip_borclular")
-    .then(({ data }) => setBorclular(Array.isArray(data) ? data : []));
+    .then(({ data, error }) => {
+      setBorcHata(!!error);
+      if (!error) setBorclular(Array.isArray(data) ? data : []);
+    });
+  const borcAcik = borclular.filter(b => Number(b.bakiye) > 0.005);
 
   const load = async () => {
     setLoading(true);
@@ -249,18 +257,6 @@ export default function PaymentPage() {
     setCustomerId(row.id);
     setMemberPts({ name: row.name, points: Number(row.points || 0) });
     setYeniKisi(null); setCustomerSearch("");
-  };
-
-  // Telefonu uyelerle ayni bicime getir (+90…): uye kaydi E.164 tutar
-  // (save_member_profile). Kasada "0555 123 45 67" yazilip sonra ayni kisi
-  // uye olursa iki kayit olusmasin. Kisa/anlamsiz giris oldugu gibi kalir.
-  const telefonNormalize = (s) => {
-    const d = String(s || "").replace(/\D/g, "");
-    if (!d) return "";
-    if (d.length === 10 && d.startsWith("5")) return "+90" + d;
-    if (d.length === 11 && d.startsWith("05")) return "+9" + d;
-    if (d.length === 12 && d.startsWith("90")) return "+" + d;
-    return String(s || "").trim().startsWith("+") ? "+" + d : d;
   };
 
   const yeniKisiAc = () => {
@@ -445,10 +441,10 @@ export default function PaymentPage() {
         </div>
       )}
 
-      {(borclular.length > 0 || orders.some(veresiyeMi)) && (() => {
-        const toplam = borclular.reduce((t, b) => t + Number(b.bakiye || 0), 0);
+      {(borclular.length > 0 || borcHata || orders.some(veresiyeMi)) && (() => {
+        const toplam = borcAcik.reduce((t, b) => t + Number(b.bakiye || 0), 0);
         return (
-          <button onClick={() => setBorcPaneli(true)}
+          <button onClick={() => { borclulariYukle(); setBorcPaneli(true); }}
             style={{width:"100%",background:"#161616",border:"1px solid #2A2A2A",borderRadius:12,padding:"12px 14px",
                     marginBottom:12,cursor:"pointer",display:"flex",alignItems:"center",gap:10,fontSize:13,
                     color:"#F0EDE8",fontFamily:"inherit",textAlign:"left"}}>
@@ -456,7 +452,8 @@ export default function PaymentPage() {
             <span style={{flex:1}}>
               <b>Borçlular</b>
               <span style={{color:"#888",display:"block",fontSize:12,marginTop:2}}>
-                {borclular.length ? `${borclular.length} kişi · borcunu ödeyen buradan tahsil edilir` : "Uzun süredir açık hesaplar var"}
+                {borcAcik.length ? `${borcAcik.length} kişi · borcunu ödeyen buradan tahsil edilir`
+                  : borclular.length ? "Bugün borcunu kapatanlar" : "Uzun süredir açık hesaplar var"}
               </span>
             </span>
             {toplam > 0 && <span style={{fontWeight:800,fontVariantNumeric:"tabular-nums"}}>{tl(toplam)}</span>}
@@ -807,6 +804,7 @@ export default function PaymentPage() {
       {borcPaneli && (
         <BorclularPaneli
           borclular={borclular}
+          hata={borcHata}
           acikHesaplar={orders.filter(veresiyeMi).map(o => ({ ...o, ad: o.customer_name }))}
           onKapat={() => setBorcPaneli(false)}
           onYenile={borclulariYukle}

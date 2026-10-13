@@ -1,9 +1,10 @@
-import { useEffect, useState } from "react";
+import { useEffect, useRef, useState } from "react";
 import { supabase } from "../lib/supabase.js";
 import { useAuth } from "../contexts/AuthContext.jsx";
 import Ikon from "./Ikon.jsx";
 import SayiGirisi from "./SayiGirisi.jsx";
 import { panoyaKopyala } from "../lib/hakedis.js";
+import { waNumara } from "../lib/telefon.js";
 
 // BORC TAHSILATI — sahip (13.10.2026): "Borclularin borcunu odediginde
 // hesabini temizlemek icin bir ayarimiz yok."
@@ -14,11 +15,12 @@ import { panoyaKopyala } from "../lib/hakedis.js";
 // Kasa > Borclular ve Uyeler.
 //
 // Sunucu: 20261013_borc_tahsilat.sql
-//   nip_borclular()         liste, bakiye, ilk odenmemis borcun tarihi
-//   nip_borc_tahsil(...)    para alindi: payments'a order_id NULL satir
-//   nip_borc_tahsil_geri_al yanlis tahsilat, yalniz ayni gun
-//   nip_borc_affet(...)     para alinmadan sil, yalniz admin
-//   nip_borc_ekstre(id)     kisi bazinda defter
+//   nip_borclular()           liste, bakiye, borc yasi, bugun odeyenler
+//   nip_borc_tahsil(...)      para alindi: payments'a order_id NULL satir
+//   nip_borc_tahsil_geri_al   yanlis tahsilat, yalniz ayni gun
+//   nip_borc_affet(...)       para alinmadan sil, yalniz admin
+//   nip_borc_geri_yaz(...)    gecmis gunun yanlis tahsilati, yalniz admin
+//   nip_borc_ekstre(id)       kisi bazinda defter
 
 export const tl = (n) => "₺" + Math.round(Number(n) || 0).toLocaleString("tr-TR");
 
@@ -42,13 +44,19 @@ const uzunTarih = (d = new Date()) => { const t = istTarih(d); return `${t.slice
 
 // Sunucu hatasi "borc tahsili: tutar borctan fazla (...)" gibi gelir; onek
 // kasiyere bilgi vermez.
-const hataMetni = (e) => String(e?.message || e || "").replace(/^(borc tahsili|borc silme|geri alma):\s*/i, "");
+const hataMetni = (e) => String(e?.message || e || "")
+  .replace(/^(borc tahsili|borc silme|borc geri yazma|geri alma):\s*/i, "");
 
 // WhatsApp: kisinin telefonu varsa dogrudan ona acilir, yoksa kisi sectirilir.
-const waLink = (metin, tel) => {
-  const d = String(tel || "").replace(/\D/g, "");
-  return "https://wa.me/" + (d.length >= 10 ? d : "") + "?text=" + encodeURIComponent(metin);
-};
+const waLink = (metin, tel) => "https://wa.me/" + waNumara(tel) + "?text=" + encodeURIComponent(metin);
+
+// Iki adimli dugmede hizli cift dokunus kurulumu ATLAYIP onayliyordu (React
+// ilk dokunusun durumunu ikinciden once isliyor). Kurulumdan sonraki bu sure
+// icindeki dokunus onay sayilmaz.
+const ONAY_BEKLE_MS = 450;
+
+// Borc defterindeki yon: borcu artiranlar arti, azaltanlar eksi.
+const ARTIRAN = new Set(["borc", "geri_alma", "geri_yaz"]);
 
 // Kasiyerin magazalari. Tek magaza ise secici gorunmez.
 function useMagazalar() {
@@ -87,26 +95,49 @@ export function Pencere({ baslik, alt, onKapat, children, z = 110 }) {
 // ---------------------------------------------------------------------------
 // TAHSIL ET
 // ---------------------------------------------------------------------------
-// kisi: { id, ad, bakiye }
+// kisi: { id, ad, bakiye, telefon }
+// onBitti({ kalan, tutar, yontem, kisi, paymentId })
 export function BorcTahsilPenceresi({ kisi, onKapat, onBitti }) {
   const { isAdmin } = useAuth();
   const { ids, magazalar } = useMagazalar();
   const [magaza, setMagaza] = useState(ids[0] || null);
   const [yontem, setYontem] = useState("cash");
+  const [bakiye, setBakiye] = useState(Number(kisi.bakiye) || 0);
   const [tutar, setTutar] = useState(String(Math.round(Number(kisi.bakiye) * 100) / 100));
+  const [guncellendi, setGuncellendi] = useState(false);
   const [not, setNot] = useState("");
   const [busy, setBusy] = useState(false);
   const [onay, setOnay] = useState(false);       // iki adimli dugme
+  const kurulumAni = useRef(0);
   const [sayimVar, setSayimVar] = useState(false);
   const [silKip, setSilKip] = useState(false);    // admin: para alinmadan sil
   const [gerekce, setGerekce] = useState("");
 
-  const bakiye = Number(kisi.bakiye) || 0;
   const t = Number(tutar) || 0;
   const tamami = Math.abs(t - bakiye) < 0.005;
   const fazla = t > bakiye + 0.005;
   const kalacak = Math.max(0, bakiye - t);
   const gecerli = t > 0 && !fazla && !!magaza;
+
+  // Liste eskimis olabilir: baska cihazda borc yazilmis ya da tahsil edilmis
+  // olabilir. Pencere acilinca bakiye sunucudan TAZE okunur; tutar tamamina
+  // ayarliysa yeni tamamina gecer. Sunucu da ekranda gorulen bakiyeyi
+  // (p_beklenen_bakiye) kontrol ediyor.
+  const bakiyeRef = useRef(Number(kisi.bakiye) || 0);
+  const bakiyeTazele = async () => {
+    const { data } = await supabase.from("customers").select("outstanding_balance").eq("id", kisi.id).maybeSingle();
+    if (!data) return null;
+    const yeni = Number(data.outstanding_balance) || 0;
+    const eski = bakiyeRef.current;
+    if (Math.abs(eski - yeni) > 0.005) {
+      bakiyeRef.current = yeni;
+      setBakiye(yeni);
+      setGuncellendi(true);
+      setTutar(tu => (Math.abs((Number(tu) || 0) - eski) < 0.005 ? String(Math.round(yeni * 100) / 100) : tu));
+    }
+    return yeni;
+  };
+  useEffect(() => { bakiyeTazele(); }, [kisi.id]);
 
   // Kapanis sayimi girilmisse nakit o gunun muhurlu sayimina giremez; ertesi
   // gun "fazla" gorunur. Engellemiyoruz, kasiyer bilsin.
@@ -120,7 +151,7 @@ export function BorcTahsilPenceresi({ kisi, onKapat, onBitti }) {
   }, [magaza]);
 
   // Tutar ya da yontem degisince onay sifirlanir: onaylanan sey ekrandakidir.
-  useEffect(() => { setOnay(false); }, [tutar, yontem, magaza]);
+  useEffect(() => { setOnay(false); }, [tutar, yontem, magaza, bakiye]);
   useEffect(() => {
     if (!onay) return;
     const z = setTimeout(() => setOnay(false), 4000);
@@ -129,7 +160,8 @@ export function BorcTahsilPenceresi({ kisi, onKapat, onBitti }) {
 
   const tahsilEt = async () => {
     if (busy || !gecerli) return;
-    if (!onay) { setOnay(true); return; }
+    if (!onay) { kurulumAni.current = Date.now(); setOnay(true); return; }
+    if (Date.now() - kurulumAni.current < ONAY_BEKLE_MS) return;
     setBusy(true);
     const { data, error } = await supabase.rpc("nip_borc_tahsil", {
       p_customer_id: kisi.id,
@@ -140,16 +172,25 @@ export function BorcTahsilPenceresi({ kisi, onKapat, onBitti }) {
       p_not: not.trim() || null,
     });
     setBusy(false); setOnay(false);
-    if (error) { alert("Tahsilat yapılamadı: " + hataMetni(error)); return; }
+    if (error) {
+      // Bakiye bu arada degistiyse ekran tazelenir; kasiyer yeni rakami gorur.
+      if (/bakiye degisti/i.test(error.message || "")) {
+        await bakiyeTazele();
+        alert("Bu arada borç değişti. Yeni tutarı kontrol et ve tekrar onayla.");
+      } else {
+        alert("Tahsilat yapılamadı: " + hataMetni(error));
+      }
+      return;
+    }
     const sonuc = Array.isArray(data) ? data[0] : data;
     const kalan = Number(sonuc?.kalan ?? kalacak);
-    onBitti && onBitti({ kalan, tutar: t, yontem, kisi });
+    onBitti && onBitti({ kalan, tutar: t, yontem, kisi: { ...kisi, bakiye: kalan }, paymentId: sonuc?.payment_id || null });
   };
 
   const sil = async () => {
     if (busy) return;
     if (gerekce.trim().length < 3) { alert("Neden sildiğini yaz (en az 3 harf)"); return; }
-    if (!confirm(`${kisi.ad}: ${tl(t)} borç PARA ALINMADAN silinecek.\n\nKasaya para girmez. Kayıt "affedildi" olarak kalır.\nDevam edilsin mi?`)) return;
+    if (!confirm(`${kisi.ad}: ${tl(t)} borç PARA ALINMADAN silinecek.\n\nKasaya para girmez. Kayıt "borç silindi" olarak kalır.\nDevam edilsin mi?`)) return;
     setBusy(true);
     const { data, error } = await supabase.rpc("nip_borc_affet", {
       p_customer_id: kisi.id, p_amount: t, p_gerekce: gerekce.trim(), p_store_id: magaza,
@@ -157,7 +198,8 @@ export function BorcTahsilPenceresi({ kisi, onKapat, onBitti }) {
     setBusy(false);
     if (error) { alert("Borç silinemedi: " + hataMetni(error)); return; }
     const sonuc = Array.isArray(data) ? data[0] : data;
-    onBitti && onBitti({ kalan: Number(sonuc?.kalan ?? kalacak), tutar: t, yontem: "af", kisi });
+    const kalan = Number(sonuc?.kalan ?? kalacak);
+    onBitti && onBitti({ kalan, tutar: t, yontem: "af", kisi: { ...kisi, bakiye: kalan }, paymentId: null });
   };
 
   const dugmeMetni = busy ? "Kaydediliyor…"
@@ -168,10 +210,13 @@ export function BorcTahsilPenceresi({ kisi, onKapat, onBitti }) {
 
   return (
     <Pencere baslik="Borç tahsil et" alt={kisi.ad} onKapat={onKapat}>
-      <div style={{background:"#0C0C0C",border:"1px solid #2A2A2A",borderRadius:10,padding:14,marginBottom:14,display:"flex",justifyContent:"space-between",alignItems:"baseline"}}>
+      <div style={{background:"#0C0C0C",border:"1px solid #2A2A2A",borderRadius:10,padding:14,marginBottom:guncellendi?6:14,display:"flex",justifyContent:"space-between",alignItems:"baseline"}}>
         <span style={{fontSize:14,fontWeight:700}}>Açık borç</span>
         <span style={{fontSize:30,fontWeight:800,fontVariantNumeric:"tabular-nums"}}>{tl(bakiye)}</span>
       </div>
+      {guncellendi && (
+        <div style={{fontSize:12,color:"#C87A6A",marginBottom:12}}>Borç başka bir cihazda değişti. Güncel tutar bu.</div>
+      )}
 
       {magazalar.length > 1 && (
         <div style={{display:"flex",gap:6,marginBottom:12}}>
@@ -253,7 +298,7 @@ export function BorcTahsilPenceresi({ kisi, onKapat, onBitti }) {
           <div style={{marginTop:4,padding:12,border:"1px solid #C87A6A",borderRadius:10}}>
             <div style={{fontSize:13,fontWeight:800,color:"#C87A6A",marginBottom:4}}>Borcu sil — para alınmadı</div>
             <div style={{fontSize:12,color:"#888",lineHeight:1.5,marginBottom:10}}>
-              Kasaya para girmez. Satış cirodan düşmez. Kayıt "affedildi" olarak kalır.
+              Kasaya para girmez. Satış cirodan düşmez. Kayıt "borç silindi" olarak kalır.
             </div>
             <div style={{fontSize:12,color:"#888",fontWeight:600,marginBottom:5}}>Silinecek tutar</div>
             <SayiGirisi kip="para" value={tutar} onChange={v => setTutar(v)}
@@ -285,12 +330,13 @@ export function BorcTahsilPenceresi({ kisi, onKapat, onBitti }) {
 }
 
 // ---------------------------------------------------------------------------
-// EKSTRE
+// DOKUM (EKSTRE)
 // ---------------------------------------------------------------------------
 // Borclularin hicbirinde uygulama hesabi yok; borcu gormelerinin tek yolu
-// ekstrenin kopyalanip gonderilmesi. "Neyin parasi?" sorusunun cevabi da bu.
+// dokumun kopyalanip gonderilmesi. "Neyin parasi?" sorusunun cevabi da bu.
+// onDegisti({ kalan }) — geri alma ya da geri yazmadan sonra yeni bakiye.
 export function BorcEkstrePenceresi({ kisi, onKapat, onDegisti }) {
-  const { staffUser, isManager } = useAuth();
+  const { staffUser, isManager, isAdmin } = useAuth();
   const [satirlar, setSatirlar] = useState(null);
   const [bakiye, setBakiye] = useState(Number(kisi.bakiye) || 0);
   const [kopyalandi, setKopyalandi] = useState(false);
@@ -301,37 +347,66 @@ export function BorcEkstrePenceresi({ kisi, onKapat, onDegisti }) {
       supabase.rpc("nip_borc_ekstre", { p_customer_id: kisi.id }),
       supabase.from("customers").select("outstanding_balance").eq("id", kisi.id).maybeSingle(),
     ]);
-    if (error) { alert("Ekstre alınamadı: " + error.message); setSatirlar([]); return; }
+    if (error) { alert("Döküm alınamadı: " + error.message); setSatirlar([]); return null; }
     setSatirlar(data || []);
-    if (c) setBakiye(Number(c.outstanding_balance) || 0);
+    const yeni = c ? Number(c.outstanding_balance) || 0 : null;
+    if (yeni != null) setBakiye(yeni);
+    return yeni;
   };
   useEffect(() => { yukle(); }, [kisi.id]);
 
   const bugun = isletmeGunu();
-  const geriAlinabilir = (s) => s.tur === "tahsilat" && !s.geri_alindi
-    && isletmeGunu(new Date(s.tarih)) === bugun
+  const bugunMu = (s) => isletmeGunu(new Date(s.tarih)) === bugun;
+  // Ayni gun: tahsilati giren ya da yonetici geri alir (ters kayit, kasa
+  // sifirlanir). Gecmis gun: o gunun sayimi kapandi; admin borcu geri yazar,
+  // para kaydina dokunulmaz.
+  const geriAlinabilir = (s) => s.tur === "tahsilat" && !s.duzeltildi && bugunMu(s)
     && (isManager || s.personel === staffUser?.name);
+  const geriYazilabilir = (s) => isAdmin && s.tur === "tahsilat" && !s.duzeltildi && !bugunMu(s);
+
+  const isle = async (rpc, args, hataOnek) => {
+    setBusy(true);
+    const { error } = await supabase.rpc(rpc, args);
+    setBusy(false);
+    if (error) { alert(hataOnek + hataMetni(error)); return; }
+    const yeni = await yukle();
+    onDegisti && onDegisti({ kalan: yeni });
+  };
 
   const geriAl = async (s) => {
     if (busy) return;
     const neden = prompt(`${tl(s.tutar)} ${YONTEM_ADI[s.yontem] || ""} tahsilat geri alınacak ve borç geri yazılacak.\n\nNeden? (en az 3 harf)`);
     if (neden == null) return;
     if (neden.trim().length < 3) { alert("Nedeni yaz (en az 3 harf)"); return; }
-    setBusy(true);
-    const { error } = await supabase.rpc("nip_borc_tahsil_geri_al", { p_payment_id: s.kayit_id, p_gerekce: neden.trim() });
-    setBusy(false);
-    if (error) { alert("Geri alınamadı: " + hataMetni(error)); return; }
-    await yukle();
-    onDegisti && onDegisti();
+    await isle("nip_borc_tahsil_geri_al", { p_payment_id: s.kayit_id, p_gerekce: neden.trim() }, "Geri alınamadı: ");
   };
+
+  const geriYaz = async (s) => {
+    if (busy) return;
+    const neden = prompt(`${kisaTarih(s.tarih)} tarihli ${tl(s.tutar)} tahsilat yanlış girilmiş sayılacak. ${tl(s.tutar)} borç geri yazılacak.\n\nO günün kasa kaydı değişmez.\n\nNeden? (en az 3 harf)`);
+    if (neden == null) return;
+    if (neden.trim().length < 3) { alert("Nedeni yaz (en az 3 harf)"); return; }
+    await isle("nip_borc_geri_yaz", {
+      p_customer_id: kisi.id, p_amount: Number(s.tutar), p_gerekce: neden.trim(),
+      p_store_id: staffUser?.store_ids?.[0], p_payment_id: s.kayit_id,
+    }, "Borç geri yazılamadı: ");
+  };
+
+  // Borcun yazildigi gun ile hesabin acildigi gun farkliysa ikisi de gorunur:
+  // musteri "neyin parasi?" diye sorunca hesabin acildigi geceyi tanir.
+  const hesapGunu = (s) => s.tur === "borc" && s.siparis_tarihi
+    && istTarih(s.siparis_tarihi) !== istTarih(s.tarih) ? kisaTarih(s.siparis_tarihi) : null;
 
   const metin = () => {
     const sat = [`Not in Paris · Borç dökümü`, `${kisi.ad} — ${uzunTarih()}`, ""];
     for (const s of satirlar || []) {
-      if (s.tur === "geri_alma" || s.geri_alindi) continue; // yanlis giris; musteriyi ilgilendirmez
-      if (s.tur === "borc") sat.push(`${kisaTarih(s.tarih)}  Borç   ${tl(s.tutar)}${s.aciklama ? "  " + s.aciklama : ""}`);
+      // Yanlis giris ve onun duzeltmesi musteriyi ilgilendirmez; ikisi de atlanir.
+      if (s.tur === "geri_alma" || s.duzeltildi || (s.tur === "geri_yaz" && s.payment_id)) continue;
+      const h = hesapGunu(s);
+      if (s.tur === "borc") sat.push(`${kisaTarih(s.tarih)}  Borç   ${tl(s.tutar)}${h ? ` (${h} hesabı)` : ""}${s.aciklama ? "  " + s.aciklama : ""}`);
       else if (s.tur === "tahsilat") sat.push(`${kisaTarih(s.tarih)}  Ödeme −${tl(s.tutar)}  ${YONTEM_ADI[s.yontem] || ""}`);
       else if (s.tur === "af") sat.push(`${kisaTarih(s.tarih)}  Düşüldü −${tl(s.tutar)}`);
+      else if (s.tur === "geri_yaz") sat.push(`${kisaTarih(s.tarih)}  Düzeltme +${tl(s.tutar)}`);
     }
     sat.push("", `Kalan borç: ${tl(bakiye)}`);
     return sat.join("\n");
@@ -343,7 +418,7 @@ export function BorcEkstrePenceresi({ kisi, onKapat, onDegisti }) {
     else alert("Kopyalanamadı");
   };
 
-  const ETIKET = { borc: "Borç", tahsilat: "Ödeme", geri_alma: "Geri alındı", af: "Silindi" };
+  const ETIKET = { borc: "Borç", tahsilat: "Ödeme", geri_alma: "Geri alındı", af: "Borç silindi", geri_yaz: "Borç geri yazıldı" };
 
   return (
     <Pencere baslik="Borç dökümü" alt={kisi.ad} onKapat={onKapat}>
@@ -358,32 +433,37 @@ export function BorcEkstrePenceresi({ kisi, onKapat, onDegisti }) {
       {satirlar && satirlar.length > 0 && (
         <div style={{border:"1px solid #2A2A2A",borderRadius:10,overflow:"hidden",marginBottom:12}}>
           {satirlar.map((s, i) => {
-            const eksi = s.tur !== "borc";
-            const soluk = s.tur === "geri_alma" || s.geri_alindi;
+            const arti = ARTIRAN.has(s.tur);
+            const soluk = s.tur === "geri_alma" || s.duzeltildi;
+            const h = hesapGunu(s);
+            // Tahsilat notunun basindaki "borç tahsilatı: <ad>" tekrar; atilir.
+            const not = s.tur === "borc" ? s.aciklama
+              : (s.aciklama || "").replace(/^borç tahsilatı:\s*[^·]*·?\s*/, "");
+            const alt = [h ? `${h} hesabı` : null, not, s.personel].filter(Boolean).join(" · ");
             return (
               <div key={s.kayit_id || i} style={{display:"flex",gap:10,alignItems:"flex-start",padding:"10px 12px",borderTop:i?"1px solid #1E1E1E":"none",opacity:soluk?0.5:1}}>
                 <div style={{width:42,flexShrink:0,fontSize:12,color:"#888",fontVariantNumeric:"tabular-nums",paddingTop:1}}>{kisaTarih(s.tarih)}</div>
                 <div style={{flex:1,minWidth:0}}>
-                  <div style={{fontSize:13,fontWeight:700,textDecoration:s.geri_alindi?"line-through":"none"}}>
+                  <div style={{fontSize:13,fontWeight:700,textDecoration:s.duzeltildi?"line-through":"none"}}>
                     {ETIKET[s.tur] || s.tur}
                     {s.yontem && s.tur !== "borc" && <span style={{color:"#888",fontWeight:500}}> · {YONTEM_ADI[s.yontem] || s.yontem}</span>}
                   </div>
-                  {(() => {
-                    // Tahsilat notunun basindaki "borç tahsilatı: <ad>" tekrar; atilir.
-                    const not = s.tur === "borc" ? s.aciklama
-                      : (s.aciklama || "").replace(/^borç tahsilatı:\s*[^·]*·?\s*/, "");
-                    const alt = [not, s.personel].filter(Boolean).join(" · ");
-                    return alt ? <div style={{fontSize:11,color:"#888",marginTop:2,lineHeight:1.4,overflowWrap:"anywhere"}}>{alt}</div> : null;
-                  })()}
+                  {alt && <div style={{fontSize:11,color:"#888",marginTop:2,lineHeight:1.4,overflowWrap:"anywhere"}}>{alt}</div>}
                   {geriAlinabilir(s) && (
                     <button onClick={() => geriAl(s)} disabled={busy}
                       style={{marginTop:6,padding:"5px 10px",background:"transparent",color:"#C87A6A",border:"1px solid #333",borderRadius:7,fontSize:11,fontWeight:700,cursor:"pointer",fontFamily:"inherit"}}>
                       Yanlış girdim — geri al
                     </button>
                   )}
+                  {geriYazilabilir(s) && (
+                    <button onClick={() => geriYaz(s)} disabled={busy}
+                      style={{marginTop:6,padding:"5px 10px",background:"transparent",color:"#888",border:"1px solid #333",borderRadius:7,fontSize:11,fontWeight:700,cursor:"pointer",fontFamily:"inherit"}}>
+                      Yanlış girilmiş — borcu geri yaz (admin)
+                    </button>
+                  )}
                 </div>
-                <div style={{fontSize:14,fontWeight:800,flexShrink:0,fontVariantNumeric:"tabular-nums",color:eksi && !soluk ? "#7FA88A" : "#F0EDE8"}}>
-                  {eksi ? "−" : ""}{tl(s.tutar)}
+                <div style={{fontSize:14,fontWeight:800,flexShrink:0,fontVariantNumeric:"tabular-nums",color:!arti && !soluk ? "#7FA88A" : "#F0EDE8"}}>
+                  {arti ? (s.tur === "borc" ? "" : "+") : "−"}{tl(s.tutar)}
                 </div>
               </div>
             );
@@ -408,34 +488,60 @@ export function BorcEkstrePenceresi({ kisi, onKapat, onDegisti }) {
 // ---------------------------------------------------------------------------
 // KASA > BORCLULAR
 // ---------------------------------------------------------------------------
-// borclular: nip_borclular() satirlari. acikHesaplar: uzun suredir acik duran
-// adli hesaplar (borc defterinde degiller ama fiilen veresiye).
-export function BorclularPaneli({ borclular, acikHesaplar = [], onKapat, onYenile, onBorcaAktar }) {
+// borclular: nip_borclular() satirlari (borcu olanlar ve borcunu BUGUN
+// kapatanlar). acikHesaplar: uzun suredir acik duran adli hesaplar (borc
+// defterinde degiller ama fiilen veresiye). hata: liste alinamadi.
+export function BorclularPaneli({ borclular, hata = false, acikHesaplar = [], onKapat, onYenile, onBorcaAktar }) {
   const [tahsil, setTahsil] = useState(null);
   const [ekstre, setEkstre] = useState(null);
-  const [mesaj, setMesaj] = useState(null);
-  const toplam = borclular.reduce((t, b) => t + Number(b.bakiye || 0), 0);
+  const [mesaj, setMesaj] = useState(null);   // { metin, kisi }
+  const acik = borclular.filter(b => Number(b.bakiye) > 0.005);
+  // Borcunu bugun kapatan kisi listeden dusmez: kasiyer yanlis girdiyse
+  // dokumden geri alabilsin (inceleme bulgusu).
+  const kapatanlar = borclular.filter(b => Number(b.bakiye) <= 0.005 && Number(b.bugun_tahsilat) > 0);
+  const toplam = acik.reduce((t, b) => t + Number(b.bakiye || 0), 0);
 
   const kisiOf = (b) => ({ id: b.customer_id, ad: b.ad, bakiye: Number(b.bakiye), telefon: b.telefon });
 
   const bitti = ({ kalan, tutar, yontem, kisi }) => {
     setTahsil(null);
-    setMesaj(yontem === "af"
-      ? `${kisi.ad}: ${tl(tutar)} borç silindi. ${kalan > 0.005 ? tl(kalan) + " kaldı." : "Borç kapandı."}`
-      : `${kisi.ad}: ${tl(tutar)} ${YONTEM_ADI[yontem]} alındı. ${kalan > 0.005 ? tl(kalan) + " kaldı." : "Borç kapandı."}`);
+    const sonu = kalan > 0.005 ? tl(kalan) + " kaldı." : "Borç kapandı.";
+    setMesaj({
+      kisi,
+      metin: yontem === "af"
+        ? `${kisi.ad}: ${tl(tutar)} borç silindi. ${sonu}`
+        : `${kisi.ad}: ${tl(tutar)} ${YONTEM_ADI[yontem]} alındı. ${sonu}`,
+    });
     onYenile && onYenile();
   };
 
   return (
-    <Pencere baslik="Borçlular" alt={borclular.length ? `${borclular.length} kişi · toplam ${tl(toplam)}` : "Açık borç yok"} onKapat={onKapat} z={105}>
+    <Pencere baslik="Borçlular" alt={acik.length ? `${acik.length} kişi · toplam ${tl(toplam)}` : "Açık borç yok"} onKapat={onKapat} z={105}>
       {mesaj && (
         <div role="status" style={{display:"flex",gap:8,alignItems:"center",padding:"10px 12px",marginBottom:12,background:"#152015",border:"1px solid #2A3A2A",borderRadius:10,fontSize:13}}>
           <span style={{color:"#7FA88A",display:"flex"}}><Ikon ad="onay" boy={15}/></span>
-          <span style={{flex:1}}>{mesaj}</span>
+          <span style={{flex:1}}>{mesaj.metin}</span>
+          {/* Yanlis girdiyse buradan geri alir: borcu sifirlanan kisi listede
+              Tahsil et dugmesiyle gorunmez. */}
+          <button onClick={() => setEkstre(mesaj.kisi)}
+            style={{padding:"6px 10px",background:"transparent",color:"#F0EDE8",border:"1px solid #2A3A2A",borderRadius:8,fontSize:12,fontWeight:700,cursor:"pointer",fontFamily:"inherit",whiteSpace:"nowrap"}}>
+            Döküm
+          </button>
         </div>
       )}
 
-      {borclular.map(b => {
+      {hata && (
+        <div style={{display:"flex",gap:8,alignItems:"center",padding:"10px 12px",marginBottom:12,border:"1px solid #C87A6A",borderRadius:10,fontSize:13}}>
+          <span style={{color:"#C87A6A",display:"flex"}}><Ikon ad="uyari" boy={15}/></span>
+          <span style={{flex:1}}>Borç listesi alınamadı.</span>
+          <button onClick={() => onYenile && onYenile()}
+            style={{padding:"6px 10px",background:"transparent",color:"#F0EDE8",border:"1px solid #3A3A3A",borderRadius:8,fontSize:12,fontWeight:700,cursor:"pointer",fontFamily:"inherit"}}>
+            Yenile
+          </button>
+        </div>
+      )}
+
+      {acik.map(b => {
         const gun = gunFarki(b.acik_borc_tarihi);
         const eski = gun != null && gun >= 30;
         return (
@@ -467,8 +573,26 @@ export function BorclularPaneli({ borclular, acikHesaplar = [], onKapat, onYenil
         );
       })}
 
-      {borclular.length === 0 && !mesaj && (
+      {acik.length === 0 && !mesaj && !hata && (
         <div style={{textAlign:"center",padding:"24px 0",color:"#888",fontSize:13}}>Kimsenin açık borcu yok.</div>
+      )}
+
+      {kapatanlar.length > 0 && (
+        <div style={{marginTop:16}}>
+          <div style={{fontSize:12,color:"#888",fontWeight:600,marginBottom:8}}>Borcunu bugün kapatanlar</div>
+          {kapatanlar.map(b => (
+            <div key={b.customer_id} style={{display:"flex",alignItems:"center",gap:10,padding:"10px 12px",border:"1px solid #2A2A2A",borderRadius:10,marginBottom:6}}>
+              <div style={{flex:1,minWidth:0}}>
+                <div style={{fontSize:13,fontWeight:700,overflow:"hidden",textOverflow:"ellipsis",whiteSpace:"nowrap"}}>{b.ad}</div>
+                <div style={{fontSize:11,color:"#7FA88A"}}>bugün {tl(b.bugun_tahsilat)} ödedi · borcu yok</div>
+              </div>
+              <button onClick={() => { setMesaj(null); setEkstre(kisiOf(b)); }}
+                style={{padding:"8px 12px",background:"transparent",color:"#F0EDE8",border:"1px solid #3A3A3A",borderRadius:8,fontSize:12,fontWeight:700,cursor:"pointer",fontFamily:"inherit",whiteSpace:"nowrap"}}>
+                Döküm
+              </button>
+            </div>
+          ))}
+        </div>
       )}
 
       {/* Masasiz, adli ve gunlerdir acik hesap fiilen veresiyedir ama borc
@@ -495,7 +619,7 @@ export function BorclularPaneli({ borclular, acikHesaplar = [], onKapat, onYenil
       )}
 
       {tahsil && <BorcTahsilPenceresi kisi={tahsil} onKapat={() => setTahsil(null)} onBitti={bitti}/>}
-      {ekstre && <BorcEkstrePenceresi kisi={ekstre} onKapat={() => setEkstre(null)} onDegisti={onYenile}/>}
+      {ekstre && <BorcEkstrePenceresi kisi={ekstre} onKapat={() => setEkstre(null)} onDegisti={() => onYenile && onYenile()}/>}
     </Pencere>
   );
 }

@@ -3,6 +3,7 @@ import { supabase } from "../../lib/supabase.js";
 import { useAuth } from "../../contexts/AuthContext.jsx";
 import SayiGirisi from "../../components/SayiGirisi.jsx";
 import { BorcTahsilPenceresi, BorcEkstrePenceresi, tl } from "../../components/BorcTahsil.jsx";
+import { telefonNormalize } from "../../lib/telefon.js";
 
 const cv = "-apple-system,BlinkMacSystemFont,'Segoe UI',Roboto,sans-serif";
 
@@ -94,7 +95,9 @@ export default function MembersPage() {
     const payload = {
       name: form.name.trim(),
       email: form.email?.trim() || null,
-      phone: form.phone?.trim() || null,
+      // Kasadaki gibi +90 bicimi: dokumun WhatsApp dugmesi numarayi ancak
+      // boyle tanir, ayni kisi uye olunca ikinci kayit da acilmaz.
+      phone: telefonNormalize(form.phone) || null,
       tier: form.tier,
       admin_discount: Number(form.admin_discount) || 0,
       // outstanding_balance BILEREK YOK. Eskiden form borcu da yaziyordu:
@@ -129,12 +132,15 @@ export default function MembersPage() {
     setModal(null); setBusy(false); load();
   };
 
-  // Tahsilat ya da silme bitti: acik penceredeki rakam ve liste tazelenir.
-  const borcBitti = ({ kalan }) => {
-    setBorcPenceresi(null);
+  // Tahsilat, silme, geri alma ya da geri yazma bitti: acik penceredeki
+  // rakam ve liste tazelenir. (Eskiden geri almadan sonra pencere eski
+  // rakamla kaliyor, "Sil" dugmesi borclu kisi icin gorunuyordu.)
+  const bakiyeGuncelle = (kalan) => {
+    if (kalan == null) { load(); return; }
     setModal(md => md && md.data ? { ...md, data: { ...md.data, outstanding_balance: kalan } } : md);
     load();
   };
+  const borcBitti = ({ kalan }) => { setBorcPenceresi(null); bakiyeGuncelle(kalan); };
 
   const deleteMember = async (m) => {
     // Borclu silinemez: siparisleri ve odemeleri ona bagli (veritabani da
@@ -160,7 +166,9 @@ export default function MembersPage() {
   const totalDebt = members.reduce((s, m) => s + Number(m.outstanding_balance || 0), 0);
   const debtorCount = members.filter(m => Number(m.outstanding_balance) > 0).length;
 
-  if (loading) return (<div style={{color:"#888",fontFamily:cv,padding:20}}>Yukleniyor...</div>);
+  // Yukleniyor ekrani yalniz ILK yuklemede: yenileme sirasinda acik pencereler
+  // (tahsilat, dokum) kapanip yeniden acilmasin.
+  if (loading && !members.length) return (<div style={{color:"#888",fontFamily:cv,padding:20}}>Yukleniyor...</div>);
 
   return (
     <div style={{fontFamily:cv,color:"#F0EDE8"}}>
@@ -325,7 +333,7 @@ export default function MembersPage() {
       )}
       {borcPenceresi?.tur === "ekstre" && (
         <BorcEkstrePenceresi kisi={borcPenceresi.kisi} onKapat={() => setBorcPenceresi(null)}
-          onDegisti={() => load()}/>
+          onDegisti={({ kalan } = {}) => bakiyeGuncelle(kalan)}/>
       )}
     </div>
   );
