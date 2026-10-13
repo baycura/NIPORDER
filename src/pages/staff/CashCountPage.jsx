@@ -352,7 +352,7 @@ export default function CashCountPage() {
             {notGerekli && (
               <div style={{ fontSize: 13, color: C.muted, marginTop: 10, lineHeight: 1.7 }}>
                 {fark > 0
-                  ? "Fazla var. Veresiye ödemesi alındı mı? Yarına para bırakıyorsan aşağıdaki \"çekmeceden alınan\" alanını kullan."
+                  ? "Fazla var. Borç ödemesi alındıysa Kasa > Borçlular'dan tahsil et. Yarına para bırakıyorsan aşağıdaki \"çekmeceden alınan\" alanını kullan."
                   : "Eksik var. Bir hesap yanlış yöntemle mi kapandı, kasadan gider girmeyi mi unuttun?"}
               </div>
             )}
