@@ -528,9 +528,14 @@ export default function CustomerMenu() {
   const storeSlugParam = (searchParams.get("store") || "paris").toLowerCase();
   const [currentStoreId, setCurrentStoreId] = useState(null);
 
+  // Ilk acilis telefonun dilinde: Turkce telefon TR, Rusca RU, gerisi EN
+  // (sahip onayi 14.10; eskiden herkese EN aciliyordu). Secim hatirlanir.
+  const telefonDili = () => {
+    const d = String((navigator.languages && navigator.languages[0]) || navigator.language || "").toLowerCase();
+    return d.startsWith("tr") ? "tr" : d.startsWith("ru") ? "ru" : "en";
+  };
   const [lang, setLang] = useState(() => {
-    // Ilk giris Ingilizce (turist agirlikli); musteri TR/RU secerse hatirlanir
-    try { return localStorage.getItem("nip_lang") || "en"; } catch (e) { return "en"; }
+    try { return localStorage.getItem("nip_lang") || telefonDili(); } catch (e) { return telefonDili(); }
   });
   const t = T[lang] || T.tr;
   const setLanguage = (l) => { setLang(l); try { localStorage.setItem("nip_lang", l); } catch (e) {} };
