@@ -1105,26 +1105,38 @@ export default function CustomerMenu() {
         if (geri.length) setCart(geri);
         if (d.not) setOrderNote(d.not);
       }
-      if (d.siparis && Date.now() - (d.siparisTs || 0) < SIPARIS_SURE) setSuccessOrderId(d.siparis);
+      if (d.siparis && Date.now() - (d.siparisTs || 0) < SIPARIS_SURE) {
+        setSuccessOrderId(d.siparis);
+        // HAZIR asamasi geri kurulur ki zil yeniden calmasin ve musteri
+        // menudeyse menude kalsin (eskiden buyuk HAZIR ekranina kilitleniyordu).
+        if (d.asama === "ready") setOrderStage("ready");
+        if (d.gozat) setBrowsing(true);
+      }
     }
     if (d.giris) durumYaz({ giris: false });
     durumHazir.current = true;
   }, [loading, products]);
 
   // Her degisiklikte kaydet (geri yukleme bitmeden yazma: bos sepet eskisini ezmesin).
+  // Biten siparis (servis edildi ya da odendi) saklanmaz: menu yeniden
+  // acilinca eski "Afiyet olsun" ekrani gelmesin. Asama ve "menude geziyor"
+  // da saklanir.
   useEffect(() => {
     if (!durumHazir.current) return;
     const d = durumOku();
+    const takip = successOrderId && orderStage !== "served" ? successOrderId : null;
     durumYaz({
       yol: window.location.pathname + window.location.search,
       sepet: cart.map(c => ({ pid: c.product?.id, quantity: c.quantity, options: c.options || null,
                               note: c.note || null, takeaway: !!c.takeaway })),
       sepetTs: Date.now(),
       not: orderNote,
-      siparis: successOrderId || null,
-      siparisTs: successOrderId ? (d.siparis === successOrderId ? d.siparisTs : Date.now()) : null,
+      siparis: takip,
+      siparisTs: takip ? (d.siparis === takip ? d.siparisTs : Date.now()) : null,
+      asama: takip ? orderStage : null,
+      gozat: takip ? browsing : false,
     });
-  }, [cart, orderNote, successOrderId]);
+  }, [cart, orderNote, successOrderId, orderStage, browsing]);
 
   // Giris yapan uye: takip edilen misafir QR siparisini uyeligine baglar.
   // Puan odeme aninda yazilir. Kosul tutmazsa sessiz gecer (sunucu kurali).
@@ -1768,7 +1780,13 @@ export default function CustomerMenu() {
               </div>
               <PayBlock/>
               <UyeKarti/>
-              <div><button onClick={() => { playDing(); vibrate(); }} style={{padding:"12px 24px",background:"#000000",color:"#FFFFFF",border:"none",borderRadius:12,fontSize:13,fontWeight:800,cursor:"pointer"}}>{t.play_again}</button></div>
+              {/* Cikis: eskiden yalniz "Tekrar cal" vardi; musteri bu ekranda kaliyordu. */}
+              <div style={{display:"flex",flexDirection:"column",alignItems:"center",gap:10}}>
+                <button onClick={() => setBrowsing(true)} style={{padding:"14px 28px",background:"#000000",color:"#FFFFFF",border:"none",borderRadius:12,fontSize:14,fontWeight:800,cursor:"pointer"}}>
+                  {L("Menüye dön","Back to menu","Вернуться в меню")}
+                </button>
+                <button onClick={() => { playDing(); vibrate(); }} style={{padding:"10px 20px",background:"transparent",color:"#5A5348",border:"1px solid #E0D8C8",borderRadius:12,fontSize:13,fontWeight:700,cursor:"pointer"}}>{t.play_again}</button>
+              </div>
             </>
           ) : isServed ? (
             <>
@@ -1801,16 +1819,19 @@ export default function CustomerMenu() {
               </div>
               <PayBlock/>
               <UyeKarti/>
-              {CUST_TABS.length > 1 && (<>
+              {/* Tek sekmeli profilde de cikis olsun: dugme her zaman var. */}
               <button onClick={() => setBrowsing(true)} style={{padding:"12px 24px",background:orderPaid?"#000":"#f2f2f2",color:orderPaid?"#fff":"#333",border:"none",borderRadius:12,fontSize:13,fontWeight:700,cursor:"pointer"}}>
-                {L("Beklerken göz at","Browse while you wait","Полистайте, пока ждёте")}<Ikon ad="oksag" boy={14} style={{marginLeft:6}}/>
+                {CUST_TABS.length > 1
+                  ? L("Beklerken göz at","Browse while you wait","Полистайте, пока ждёте")
+                  : L("Menüye dön","Back to menu","Вернуться в меню")}<Ikon ad="oksag" boy={14} style={{marginLeft:6}}/>
               </button>
+              {CUST_TABS.length > 1 && (
               <div style={{fontSize:11,color:"#666666",marginTop:10,lineHeight:1.5}}>
                 {PROFIL === "nip"
                   ? L("Etkinlikler, sürüşler, shop & blog — hazır olunca zili çalarız","Events, rides, shop & blog — we'll ring when it's ready","События, заезды, шоп и блог — позвоним, когда будет готово")
                   : L("Etkinlikler — hazır olunca zili çalarız","Events — we'll ring when it's ready","События — позвоним, когда будет готово")}
               </div>
-              </>)}
+              )}
             </>
           )}
         </div>
@@ -1818,7 +1839,7 @@ export default function CustomerMenu() {
     );
   }
 
-  const susBarActive = browsing && successOrderId && orderStage === "pending";
+  const susBarActive = browsing && successOrderId && (orderStage === "pending" || orderStage === "ready");
 
   return (
     // lang: sayfanin kabugu Turkce (index.html lang="tr") ama musteri menusu uc
@@ -2340,7 +2361,11 @@ export default function CustomerMenu() {
 
       {susBarActive && (
         <button onClick={() => setBrowsing(false)} style={{position:"fixed",bottom:76,left:14,right:14,zIndex:45,display:"flex",justifyContent:"space-between",alignItems:"center",padding:"12px 16px",background:"#000000",color:"#FFFFFF",border:"none",borderRadius:12,fontSize:13,fontWeight:800,cursor:"pointer",boxShadow:"0 4px 16px rgba(0,0,0,0.25)"}}>
-          <span style={{display:"flex",alignItems:"center",gap:7}}><Ikon ad="mutfak" boy={15}/>{L("Siparişin hazırlanıyor","Your order is being prepared","Ваш заказ готовится")}</span>
+          <span style={{display:"flex",alignItems:"center",gap:7}}>
+            {orderStage === "ready"
+              ? <><Ikon ad="zil" boy={15}/>{L("Siparişin hazır","Your order is ready","Ваш заказ готов")}</>
+              : <><Ikon ad="mutfak" boy={15}/>{L("Siparişin hazırlanıyor","Your order is being prepared","Ваш заказ готовится")}</>}
+          </span>
           <Ikon ad="oksag" boy={15}/>
         </button>
       )}
