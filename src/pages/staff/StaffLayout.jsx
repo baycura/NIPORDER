@@ -1,10 +1,12 @@
-import { Outlet, NavLink, useNavigate } from "react-router-dom";
+import { Outlet, NavLink, useNavigate, useLocation } from "react-router-dom";
 import { APP_HOST } from "../../lib/appUrl.js";
 import { useState, useEffect, useRef } from "react";
 import { useAuth } from "../../contexts/AuthContext.jsx";
 import { gorunurGruplar, altBar } from "../../lib/panelNav.js";
 import { MARKA } from "../../lib/profil.js";
+import { useQrSiparisZili } from "../../lib/qrZil.js";
 import Ikon from "../../components/Ikon.jsx";
+import QrSerit from "../../components/QrSerit.jsx";
 
 const roleColor = {admin:"#FFFFFF", manager:"#FFFFFF", owner:"#FFFFFF", waiter:"#FFFFFF", kitchen:"#FFFFFF", cashier:"#8A8580", viewer:"#8A8580", parttime:"#8A8580"};
 const cv = "-apple-system,BlinkMacSystemFont,'Segoe UI',Roboto,sans-serif";
@@ -13,8 +15,30 @@ const cv = "-apple-system,BlinkMacSystemFont,'Segoe UI',Roboto,sans-serif";
 // sekmesindeki HubPage'de), masaustunde gruplu akordeon kenar menusu.
 // Menu tanimi tek yerde: src/lib/panelNav.js.
 export default function StaffLayout() {
-  const {staffUser, isManager, isAdmin, isViewer, isParttime, signOut} = useAuth();
+  const {staffUser, isManager, isAdmin, isViewer, isParttime, isKitchen, signOut} = useAuth();
   const navigate = useNavigate();
+  const { pathname } = useLocation();
+
+  // Yeni QR siparisi zili (lib/qrZil.js). Mutfak ve izleyici duymaz; mutfak
+  // ekraninda (/kitchen) calismaz, orada mutfagin kendi alarmi var.
+  const qrCalisir = !!staffUser && !isViewer && !isKitchen
+    && (staffUser.store_ids || []).length > 0 && !pathname.startsWith("/kitchen");
+  const qr = useQrSiparisZili({ staffUser, aktif: qrCalisir });
+  const qrHesabaGit = () => {
+    const id = qr.serit?.orderId;
+    qr.seritKapat();
+    if (id) navigate(`/orders/${id}`);
+  };
+  const qrSesDugmesi = qrCalisir && (
+    <button onClick={qr.sesDegistir}
+      aria-label={qr.sesAcik ? "Yeni QR siparişi sesi açık. Kapatmak için dokun." : "Yeni QR siparişi sesi kapalı. Açmak için dokun."}
+      title={qr.sesAcik ? "QR sesi açık" : "QR sesi kapalı"}
+      style={{display:"flex",alignItems:"center",gap:4,minHeight:36,padding:"0 9px",borderRadius:8,flexShrink:0,
+              background:"none",border:"1px solid #2A2A2A",color:qr.sesAcik?"#F0EDE8":"#666",cursor:"pointer",
+              fontFamily:cv,fontSize:11,fontWeight:700}}>
+      <Ikon ad={qr.sesAcik ? "ses" : "sessiz"} boy={17}/>QR
+    </button>
+  );
   const color = roleColor[staffUser?.role] || "#888";
   const displayRole = staffUser?.display_role || "Yönetici";
   const [isMobile, setIsMobile] = useState(typeof window !== "undefined" ? window.innerWidth < 900 : true);
@@ -111,6 +135,7 @@ export default function StaffLayout() {
           <div style={{color:"#F0EDE8",fontSize:13,fontWeight:700,fontFamily:cv,whiteSpace:"nowrap",overflow:"hidden",textOverflow:"ellipsis"}}>{staffUser?.name}</div>
           <div style={{color,fontSize:12,letterSpacing:"0.2px",fontFamily:cv,fontWeight:600}}>{displayRole?.toLocaleUpperCase("tr-TR")}</div>
         </div>
+        {qrSesDugmesi}
         <button onClick={async()=>{await signOut();navigate("/login");}} title="Çıkış" aria-label="Çıkış" style={{background:"none",border:"none",color:"#888888",cursor:"pointer",padding:6,display:"flex"}}><Ikon ad="cikis" boy={19}/></button>
       </div>
     </div>
@@ -120,6 +145,7 @@ export default function StaffLayout() {
     return (<div style={{display:"flex",background:"#0C0C0C",minHeight:"100vh"}}>
       <aside style={{position:"fixed",left:0,top:0,zIndex:50}}><Sidebar/></aside>
       <main style={{marginLeft:240,flex:1,padding:"28px 32px",overflowY:"auto",maxHeight:"100vh"}}><Outlet/></main>
+      <QrSerit serit={qr.serit} onAc={qrHesabaGit} onKapat={qr.seritKapat}/>
     </div>);
   }
 
@@ -132,12 +158,16 @@ export default function StaffLayout() {
         <div style={{width:30,height:30,borderRadius:8,background:"#FFFFFF",display:"flex",alignItems:"center",justifyContent:"center",fontSize:16,color:"#000",fontWeight:900}}>{MARKA.harf}</div>
         <div lang={MARKA.dil} style={{color:"#F0EDE8",fontSize:15,fontWeight:400,fontFamily:"'Coolvetica Heavy',"+cv,textTransform:"uppercase",letterSpacing:"0.005em"}}>{MARKA.ad}</div>
       </div>
-      <div onClick={avatarTikla} title={avatarTikla ? "Vardiyam" : undefined}
-           style={{width:30,height:30,borderRadius:"50%",background:color+"33",display:"flex",alignItems:"center",justifyContent:"center",color,fontSize:13,fontWeight:700,cursor:avatarTikla?"pointer":"default"}}>
-        {staffUser?.name?.[0]||"?"}
+      <div style={{display:"flex",alignItems:"center",gap:8}}>
+        {qrSesDugmesi}
+        <div onClick={avatarTikla} title={avatarTikla ? "Vardiyam" : undefined}
+             style={{width:30,height:30,borderRadius:"50%",background:color+"33",display:"flex",alignItems:"center",justifyContent:"center",color,fontSize:13,fontWeight:700,cursor:avatarTikla?"pointer":"default"}}>
+          {staffUser?.name?.[0]||"?"}
+        </div>
       </div>
     </header>
     <main style={{padding:"16px 14px",paddingBottom:84,minHeight:"calc(100vh - 56px)"}}><Outlet/></main>
+    <QrSerit serit={qr.serit} onAc={qrHesabaGit} onKapat={qr.seritKapat} mobil/>
     <nav style={{position:"fixed",bottom:0,left:0,right:0,background:"#161616",borderTop:"1px solid #2A2A2A",display:"flex",justifyContent:"space-around",padding:"8px 0 14px",zIndex:35,boxShadow:"0 -2px 12px rgba(0,0,0,0.5)"}}>
       {sekmeler.map(item => (
         <NavLink key={item.to} to={item.to} style={({isActive}) => ({display:"flex",flexDirection:"column",alignItems:"center",gap:3,textDecoration:"none",color:isActive?"#FFFFFF":"#666",padding:"4px 8px",minWidth:48})}>
