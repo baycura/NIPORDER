@@ -10,6 +10,7 @@ import { telefonNormalize } from "../../lib/telefon.js";
 import KasaSayKarti from "../../components/KasaSayKarti.jsx";
 import { IptalPenceresi } from "../../components/HesapDuzelt.jsx";
 import Bildirim from "../../components/Bildirim.jsx";
+import { useCanliYenile } from "../../lib/canliYenile.js";
 
 // BOLUNMUS ODEME — kasadan gelen ihtiyac (20.09.2026):
 // "Masaya kalabalik oturup siparis veriyorlar, sonra ayri ayri odemek
@@ -87,19 +88,26 @@ export default function PaymentPage() {
     });
   const borcAcik = borclular.filter(b => Number(b.bakiye) > 0.005);
 
-  const load = async () => {
-    setLoading(true);
-    borclulariYukle();
-    const [{data: ords}, {data: tabs}, {data: custs}] = await Promise.all([
+  // sessiz: arka planda tazeleme (useCanliYenile). "Yukleniyor" ekrani acik
+  // odeme penceresini de kapatirdi; sessiz turda gosterilmez ve ag hatasinda
+  // eski liste kalir. Uye listesi ve borclular yalniz tam yuklemede cekilir.
+  // Yalniz en son baslayan yukleme ekrana yazar.
+  const yuklemeNo = useRef(0);
+  const load = async (sessiz = false) => {
+    const no = ++yuklemeNo.current;
+    if (!sessiz) { setLoading(true); borclulariYukle(); }
+    const [{data: ords, error: hesapHata}, {data: tabs, error: masaHata}, custRes] = await Promise.all([
       supabase.from("orders").select("id, table_id, customer_name, customer_id, use_points, staff_id, total, status, created_at, origin_store_id, stores:origin_store_id(slug, name)").in("origin_store_id", staffUser?.store_ids?.length ? staffUser.store_ids : ["00000000-0000-0000-0000-000000000000"]).in("status", ["open","sent","preparing","ready"]).order("created_at", { ascending: false }),
       supabase.from("cafe_tables").select("id, name").in("store_id", staffUser?.store_ids?.length ? staffUser.store_ids : ["00000000-0000-0000-0000-000000000000"]),
-      supabase.from("customers").select("id, name, phone, points, outstanding_balance").order("name"),
+      sessiz ? null : supabase.from("customers").select("id, name, phone, points, outstanding_balance").order("name"),
     ]);
+    if (no !== yuklemeNo.current) return;
+    if (sessiz && (hesapHata || masaHata)) { setLoading(false); return; }
     const tabMap = {};
     (tabs || []).forEach(t => { tabMap[t.id] = t.name; });
     setTables(tabMap);
     setOrders(ords || []);
-    setCustomers(custs || []);
+    if (custRes) setCustomers(custRes.data || []);
     setLoading(false);
 
     // Kalan tutarlar TEK sorguda: her hesap icin ayri RPC cagirmak 20 masali
@@ -111,6 +119,7 @@ export default function PaymentPage() {
         supabase.from("order_items").select("order_id, final_price, quantity, odenen_adet").in("order_id", ids),
         supabase.from("payments").select("order_id").in("order_id", ids),
       ]);
+      if (no !== yuklemeNo.current) return;
       const m = {};
       for (const id of ids) m[id] = { kalan: 0, odemeSayisi: 0 };
       for (const i of its || []) {
@@ -122,6 +131,7 @@ export default function PaymentPage() {
     }
   };
   useEffect(() => { load(); }, []);
+  useCanliYenile("kasa-canli", () => load(true));
 
   // Unutulmus hesap: gun icinde kapatilmayip ekranda kalan siparis. Odeme
   // alinmadigi icin "tahsil et" yanlis olur; kasa gecmisine sahte ciro yazmasin

@@ -1,4 +1,4 @@
-import { useEffect, useState } from "react";
+import { useEffect, useRef, useState } from "react";
 import { useNavigate } from "react-router-dom";
 import { supabase } from "../../lib/supabase.js";
 import { useAuth } from "../../contexts/AuthContext.jsx";
@@ -11,6 +11,7 @@ import TelegramBagla from "../../components/TelegramBagla.jsx";
 import KasaSayKarti from "../../components/KasaSayKarti.jsx";
 import Bildirim, { useSonListe } from "../../components/Bildirim.jsx";
 import { misafirHesapAc } from "../../lib/misafirHesap.js";
+import { useCanliYenile } from "../../lib/canliYenile.js";
 
 const cv = "-apple-system,BlinkMacSystemFont,'Segoe UI',Roboto,sans-serif";
 
@@ -48,18 +49,26 @@ export default function TablesPage() {
   };
   const kalemAdedi = (o) => Number(o.order_items?.[0]?.count || 0);
 
-  const load = async () => {
-    setLoading(true);
-    const [{data: tabs}, {data: ords}] = await Promise.all([
+  // sessiz: arka planda tazeleme (useCanliYenile). "Yukleniyor" ekrani
+  // gosterilmez; liste yerinde guncellenir. Ag hatasinda eski liste kalir.
+  // Yalniz en son baslayan yukleme ekrana yazar.
+  const yuklemeNo = useRef(0);
+  const load = async (sessiz = false) => {
+    const no = ++yuklemeNo.current;
+    if (!sessiz) setLoading(true);
+    const [{data: tabs, error: masaHata}, {data: ords, error: hesapHata}] = await Promise.all([
       supabase.from("cafe_tables").select("*").in("store_id", staffUser?.store_ids?.length ? staffUser.store_ids : ["00000000-0000-0000-0000-000000000000"]).order("sort_order").order("name"),
       supabase.from("orders").select("id, table_id, customer_name, total, status, created_at, origin_store_id, stores:origin_store_id(slug, name), staff:staff_id(name), order_items(count)").in("origin_store_id", staffUser?.store_ids?.length ? staffUser.store_ids : ["00000000-0000-0000-0000-000000000000"]).in("status", ["open","sent","preparing","ready"]),
     ]);
+    if (no !== yuklemeNo.current) return;
+    if (sessiz && (masaHata || hesapHata)) { setLoading(false); return; }
     setTables(tabs || []);
     setOrders(ords || []);
     setLoading(false);
   };
 
   useEffect(() => { load(); }, []);
+  useCanliYenile("masalar-canli", () => load(true));
 
   // Uyeler bir kez cekilir (74 kayit): isim yazarken oneri cikar, secilince
   // hesap bastan uyeye baglanir — puani kasada aramaya gerek kalmaz.
