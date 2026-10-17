@@ -1,4 +1,6 @@
+import { useState } from "react";
 import Ikon from "./Ikon.jsx";
+import BarkodOkut from "./BarkodOkut.jsx";
 
 // URUN SECICI — kasanin "menu kutusu": paket modu, arama, sik eklediklerin,
 // parti seridi, kategori cipleri ve urun listesi. OrderDetailPage'den oldugu
@@ -60,6 +62,35 @@ export default function UrunSecici({
 
   const ekle = (p) => { if (!kapali && onAdd) onAdd(p); };
 
+  // BARKODLA EKLEME (sahip istegi 17.10). Iki yol:
+  //  1. "Okut": kamera acilir, okunan barkod hesaba eklenir, pencere acik
+  //     kalir (art arda okutma). Kayitli degilse kirmizi ileti.
+  //  2. Bluetooth/USB okuyucu: numarayi arama kutusuna yazar ve Enter basar;
+  //     tam eslesen tek urun varsa eklenir, kutu temizlenir.
+  // Eslesme TUM urunlerde (parti suzgeci disinda): raf urunu gece de satilir.
+  const [okut, setOkut] = useState(false);
+  const barkodBul = (kod) => {
+    const temiz = String(kod || "").replace(/\s+/g, "");
+    return products.find(p => p.barkod && (p.barkod === temiz || p.barkod === kod)) || null;
+  };
+  const barkodlaEkle = (kod) => {
+    const p = barkodBul(kod);
+    if (!p) return { metin: "Kayıtlı değil: " + kod, hata: true };
+    if (kapali) return { metin: "Hesap kapalı", hata: true };
+    ekle(p);
+    return "Eklendi: " + p.name;
+  };
+  const aramaEnter = (e) => {
+    if (e.key !== "Enter") return;
+    const t = prodSearch.trim();
+    if (!/^\d{6,14}$/.test(t)) return;
+    const p = barkodBul(t);
+    if (!p) return;
+    e.preventDefault();
+    ekle(p);
+    onSearch && onSearch("");
+  };
+
   return (
     <>
       {/* Paket modu ve parti seridi tek satirda: ikisi de "bu ekleme nasil
@@ -98,13 +129,25 @@ export default function UrunSecici({
       </div>
 
       {/* autoFocus YOK: iOS klavyesi sabit alt sayfayi yukari itiyor. */}
-      <div style={{position:"relative",marginTop:10}}>
-        <input value={prodSearch} onChange={e => onSearch && onSearch(e.target.value)} placeholder="Ürün ara (tüm kategorilerde) — ad, marka ya da barkod"
-          style={{width:"100%",boxSizing:"border-box",padding:"12px 44px 12px 14px",background:"#0C0C0C",border:"1px solid "+(q?"#FFFFFF":"#2A2A2A"),borderRadius:10,color:"#F0EDE8",fontSize:14,outline:"none",fontFamily:"inherit"}}/>
-        {q && (
-          <button onClick={() => onSearch && onSearch("")} aria-label="Aramayı temizle" style={{position:"absolute",right:4,top:"50%",transform:"translateY(-50%)",width:44,height:44,background:"transparent",color:"#aaa",border:"none",borderRadius:8,fontSize:18,cursor:"pointer",lineHeight:1}}>×</button>
-        )}
+      <div style={{display:"flex",gap:8,marginTop:10}}>
+        <div style={{position:"relative",flex:1,minWidth:0}}>
+          <input value={prodSearch} onChange={e => onSearch && onSearch(e.target.value)} onKeyDown={aramaEnter}
+            placeholder="Ürün ara — ad, marka ya da barkod"
+            style={{width:"100%",boxSizing:"border-box",padding:"12px 44px 12px 14px",background:"#0C0C0C",border:"1px solid "+(q?"#FFFFFF":"#2A2A2A"),borderRadius:10,color:"#F0EDE8",fontSize:14,outline:"none",fontFamily:"inherit"}}/>
+          {q && (
+            <button onClick={() => onSearch && onSearch("")} aria-label="Aramayı temizle" style={{position:"absolute",right:4,top:"50%",transform:"translateY(-50%)",width:44,height:44,background:"transparent",color:"#aaa",border:"none",borderRadius:8,fontSize:18,cursor:"pointer",lineHeight:1}}>×</button>
+          )}
+        </div>
+        <button onClick={() => setOkut(true)} disabled={kapali} aria-label="Barkod okut" title="Barkod okut — kamerayla okunan ürün hesaba eklenir"
+          style={{flexShrink:0,minWidth:44,minHeight:44,padding:"0 12px",background:"#1A1A1A",color:kapali?"#666":"#F0EDE8",border:"1px solid #333",borderRadius:10,
+                  fontSize:12.5,fontWeight:800,cursor:kapali?"not-allowed":"pointer",fontFamily:"inherit",display:"inline-flex",alignItems:"center",gap:6}}>
+          <Ikon ad="kamera" boy={16}/>Okut
+        </button>
       </div>
+      {okut && (
+        <BarkodOkut surekli baslik="Barkod okut" aciklama="Ürünün barkodunu çerçeveye tut; okununca hesaba eklenir."
+                    onOkundu={barkodlaEkle} onKapat={() => setOkut(false)}/>
+      )}
 
       {!q && sikUrunler.length > 0 && (
         <div style={{marginTop:12,display:"flex",flexDirection:"column",gap:9}}>

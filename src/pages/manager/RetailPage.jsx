@@ -4,6 +4,7 @@ import { useAuth } from "../../contexts/AuthContext.jsx";
 import Ikon from "../../components/Ikon.jsx";
 import StokEkleSheet, { stokGeriAl } from "../../components/StokEkleSheet.jsx";
 import SayiGirisi from "../../components/SayiGirisi.jsx";
+import BarkodOkut from "../../components/BarkodOkut.jsx";
 
 const cv = "-apple-system,BlinkMacSystemFont,'Segoe UI',Roboto,sans-serif";
 const SIZE_SETS = {
@@ -23,6 +24,7 @@ export default function RetailPage() {
   const [brandForm, setBrandForm] = useState({});
   const [prodModal, setProdModal] = useState(null);
   const [form, setForm] = useState({});
+  const [barkodOkut, setBarkodOkut] = useState(false);   // BARKOD alani: kamerayla okut
   const [busy, setBusy] = useState(false);
   // Modaldeki stok kutulari mevcudun UZERINE yazar (beden sayilari dahil).
   // Gelen yeni parti icin satirdaki "+ Stok": sunucuda stok = stok + miktar.
@@ -341,7 +343,19 @@ export default function RetailPage() {
         <Modal onClose={() => setProdModal(null)} title={prodModal.mode === "new" ? "Yeni Ürün" : "Ürünü Düzenle"}>
           <Field label="ÜRÜN ADI"><input value={form.name || ""} onChange={e => setForm(f => ({ ...f, name: e.target.value }))} placeholder="örn: Bisiklet Forması" style={inputS} /></Field>
           <Field label="İNGİLİZCE ADI (opsiyonel)"><input value={form.name_en || ""} onChange={e => setForm(f => ({ ...f, name_en: e.target.value }))} placeholder="e.g. Cycling Jersey" style={inputS} /></Field>
-          <Field label="BARKOD (opsiyonel)"><input value={form.barkod || ""} onChange={e => setForm(f => ({ ...f, barkod: e.target.value }))} inputMode="numeric" placeholder="Kutudaki 13 haneli numara — kasada ve stokta bu numarayla aranır" style={inputS} /></Field>
+          <Field label="BARKOD (opsiyonel)">
+            <div style={{ display: "flex", gap: 8 }}>
+              <input value={form.barkod || ""} onChange={e => setForm(f => ({ ...f, barkod: e.target.value }))} inputMode="numeric" placeholder="Kutudaki 13 haneli numara — kasada ve stokta bu numarayla aranır" style={{ ...inputS, flex: 1, minWidth: 0 }} />
+              <button type="button" onClick={() => setBarkodOkut(true)} aria-label="Barkodu kamerayla okut"
+                style={{ flexShrink: 0, minHeight: 44, padding: "0 12px", background: "#1A1A1A", color: "#F0EDE8", border: "1px solid #333", borderRadius: 10, fontFamily: cv, fontSize: 12.5, fontWeight: 800, cursor: "pointer", display: "inline-flex", alignItems: "center", gap: 6 }}>
+                <Ikon ad="kamera" boy={15} />Okut
+              </button>
+            </div>
+          </Field>
+          {barkodOkut && (
+            <BarkodOkut baslik="Barkodu okut" aciklama="Kutudaki barkodu çerçeveye tut; numara alana yazılır."
+                        onOkundu={(kod) => setForm(f => ({ ...f, barkod: String(kod).replace(/\s+/g, "") }))} onKapat={() => setBarkodOkut(false)} />
+          )}
           <Field label="MARKA">
             <select value={form.brand_id || ""} onChange={e => setForm(f => ({ ...f, brand_id: e.target.value }))} style={inputS}>
               <option value="">- Markasız -</option>
