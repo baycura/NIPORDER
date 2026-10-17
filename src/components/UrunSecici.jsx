@@ -53,7 +53,8 @@ export default function UrunSecici({
   const aktifCat = catChips.some(c => c.id === selectedCat) ? selectedCat : catChips[0]?.id;
   const filteredProducts = q
     ? aramaTabani
-        .filter(p => trLow(p.name).includes(q) || trLow(p.name_en).includes(q) || trLow(p.brand).includes(q))
+        .filter(p => trLow(p.name).includes(q) || trLow(p.name_en).includes(q) || trLow(p.brand).includes(q)
+                  || trLow(p.barkod).includes(q))
         .sort((a, b) => (trLow(a.name).startsWith(q) ? 0 : 1) - (trLow(b.name).startsWith(q) ? 0 : 1))
     : partiSuzulu.filter(p => p.category_id === aktifCat);
 
@@ -98,7 +99,7 @@ export default function UrunSecici({
 
       {/* autoFocus YOK: iOS klavyesi sabit alt sayfayi yukari itiyor. */}
       <div style={{position:"relative",marginTop:10}}>
-        <input value={prodSearch} onChange={e => onSearch && onSearch(e.target.value)} placeholder="Ürün ara (tüm kategorilerde) — örn: latte, efes, şapka"
+        <input value={prodSearch} onChange={e => onSearch && onSearch(e.target.value)} placeholder="Ürün ara (tüm kategorilerde) — ad, marka ya da barkod"
           style={{width:"100%",boxSizing:"border-box",padding:"12px 44px 12px 14px",background:"#0C0C0C",border:"1px solid "+(q?"#FFFFFF":"#2A2A2A"),borderRadius:10,color:"#F0EDE8",fontSize:14,outline:"none",fontFamily:"inherit"}}/>
         {q && (
           <button onClick={() => onSearch && onSearch("")} aria-label="Aramayı temizle" style={{position:"absolute",right:4,top:"50%",transform:"translateY(-50%)",width:44,height:44,background:"transparent",color:"#aaa",border:"none",borderRadius:8,fontSize:18,cursor:"pointer",lineHeight:1}}>×</button>

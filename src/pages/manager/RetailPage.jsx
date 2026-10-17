@@ -79,7 +79,7 @@ export default function RetailPage() {
   const openNewProduct = (brandId) => {
     setStokIlk(null);
     setProdModal({ mode: "new" });
-    setForm({ name: "", name_en: "", brand_id: brandId || "", price: "", retail_stock: 0, sizeSet: "Tek beden", variants: [], is_available: true });
+    setForm({ name: "", name_en: "", barkod: "", brand_id: brandId || "", price: "", retail_stock: 0, sizeSet: "Tek beden", variants: [], is_available: true });
   };
   // Stok imzasi: modal acilirken ne gorduysek o. Kaydederken ayniysa stok
   // alanlarina HIC dokunmayiz — yoksa yalniz fiyati duzeltmek bile modal
@@ -95,7 +95,7 @@ export default function RetailPage() {
     setStokIlk(stokImzasi(vs.length ? vs.reduce((s, v) => s + (Number(v.stock) || 0), 0) : p.retail_stock, vs));
     setProdModal({ mode: "edit", data: p });
     setForm({
-      name: p.name || "", name_en: p.name_en || "", brand_id: p.brand_id || "", price: p.price ?? "",
+      name: p.name || "", name_en: p.name_en || "", barkod: p.barkod || "", brand_id: p.brand_id || "", price: p.price ?? "",
       retail_stock: Number(p.retail_stock) || 0,
       sizeSet: vs.length ? "Tişört / Giyim" : "Tek beden",
       variants: vs, is_available: p.is_available !== false,
@@ -126,6 +126,7 @@ export default function RetailPage() {
     const payload = {
       name: form.name.trim(),
       name_en: form.name_en?.trim() || null,
+      barkod: form.barkod?.replace(/\s+/g, "") || null,
       brand_id: form.brand_id || null,
       brand: brands.find(b => b.id === form.brand_id)?.name || null,
       price: Number(form.price) || 0,
@@ -340,6 +341,7 @@ export default function RetailPage() {
         <Modal onClose={() => setProdModal(null)} title={prodModal.mode === "new" ? "Yeni Ürün" : "Ürünü Düzenle"}>
           <Field label="ÜRÜN ADI"><input value={form.name || ""} onChange={e => setForm(f => ({ ...f, name: e.target.value }))} placeholder="örn: Bisiklet Forması" style={inputS} /></Field>
           <Field label="İNGİLİZCE ADI (opsiyonel)"><input value={form.name_en || ""} onChange={e => setForm(f => ({ ...f, name_en: e.target.value }))} placeholder="e.g. Cycling Jersey" style={inputS} /></Field>
+          <Field label="BARKOD (opsiyonel)"><input value={form.barkod || ""} onChange={e => setForm(f => ({ ...f, barkod: e.target.value }))} inputMode="numeric" placeholder="Kutudaki 13 haneli numara — kasada ve stokta bu numarayla aranır" style={inputS} /></Field>
           <Field label="MARKA">
             <select value={form.brand_id || ""} onChange={e => setForm(f => ({ ...f, brand_id: e.target.value }))} style={inputS}>
               <option value="">- Markasız -</option>

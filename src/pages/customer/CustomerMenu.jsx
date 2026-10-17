@@ -1346,7 +1346,8 @@ export default function CustomerMenu() {
     if (aramaTerimi) {
       const eslesen = party(products).filter(p =>
         sadelestir(pName(p)).includes(aramaTerimi) ||
-        sadelestir(p.description).includes(aramaTerimi));
+        sadelestir(p.description).includes(aramaTerimi) ||
+        String(p.barkod || "").includes(aramaTerimi));
       return [sec("__arama", null, selectedCat, eslesen)];
     }
 
