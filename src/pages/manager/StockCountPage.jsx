@@ -37,7 +37,7 @@ const urunSatirlari = (urunler) => {
     const vs = Array.isArray(p.variants) ? p.variants.filter(v => v && v.name) : [];
     // name arama ve gecmis icin tam ad ("X · Small"); ekranda urunAdi + beden
     // ayri satirlarda durur, telefonda ad kesilse bile beden gorunur.
-    const ortak = { urun: true, product_id: p.id, urunAdi: p.name, unit: "adet",
+    const ortak = { urun: true, product_id: p.id, urunAdi: p.name, barkod: p.barkod || null, unit: "adet",
                     cost_per_unit: p.cost_price, unit_volume_ml: null };
     if (vs.length) {
       for (const v of vs) {
@@ -111,7 +111,7 @@ export default function StockCountPage() {
         .select("id,name,unit,stock_qty,cost_per_unit,unit_volume_ml,grup")
         .eq("store_id", storeId).order("name"),
       supabase.from("products")
-        .select("id,name,retail_stock,variants,cost_price")
+        .select("id,name,barkod,retail_stock,variants,cost_price")
         .eq("store_id", storeId).eq("track_stock", true).order("name"),
     ]).then(([m, u]) => {
       if (iptal) return;
@@ -220,7 +220,8 @@ export default function StockCountPage() {
   const gosterilen = useMemo(() => {
     const suzulmus = (malzemeler || []).filter(i => {
       // Arama hem malzeme hem raf adinda: "temizlik" yazan o rafi gorur
-      if (!aramaUyar(i.name, ara) && !trKucuk(grupAdi(i)).includes(trKucuk(ara.trim()))) return false;
+      if (!aramaUyar(i.name, ara) && !trKucuk(grupAdi(i)).includes(trKucuk(ara.trim()))
+          && !(ara.trim() && String(i.barkod || "").includes(ara.trim()))) return false;
       // Raf cipi: "Cin", "Temizlik"... Raf urunleri kendi rafinda (RAF_URUN).
       if (birim !== "hepsi" && grupAdi(i) !== birim) return false;
       if (sadeceSayilan && !satirHesap(i).girildi) return false;
@@ -381,7 +382,7 @@ export default function StockCountPage() {
         <div style={{ ...kart, marginBottom: 10 }}>
           <div style={{ position: "relative", marginBottom: 10 }}>
             <Ikon ad="ara" boy={15} style={{ position: "absolute", left: 12, top: 14, color: C.faint }} />
-            <input value={ara} onChange={e => setAra(e.target.value)} placeholder="Malzeme ara"
+            <input value={ara} onChange={e => setAra(e.target.value)} placeholder="Malzeme, raf ürünü ya da barkod ara"
                    style={{ ...inputS, paddingLeft: 36 }} />
             {ara && (
               <button onClick={() => setAra("")} title="Temizle" style={{

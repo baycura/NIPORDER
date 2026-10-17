@@ -123,7 +123,7 @@ export default function MenuMgmtPage() {
       name:"", name_en:"", name_ru:"", brand:"", description:"", description_en:"", description_ru:"", price:'', cost_price:'', instant_discount_pct:'', hh_enabled:false, hh_price:'', hh_start:'', hh_end:'', hh_days:[0,1,2,3,4,5,6],
       sold_out_today:false, unavailable_reason:"",
       show_in_party_menu:false, kitchen_consignment:false, store_id:"", kitchen_destination_store_id:"", is_available:true, prep_time_minutes:null, show_prep_time:false,
-      currency:"TRY", price_eur:"", shop_group:"", image_url:"",
+      currency:"TRY", price_eur:"", shop_group:"", image_url:"", barkod:"",
       category_id: selectedCat,
       has_options:false,
       options_config:{groups:[]},
@@ -139,6 +139,7 @@ export default function MenuMgmtPage() {
       sold_out_today:!!p.sold_out_today,
       unavailable_reason:p.unavailable_reason||"",
       currency: p.currency || "TRY", price_eur: p.price_eur ?? "", shop_group: p.shop_group || "", image_url: p.image_url || "",
+      barkod: p.barkod || "",
       show_in_party_menu:!!p.show_in_party_menu, kitchen_consignment:!!p.kitchen_consignment, store_id:p.store_id||"", additional_store_ids:Array.isArray(p.additional_store_ids)?p.additional_store_ids:[], hh_enabled:!!p.hh_enabled, hh_price:p.hh_price??'', hh_start:p.hh_start||'', hh_end:p.hh_end||'', hh_days:Array.isArray(p.hh_days)?p.hh_days:[0,1,2,3,4,5,6], kitchen_destination_store_id:p.kitchen_destination_store_id||"",
       prep_time_minutes:p.prep_time_minutes||null,
       show_prep_time:!!p.show_prep_time,
@@ -195,6 +196,8 @@ export default function MenuMgmtPage() {
       price_eur: prodForm.currency === "EUR" ? (Number(prodForm.price_eur)||0) : null,
       shop_group: prodForm.shop_group?.trim() || null,
       image_url: prodForm.image_url?.trim() || null,
+      // Barkod (EAN): bos birakilirsa null — tekil indeks bos metni de tek sayar.
+      barkod: prodForm.barkod?.replace(/\s+/g, "") || null,
       instant_discount_pct: Number(prodForm.instant_discount_pct)||0,
       sold_out_today: prodForm.sold_out_today,
       unavailable_reason: prodForm.unavailable_reason?.trim() || null,
@@ -583,6 +586,7 @@ export default function MenuMgmtPage() {
           <Field label="NAME (English)"><input value={prodForm.name_en||""} onChange={e=>setProdForm(f => ({...f,name_en:e.target.value}))} placeholder="Optional - shown when customer selects EN" style={inputS}/></Field>
           <Field label="НАЗВАНИЕ (Rusca)"><input value={prodForm.name_ru||""} onChange={e=>setProdForm(f => ({...f,name_ru:e.target.value}))} placeholder="Opsiyonel - RU secilince gorunur" style={inputS}/></Field>
           <Field label="MARKA (opsiyonel)"><input value={prodForm.brand||""} onChange={e=>setProdForm(f => ({...f,brand:e.target.value}))} placeholder="Orn: Rapha, Le Bon Bain..." style={inputS}/></Field>
+          <Field label="BARKOD (opsiyonel)"><input value={prodForm.barkod||""} onChange={e=>setProdForm(f => ({...f,barkod:e.target.value}))} inputMode="numeric" placeholder="Kutudaki 13 haneli numara — kasada ve stokta bu numarayla aranır" style={inputS}/></Field>
           <Field label="AÇIKLAMA (Türkçe)"><textarea value={prodForm.description||""} onChange={e=>setProdForm(f => ({...f,description:e.target.value}))} rows={2} style={{...inputS,resize:"vertical"}}/></Field>
           <Field label="DESCRIPTION (English)"><textarea value={prodForm.description_en||""} onChange={e=>setProdForm(f => ({...f,description_en:e.target.value}))} rows={2} placeholder="Optional - shown when customer selects EN" style={{...inputS,resize:"vertical"}}/></Field>
           <Field label="ОПИСАНИЕ (Rusca)"><textarea value={prodForm.description_ru||""} onChange={e=>setProdForm(f => ({...f,description_ru:e.target.value}))} rows={2} placeholder="Opsiyonel - RU secilince gorunur" style={{...inputS,resize:"vertical"}}/></Field>

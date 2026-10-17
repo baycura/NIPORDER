@@ -46,7 +46,7 @@ export default function ProductStockPage() {
     const storeIds = staffUser?.store_ids?.length ? staffUser.store_ids : ["00000000-0000-0000-0000-000000000000"];
     let iptal = false;
     Promise.all([
-      supabase.from("products").select("id,name,category_id,brand,brand_id,track_stock,retail_stock,variants,is_available,sold_out_today,price,cost_price,sort_order,store_id").in("store_id", storeIds).order("sort_order"),
+      supabase.from("products").select("id,name,barkod,category_id,brand,brand_id,track_stock,retail_stock,variants,is_available,sold_out_today,price,cost_price,sort_order,store_id").in("store_id", storeIds).order("sort_order"),
       supabase.from("categories").select("id,name,parent_id,sort_order,is_active,staff_only,show_in_shop").order("sort_order"),
       supabase.from("brands").select("id,name,sort_order").order("sort_order"),
       supabase.from("recipes").select("product_id,ingredient_id,qty_per_unit,party_only"),
@@ -130,7 +130,8 @@ export default function ProductStockPage() {
     (bolum === "hepsi" || (bolum === "raf" ? u.rafMi : !u.rafMi))
     && (!yalnizAzalan || u.seviye === "azalan" || u.seviye === "tukendi")
     && (takipsizGoster || u.tur !== "yok")
-    && (!q || trLow(u.name).includes(q) || trLow(u.kategori).includes(q) || trLow(u.markaAd).includes(q))
+    && (!q || trLow(u.name).includes(q) || trLow(u.kategori).includes(q) || trLow(u.markaAd).includes(q)
+        || trLow(u.barkod).includes(q))
   ), [urunler, bolum, yalnizAzalan, takipsizGoster, q]);
 
   const ozet = useMemo(() => ({
@@ -333,7 +334,7 @@ export default function ProductStockPage() {
           <button onClick={() => setYalnizAzalan(v => !v)} style={cip(yalnizAzalan)}>Sadece azalan</button>
           <button onClick={() => setTakipsizGoster(v => !v)} style={cip(!takipsizGoster)}>Takipsizi gizle</button>
         </div>
-        <input value={arama} onChange={e => setArama(e.target.value)} placeholder="Ürün, kategori ya da marka ara"
+        <input value={arama} onChange={e => setArama(e.target.value)} placeholder="Ürün, kategori, marka ya da barkod ara"
           style={{ width: "100%", boxSizing: "border-box", padding: "10px 12px", minHeight: 42, background: "#0C0C0C", border: `1px solid ${C.cardLine}`, borderRadius: 9, color: C.ink, fontFamily: cv, fontSize: 14, outline: "none", marginBottom: 10 }} />
 
         {gruplar.length === 0 && (
