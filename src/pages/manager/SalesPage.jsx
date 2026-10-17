@@ -3,6 +3,7 @@ import { supabase } from "../../lib/supabase.js";
 import { useAuth } from "../../contexts/AuthContext.jsx";
 import Ikon from "../../components/Ikon.jsx";
 import { panoyaKopyala } from "../../lib/hakedis.js";
+import { optionsText } from "../../lib/productOptions.js";
 
 // SATIS RAPORU — "hangi urunden kac adet sattik?" Haftalik / aylik / yillik
 // ya da elle tarih araligi; isletme gunu (03:00) sunucuda kesilir
@@ -32,6 +33,11 @@ const ayBasi = (iso) => iso.slice(0, 7) + "-01";
 const aySonu = (iso) => { const d = tarihObj(ayBasi(iso)); d.setUTCMonth(d.getUTCMonth() + 1); d.setUTCDate(0); return isoYaz(d); };
 const kisaTarih = (iso) => `${Number(iso.slice(8, 10))} ${AY_KISA[Number(iso.slice(5, 7)) - 1]}`;
 const uzunTarih = (iso) => `${Number(iso.slice(8, 10))} ${AY_KISA[Number(iso.slice(5, 7)) - 1]} ${iso.slice(0, 4)}`;
+const tarihSaat = (iso) => {
+  const d = new Date(iso);
+  return { tarih: d.toLocaleDateString("tr-TR", { timeZone: "Europe/Istanbul", day: "2-digit", month: "2-digit" }),
+           saat: d.toLocaleTimeString("tr-TR", { timeZone: "Europe/Istanbul", hour: "2-digit", minute: "2-digit" }) };
+};
 
 const DONEMLER = [
   { key: "bugun",     label: "Bugün",       aralik: (b) => [b, b] },
@@ -62,6 +68,12 @@ export default function SalesPage() {
   const [sira, setSira] = useState("adet");   // adet | ciro | ad
   const [grupla, setGrupla] = useState(false);
   const [kopyaDurum, setKopyaDurum] = useState("");
+  // FISLER: kapanmis her hesap tek tek (sahip istegi 17.10) — ne alindi, kim
+  // acti, kim tahsil etti, nasil odendi. Urun listesi adedi, bu liste fisi anlatir.
+  const [mod, setMod] = useState("urun");        // urun | fis
+  const [fisler, setFisler] = useState(null);
+  const [fisHata, setFisHata] = useState(null);
+  const [acikFis, setAcikFis] = useState(null);
 
   useEffect(() => {
     if (!storeIds.length) return;
@@ -102,6 +114,22 @@ export default function SalesPage() {
     });
     return () => { iptal = true; };
   }, [storeId, aralik, secilenGun]);
+
+  // Fis listesi en cok 31 gun (nip_fis_listesi): bir ay ~900 fis kalemleriyle
+  // gelir, yil gelmez. Uzun aralikta kullanici guni ya da donemi daraltir.
+  const fisAralik = secilenGun ? [secilenGun, secilenGun] : aralik;
+  const fisGunSayisi = Math.round((tarihObj(fisAralik[1]) - tarihObj(fisAralik[0])) / 86400000) + 1;
+  useEffect(() => {
+    if (mod !== "fis" || !storeId || fisGunSayisi > 31) return;
+    let iptal = false;
+    setFisler(null); setFisHata(null); setAcikFis(null);
+    supabase.rpc("nip_fis_listesi", { p_store_id: storeId, p_bas: fisAralik[0], p_bit: fisAralik[1] }).then(({ data, error }) => {
+      if (iptal) return;
+      if (error) { setFisHata(error.message); setFisler([]); return; }
+      setFisler(data || []);
+    });
+    return () => { iptal = true; };
+  }, [mod, storeId, fisAralik[0], fisAralik[1]]);
 
   const ozet = useMemo(() => {
     const s = urunler || [];
@@ -157,6 +185,16 @@ export default function SalesPage() {
   }, [liste, grupla]);
   const maxUrunAdet = Math.max(...liste.map(r => Number(r.adet)), 1);
 
+  // Fis aramasi: hesap adi, personel, uye, odeme, tutar ya da icindeki urun.
+  const fisListesi = useMemo(() => (fisler || []).filter(f => !q
+    || trLow(f.ad).includes(q) || trLow(f.personel).includes(q) || trLow(f.kasiyer).includes(q) || trLow(f.uye).includes(q)
+    || trLow(f.odeme).includes(q) || String(Math.round(Number(f.toplam || 0))).includes(q)
+    || (f.kalemler || []).some(k => trLow(k.ad).includes(q))), [fisler, q]);
+  const fisOzet = useMemo(() => ({
+    adet: fisListesi.length,
+    ciro: fisListesi.reduce((t, f) => t + Number(f.toplam || 0), 0),
+  }), [fisListesi]);
+
   const araligiYaz = () => {
     const [b, e] = secilenGun ? [secilenGun, secilenGun] : aralik;
     if (b === e) return uzunTarih(b);
@@ -168,9 +206,19 @@ export default function SalesPage() {
   // da okunur gider.
   const metniKopyala = async () => {
     const magaza = stores.find(s => s.id === storeId)?.name || "";
-    const satirlar = [`${magaza} satış raporu · ${araligiYaz()}`, "Ürün\tKategori\tAdet\tİkram\tCiro"];
-    liste.forEach(r => satirlar.push(`${r.urun}\t${r.kategori}\t${fmtN(r.adet)}\t${fmtN(r.ikram_adet)}\t${Math.round(Number(r.ciro))}`));
-    satirlar.push(`TOPLAM\t\t${fmtN(ozet.adet)}\t${fmtN(ozet.ikram)}\t${Math.round(ozet.ciro)}`);
+    const satirlar = [];
+    if (mod === "fis") {
+      satirlar.push(`${magaza} fiş listesi · ${araligiYaz()}`, "Tarih\tSaat\tHesap\tPersonel\tÖdeme\tÜrünler\tToplam");
+      fisListesi.forEach(f => {
+        const ts = tarihSaat(f.zaman);
+        satirlar.push(`${ts.tarih}\t${ts.saat}\t${f.ad}\t${f.personel || ""}\t${f.odeme || ""}\t${(f.kalemler || []).map(k => `${fmtN(k.adet)}× ${k.ad}`).join(", ")}\t${Math.round(Number(f.toplam))}`);
+      });
+      satirlar.push(`TOPLAM\t\t${fmtN(fisOzet.adet)} fiş\t\t\t\t${Math.round(fisOzet.ciro)}`);
+    } else {
+      satirlar.push(`${magaza} satış raporu · ${araligiYaz()}`, "Ürün\tKategori\tAdet\tİkram\tCiro");
+      liste.forEach(r => satirlar.push(`${r.urun}\t${r.kategori}\t${fmtN(r.adet)}\t${fmtN(r.ikram_adet)}\t${Math.round(Number(r.ciro))}`));
+      satirlar.push(`TOPLAM\t\t${fmtN(ozet.adet)}\t${fmtN(ozet.ikram)}\t${Math.round(ozet.ciro)}`);
+    }
     const ok = await panoyaKopyala(satirlar.join("\n"));
     setKopyaDurum(ok ? "ok" : "yok");
     setTimeout(() => setKopyaDurum(""), 2000);
@@ -201,6 +249,59 @@ export default function SalesPage() {
       </div>
     </div>
   );
+
+  // Bir fis: saat, hesap, odeme, tutar; dokununca kalemler (secenek, paket,
+  // ikram, indirim, not, QR) ve acilis saati, tahsil eden.
+  const fisCiz = (f) => {
+    const acik = acikFis === f.id;
+    const ts = tarihSaat(f.zaman);
+    return (
+      <div key={f.id} style={{ borderTop: `1px solid ${C.cardLine}` }}>
+        <button onClick={() => setAcikFis(acik ? null : f.id)}
+                style={{ width: "100%", display: "flex", alignItems: "center", gap: 10, padding: "11px 14px", background: acik ? "rgba(255,255,255,0.04)" : "none", border: "none", color: C.ink, textAlign: "left", cursor: "pointer", fontFamily: cv }}>
+          <div style={{ flexShrink: 0, width: 44, fontSize: 13, fontWeight: 700, fontVariantNumeric: "tabular-nums" }}>
+            {ts.saat}
+            {fisGunSayisi > 1 && <div style={{ fontSize: 10, color: C.faint, fontWeight: 600 }}>{ts.tarih}</div>}
+          </div>
+          <div style={{ flex: 1, minWidth: 0 }}>
+            <div style={{ fontSize: 14, fontWeight: 700, whiteSpace: "nowrap", overflow: "hidden", textOverflow: "ellipsis" }}>
+              {f.ad}{f.uye && f.uye !== f.ad ? ` · ${f.uye}` : ""}
+            </div>
+            <div style={{ fontSize: 12, color: C.faint, marginTop: 2, whiteSpace: "nowrap", overflow: "hidden", textOverflow: "ellipsis" }}>
+              {fmtN(f.kalem_adedi)} ürün · {f.odeme || (Number(f.puan) > 0 ? "puan" : "—")}{f.personel ? ` · ${f.personel}` : ""}{f.qr ? " · QR" : ""}
+            </div>
+          </div>
+          <div style={{ fontSize: 18, fontWeight: 900, fontFamily: hv, fontVariantNumeric: "tabular-nums", flexShrink: 0 }}>{fmtTL(f.toplam)}</div>
+          <Ikon ad={acik ? "asagi" : "sag"} boy={13} style={{ color: C.faint, flexShrink: 0 }} />
+        </button>
+        {acik && (
+          <div style={{ padding: "0 14px 12px", fontSize: 13 }}>
+            {(f.kalemler || []).map((k, i) => {
+              const sec = optionsText(k.secenek);
+              return (
+                <div key={i} style={{ display: "flex", justifyContent: "space-between", gap: 10, lineHeight: 1.5, padding: "3px 0" }}>
+                  <span style={{ minWidth: 0 }}>
+                    <b>{fmtN(k.adet)} ×</b> {k.ad}
+                    {sec && <span style={{ color: C.muted }}> · {sec}</span>}
+                    {k.paket && <span style={{ color: C.muted }}> · paket</span>}
+                    {k.ikram && <span style={{ color: C.muted }}> · ikram</span>}
+                    {Number(k.indirim) > 0 && <span style={{ color: C.muted }}> · indirim {fmtTL(Number(k.indirim) * Number(k.adet))}</span>}
+                    {k.qr && <span style={{ color: C.muted }}> · QR</span>}
+                    {k.not && <div style={{ color: C.muted, fontSize: 12 }}>“{k.not}”</div>}
+                  </span>
+                  <span style={{ fontVariantNumeric: "tabular-nums", flexShrink: 0 }}>{fmtTL(Number(k.fiyat) * Number(k.adet))}</span>
+                </div>
+              );
+            })}
+            {Number(f.puan) > 0 && <div style={{ color: C.muted, marginTop: 4 }}>Puanla ödenen: {fmtTL(f.puan)}</div>}
+            <div style={{ color: C.faint, fontSize: 12, marginTop: 6 }}>
+              Açılış {tarihSaat(f.acilis).saat}{f.kasiyer && f.kasiyer !== f.personel ? ` · tahsilat: ${f.kasiyer}` : ""}
+            </div>
+          </div>
+        )}
+      </div>
+    );
+  };
 
   return (
     <div style={{ padding: 16, fontFamily: cv, maxWidth: 900, margin: "0 auto", paddingBottom: 80, color: C.ink }}>
@@ -278,27 +379,61 @@ export default function SalesPage() {
         )}
       </div>
 
+      {/* Gorunum: Urunler (adet) | Fisler (hesap hesap) */}
+      <div style={{ display: "flex", gap: 6, marginTop: 12 }}>
+        {[["urun", "Ürünler"], ["fis", "Fişler"]].map(([k, l]) => (
+          <button key={k} onClick={() => setMod(k)} style={cip(mod === k)}>{l}</button>
+        ))}
+      </div>
+
       {/* Arac cubugu: ara, sirala, grupla, kopyala */}
       <div style={{ display: "flex", gap: 6, flexWrap: "wrap", alignItems: "center", margin: "10px 0" }}>
-        <input value={arama} onChange={e => setArama(e.target.value)} placeholder="Ürün ya da kategori ara" style={{ ...alan, flex: "1 1 160px" }} />
-        {[["adet", "Adet"], ["ciro", "Ciro"], ["ad", "A–Z"]].map(([k, l]) => (
+        <input value={arama} onChange={e => setArama(e.target.value)}
+               placeholder={mod === "fis" ? "Hesap, personel, ürün ya da tutar ara" : "Ürün ya da kategori ara"} style={{ ...alan, flex: "1 1 160px" }} />
+        {mod === "urun" && [["adet", "Adet"], ["ciro", "Ciro"], ["ad", "A–Z"]].map(([k, l]) => (
           <button key={k} onClick={() => setSira(k)} style={cip(sira === k)}>{l}</button>
         ))}
-        <button onClick={() => setGrupla(v => !v)} style={cip(grupla)}>Kategori</button>
-        <button onClick={metniKopyala} disabled={!liste.length} style={{ ...cip(false), display: "inline-flex", alignItems: "center", gap: 6, opacity: liste.length ? 1 : 0.5 }}>
+        {mod === "urun" && <button onClick={() => setGrupla(v => !v)} style={cip(grupla)}>Kategori</button>}
+        <button onClick={metniKopyala} disabled={mod === "fis" ? !fisListesi.length : !liste.length}
+                style={{ ...cip(false), display: "inline-flex", alignItems: "center", gap: 6, opacity: (mod === "fis" ? fisListesi.length : liste.length) ? 1 : 0.5 }}>
           <Ikon ad="kopyala" boy={14} />{kopyaDurum === "ok" ? "Kopyalandı" : kopyaDurum === "yok" ? "Olmadı" : "Kopyala"}
         </button>
       </div>
 
-      {urunler === null && !hata && <div style={{ padding: 40, textAlign: "center", color: C.muted }}>Yükleniyor…</div>}
-      {urunler && urunler.length === 0 && !hata && (
+      {mod === "fis" && (
+        fisGunSayisi > 31 ? (
+          <div style={{ ...kart, color: C.muted, fontSize: 13, lineHeight: 1.6 }}>
+            Fiş listesi en çok 31 günlük aralık için gelir. Daha kısa bir dönem seç ya da grafikte bir güne dokun.
+          </div>
+        ) : fisHata ? (
+          <div style={{ ...kart, borderColor: C.down, color: C.down, fontSize: 13, display: "flex", alignItems: "center", gap: 8 }}>
+            <Ikon ad="uyari" boy={15} />{fisHata}
+          </div>
+        ) : fisler === null ? (
+          <div style={{ padding: 40, textAlign: "center", color: C.muted }}>Yükleniyor…</div>
+        ) : fisListesi.length === 0 ? (
+          <div style={{ ...kart, textAlign: "center", color: C.muted, padding: 40, fontSize: 13 }}>
+            {fisler.length === 0 ? "Bu aralıkta kapanmış hesap yok." : `"${arama}" ile eşleşen fiş yok.`}
+          </div>
+        ) : (
+          <div style={{ ...kart, padding: 0, overflow: "hidden" }}>
+            <div style={{ display: "flex", justifyContent: "space-between", padding: "10px 14px", fontSize: 11, color: C.muted, letterSpacing: 1, textTransform: "uppercase", fontWeight: 600 }}>
+              <span>{fmtN(fisOzet.adet)} fiş · {fmtTL(fisOzet.ciro)}</span><span>dokun → ürünler</span>
+            </div>
+            {fisListesi.map(fisCiz)}
+          </div>
+        )
+      )}
+
+      {mod === "urun" && urunler === null && !hata && <div style={{ padding: 40, textAlign: "center", color: C.muted }}>Yükleniyor…</div>}
+      {mod === "urun" && urunler && urunler.length === 0 && !hata && (
         <div style={{ ...kart, textAlign: "center", color: C.muted, padding: 40, fontSize: 13 }}>Bu aralıkta kapanmış satış yok.</div>
       )}
-      {urunler && urunler.length > 0 && liste.length === 0 && (
+      {mod === "urun" && urunler && urunler.length > 0 && liste.length === 0 && (
         <div style={{ ...kart, textAlign: "center", color: C.muted, padding: 30, fontSize: 13 }}>"{arama}" ile eşleşen ürün yok.</div>
       )}
 
-      {liste.length > 0 && !grupla && (
+      {mod === "urun" && liste.length > 0 && !grupla && (
         <div style={{ ...kart, padding: 0, overflow: "hidden" }}>
           <div style={{ display: "flex", justifyContent: "space-between", padding: "10px 14px", fontSize: 11, color: C.muted, letterSpacing: 1, textTransform: "uppercase", fontWeight: 600 }}>
             <span>Ürün</span><span>Adet · ciro</span>
@@ -307,7 +442,7 @@ export default function SalesPage() {
         </div>
       )}
 
-      {liste.length > 0 && grupla && gruplar.map(g => (
+      {mod === "urun" && liste.length > 0 && grupla && gruplar.map(g => (
         <div key={g.ad} style={{ ...kart, padding: 0, overflow: "hidden", marginBottom: 10 }}>
           <div style={{ display: "flex", justifyContent: "space-between", alignItems: "baseline", padding: "12px 14px", gap: 8 }}>
             <div style={{ fontSize: 13, fontWeight: 800, letterSpacing: 0.5, textTransform: "uppercase" }}>{g.ad}</div>
@@ -320,6 +455,7 @@ export default function SalesPage() {
       <div style={{ fontSize: 12, color: C.faint, marginTop: 12, lineHeight: 1.7 }}>
         Yalnız kapanmış hesaplar; gün ödeme anına göre 03:00'te biter. Ciro indirimli fiyattan, ikram adede girer cirosu sıfırdır.
         Bedenli ürünler ayrı satırdır (raf sayımı için). "Kopyala" tabloyu Excel'e yapıştırılacak biçimde alır.
+        "Fişler" her kapanmış hesabı tek tek gösterir; dokununca içindeki ürünler açılır. İptal edilen hesaplar "İptal &amp; Düzeltme"de.
       </div>
     </div>
   );
