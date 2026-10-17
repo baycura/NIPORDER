@@ -5,6 +5,7 @@ import { useAuth } from "../../contexts/AuthContext.jsx";
 import { PARIS_STORE_ID, DONER_STORE_ID, storeLabel } from "../../lib/stores.js";
 import Ikon from "../../components/Ikon.jsx";
 import SayiGirisi from "../../components/SayiGirisi.jsx";
+import BarkodOkut from "../../components/BarkodOkut.jsx";
 
 const cv = "-apple-system,BlinkMacSystemFont,'Segoe UI',Roboto,sans-serif";
 // Adi yalniz rakam (6-14 hane) olan urun: buyuk olasilikla barkod. Musteri
@@ -23,6 +24,7 @@ export default function MenuMgmtPage() {
   const [prodModal, setProdModal] = useState(null);
   const [catForm, setCatForm] = useState({});
   const [prodForm, setProdForm] = useState({});
+  const [barkodOkut, setBarkodOkut] = useState(false);   // BARKOD alani: kamerayla okut
   const [busy, setBusy] = useState(false);
   const [dragSrc, setDragSrc] = useState(null);
   const [dragOver, setDragOver] = useState(null);
@@ -586,7 +588,19 @@ export default function MenuMgmtPage() {
           <Field label="NAME (English)"><input value={prodForm.name_en||""} onChange={e=>setProdForm(f => ({...f,name_en:e.target.value}))} placeholder="Optional - shown when customer selects EN" style={inputS}/></Field>
           <Field label="НАЗВАНИЕ (Rusca)"><input value={prodForm.name_ru||""} onChange={e=>setProdForm(f => ({...f,name_ru:e.target.value}))} placeholder="Opsiyonel - RU secilince gorunur" style={inputS}/></Field>
           <Field label="MARKA (opsiyonel)"><input value={prodForm.brand||""} onChange={e=>setProdForm(f => ({...f,brand:e.target.value}))} placeholder="Orn: Rapha, Le Bon Bain..." style={inputS}/></Field>
-          <Field label="BARKOD (opsiyonel)"><input value={prodForm.barkod||""} onChange={e=>setProdForm(f => ({...f,barkod:e.target.value}))} inputMode="numeric" placeholder="Kutudaki 13 haneli numara — kasada ve stokta bu numarayla aranır" style={inputS}/></Field>
+          <Field label="BARKOD (opsiyonel)">
+            <div style={{display:"flex",gap:8}}>
+              <input value={prodForm.barkod||""} onChange={e=>setProdForm(f => ({...f,barkod:e.target.value}))} inputMode="numeric" placeholder="Kutudaki 13 haneli numara — kasada ve stokta bu numarayla aranır" style={{...inputS,flex:1,minWidth:0}}/>
+              <button type="button" onClick={()=>setBarkodOkut(true)} aria-label="Barkodu kamerayla okut"
+                style={{flexShrink:0,minHeight:44,padding:"0 12px",background:"#1A1A1A",color:"#F0EDE8",border:"1px solid #333",borderRadius:10,fontFamily:cv,fontSize:12.5,fontWeight:800,cursor:"pointer",display:"inline-flex",alignItems:"center",gap:6}}>
+                <Ikon ad="kamera" boy={15}/>Okut
+              </button>
+            </div>
+          </Field>
+          {barkodOkut && (
+            <BarkodOkut baslik="Barkodu okut" aciklama="Kutudaki barkodu çerçeveye tut; numara alana yazılır."
+                        onOkundu={(kod)=>setProdForm(f => ({...f,barkod:String(kod).replace(/\s+/g,"")}))} onKapat={()=>setBarkodOkut(false)}/>
+          )}
           <Field label="AÇIKLAMA (Türkçe)"><textarea value={prodForm.description||""} onChange={e=>setProdForm(f => ({...f,description:e.target.value}))} rows={2} style={{...inputS,resize:"vertical"}}/></Field>
           <Field label="DESCRIPTION (English)"><textarea value={prodForm.description_en||""} onChange={e=>setProdForm(f => ({...f,description_en:e.target.value}))} rows={2} placeholder="Optional - shown when customer selects EN" style={{...inputS,resize:"vertical"}}/></Field>
           <Field label="ОПИСАНИЕ (Rusca)"><textarea value={prodForm.description_ru||""} onChange={e=>setProdForm(f => ({...f,description_ru:e.target.value}))} rows={2} placeholder="Opsiyonel - RU secilince gorunur" style={{...inputS,resize:"vertical"}}/></Field>

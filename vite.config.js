@@ -25,6 +25,9 @@ export default defineConfig({
             if (id.includes("react-router")) return "react-vendor";
             if (id.includes("/react/") || id.includes("/react-dom/") || id.includes("scheduler")) return "react-vendor";
             if (id.includes("@supabase")) return "supabase-vendor";
+            // Barkod cozucu (iPhone icin) yalniz "Okut" acilinca iner; genel
+            // vendor paketine girerse her acilista 500 KB fazladan yuklenir.
+            if (id.includes("@zxing")) return "zxing";
             return "vendor";
           }
         },
