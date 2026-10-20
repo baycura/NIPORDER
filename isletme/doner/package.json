@@ -1,0 +1,9 @@
+{
+  "name": "doner-defteri",
+  "private": true,
+  "description": "Vercel Root Directory bu klasor. Bagimliliklar repo kokunde; komutlar vercel.json'da.",
+  "scripts": {
+    "build": "cd ../.. && npx vite build --config isletme/doner/vite.config.js",
+    "dev": "cd ../.. && npx vite --config isletme/doner/vite.config.js --port 3003"
+  }
+}
