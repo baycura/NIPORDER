@@ -1,4 +1,6 @@
 import { useEffect, useMemo, useState } from "react";
+import { useSearchParams } from "react-router-dom";
+import { parseUblInvoice } from "../lib/ublInvoice.js";
 import { doner } from "./supabase.js";
 import { useDoner } from "./DonerApp.jsx";
 import SayiGirisi from "../components/SayiGirisi.jsx";
@@ -6,7 +8,9 @@ import Ikon from "../components/Ikon.jsx";
 import { C, S, fmtTL, fmtN, bugunIso, gunEkle, ayBasi, kisaTarih, KATEGORILER, YONTEMLER, Baslik, Hata, Yukleniyor, Alan, Pencere, hataMetni } from "./ortak.jsx";
 
 // GIDERLER — fatura ve gider girisi. "Kim odedi": doner kasasi ya da bir
-// ortak (cebinden); ozet ekrani ortak odemelerini ayri toplar.
+// ortak (cebinden); ozet ekrani ortak odemelerini ayri toplar. ?odeyen=Ad ile
+// acilinca o kisinin odemeleri suzulur (ozetten gelir). e-Fatura XML'i
+// (GIB portali / Luca'dan indirilen UBL dosyasi) formu kendiliginden doldurur.
 const BOS = () => ({ tarih: bugunIso(), kategori: "Malzeme", tutar: "", aciklama: "", tedarikci: "", fatura_no: "", odeyen: "kasa", yontem: "nakit", kdv_dahil: true });
 
 export default function Giderler() {
@@ -18,6 +22,9 @@ export default function Giderler() {
   const [form, setForm] = useState(null);     // null | {id?, ...}
   const [busy, setBusy] = useState(false);
   const [arama, setArama] = useState("");
+  const [sp, setSp] = useSearchParams();
+  const odeyenF = sp.get("odeyen") || "";
+  const [xmlBilgi, setXmlBilgi] = useState("");
 
   const aralik = useMemo(() => {
     if (donem === "ay") return [ayBasi(bugun), bugun];
@@ -59,10 +66,32 @@ export default function Giderler() {
   };
 
   const q = arama.trim().toLocaleLowerCase("tr");
-  const gosterilen = (liste || []).filter(g => !q || [g.kategori, g.aciklama, g.tedarikci, g.fatura_no, g.odeyen].some(x => String(x || "").toLocaleLowerCase("tr").includes(q)));
+  const gosterilen = (liste || []).filter(g => (!odeyenF || g.odeyen === odeyenF) &&
+    (!q || [g.kategori, g.aciklama, g.tedarikci, g.fatura_no, g.odeyen].some(x => String(x || "").toLocaleLowerCase("tr").includes(q))));
   const toplam = gosterilen.reduce((t, g) => t + Number(g.tutar), 0);
   const odeyenler = ["kasa", ...uyeler.filter(u => u.aktif).map(u => u.ad)];
   if (form && form.odeyen && !odeyenler.includes(form.odeyen)) odeyenler.push(form.odeyen);
+  // Suzgec cipleri: listede gecen (artik aktif olmayan) odeyenler de gorunsun
+  const suzgecOdeyenler = [...odeyenler];
+  for (const g of liste || []) if (g.odeyen && !suzgecOdeyenler.includes(g.odeyen)) suzgecOdeyenler.push(g.odeyen);
+  if (odeyenF && !suzgecOdeyenler.includes(odeyenF)) suzgecOdeyenler.push(odeyenF);
+
+  // e-Fatura XML: tedarikci, fatura no, tarih, KDV dahil toplam formu doldurur; kalemler aciklamaya.
+  const xmlOku = async (e) => {
+    const dosya = e.target.files?.[0]; e.target.value = "";
+    if (!dosya) return;
+    try {
+      const f = parseUblInvoice(await dosya.text());
+      const adlar = (f.lines || []).map(l => l.name).filter(Boolean);
+      const ozet = adlar.slice(0, 3).join(", ") + (adlar.length > 3 ? ` +${adlar.length - 3}` : "");
+      setForm(x => ({ ...x,
+        tedarikci: f.supplier_name || x.tedarikci, fatura_no: f.invoice_no || x.fatura_no,
+        tarih: f.invoice_date && f.invoice_date <= bugun ? f.invoice_date : x.tarih,
+        tutar: f.grand_total > 0 ? String(Math.round(f.grand_total * 100) / 100) : x.tutar,
+        kdv_dahil: true, aciklama: x.aciklama || ozet }));
+      setXmlBilgi(`Fatura okundu: ${f.supplier_name || "tedarikçi ?"} · ${adlar.length} kalem · ${fmtTL(f.grand_total)}${f.currency && f.currency !== "TRY" ? ` (${f.currency}!)` : ""}`);
+    } catch (err) { setXmlBilgi(""); alert(hataMetni(err)); }
+  };
 
   return (
     <div>
@@ -73,6 +102,12 @@ export default function Giderler() {
           <button key={k} onClick={() => setDonem(k)} style={S.cip(donem === k)}>{l}</button>
         ))}
         <input value={arama} onChange={e => setArama(e.target.value)} placeholder="Ara: tedarikçi, açıklama, fatura no" style={{ ...S.alan, flex: "1 1 180px", width: "auto" }} />
+      </div>
+      <div style={{ display: "flex", gap: 6, overflowX: "auto", paddingBottom: 4, marginBottom: 8 }} aria-label="Kim ödedi süzgeci">
+        <button onClick={() => setSp({})} style={{ ...S.cip(!odeyenF), flexShrink: 0 }}>Hepsi</button>
+        {suzgecOdeyenler.map(o => (
+          <button key={o} onClick={() => setSp({ odeyen: o })} style={{ ...S.cip(odeyenF === o), flexShrink: 0 }}>{o === "kasa" ? "Döner kasası" : o}</button>
+        ))}
       </div>
       <Hata metin={hata} />
       {liste === null && <Yukleniyor />}
@@ -99,7 +134,16 @@ export default function Giderler() {
       )}
 
       {form && (
-        <Pencere baslik={form.id ? "Gideri düzenle" : "Yeni gider"} onKapat={() => setForm(null)}>
+        <Pencere baslik={form.id ? "Gideri düzenle" : "Yeni gider"} onKapat={() => { setForm(null); setXmlBilgi(""); }}>
+          {!form.id && (
+            <div style={{ marginBottom: 12 }}>
+              <label style={{ ...S.cip(false), display: "inline-flex", alignItems: "center", gap: 8 }}>
+                <Ikon ad="belge" boy={14} />e-Fatura XML yükle
+                <input type="file" accept=".xml,text/xml,application/xml" onChange={xmlOku} style={{ display: "none" }} />
+              </label>
+              <div style={{ fontSize: 12, color: C.faint, marginTop: 6 }}>{xmlBilgi || "GİB portalından ya da muhasebeden gelen e-Fatura XML dosyası formu doldurur."}</div>
+            </div>
+          )}
           <Alan etiket="TARİH"><input type="date" value={form.tarih} max={bugun} onChange={e => setForm(f => ({ ...f, tarih: e.target.value }))} style={S.alan} /></Alan>
           <Alan etiket="KATEGORİ">
             <div style={{ display: "flex", gap: 6, flexWrap: "wrap" }}>

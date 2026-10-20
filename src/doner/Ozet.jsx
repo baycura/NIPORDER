@@ -1,4 +1,5 @@
 import { useEffect, useMemo, useState } from "react";
+import { useNavigate } from "react-router-dom";
 import { doner } from "./supabase.js";
 import { C, cv, hv, S, fmtTL, fmtN, bugunIso, gunEkle, tarihObj, kisaTarih, uzunTarih, gunAdi, DONEMLER, Baslik, Hata, Yukleniyor, hataMetni } from "./ortak.jsx";
 
@@ -14,6 +15,10 @@ export default function Ozet() {
   const [aralik, setAralik] = useState(() => [bugun.slice(0, 7) + "-01", bugun]);
   const [veri, setVeri] = useState(null);
   const [hata, setHata] = useState(null);
+  const [ortaklar, setOrtaklar] = useState(null);
+  const navigate = useNavigate();
+  const odeyenAc = (ad) => navigate("/giderler?odeyen=" + encodeURIComponent(ad));
+  useEffect(() => { doner.rpc("doner_ortaklar").then(({ data }) => setOrtaklar(Array.isArray(data) ? data : [])); }, []);
 
   const donemSec = (k) => {
     setDonem(k);
@@ -117,8 +122,28 @@ export default function Ozet() {
             <div style={S.kart}>
               <div style={{ ...S.etiket, marginBottom: 6 }}>KİM ÖDEDİ</div>
               {h.odeyen.length === 0 && <div style={{ fontSize: 13, color: C.faint }}>—</div>}
-              {h.odeyen.map(([ad, t]) => <Satir key={ad} ad={ad === "kasa" ? "Döner kasası" : ad} tutar={t} />)}
-              <div style={{ fontSize: 12, color: C.faint, marginTop: 6 }}>Ortakların cebinden ödenenler; aranızda hesaplaşma için.</div>
+              {h.odeyen.map(([ad, t]) => (
+                <button key={ad} onClick={() => odeyenAc(ad)} style={{ width: "100%", display: "flex", justifyContent: "space-between", gap: 10, background: "none", border: "none", padding: 0, color: C.ink, fontFamily: "inherit", fontSize: 13.5, lineHeight: 2, cursor: "pointer", textAlign: "left" }}>
+                  <span style={{ color: C.muted }}>{ad === "kasa" ? "Döner kasası" : ad} ›</span>
+                  <span style={{ fontVariantNumeric: "tabular-nums" }}>{fmtTL(t)}</span>
+                </button>
+              ))}
+              <div style={{ fontSize: 12, color: C.faint, marginTop: 6 }}>Bu dönem. Ada dokununca o kişinin ödemeleri listelenir.</div>
+            </div>
+            <div style={S.kart}>
+              <div style={{ ...S.etiket, marginBottom: 6 }}>ORTAK ÖDEMELERİ · TÜM ZAMANLAR</div>
+              {ortaklar === null && <div style={{ fontSize: 13, color: C.faint }}>…</div>}
+              {ortaklar && ortaklar.length === 0 && <div style={{ fontSize: 13, color: C.faint }}>Henüz gider girilmedi.</div>}
+              {(ortaklar || []).map(o => (
+                <button key={o.ad} onClick={() => odeyenAc(o.ad)} style={{ width: "100%", display: "flex", justifyContent: "space-between", alignItems: "center", gap: 10, background: "none", border: "none", padding: "5px 0", borderTop: `1px solid ${C.line}`, color: C.ink, fontFamily: "inherit", cursor: "pointer", textAlign: "left" }}>
+                  <span style={{ minWidth: 0 }}>
+                    <div style={{ fontSize: 13.5, fontWeight: 700, color: o.ad === "kasa" ? C.muted : C.ink }}>{o.ad === "kasa" ? "Döner kasası" : o.ad} ›</div>
+                    <div style={{ fontSize: 11.5, color: C.faint }}>bu ay {fmtTL(o.bu_ay)} · geçen ay {fmtTL(o.gecen_ay)} · {fmtN(o.adet)} kayıt{o.son_tarih ? ` · son ${kisaTarih(o.son_tarih)}` : ""}</div>
+                  </span>
+                  <span style={{ fontSize: 15, fontWeight: 800, fontVariantNumeric: "tabular-nums", flexShrink: 0 }}>{fmtTL(o.tum)}</span>
+                </button>
+              ))}
+              <div style={{ fontSize: 12, color: C.faint, marginTop: 6 }}>Ortakların cebinden ödenenler; aranızda hesaplaşma için. Kasa: dönerin kendi parasından.</div>
             </div>
             <div style={S.kart}>
               <div style={{ ...S.etiket, marginBottom: 6 }}>ÜRÜN MALİYETİ</div>
