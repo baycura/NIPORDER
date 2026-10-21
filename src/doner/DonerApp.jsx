@@ -10,6 +10,7 @@ import GunSonu from "./GunSonu.jsx";
 import Urunler from "./Urunler.jsx";
 import Borclular from "./Borclular.jsx";
 import Kullanicilar from "./Kullanicilar.jsx";
+import Ayarlar from "./Ayarlar.jsx";
 
 // DONER DEFTERI — ayri limited sirketin basit defteri (sahip istegi 20.10).
 // VITE_PROFIL=doner ile ayri site olarak kurulur (isletme/doner). Kafe
@@ -51,6 +52,11 @@ function Kabuk({ children }) {
             {admin && (
               <button onClick={() => { setMenu(false); navigate("/kullanicilar"); }} style={{ width: "100%", textAlign: "left", padding: "12px 14px", background: "none", border: "none", color: C.ink, fontFamily: cv, fontSize: 14, cursor: "pointer", display: "flex", gap: 10, alignItems: "center" }}>
                 <Ikon ad="personel" boy={16} />Kullanıcılar
+              </button>
+            )}
+            {admin && (
+              <button onClick={() => { setMenu(false); navigate("/ayarlar"); }} style={{ width: "100%", textAlign: "left", padding: "12px 14px", background: "none", border: "none", borderTop: `1px solid ${C.line}`, color: C.ink, fontFamily: cv, fontSize: 14, cursor: "pointer", display: "flex", gap: 10, alignItems: "center" }}>
+                <Ikon ad="ayar" boy={16} />Ayarlar
               </button>
             )}
             <button onClick={cikis} style={{ width: "100%", textAlign: "left", padding: "12px 14px", background: "none", border: "none", borderTop: `1px solid ${C.line}`, color: C.ink, fontFamily: cv, fontSize: 14, cursor: "pointer", display: "flex", gap: 10, alignItems: "center" }}>
@@ -160,6 +166,7 @@ export default function DonerApp() {
           <Route path="/urunler" element={<Urunler />} />
           <Route path="/borclular" element={<Borclular />} />
           <Route path="/kullanicilar" element={ben.rol === "admin" ? <Kullanicilar /> : <Navigate to="/" replace />} />
+          <Route path="/ayarlar" element={ben.rol === "admin" ? <Ayarlar /> : <Navigate to="/" replace />} />
           <Route path="*" element={<Navigate to="/" replace />} />
         </Routes>
       </Kabuk>
