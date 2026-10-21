@@ -1,11 +1,12 @@
-import { useEffect, useState } from "react";
+import { useEffect, useRef, useState } from "react";
 import { doner } from "./supabase.js";
 import { C, S, Baslik, Hata, Yukleniyor, hataMetni } from "./ortak.jsx";
 
 // AYARLAR (yalniz admin) — Telegram botu. Bot anahtari Supabase Vault'ta
 // durur ('doner_tg_token'); buradan yalniz var/yok gorunur, anahtar hic
-// gelmez. Grup baglama: botu gruba ekle, grupta "/baglan" yaz, "Grubu bul"a
-// dokun; sunucu getUpdates ile sohbeti bulur (doner_tg_grup_bul*).
+// gelmez. Grup baglama: "Kod al" -> grupta "/baglan 123456" -> "Grubu bul".
+// Sunucu getUpdates ile yalniz grup/supergruptaki dogru kodu kabul eder
+// (20261022_doner_tg_duzeltme).
 const bekle = (ms) => new Promise(r => setTimeout(r, ms));
 
 export default function Ayarlar() {
@@ -13,26 +14,48 @@ export default function Ayarlar() {
   const [hata, setHata] = useState(null);
   const [bilgi, setBilgi] = useState("");
   const [busy, setBusy] = useState(false);
+  const acik = useRef(true);
+  useEffect(() => () => { acik.current = false; }, []);
 
-  const yukle = () => doner.rpc("doner_tg_durum").then(({ data, error }) => { if (error) setHata(hataMetni(error)); else setD(data || {}); });
+  const yukle = () => doner.rpc("doner_tg_durum").then(({ data, error }) => {
+    if (!acik.current) return;
+    if (error) setHata(hataMetni(error)); else setD(data || {});
+  });
   useEffect(() => { yukle(); }, []);
 
+  const kodAl = async () => {
+    setBusy(true); setHata(null); setBilgi("");
+    const { error } = await doner.rpc("doner_tg_kod_al");
+    setBusy(false);
+    if (error) setHata(hataMetni(error)); else yukle();
+  };
+
+  // Bir cagri en fazla 100 Telegram guncellemesine bakar; kuyruk kalabaliksa
+  // sunucu offset'i ilerletir, burada en fazla 3 sayfa denenir.
   const grupBul = async () => {
     setBusy(true); setBilgi("Aranıyor…"); setHata(null);
     try {
-      const { error } = await doner.rpc("doner_tg_grup_bul");
-      if (error) throw error;
-      for (let i = 0; i < 8; i++) {
-        await bekle(1500);
-        const { data, error: e2 } = await doner.rpc("doner_tg_grup_bul_sonuc");
-        if (e2) throw e2;
-        if (data?.bekle) continue;
-        if (data?.bagli) { setBilgi(`Bağlandı: ${data.ad}`); yukle(); return; }
-        if (data?.bulunamadi) { setBilgi(`"/baglan" mesajı bulunamadı (${data.mesaj} mesaja bakıldı). Grupta /baglan yazıp yeniden dene.`); return; }
-        if (data?.hata) { setHata(data.hata); setBilgi(""); return; }
+      for (let sayfa = 0; sayfa < 3; sayfa++) {
+        const { error } = await doner.rpc("doner_tg_grup_bul");
+        if (error) throw error;
+        let sonuc = null;
+        for (let i = 0; i < 8 && acik.current; i++) {
+          await bekle(1500);
+          const { data, error: e2 } = await doner.rpc("doner_tg_grup_bul_sonuc");
+          if (e2) throw e2;
+          if (data?.bekle) continue;
+          sonuc = data; break;
+        }
+        if (!acik.current) return;
+        if (!sonuc) { setBilgi("Telegram yanıt vermedi. Biraz sonra yeniden dene."); return; }
+        if (sonuc.bagli) { setBilgi(`Bağlandı: ${sonuc.ad}`); yukle(); return; }
+        if (sonuc.hata) { setHata(sonuc.hata); setBilgi(""); return; }
+        if (sonuc.bulunamadi && sonuc.mesaj >= 100) continue;   // sonraki sayfa
+        setBilgi(`Kod bulunamadı. Grupta tam olarak "/baglan ${sonuc.kod || d?.kod || ""}" yaz, sonra yeniden dene.`);
+        return;
       }
-      setBilgi("Telegram yanıt vermedi. Biraz sonra yeniden dene.");
-    } catch (e) { setHata(hataMetni(e)); setBilgi(""); } finally { setBusy(false); }
+      setBilgi("Çok fazla eski mesaj var. Bir kez daha \"Grubu bul\"a dokun.");
+    } catch (e) { if (acik.current) { setHata(hataMetni(e)); setBilgi(""); } } finally { if (acik.current) setBusy(false); }
   };
   const test = async () => {
     setBusy(true); setHata(null);
@@ -72,7 +95,7 @@ export default function Ayarlar() {
             {!d.token_var && (
               <div style={{ marginTop: 10, borderTop: `1px solid ${C.line}`, paddingTop: 10 }}>
                 <div style={{ fontSize: 12, color: C.muted, marginBottom: 4 }}>Bot anahtarı bir kez, Supabase'de saklanır (uygulamaya ve sohbete yazılmaz):</div>
-                <Adim n="1">Telegram'da <b>@BotFather</b> → <span style={kod}>/newbot</span> → ad ver (örn. NIP Döner) → anahtarı kopyala.</Adim>
+                <Adim n="1">Telegram'da <b>@BotFather</b> → <span style={kod}>/newbot</span> → ad ver (örn. NIP Döner) → anahtarı kopyala. Kafe botunun anahtarını <b>kullanma</b>.</Adim>
                 <Adim n="2">Supabase → SQL Editor'de çalıştır: <span style={kod}>select vault.create_secret('ANAHTAR', 'doner_tg_token');</span></Adim>
                 <Adim n="3">Bu sayfayı yenile; "Bot anahtarı: var" olur.</Adim>
               </div>
@@ -81,23 +104,33 @@ export default function Ayarlar() {
               <div style={{ marginTop: 10, borderTop: `1px solid ${C.line}`, paddingTop: 10 }}>
                 <Adim n="1">Telegram'da bir grup aç (örn. "Döner"), ortakları ve personeli ekle.</Adim>
                 <Adim n="2">Botu gruba ekle.</Adim>
-                <Adim n="3">Grupta <span style={kod}>/baglan</span> yaz.</Adim>
-                <Adim n="4">Buradan "Grubu bul"a dokun.</Adim>
+                <Adim n="3">Buradan "Kod al"a dokun.{d.kod && <> Kodun: <b style={{ fontSize: 15, letterSpacing: 1 }}>{d.kod}</b> (30 dk geçerli)</>}</Adim>
+                <Adim n="4">Grupta yaz: <span style={kod}>/baglan {d.kod || "KOD"}</span></Adim>
+                <Adim n="5">Buradan "Grubu bul"a dokun.</Adim>
               </div>
             )}
+            {d.token_var && d.chat && d.kod && (
+              <div style={{ marginTop: 10, fontSize: 13, color: C.ink }}>Yeni grup için grupta yaz: <span style={kod}>/baglan {d.kod}</span>, sonra "Grubu yeniden bul".</div>
+            )}
             <div style={{ display: "flex", gap: 8, flexWrap: "wrap", marginTop: 12 }}>
-              {d.token_var && <button onClick={grupBul} disabled={busy} style={S.dugme(!d.chat)}>{busy ? "Bekle…" : d.chat ? "Grubu yeniden bul" : "Grubu bul"}</button>}
+              {d.token_var && <button onClick={kodAl} disabled={busy} style={S.dugme(!d.chat && !d.kod)}>{d.kod ? "Yeni kod al" : "Kod al"}</button>}
+              {d.token_var && d.kod && <button onClick={grupBul} disabled={busy} style={S.dugme(!d.chat)}>{busy ? "Bekle…" : d.chat ? "Grubu yeniden bul" : "Grubu bul"}</button>}
               {d.token_var && d.chat && <button onClick={test} disabled={busy} style={S.dugme(true)}>Test mesajı</button>}
               {d.chat && <button onClick={cikar} disabled={busy} style={{ ...S.dugme(false), color: C.down }}>Bağlantıyı kaldır</button>}
             </div>
             {bilgi && <div style={{ fontSize: 13, marginTop: 10, color: C.ink }}>{bilgi}</div>}
+            {d.token_var && (
+              <div style={{ fontSize: 12, color: C.faint, marginTop: 10, lineHeight: 1.6 }}>
+                Anahtarı değiştirmek için (BotFather'da /revoke sonrası) SQL Editor: <span style={kod}>select vault.update_secret((select id from vault.secrets where name = 'doner_tg_token'), 'YENI_ANAHTAR');</span>
+              </div>
+            )}
           </div>
 
           <div style={{ ...S.kart, marginTop: 10 }}>
             <div style={{ ...S.etiket, marginBottom: 6 }}>NE GÖNDERİR</div>
             <div style={{ fontSize: 13, color: C.muted, lineHeight: 1.8 }}>
               🧾 Mutfağa düşen her sipariş (QR ve kafe), kalemleriyle; değişiklik ve iptal.<br />
-              💸 Girilen her gider: tutar, kim ödedi, kim girdi.<br />
+              💸 Girilen her gider: tutar, kim ödedi, kim girdi. Düzeltme ve silme de: kim yaptı.<br />
               🧮 Gün sonu girilince günün özeti: tezgah, QR, kafe, gider, net.<br />
               ⏰ 23:00'te gün sonu girilmediyse hatırlatma.
             </div>

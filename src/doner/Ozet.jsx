@@ -16,9 +16,16 @@ export default function Ozet() {
   const [veri, setVeri] = useState(null);
   const [hata, setHata] = useState(null);
   const [ortaklar, setOrtaklar] = useState(null);
+  const [ortakHata, setOrtakHata] = useState(null);
   const navigate = useNavigate();
-  const odeyenAc = (ad) => navigate("/giderler?odeyen=" + encodeURIComponent(ad));
-  useEffect(() => { doner.rpc("doner_ortaklar").then(({ data }) => setOrtaklar(Array.isArray(data) ? data : [])); }, []);
+  // Donem tasinir: tiklanan rakam ile acilan liste ayni araligi gosterir.
+  const odeyenAc = (ad, bas, bit) => navigate("/giderler?" + new URLSearchParams({ odeyen: ad, bas, bit }).toString());
+  useEffect(() => {
+    doner.rpc("doner_ortaklar").then(({ data, error }) => {
+      if (error) { setOrtakHata(hataMetni(error)); setOrtaklar([]); return; }
+      setOrtaklar(Array.isArray(data) ? data : []);
+    });
+  }, []);
 
   const donemSec = (k) => {
     setDonem(k);
@@ -123,7 +130,7 @@ export default function Ozet() {
               <div style={{ ...S.etiket, marginBottom: 6 }}>KİM ÖDEDİ</div>
               {h.odeyen.length === 0 && <div style={{ fontSize: 13, color: C.faint }}>—</div>}
               {h.odeyen.map(([ad, t]) => (
-                <button key={ad} onClick={() => odeyenAc(ad)} style={{ width: "100%", display: "flex", justifyContent: "space-between", gap: 10, background: "none", border: "none", padding: 0, color: C.ink, fontFamily: "inherit", fontSize: 13.5, lineHeight: 2, cursor: "pointer", textAlign: "left" }}>
+                <button key={ad} onClick={() => odeyenAc(ad, aralik[0], aralik[1])} style={{ width: "100%", display: "flex", justifyContent: "space-between", gap: 10, background: "none", border: "none", padding: 0, color: C.ink, fontFamily: "inherit", fontSize: 13.5, lineHeight: 2, cursor: "pointer", textAlign: "left" }}>
                   <span style={{ color: C.muted }}>{ad === "kasa" ? "Döner kasası" : ad} ›</span>
                   <span style={{ fontVariantNumeric: "tabular-nums" }}>{fmtTL(t)}</span>
                 </button>
@@ -133,9 +140,10 @@ export default function Ozet() {
             <div style={S.kart}>
               <div style={{ ...S.etiket, marginBottom: 6 }}>ORTAK ÖDEMELERİ · TÜM ZAMANLAR</div>
               {ortaklar === null && <div style={{ fontSize: 13, color: C.faint }}>…</div>}
-              {ortaklar && ortaklar.length === 0 && <div style={{ fontSize: 13, color: C.faint }}>Henüz gider girilmedi.</div>}
+              {ortakHata && <div style={{ fontSize: 13, color: C.down }}>{ortakHata}</div>}
+              {ortaklar && ortaklar.length === 0 && !ortakHata && <div style={{ fontSize: 13, color: C.faint }}>Henüz gider girilmedi.</div>}
               {(ortaklar || []).map(o => (
-                <button key={o.ad} onClick={() => odeyenAc(o.ad)} style={{ width: "100%", display: "flex", justifyContent: "space-between", alignItems: "center", gap: 10, background: "none", border: "none", padding: "5px 0", borderTop: `1px solid ${C.line}`, color: C.ink, fontFamily: "inherit", cursor: "pointer", textAlign: "left" }}>
+                <button key={o.ad} onClick={() => odeyenAc(o.ad, "2020-01-01", bugun)} style={{ width: "100%", display: "flex", justifyContent: "space-between", alignItems: "center", gap: 10, background: "none", border: "none", padding: "5px 0", borderTop: `1px solid ${C.line}`, color: C.ink, fontFamily: "inherit", cursor: "pointer", textAlign: "left" }}>
                   <span style={{ minWidth: 0 }}>
                     <div style={{ fontSize: 13.5, fontWeight: 700, color: o.ad === "kasa" ? C.muted : C.ink }}>{o.ad === "kasa" ? "Döner kasası" : o.ad} ›</div>
                     <div style={{ fontSize: 11.5, color: C.faint }}>bu ay {fmtTL(o.bu_ay)} · geçen ay {fmtTL(o.gecen_ay)} · {fmtN(o.adet)} kayıt{o.son_tarih ? ` · son ${kisaTarih(o.son_tarih)}` : ""}</div>
