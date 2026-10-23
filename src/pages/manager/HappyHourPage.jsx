@@ -1,5 +1,6 @@
 import { useState, useEffect } from "react";
 import { supabase } from "../../lib/supabase.js";
+import { hhSadeceUyeMi } from "../../lib/happyHour.js";
 import { useAuth } from "../../contexts/AuthContext.jsx";
 import Ikon from "../../components/Ikon.jsx";
 import SayiGirisi from "../../components/SayiGirisi.jsx";
@@ -32,7 +33,23 @@ export default function HappyHourPage() {
     product_overrides: {},
   });
 
+  // HAPPY HOUR YALNIZ UYELERE (sahip 24.10): app_settings hh_sadece_uye.
+  // Yoksa ya da true ise acik; false ise herkese. Musteri menusu (CustomerMenu)
+  // ve kasa (OrderDetailPage) ayni anahtari okur.
+  const magazaId = staffUser?.store_ids?.[0] || null;
+  const [sadeceUye, setSadeceUye] = useState(true);
+  const sadeceUyeYaz = async (deger) => {
+    if (!magazaId) { alert("Mağaza bulunamadı."); return; }
+    const onceki = sadeceUye; setSadeceUye(deger);
+    const { error } = await supabase.from("app_settings").upsert({ key: "hh_sadece_uye", value: !!deger, store_id: magazaId, updated_at: new Date().toISOString() }, { onConflict: "key,store_id" });
+    if (error) { setSadeceUye(onceki); alert("Kaydedilemedi: " + error.message); }
+  };
+
   const load = async () => {
+    if (magazaId) {
+      const { data: ayar } = await supabase.from("app_settings").select("value").eq("key", "hh_sadece_uye").eq("store_id", magazaId).maybeSingle();
+      setSadeceUye(hhSadeceUyeMi(ayar?.value));
+    }
     const [{ data: r }, { data: p }] = await Promise.all([
       supabase.from("happy_hour_rules").select("*").in("store_id", staffUser?.store_ids?.length ? staffUser.store_ids : ["00000000-0000-0000-0000-000000000000"]).order("created_at", { ascending: false }),
       supabase.from("products").select("id, name, price, store_id").in("store_id", staffUser?.store_ids?.length ? staffUser.store_ids : ["00000000-0000-0000-0000-000000000000"]).eq("is_available", true).order("name"),
@@ -132,6 +149,20 @@ export default function HappyHourPage() {
           <div style={{ fontSize: 12, color: "#888", marginTop: 4 }}>Seçilen gün ve saatlerde işaretli ürünlerin fiyatı otomatik düşer; saat bitince normale döner.</div>
         </div>
         <button onClick={() => setShowAdd(true)} style={{ padding: "12px 20px", background: "#FFFFFF", color: "#000", border: "none", fontWeight: 800, fontSize: 13, cursor: "pointer", borderRadius: 8 }}>+ YENİ KURAL</button>
+      </div>
+
+      <div style={{ display: "flex", alignItems: "center", justifyContent: "space-between", gap: 12, padding: 14, background: "#161616", border: "1px solid #2A2A2A", borderRadius: 12, marginBottom: 16 }}>
+        <div style={{ minWidth: 0 }}>
+          <div style={{ fontSize: 14, fontWeight: 800 }}>Yalnız üyelere</div>
+          <div style={{ fontSize: 12, color: "#888", marginTop: 3, lineHeight: 1.5 }}>
+            Açıkken happy hour fiyatı ve ürün indirimleri yalnız üyelere uygulanır. Menüde üye olmayan liste fiyatını,
+            altında "Üye olursan ₺…" yazısını görür. Kasada üye hesaba bağlanmadan eklenen ürün liste fiyatından yazılır.
+          </div>
+        </div>
+        <button onClick={() => sadeceUyeYaz(!sadeceUye)} aria-pressed={sadeceUye} aria-label="Yalnız üyelere"
+                style={{ flexShrink: 0, width: 52, height: 30, borderRadius: 15, border: "none", cursor: "pointer", position: "relative", background: sadeceUye ? "#FFFFFF" : "#333" }}>
+          <span style={{ position: "absolute", top: 3, left: sadeceUye ? 25 : 3, width: 24, height: 24, borderRadius: 12, background: sadeceUye ? "#000" : "#888", transition: "left 150ms" }} />
+        </button>
       </div>
 
       {rules.length === 0 && <div style={{ color: "#888", marginTop: 32, textAlign: "center" }}>Henüz kural yok. Yukarıdan yeni kural ekleyin.</div>}

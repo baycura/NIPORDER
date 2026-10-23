@@ -2,7 +2,7 @@ import { useEffect, useMemo, useRef, useState } from "react";
 import { useParams, useNavigate, useSearchParams } from "react-router-dom";
 import { supabase, hataMetni } from "../../lib/supabase.js";
 import { useAuth } from "../../contexts/AuthContext.jsx";
-import { happyHourPrices } from "../../lib/happyHour.js";
+import { happyHourPrices, hhSadeceUyeMi } from "../../lib/happyHour.js";
 import { optionMod } from "../../lib/productOptions.js";
 import { PHONE_CODES, toE164 } from "../../lib/phoneCodes.js";
 import { errorText } from "../../lib/errorText.js";
@@ -1366,27 +1366,38 @@ export default function CustomerMenu() {
     () => productSections.flatMap(s => s.items),
     [productSections]);
 
-  const calcPrice = (p, options) => {
+  // HAPPY HOUR VE INDIRIMLER YALNIZ UYELERE (sahip karari 24.10). app_settings
+  // hh_sadece_uye = false yazilirsa eski davranis (herkese) doner; yoksa acik.
+  // Uye olmayan liste fiyatini oder, urunun altinda "Uye olursan ₺X" gorur.
+  const hhSadeceUye = hhSadeceUyeMi(settings?.hh_sadece_uye);
+  const uyeMi = !!customer?.id;
+
+  const calcPrice = (p, options, uyeGibi = uyeMi) => {
     // Secenek fiyat farki (tek + coklu gruplar) — src/lib/productOptions.js
     const mod = optionMod(p, options);
+    const indirimAcik = uyeGibi || !hhSadeceUye;
     // Product-based happy hour: use new price directly
-    const basePrice = (hhProductPrices[p.id] != null ? Number(hhProductPrices[p.id]) : Number(p.price)) + mod;
+    const basePrice = ((indirimAcik && hhProductPrices[p.id] != null) ? Number(hhProductPrices[p.id]) : Number(p.price)) + mod;
     let pct = 0;
-    if (hh && (hh.category_ids?.length === 0 || hh.category_ids?.includes(p.category_id))) pct = Number(hh.discount_pct) || 0;
-    if (Number(p.instant_discount_pct||0) > pct) pct = Number(p.instant_discount_pct);
+    if (indirimAcik) {
+      if (hh && (hh.category_ids?.length === 0 || hh.category_ids?.includes(p.category_id))) pct = Number(hh.discount_pct) || 0;
+      if (Number(p.instant_discount_pct||0) > pct) pct = Number(p.instant_discount_pct);
+    }
     let final = Math.round(basePrice * (100 - pct) / 100);
     // Uye fiyati: kampanya ile karsilastirilir, musteri DUSUK olani oder
     const mp = memberPriceFor(p, mod);
     if (mp != null) final = Math.min(final, mp);
     return final;
   };
+  // Uye olmayanin gorecegi "uye olursan" fiyati: indirimler acikmis gibi hesap.
+  const uyeOlursaFiyat = (p, options) => (!uyeMi && hhSadeceUye) ? calcPrice(p, options, true) : null;
 
   // Ustu cizilecek liste fiyati: yalniz gercekten indirim varsa
   const listPrice = (p, options) => {
     return Math.round(Number(p.price) + optionMod(p, options));
   };
 
-  const cartTotal = useMemo(() => cart.reduce((s, it) => s + calcPrice(it.product, it.options) * it.quantity, 0), [cart, hh, memberDiscounts]);
+  const cartTotal = useMemo(() => cart.reduce((s, it) => s + calcPrice(it.product, it.options) * it.quantity, 0), [cart, hh, memberDiscounts, hhProductPrices, uyeMi, hhSadeceUye]);
   const cartCount = useMemo(() => cart.reduce((s, it) => s + it.quantity, 0), [cart]);
 
   const findInCart = (productId, options, note) => {
@@ -1879,7 +1890,7 @@ export default function CustomerMenu() {
             </div>
           </div>
           <div style={{display:"flex",alignItems:"center",gap:8}}>
-            {hh && custTab === "menu" && <div style={{background:"#000000",color:"#FFFFFF",padding:"4px 10px",borderRadius:10,fontSize:12,fontWeight:600,letterSpacing:"0.2px"}}>{t.happy_hour} -%{hh.discount_pct}</div>}
+            {hh && custTab === "menu" && <div style={{background:"#000000",color:"#FFFFFF",padding:"4px 10px",borderRadius:10,fontSize:12,fontWeight:600,letterSpacing:"0.2px"}}>{t.happy_hour} -%{hh.discount_pct}{hhSadeceUye && !uyeMi ? " · " + L("üyelere","members","участникам") : ""}</div>}
             <LangSwitcher/>
           </div>
         </div>
@@ -2328,6 +2339,17 @@ export default function CustomerMenu() {
                   )}
                   {memberPriceFor(p) != null && memberPriceFor(p) <= fp && <span style={{fontSize:12,padding:"2px 6px",background:"#000",color:"#FFFFFF",borderRadius:6,fontWeight:600,letterSpacing:"0.2px"}}>{L("SANA ÖZEL","YOUR PRICE","ВАША ЦЕНА")}</span>}
                 </div>
+                {(() => {
+                  // Happy hour / indirim yalniz uyelere: uye olmayan liste fiyatini
+                  // gorur, altinda uye fiyati ve giris cagrisi (sahip 24.10).
+                  const uf = uyeOlursaFiyat(p);
+                  if (uf == null || uf >= fp) return null;
+                  return (
+                    <button onClick={uyeOlAc} style={{marginTop:6,background:"none",border:"none",padding:0,fontSize:12,color:"#000",fontWeight:700,cursor:"pointer",fontFamily:"inherit",textAlign:"left",display:"flex",alignItems:"center",gap:5}}>
+                      <Ikon ad="uye" boy={12}/>{L(`Üye olursan ₺${uf}`, `Members pay ₺${uf} — join`, `Для участников ₺${uf} — вступить`)}
+                    </button>
+                  );
+                })()}
               </div>
               {!soldOut && !isFaded && (
                 <div style={{display:"flex",alignItems:"center",flexShrink:0}}>
@@ -2813,7 +2835,11 @@ export default function CustomerMenu() {
             {/* Misafire: bu siparisten kac puan kazanacagi. Giris sepeti silmez
                 (menu durumu kaydi); donuste sepet ve masa geri kurulur. */}
             {!customer && ozellik("uyelik") && (() => {
-              const n = puanHesap(cartTotal);
+              // Happy hour / indirim yalniz uyelere ise: uye olsa sepet kaca
+              // inerdi, once onu soyle (sahip 24.10). Fark yoksa puan cumlesi.
+              const uyeToplam = hhSadeceUye ? cart.reduce((s, it) => s + calcPrice(it.product, it.options, true) * it.quantity, 0) : cartTotal;
+              const fark = cartTotal - uyeToplam;
+              const n = puanHesap(uyeToplam);
               return (
                 <div style={{marginTop:14}}>
                   <button onClick={uyeOlAc}
@@ -2821,8 +2847,9 @@ export default function CustomerMenu() {
                             background:"#FAF6EE",color:"#5A5348",border:"1px solid #EDE6D8",borderRadius:12,fontSize:13,fontWeight:800,
                             cursor:"pointer",fontFamily:"inherit",textAlign:"left"}}>
                     <span><Ikon ad="yildiz" boy={14} style={{marginRight:6}}/>
-                      {n > 0 ? L(`Üye ol, bu siparişten +${n} puan kazan`, `Join and earn +${n} points on this order`, `Вступите и получите +${n} баллов за этот заказ`)
-                             : L("Üye ol, puan biriktir", "Join and collect points", "Вступите и копите баллы")}
+                      {fark > 0 ? L(`Üye olursan bu sepet ₺${uyeToplam} (₺${fark} daha az)`, `Members pay ₺${uyeToplam} for this cart (save ₺${fark})`, `Для участников эта корзина ₺${uyeToplam} (на ₺${fark} меньше)`)
+                       : n > 0 ? L(`Üye ol, bu siparişten +${n} puan kazan`, `Join and earn +${n} points on this order`, `Вступите и получите +${n} баллов за этот заказ`)
+                               : L("Üye ol, puan biriktir", "Join and collect points", "Вступите и копите баллы")}
                     </span>
                     <span style={{whiteSpace:"nowrap",display:"flex",alignItems:"center"}}>{L("Üye ol","Join","Вступить")}<Ikon ad="oksag" boy={13} style={{marginLeft:4}}/></span>
                   </button>

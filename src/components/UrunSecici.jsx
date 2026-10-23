@@ -11,6 +11,7 @@ import BarkodOkut from "./BarkodOkut.jsx";
 // Prop'lar:
 //   products, categories   — load() ile gelen listeler (is_available / is_active)
 //   hhPrices               — happy hour: { urun_id: fiyat } (yalniz etiket icin)
+//   hhNot                  — (istege bagli) listenin ustunde kisa uyari metni
 //   sikUrunler             — bu garsonun son 30 gunde en cok ekledigi urunler
 //   partiAktif, partiAdet  — parti menusu durumu; tumMenu/onTumMenu gecici cikis
 //   takeawayMode/onTakeaway— paket modu (semantik: canTakeaway, sayfada)
@@ -20,7 +21,7 @@ import BarkodOkut from "./BarkodOkut.jsx";
 //   kapali                 — hesap odenmis/iptal: (+) dugmeleri pasif
 //   parlayanId             — az once eklenen urun satiri 150ms beyaz yansin
 export default function UrunSecici({
-  products = [], categories = [], hhPrices = {}, sikUrunler = [],
+  products = [], categories = [], hhPrices = {}, hhNot = "", sikUrunler = [],
   partiAktif = false, partiAdet = 0, tumMenu = false, onTumMenu,
   takeawayMode = false, onTakeaway,
   prodSearch = "", onSearch,
@@ -129,6 +130,9 @@ export default function UrunSecici({
       </div>
 
       {/* autoFocus YOK: iOS klavyesi sabit alt sayfayi yukari itiyor. */}
+      {hhNot && (
+        <div role="note" style={{marginTop:10,padding:"8px 10px",border:"1px solid #2A2A2A",borderRadius:8,fontSize:12,color:"#F0EDE8",background:"#161616"}}>{hhNot}</div>
+      )}
       <div style={{display:"flex",gap:8,marginTop:10}}>
         <div style={{position:"relative",flex:1,minWidth:0}}>
           <input value={prodSearch} onChange={e => onSearch && onSearch(e.target.value)} onKeyDown={aramaEnter}
