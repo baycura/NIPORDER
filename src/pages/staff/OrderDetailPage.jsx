@@ -1,7 +1,7 @@
 import { useEffect, useRef, useState } from "react";
 import { useParams, useNavigate, useLocation } from "react-router-dom";
 import { supabase } from "../../lib/supabase.js";
-import { happyHourPrices } from "../../lib/happyHour.js";
+import { happyHourPrices, hhSadeceUyeMi } from "../../lib/happyHour.js";
 import { optionsText, optionMod } from "../../lib/productOptions.js";
 import { useAuth } from "../../contexts/AuthContext.jsx";
 import Ikon from "../../components/Ikon.jsx";
@@ -48,6 +48,11 @@ export default function OrderDetailPage() {
   const [selectedCat, setSelectedCat] = useState(null);
   const [prodSearch, setProdSearch] = useState("");
   const [hhPrices, setHhPrices] = useState({}); // happy hour: { urun_id: fiyat }
+  // Happy hour ve urun indirimi yalniz uyelere (sahip 24.10; app_settings
+  // hh_sadece_uye, false = herkese). Kasada "uye" = hesaba bagli musteri; uye
+  // urun eklenmeden ONCE baglanmali, sonradan baglaninca eski kalemler
+  // yeniden fiyatlanmaz (uye fiyatiyla ayni kural).
+  const [hhSadeceUye, setHhSadeceUye] = useState(true);
   const [sonEklenen, setSonEklenen] = useState(null); // { id, ad, adet } — "Geri al" icin
   const [customerNameEdit, setCustomerNameEdit] = useState("");
   const [orderNote, setOrderNote] = useState("");
@@ -84,6 +89,8 @@ export default function OrderDetailPage() {
     // Happy hour kurallari: kasada da ayni indirimli fiyat uygulanir
     const { data: hhRules } = await supabase.from("happy_hour_rules").select("*").eq("is_active", true);
     setHhPrices(happyHourPrices(prods || [], hhRules || [], new Date()));
+    const { data: hhAyar } = await supabase.from("app_settings").select("value").eq("key", "hh_sadece_uye").order("updated_at", { ascending: false }).limit(1);
+    setHhSadeceUye(hhSadeceUyeMi(hhAyar?.[0]?.value));
     setOrder(o);
     setItems(its || []);
     setCategories(cats || []);
@@ -120,6 +127,8 @@ export default function OrderDetailPage() {
     if (typeof v === "object") return Math.max(0, Math.round(Number(p.price) - v.legacyAmount));
     return Math.max(0, Math.round(Number(v)));
   };
+  // Happy hour / urun indirimi bu hesapta gecerli mi: herkese acik ya da uye bagli
+  const indirimAcik = () => !hhSadeceUye || !!order?.customer_id;
 
   const linkCustomer = async (custId) => {
     const c = customers.find(x => x.id === custId) || null;
@@ -222,7 +231,7 @@ export default function OrderDetailPage() {
     const p = products.find(x => x.id === it.product_id);
     let fp = Number(it.product_price) || 0;
     if (p) {
-      fp = fp * (100 - Number(p.instant_discount_pct || 0)) / 100;
+      fp = fp * (100 - (indirimAcik() ? Number(p.instant_discount_pct || 0) : 0)) / 100;
       const mp = memberPriceFor(p);
       if (mp != null) fp = Math.min(fp, mp);
     }
@@ -394,13 +403,14 @@ export default function OrderDetailPage() {
       price = Number(ek.price);
       if (!price || price <= 0) return;
     }
-    // Happy hour saatindeyse taban fiyat indirimli fiyattir (menu ile ayni hesap)
-    if (hhPrices[p.id] != null && Number(p.price) > 0) price = Number(hhPrices[p.id]);
+    // Happy hour saatindeyse taban fiyat indirimli fiyattir (menu ile ayni hesap);
+    // yalniz uyelere acikken hesaba uye bagli degilse liste fiyati kalir.
+    if (indirimAcik() && hhPrices[p.id] != null && Number(p.price) > 0) price = Number(hhPrices[p.id]);
     // Secenek fiyat farki indirim yuzdesinden ONCE eklenir — musteri menusundeki
     // calcPrice ile ayni sira, iki kanal ayni urune ayni fiyati yazsin
     price += optionMod(p, selOpts);
     // Kampanya fiyati ile uye fiyati karsilastirilir; musteri DUSUK olani oder
-    let fp = price * (100 - Number(p.instant_discount_pct || 0)) / 100;
+    let fp = price * (100 - (indirimAcik() ? Number(p.instant_discount_pct || 0) : 0)) / 100;
     const mp = memberPriceFor(p);
     if (mp != null) fp = Math.min(fp, mp);
     // Raf urunleri mutfaga gitmez, bildirim tetiklemez: yalniz personel
@@ -733,7 +743,7 @@ export default function OrderDetailPage() {
           urun ayni pencereyi acar, ikinci bir akis yok. */}
       {partiKasaAcik && (
         <PartiKasa
-          order={order} items={items} products={products} categories={categories} hhPrices={hhPrices}
+          order={order} items={items} products={products} categories={categories} hhPrices={indirimAcik() ? hhPrices : {}} hhNot={hhSadeceUye && !order?.customer_id && Object.keys(hhPrices).length ? "Happy hour saati: indirim yalnız üyeye. Önce üyeyi bağla." : ""}
           onEkle={urunEkle} onAdet={changeQty} onOdeme={goToPayment} kapali={kapali}
           onTahsil={hizliTahsil} tahsilBusy={tahsilBusy} onYeniHesap={yeniHesap}
           sonEklenen={sonEklenen} sonKalem={sonKalem} onSonAdet={sonAdet} onGeriAl={sonEklenenGeriAl}
@@ -977,7 +987,7 @@ export default function OrderDetailPage() {
             </div>
             <div style={{flex:1,minHeight:0,overflowY:"auto",overscrollBehavior:"contain",padding:"0 14px 14px",WebkitOverflowScrolling:"touch"}}>
               <UrunSecici
-                products={products} categories={categories} hhPrices={hhPrices} sikUrunler={sikUrunler}
+                products={products} categories={categories} hhPrices={indirimAcik() ? hhPrices : {}} hhNot={hhSadeceUye && !order?.customer_id && Object.keys(hhPrices).length ? "Happy hour saati: indirim yalnız üyeye. Önce üyeyi bağla." : ""} sikUrunler={sikUrunler}
                 partiAktif={partiAktif} partiAdet={partiAdet} tumMenu={tumMenu} onTumMenu={setTumMenu}
                 takeawayMode={takeawayMode} onTakeaway={setTakeawayMode}
                 prodSearch={prodSearch} onSearch={setProdSearch}
@@ -1207,7 +1217,7 @@ export default function OrderDetailPage() {
           : optModal.sel[g.name] === opt;
         const eksik = gruplar.some(g => g.required &&
           (g.multi ? !(optModal.sel[g.name]?.length) : !optModal.sel[g.name]));
-        const toplam = (Number(hhPrices[optModal.p.id] ?? optModal.p.price) || 0) + optionMod(optModal.p, optModal.sel);
+        const toplam = (Number((indirimAcik() ? hhPrices[optModal.p.id] : null) ?? optModal.p.price) || 0) + optionMod(optModal.p, optModal.sel);
         return (
           <div onClick={() => setOptModal(null)} style={{position:"fixed",inset:0,background:"rgba(0,0,0,0.75)",display:"flex",alignItems:"flex-end",justifyContent:"center",zIndex:100}}>
             <div onClick={e => e.stopPropagation()} style={{background:"#161616",border:"1px solid #2A2A2A",borderRadius:"16px 16px 0 0",padding:20,width:"100%",maxWidth:500,maxHeight:"80vh",overflowY:"auto"}}>

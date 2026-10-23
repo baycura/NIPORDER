@@ -37,3 +37,9 @@ export function happyHourPrices(products, rules, now = new Date()) {
 
   return out;
 }
+
+// app_settings.hh_sadece_uye (jsonb): kayit yoksa ACIK. Yalniz false / 0 /
+// "0" / "false" kapatir; eski kayitlar string, yenileri boolean yazilabilir.
+export function hhSadeceUyeMi(value) {
+  return !(value === false || value === 0 || value === "0" || value === "false");
+}
