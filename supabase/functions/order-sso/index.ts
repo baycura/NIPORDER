@@ -21,6 +21,16 @@
 //     uye" olarak belirmesin diye. Musteri koprusu (CustomerMenu) eskisi gibi
 //     acmaya devam eder.
 //
+// v3 (2026-10-24): generateLink kullanici YOKSA kendisi aciyor (GoTrue
+// davranisi); asagidaki "yoksa ac + onayla" dali hic calismiyordu. Sonuc:
+// koprunden gecen her Order uyesi rezervasyon sitesinde "onay bekliyor"
+// kaldi, 5 Eylul'den beri kimse rezervasyon yapamadi. Simdi:
+//   - no_create: hesap var mi diye profiles'a ONCE bakilir; yoksa link
+//     uretilmez, code=no_account doner (personel uye olarak acilmasin).
+//   - Musteri koprusu: link uretildikten sonra profil "pending" ise
+//     onaylanir (uye kodu + guven puani kaydi, panelin approveMember'i gibi).
+//     Reddedilmis / dondurulmus karar korunur.
+//
 // Guvenlik: e-posta istekten DEGIL, dogrulanmis Order token'indan gelir.
 // Gecerli bir Order oturumu olmayan kimse link alamaz; calinti bir Order
 // token'i zaten o hesabin oturumu demektir, kopru yetkiyi genisletmez.
@@ -32,6 +42,10 @@ const ORDER_URL = "https://gbbxxcduuwdmvfayxzeg.supabase.co";
 // Order'in public anon anahtari — gizli degil, istemcide de acik duruyor
 const ORDER_ANON = "eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJpc3MiOiJzdXBhYmFzZSIsInJlZiI6ImdiYnh4Y2R1dXdkbXZmYXl4emVnIiwicm9sZSI6ImFub24iLCJpYXQiOjE3NzYyNzQ2NDYsImV4cCI6MjA5MTg1MDY0Nn0.znsE_M_K0tp6wr386fMNzQ9mJsqtBmUMsRiy-ITig-s";
 const SITE = "https://reservation.notinparis.me";
+
+// Panelin approveMember'i gibi: NIP-MBR- + 6 hex
+const hex6 = () => Array.from(crypto.getRandomValues(new Uint8Array(3)))
+  .map((b) => b.toString(16).padStart(2, "0")).join("").toUpperCase();
 
 const CORS = {
   "Access-Control-Allow-Origin": "*",
@@ -75,6 +89,14 @@ Deno.serve(async (req) => {
       options: { redirectTo: SITE },
     });
 
+    // Her auth kullanicisinin profili var (handle_new_user). Yonetim koprusu
+    // (no_create) hesap yoksa link URETMEZ: generateLink kullaniciyi acardi.
+    const { data: mevcut } = await admin
+      .from("profiles").select("id,status").ilike("email", email).limit(1);
+    if (no_create && (!mevcut || mevcut.length === 0)) {
+      return json({ error: "rezervasyon tarafinda hesap yok", code: "no_account" }, 404);
+    }
+
     // 2) Giris linki uret; kullanici burada yoksa (izin varsa) once ac.
     let link = await linkUret();
 
@@ -116,6 +138,31 @@ Deno.serve(async (req) => {
 
       link = await linkUret();
       if (link.error) return json({ error: "giris linki uretilemedi" }, 500);
+    }
+
+    // 3) Musteri koprusu: profil "pending" kaldiysa onayla. Order uyesi
+    //    ad+telefon vermis gercek musteridir. Onay suslemedir: hata olursa
+    //    giris linki yine doner, kisi en kotu "onay bekliyor" gorur.
+    if (!no_create) {
+      try {
+        const uid = link.data?.user?.id;
+        if (uid) {
+          const { data: prof } = await admin
+            .from("profiles").select("id,status,member_code").eq("id", uid).maybeSingle();
+          if (prof && prof.status === "pending") {
+            const kod = prof.member_code || ("NIP-MBR-" + hex6());
+            const upd = await admin.from("profiles")
+              .update({ status: "approved", member_code: kod, approved_at: new Date().toISOString() })
+              .eq("id", uid).eq("status", "pending");
+            if (!upd.error) {
+              await admin.from("reputation_ledger").insert({
+                profile_id: uid, score_type: "trust", delta: 100, balance_after: 100,
+                reason_code: "approved", source_type: "admin", reason_note: "Order köprüsü",
+              });
+            }
+          }
+        }
+      } catch (_) { /* onay basarisizsa link yine doner */ }
     }
 
     return json({
