@@ -23,6 +23,7 @@ export default function HappyHourPage() {
   const [products, setProducts] = useState([]);
   const [showAdd, setShowAdd] = useState(false);
   const [editId, setEditId] = useState(null);   // dolu: mevcut kural duzenleniyor
+  const [formMagaza, setFormMagaza] = useState(null); // penceredeki kuralin magazasi (urun listesi buna gore)
   const [busy, setBusy] = useState(false);
   const [search, setSearch] = useState("");     // urun arama
   const [bulkPct, setBulkPct] = useState("20"); // secililere toplu indirim
@@ -79,22 +80,37 @@ export default function HappyHourPage() {
   const kapat = () => {
     setShowAdd(false);
     setEditId(null);
+    setFormMagaza(null);
     setSearch("");
     setForm(bosForm());
   };
 
-  // Mevcut kurali forma yukle. Saatler DB'den "17:00:00" gelir, input "17:00" ister.
-  const duzenle = (r) => {
+  const yeniAc = () => {
+    setForm(bosForm());
+    setEditId(null);
+    setFormMagaza(staffUser?.store_ids?.[0] || null);
+    setSearch("");
+    setShowAdd(true);
+  };
+
+  // Mevcut kurali forma yukle. Liste sayfa acilisindaki kopya; baska sekme ya da
+  // yonetici bu arada degistirmis olabilir, o yuzden kural DB'den TAZE cekilir.
+  // Saatler DB'den "17:00:00" gelir, input "17:00" ister.
+  const duzenle = async (r) => {
+    const { data: taze, error } = await supabase.from("happy_hour_rules").select("*").eq("id", r.id).maybeSingle();
+    if (error) { alert("Kural okunamadı: " + error.message); return; }
+    if (!taze) { alert("Bu kural artık yok (silinmiş olabilir). Liste yenilendi."); load(); return; }
     const po = {};
-    Object.entries(r.product_overrides || {}).forEach(([pid, v]) => { po[pid] = Math.round(Number(v)) || 0; });
+    Object.entries(taze.product_overrides || {}).forEach(([pid, v]) => { po[pid] = Math.round(Number(v)) || 0; });
     setForm({
-      name: r.name || "",
-      start_time: String(r.start_time || "17:00").slice(0, 5),
-      end_time: String(r.end_time || "19:00").slice(0, 5),
-      days_of_week: Array.isArray(r.days_of_week) ? [...r.days_of_week] : [1, 2, 3, 4, 5, 6, 7],
+      name: taze.name || "",
+      start_time: String(taze.start_time || "17:00").slice(0, 5),
+      end_time: String(taze.end_time || "19:00").slice(0, 5),
+      days_of_week: Array.isArray(taze.days_of_week) ? [...taze.days_of_week] : [1, 2, 3, 4, 5, 6, 7],
       product_overrides: po,
     });
-    setEditId(r.id);
+    setEditId(taze.id);
+    setFormMagaza(taze.store_id || null);
     setSearch("");
     setShowAdd(true);
   };
@@ -118,11 +134,19 @@ export default function HappyHourPage() {
     const { data, error } = editId
       ? await supabase.from("happy_hour_rules").update(payload).eq("id", editId).select("id")
       : await supabase.from("happy_hour_rules").insert({ ...payload, store_id: staffUser?.store_ids?.[0], is_active: true }).select("id");
+    if (error) { setBusy(false); return alert("Kaydedilemedi: " + error.message); }
+    if (!data?.length) {
+      // Guncellemede 0 satir: kural silinmis ya da RLS gizliyor; ikisi ayni gorunur.
+      setBusy(false);
+      alert(editId ? "Kaydedilemedi: kural silinmiş olabilir ya da bu işlem için yetkin yok. Liste yenilendi." : "Kaydedilemedi: bu işlem için yetkin yok.");
+      if (editId) { kapat(); load(); }
+      return;
+    }
+    // Liste yenilenmeden pencere kapanirsa kart kisa sure eski degeri gosterir;
+    // o anda "Duzenle"ye basan eski icerigi gorurdu. Once liste, sonra pencere.
+    await load();
     setBusy(false);
-    if (error) return alert("Kaydedilemedi: " + error.message);
-    if (!data?.length) return alert("Kaydedilemedi: bu işlem için yetkin yok.");
     kapat();
-    load();
   };
 
   const toggleDay = (idx) => {
@@ -165,16 +189,17 @@ export default function HappyHourPage() {
   };
 
   const selectedCount = Object.keys(form.product_overrides).length;
-  // Kuralda olup su an satista olmayan urunler listede gorunmez; fiyatlari korunur.
-  const gizliSayi = Object.keys(form.product_overrides).filter(pid => !products.some(p => p.id === pid)).length;
   const canSave = !!form.name.trim() && selectedCount > 0 && form.days_of_week.length > 0;
   // Kural kartinda urun adlariyla fiyatlar: "Bira ₺180 · Latte ₺120"
   const kuralUrunleri = (r) => Object.entries(r.product_overrides || {}).map(([pid, v]) => {
     const p = products.find(x => x.id === pid);
-    return p ? `${p.name} ₺${Math.round(Number(v))}` : null;
+    return p ? `${p.name} ₺${Math.round(Number(v)) || 0}` : null;
   }).filter(Boolean);
   const q = search.trim().toLocaleLowerCase("tr");
-  const shownProducts = q ? products.filter(p => String(p.name).toLocaleLowerCase("tr").includes(q)) : products;
+  const magazaUrunleri = formMagaza ? products.filter(p => p.store_id === formMagaza) : products;
+  const shownProducts = q ? magazaUrunleri.filter(p => String(p.name).toLocaleLowerCase("tr").includes(q)) : magazaUrunleri;
+  // Kuralda olup su an satista olmayan urunler listede gorunmez; fiyatlari korunur.
+  const gizliSayi = Object.keys(form.product_overrides).filter(pid => !magazaUrunleri.some(p => p.id === pid)).length;
 
   return (
     <div style={{ fontFamily: cv, color: "#F0EDE8" }}>
@@ -183,7 +208,7 @@ export default function HappyHourPage() {
           <h1 style={{ fontSize: 24, fontWeight: 800, margin: 0, display: "flex", alignItems: "center", gap: 10 }}><Ikon ad="kampanya" boy={22}/>Happy Hour</h1>
           <div style={{ fontSize: 12, color: "#888", marginTop: 4 }}>Seçilen gün ve saatlerde işaretli ürünlerin fiyatı otomatik düşer; saat bitince normale döner.</div>
         </div>
-        <button onClick={() => setShowAdd(true)} style={{ padding: "12px 20px", background: "#FFFFFF", color: "#000", border: "none", fontWeight: 800, fontSize: 13, cursor: "pointer", borderRadius: 8 }}>+ YENİ KURAL</button>
+        <button onClick={yeniAc} style={{ padding: "12px 20px", background: "#FFFFFF", color: "#000", border: "none", fontWeight: 800, fontSize: 13, cursor: "pointer", borderRadius: 8 }}>+ YENİ KURAL</button>
       </div>
 
       <div style={{ display: "flex", alignItems: "center", justifyContent: "space-between", gap: 12, padding: 14, background: "#161616", border: "1px solid #2A2A2A", borderRadius: 12, marginBottom: 16 }}>
@@ -208,7 +233,8 @@ export default function HappyHourPage() {
         return (
           <div key={r.id} style={{ background: "#111", padding: 16, marginBottom: 12, borderRadius: 8, border: "1px solid #333" }}>
             <div style={{ display: "flex", justifyContent: "space-between", alignItems: "center", gap: 12, flexWrap: "wrap" }}>
-              <div style={{ minWidth: 0, flex: 1 }}>
+              {/* flex-basis 220px: dar ekranda dugme grubu alt satira iner, metin sikismaz */}
+              <div style={{ minWidth: 0, flex: "1 1 220px" }}>
                 <div style={{ fontWeight: 700, fontSize: 16 }}>{r.name}</div>
                 <div style={{ color: "#888", fontSize: 13, marginTop: 4 }}>
                   {r.start_time?.slice(0, 5)} - {r.end_time?.slice(0, 5)} | {r.days_of_week?.map(d => DAYS.find(x => x.idx === d)?.label).join(", ")}
@@ -218,7 +244,7 @@ export default function HappyHourPage() {
                   {productCount > adlar.length && <span style={{ color: "#888" }}> (+{productCount - adlar.length} satışta değil)</span>}
                 </div>
               </div>
-              <div style={{ display: "flex", gap: 8, flexShrink: 0 }}>
+              <div style={{ display: "flex", gap: 8, flexShrink: 0, flexWrap: "wrap" }}>
                 <button onClick={() => toggle(r.id, !r.is_active)} style={{ padding: "8px 16px", background: r.is_active ? "#8A8580" : "#444", color: "#fff", border: "none", borderRadius: 6, fontWeight: 700, fontSize: 12, cursor: "pointer" }}>{r.is_active ? "AKTİF" : "PASİF"}</button>
                 <button onClick={() => duzenle(r)} style={{ padding: "8px 16px", background: "#FFFFFF", color: "#000", border: "none", borderRadius: 6, fontWeight: 700, fontSize: 12, cursor: "pointer" }}>Düzenle</button>
                 <button onClick={() => remove(r.id)} style={{ padding: "8px 16px", background: "#2A2A2A", color: "#fff", border: "none", borderRadius: 6, fontWeight: 700, fontSize: 12, cursor: "pointer" }}>Sil</button>
