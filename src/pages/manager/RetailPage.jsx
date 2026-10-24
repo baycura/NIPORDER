@@ -4,6 +4,7 @@ import { useAuth } from "../../contexts/AuthContext.jsx";
 import Ikon from "../../components/Ikon.jsx";
 import StokEkleSheet, { stokGeriAl } from "../../components/StokEkleSheet.jsx";
 import SayiGirisi from "../../components/SayiGirisi.jsx";
+import { konsinyeDurumu, konsinyeMaliyet, payMetni, payTemizle } from "../../lib/konsinye.js";
 import BarkodOkut from "../../components/BarkodOkut.jsx";
 
 const cv = "-apple-system,BlinkMacSystemFont,'Segoe UI',Roboto,sans-serif";
@@ -53,13 +54,15 @@ export default function RetailPage() {
   useEffect(() => { load(); }, []);
 
   // ---- Markalar ----
-  const openNewBrand = () => { setBrandModal({ mode: "new" }); setBrandForm({ name: "", description: "", sort_order: 100 }); };
-  const openEditBrand = (b) => { setBrandModal({ mode: "edit", data: b }); setBrandForm({ name: b.name, description: b.description || "", sort_order: b.sort_order || 100 }); };
+  const openNewBrand = () => { setBrandModal({ mode: "new" }); setBrandForm({ name: "", description: "", sort_order: 100, konsinye: false, konsinye_pay_pct: "" }); };
+  const openEditBrand = (b) => { setBrandModal({ mode: "edit", data: b }); setBrandForm({ name: b.name, description: b.description || "", sort_order: b.sort_order || 100, konsinye: !!b.konsinye, konsinye_pay_pct: b.konsinye_pay_pct ?? "" }); };
   const saveBrand = async () => {
     if (busy) return;
     if (!brandForm.name?.trim()) { alert("Marka adı gerekli"); return; }
     setBusy(true);
-    const payload = { name: brandForm.name.trim(), description: brandForm.description?.trim() || null, sort_order: Number(brandForm.sort_order) || 100, store_id: storeId };
+    const payload = { name: brandForm.name.trim(), description: brandForm.description?.trim() || null, sort_order: Number(brandForm.sort_order) || 100, store_id: storeId,
+      // Konsinye marka: urunleri tedarikcinin mali, satisin %X'i bizim (docs/konsinye.md)
+      konsinye: !!brandForm.konsinye, konsinye_pay_pct: brandForm.konsinye ? payTemizle(brandForm.konsinye_pay_pct) : null };
     const { error } = brandModal.mode === "new"
       ? await supabase.from("brands").insert(payload)
       : await supabase.from("brands").update(payload).eq("id", brandModal.data.id);
@@ -81,7 +84,7 @@ export default function RetailPage() {
   const openNewProduct = (brandId) => {
     setStokIlk(null);
     setProdModal({ mode: "new" });
-    setForm({ name: "", name_en: "", barkod: "", brand_id: brandId || "", price: "", retail_stock: 0, sizeSet: "Tek beden", variants: [], is_available: true });
+    setForm({ name: "", name_en: "", barkod: "", brand_id: brandId || "", price: "", retail_stock: 0, sizeSet: "Tek beden", variants: [], is_available: true, konsinye: null, konsinye_pay_pct: "" });
   };
   // Stok imzasi: modal acilirken ne gorduysek o. Kaydederken ayniysa stok
   // alanlarina HIC dokunmayiz — yoksa yalniz fiyati duzeltmek bile modal
@@ -101,6 +104,7 @@ export default function RetailPage() {
       retail_stock: Number(p.retail_stock) || 0,
       sizeSet: vs.length ? "Tişört / Giyim" : "Tek beden",
       variants: vs, is_available: p.is_available !== false,
+      konsinye: p.konsinye ?? null, konsinye_pay_pct: p.konsinye_pay_pct ?? "",
     });
   };
   const setSizeSet = (key) => {
@@ -142,6 +146,8 @@ export default function RetailPage() {
         variants: variants.length ? variants : null,
       }),
       is_available: form.is_available !== false,
+      konsinye: form.konsinye === true ? true : form.konsinye === false ? false : null,
+      konsinye_pay_pct: form.konsinye === false ? null : payTemizle(form.konsinye_pay_pct),
       has_options: variants.length > 0,
       options_config: variants.length
         ? { groups: [{ name: "Beden", options: variants.map(v => v.name), required: true, price_modifiers: Object.fromEntries(variants.map(v => [v.name, 0])) }] }
@@ -327,6 +333,21 @@ export default function RetailPage() {
           <Field label="MARKA ADI"><input value={brandForm.name || ""} onChange={e => setBrandForm(f => ({ ...f, name: e.target.value }))} placeholder="örn: Not in Paris, Rapha, Seramik Atölyesi" style={inputS} /></Field>
           <Field label="AÇIKLAMA (opsiyonel)"><input value={brandForm.description || ""} onChange={e => setBrandForm(f => ({ ...f, description: e.target.value }))} placeholder="örn: kendi üretimimiz" style={inputS} /></Field>
           <Field label="SIRA (küçük = önce)"><SayiGirisi kip="tam" value={brandForm.sort_order || 100} onChange={v => setBrandForm(f => ({ ...f, sort_order: v }))} style={inputS} /></Field>
+          <div style={{ background: "#0C0C0C", border: "1px solid " + (brandForm.konsinye ? "#FFFFFF" : "#2A2A2A"), borderRadius: 10, padding: 12, marginBottom: 12 }}>
+            <label style={{ display: "flex", alignItems: "center", gap: 8, cursor: "pointer" }}>
+              <input type="checkbox" checked={!!brandForm.konsinye} onChange={e => setBrandForm(f => ({ ...f, konsinye: e.target.checked }))} style={{ width: 18, height: 18, accentColor: "#FFFFFF" }} />
+              <span style={{ fontSize: 13, color: "#F0EDE8", fontWeight: 700 }}>Konsinye marka (ürünler tedarikçinin malı)</span>
+            </label>
+            {brandForm.konsinye && (
+              <div style={{ marginTop: 10 }}>
+                <div style={{ fontSize: 12, color: "#888", letterSpacing: "0.2px", fontWeight: 600, marginBottom: 5 }}>BİZİM PAY (%) — satışın bize kalan yüzdesi</div>
+                <SayiGirisi kip="ondalik" min={0} max={100} value={brandForm.konsinye_pay_pct ?? ""} onChange={v => setBrandForm(f => ({ ...f, konsinye_pay_pct: v }))} placeholder="örn: 40" style={inputS} />
+                <div style={{ fontSize: 12, color: "#8A8580", marginTop: 6, lineHeight: 1.5 }}>
+                  {payTemizle(brandForm.konsinye_pay_pct) == null ? "Payı yaz; yoksa bu markanın ürünleri raporlarda \"pay yazılmadı\" görünür." : `${payMetni(payTemizle(brandForm.konsinye_pay_pct))}. Ürün kendi payını ayrıca yazabilir.`}
+                </div>
+              </div>
+            )}
+          </div>
           <div style={{ display: "flex", gap: 8, marginTop: 10 }}>
             <button onClick={() => setBrandModal(null)} style={cancelBtn}>İptal</button>
             <button onClick={saveBrand} disabled={busy} style={{ ...saveBtn, opacity: busy ? 0.6 : 1 }}>{busy ? "..." : "Kaydet"}</button>
@@ -365,6 +386,34 @@ export default function RetailPage() {
           <Field label="SATIŞ FİYATI (₺) — 0 girersen kasada sorulur">
             <SayiGirisi kip="para" value={form.price ?? ""} onChange={v => setForm(f => ({ ...f, price: v }))} style={inputS} />
           </Field>
+          {(() => {
+            const marka = brands.find(b => b.id === form.brand_id) || null;
+            const d = konsinyeDurumu(form, category, marka);
+            const ustMetin = marka?.konsinye ? `Markaya göre: konsinye${marka.konsinye_pay_pct != null ? ` · %${Number(marka.konsinye_pay_pct)} bizim` : ""}` : "Markaya göre: konsinye değil";
+            const fiyat = Number(form.price) || 0;
+            return (
+              <div style={{ background: "#0C0C0C", border: "1px solid " + (d.etkin ? "#FFFFFF" : "#2A2A2A"), borderRadius: 10, padding: 12, marginBottom: 12 }}>
+                <div style={{ fontSize: 12, color: "#888", letterSpacing: "0.2px", fontWeight: 600, marginBottom: 5 }}>KONSİNYE (tedarikçinin malı)</div>
+                <select value={form.konsinye === true ? "1" : form.konsinye === false ? "0" : ""} onChange={e => setForm(f => ({ ...f, konsinye: e.target.value === "1" ? true : e.target.value === "0" ? false : null }))} style={inputS}>
+                  <option value="">{ustMetin}</option>
+                  <option value="1">Evet, konsinye</option>
+                  <option value="0">Hayır, bizim malımız</option>
+                </select>
+                {d.etkin && (
+                  <div style={{ marginTop: 10 }}>
+                    <div style={{ fontSize: 12, color: "#888", letterSpacing: "0.2px", fontWeight: 600, marginBottom: 5 }}>BİZİM PAY (%) — boş bırakırsan markanınki</div>
+                    <SayiGirisi kip="ondalik" min={0} max={100} value={form.konsinye_pay_pct ?? ""} onChange={v => setForm(f => ({ ...f, konsinye_pay_pct: v }))}
+                      placeholder={marka?.konsinye_pay_pct != null ? "marka: " + Number(marka.konsinye_pay_pct) : "örn: 40"} style={inputS} />
+                    <div style={{ fontSize: 12, color: d.pay == null ? "#C87A6A" : "#8A8580", marginTop: 6, lineHeight: 1.5 }}>
+                      {d.pay == null
+                        ? "Pay yazılmadı: ne burada ne markada. Raporlar bu ürünü hesaplayamaz."
+                        : `${payMetni(d.pay)} (${d.kaynak}).${fiyat > 0 ? ` ₺${fiyat} satışta maliyet ₺${konsinyeMaliyet(fiyat, d.pay)}, bize ₺${fiyat - konsinyeMaliyet(fiyat, d.pay)} kalır.` : " Fiyat kasada belirlenince pay satış anında hesaplanır."}`}
+                    </div>
+                  </div>
+                )}
+              </div>
+            );
+          })()}
 
           <Field label="BEDEN">
             <div style={{ display: "flex", gap: 6, flexWrap: "wrap" }}>

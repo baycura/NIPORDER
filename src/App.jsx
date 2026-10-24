@@ -19,6 +19,7 @@ import CategorySchedulePage from "./pages/manager/CategorySchedulePage.jsx";
 import QRCodesPage from "./pages/manager/QRCodesPage.jsx";
 import ReportsPage from "./pages/manager/ReportsPage.jsx";
 import ProfitPage from "./pages/manager/ProfitPage.jsx";
+import KonsinyePage from "./pages/manager/KonsinyePage.jsx";
 import SalesPage from "./pages/manager/SalesPage.jsx";
 import ProductStockPage from "./pages/manager/ProductStockPage.jsx";
 import CostsPage from "./pages/manager/CostsPage.jsx";
@@ -98,6 +99,8 @@ function AppRoutes() {
         <Route path="tasks" element={<PrivateRoute deny={["viewer","parttime"]}><TasksPage /></PrivateRoute>} />
         <Route path="reports"          element={<PrivateRoute adminOnly allowViewer><ReportsPage /></PrivateRoute>} />
         <Route path="profit"           element={<PrivateRoute adminOnly><ProfitPage /></PrivateRoute>} />
+        {/* Konsinye: tedarikciye ne odenecek — yalniz sahip. RPC'de personel + magaza kapisi var. */}
+        <Route path="konsinye"         element={<PrivateRoute adminOnly><KonsinyePage /></PrivateRoute>} />
         {/* Satis raporu (adet): sahip ve gozlemci; RPC'ler personel + magaza kapisi koyar */}
         <Route path="sales"            element={<PrivateRoute adminOnly allowViewer><SalesPage /></PrivateRoute>} />
         <Route path="costs"            element={<PrivateRoute managerOnly><CostsPage /></PrivateRoute>} />
