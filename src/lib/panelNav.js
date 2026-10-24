@@ -70,6 +70,7 @@ export const GRUPLAR = [
       { to: "/reports",        icon: "rapor", label: "Raporlar" },
       { to: "/sales",          icon: "sepet", label: "Satış Raporu" },
       { to: "/profit",         icon: "puan", label: "Ürün Kârlılığı" },
+      { to: "/konsinye",       icon: "raf", label: "Konsinye Hesabı" },
       { to: "/cash-history",   icon: "takvim", label: "Kasa Geçmişi" },
       { to: "/shifts",         icon: "takvim", label: "Vardiyalar" },
       { to: "/discounts",      icon: "kampanya", label: "İndirimler" },

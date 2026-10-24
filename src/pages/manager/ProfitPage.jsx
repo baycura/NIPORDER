@@ -36,6 +36,7 @@ const KAYNAK = {
   tahmini:  { etiket: "tahmini",  renk: "#8A8A86", aciklama: "Stok düşümü başlamadan önceki satış — bugünkü reçete maliyetiyle hesaplandı." },
   karma:    { etiket: "karma",    renk: "#8A8A86", aciklama: "Satışların bir kısmı ölçüldü, kalanı bugünkü reçeteden tahmin edildi." },
   alis:     { etiket: "alış",     renk: "#8A8A86", aciklama: "Reçetesi yok; maliyet ürünün alış fiyatından geliyor." },
+  pay:      { etiket: "konsinye payı", renk: "#8A8A86", aciklama: "Tedarikçinin malı; maliyet satışın tedarikçi payı kadar (örn. %60). Kâr = bizim pay. Dökümü Konsinye Hesabı'nda." },
   konsinye: { etiket: "konsinye", renk: "#666666", aciklama: "Mutfak hazırlıyor, maliyeti bizde tutulmuyor — ay sonu hakediş olarak ödeniyor." },
   yok:      { etiket: "maliyet yok", renk: "#C87A6A", aciklama: "Ne reçetesi ne alış fiyatı var. Kâr hesaplanamıyor." },
 };

@@ -5,6 +5,7 @@ import { useAuth } from "../../contexts/AuthContext.jsx";
 import { PARIS_STORE_ID, DONER_STORE_ID, storeLabel } from "../../lib/stores.js";
 import Ikon from "../../components/Ikon.jsx";
 import SayiGirisi from "../../components/SayiGirisi.jsx";
+import { konsinyeDurumu, konsinyeMaliyet, payMetni, payTemizle } from "../../lib/konsinye.js";
 import BarkodOkut from "../../components/BarkodOkut.jsx";
 
 const cv = "-apple-system,BlinkMacSystemFont,'Segoe UI',Roboto,sans-serif";
@@ -64,8 +65,8 @@ export default function MenuMgmtPage() {
   // Yeni kategori YALNIZ PERSONEL baslar (musteri onerisi 6, sahip onayi 13.10):
   // IZIPIZI 26 urunuyle barkod adlariyla musteri menusune dusmustu. Adlar ve
   // fiyatlar hazir olunca "Kim gorsun?" secimiyle menuye ya da Shop'a acilir.
-  const openNewCat = () => { setCatModal({mode:"new"}); setCatForm({name:"", name_en:"", name_ru:"", icon:"", sort_order:100, available_from:"", available_until:"", show_in_party_menu:true, staff_only:true, show_in_shop:false, show_in_paris_menu:false, is_active:true, description:"", description_en:"", description_ru:"", shop_tag:"", shop_tag_en:"", shop_tag_ru:"", prep_time_minutes:""}); };
-  const openEditCat = (c) => { setCatModal({mode:"edit", data:c}); setCatForm({name:c.name||"", name_en:c.name_en||"", name_ru:c.name_ru||"", icon:c.icon||"", sort_order:c.sort_order||100, available_from:c.available_from||"", available_until:c.available_until||"", show_in_party_menu:c.show_in_party_menu!==false, staff_only:!!c.staff_only, show_in_shop:!!c.show_in_shop, show_in_paris_menu:!!c.show_in_paris_menu, parent_id:c.parent_id||"", is_active:c.is_active!==false, description:c.description||"", description_en:c.description_en||"", description_ru:c.description_ru||"", shop_tag:c.shop_tag||"", shop_tag_en:c.shop_tag_en||"", shop_tag_ru:c.shop_tag_ru||"", prep_time_minutes:c.prep_time_minutes??""}); };
+  const openNewCat = () => { setCatModal({mode:"new"}); setCatForm({name:"", name_en:"", name_ru:"", icon:"", sort_order:100, available_from:"", available_until:"", show_in_party_menu:true, staff_only:true, show_in_shop:false, show_in_paris_menu:false, is_active:true, description:"", description_en:"", description_ru:"", shop_tag:"", shop_tag_en:"", shop_tag_ru:"", prep_time_minutes:"", konsinye:false, konsinye_pay_pct:""}); };
+  const openEditCat = (c) => { setCatModal({mode:"edit", data:c}); setCatForm({name:c.name||"", name_en:c.name_en||"", name_ru:c.name_ru||"", icon:c.icon||"", sort_order:c.sort_order||100, available_from:c.available_from||"", available_until:c.available_until||"", show_in_party_menu:c.show_in_party_menu!==false, staff_only:!!c.staff_only, show_in_shop:!!c.show_in_shop, show_in_paris_menu:!!c.show_in_paris_menu, parent_id:c.parent_id||"", is_active:c.is_active!==false, description:c.description||"", description_en:c.description_en||"", description_ru:c.description_ru||"", shop_tag:c.shop_tag||"", shop_tag_en:c.shop_tag_en||"", shop_tag_ru:c.shop_tag_ru||"", prep_time_minutes:c.prep_time_minutes??"", konsinye:!!c.konsinye, konsinye_pay_pct:c.konsinye_pay_pct??""}); };
 
   const saveCat = async () => {
     if (busy) return;
@@ -91,6 +92,9 @@ export default function MenuMgmtPage() {
       // Kategori varsayilani: urun kendi suresini girmediyse bu kullanilir.
       prep_time_minutes: (catForm.prep_time_minutes === "" || catForm.prep_time_minutes == null)
         ? null : parseInt(catForm.prep_time_minutes, 10),
+      // Konsinye: kategorideki urunler tedarikcinin mali, satisin %X'i bizim
+      konsinye: !!catForm.konsinye,
+      konsinye_pay_pct: catForm.konsinye ? payTemizle(catForm.konsinye_pay_pct) : null,
     };
     // store_id ZORUNLU: RLS "store_id = ANY(user_store_ids())" istiyor.
     // Gonderilmezse NULL kalir ve "new row violates row-level security policy" hatasi doner.
@@ -126,6 +130,7 @@ export default function MenuMgmtPage() {
       sold_out_today:false, unavailable_reason:"",
       show_in_party_menu:false, kitchen_consignment:false, store_id:"", kitchen_destination_store_id:"", is_available:true, prep_time_minutes:null, show_prep_time:false,
       currency:"TRY", price_eur:"", shop_group:"", image_url:"", barkod:"",
+      konsinye:null, konsinye_pay_pct:"",
       category_id: selectedCat,
       has_options:false,
       options_config:{groups:[]},
@@ -142,6 +147,7 @@ export default function MenuMgmtPage() {
       unavailable_reason:p.unavailable_reason||"",
       currency: p.currency || "TRY", price_eur: p.price_eur ?? "", shop_group: p.shop_group || "", image_url: p.image_url || "",
       barkod: p.barkod || "",
+      konsinye: p.konsinye ?? null, konsinye_pay_pct: p.konsinye_pay_pct ?? "",
       show_in_party_menu:!!p.show_in_party_menu, kitchen_consignment:!!p.kitchen_consignment, store_id:p.store_id||"", additional_store_ids:Array.isArray(p.additional_store_ids)?p.additional_store_ids:[], hh_enabled:!!p.hh_enabled, hh_price:p.hh_price??'', hh_start:p.hh_start||'', hh_end:p.hh_end||'', hh_days:Array.isArray(p.hh_days)?p.hh_days:[0,1,2,3,4,5,6], kitchen_destination_store_id:p.kitchen_destination_store_id||"",
       prep_time_minutes:p.prep_time_minutes||null,
       show_prep_time:!!p.show_prep_time,
@@ -193,6 +199,9 @@ export default function MenuMgmtPage() {
       // Bos birakilirsa null kalir ve karlilik raporu urunu "maliyet yok"
       // grubunda gosterir — 0 yazip kari sisirmez.
       cost_price: (prodForm.cost_price===''||prodForm.cost_price==null) ? null : Number(prodForm.cost_price),
+      // Konsinye: null = kategori/markadan devral; true/false urun bazinda ezer.
+      konsinye: prodForm.konsinye === true ? true : prodForm.konsinye === false ? false : null,
+      konsinye_pay_pct: prodForm.konsinye === false ? null : payTemizle(prodForm.konsinye_pay_pct),
       // EUR urunlerde TL fiyati veritabani tetikleyicisi kurdan hesaplar
       currency: prodForm.currency === "EUR" ? "EUR" : "TRY",
       price_eur: prodForm.currency === "EUR" ? (Number(prodForm.price_eur)||0) : null,
@@ -558,6 +567,25 @@ export default function MenuMgmtPage() {
               <textarea value={catForm.description_ru||""} onChange={e=>setCatForm(f => ({...f,description_ru:e.target.value}))} placeholder="RU" rows={2} style={{width:"100%",padding:"8px 10px",background:"#0C0C0C",border:"1px solid #2A2A2A",borderRadius:8,color:"#F0EDE8",fontSize:13,outline:"none",resize:"vertical",fontFamily:"inherit"}}/>
             </div>
           )}
+          {/* KONSINYE: tedarikcinin mali (IZIPIZI gozluk gibi). Alis fiyati yok;
+              maliyet satisin tedarikci payi kadar. docs/konsinye.md */}
+          <div style={{background:"#161616",border:"1px solid "+(catForm.konsinye?"#FFFFFF":"#2A2A2A"),borderRadius:10,padding:12,marginBottom:12}}>
+            <label style={{display:"flex",alignItems:"center",gap:8,cursor:"pointer"}}>
+              <input type="checkbox" checked={!!catForm.konsinye} onChange={e=>setCatForm(f => ({...f,konsinye:e.target.checked}))}/>
+              <span style={{fontSize:13,color:"#F0EDE8",fontWeight:700}}>Konsinye kategori (ürünler tedarikçinin malı)</span>
+            </label>
+            {catForm.konsinye && (
+              <div style={{marginTop:10}}>
+                <div style={{fontSize:12,color:"#888",letterSpacing:"0.2px",fontWeight:600,marginBottom:4}}>BİZİM PAY (%) — satışın bize kalan yüzdesi</div>
+                <SayiGirisi kip="ondalik" min={0} max={100} value={catForm.konsinye_pay_pct??""} onChange={v=>setCatForm(f => ({...f,konsinye_pay_pct:v}))} placeholder="örn: 40" style={inputS}/>
+                <div style={{fontSize:12,color:"#8A8580",marginTop:6,lineHeight:1.5}}>
+                  {payTemizle(catForm.konsinye_pay_pct) == null
+                    ? "Payı yaz; yoksa bu kategorinin ürünleri kârlılıkta ve Konsinye Hesabı'nda \"pay yazılmadı\" görünür."
+                    : `${payMetni(payTemizle(catForm.konsinye_pay_pct))}. ₺1.000 satışta maliyet ₺${konsinyeMaliyet(1000, payTemizle(catForm.konsinye_pay_pct))}. Ürün kendi payını ayrıca yazabilir.`}
+                </div>
+              </div>
+            )}
+          </div>
           <label style={{display:"flex",alignItems:"center",gap:8,marginBottom:12,cursor:"pointer"}}>
             <input type="checkbox" checked={catForm.is_active!==false} onChange={e=>setCatForm(f => ({...f,is_active:e.target.checked}))}/>
             <span style={{fontSize:13,color:"#F0EDE8"}}>Aktif</span>
@@ -655,8 +683,41 @@ export default function MenuMgmtPage() {
               </div>
             )}
           </Field>
+          {/* KONSINYE: tedarikcinin mali; maliyet satisin tedarikci payi kadar.
+              Kategori konsinye ise urun devralir, kendi payini yazabilir ya da
+              "Hayır" ile disina cikabilir. docs/konsinye.md */}
+          {(() => {
+            const kat = categories.find(c => c.id === prodForm.category_id);
+            const d = konsinyeDurumu(prodForm, kat, null);
+            const katMetin = kat?.konsinye ? `Kategoriye göre: konsinye${kat.konsinye_pay_pct != null ? ` · %${Number(kat.konsinye_pay_pct)} bizim` : ""}` : "Kategoriye göre: konsinye değil";
+            const fiyat = Number(prodForm.price) || 0;
+            return (
+              <div style={{background:"#0C0C0C",border:"1px solid "+(d.etkin?"#FFFFFF":"#222"),borderRadius:10,padding:12,marginBottom:10}}>
+                <div style={{fontSize:12,color:"#888",letterSpacing:"0.2px",fontWeight:600,marginBottom:6}}>KONSİNYE (tedarikçinin malı)</div>
+                <select value={prodForm.konsinye === true ? "1" : prodForm.konsinye === false ? "0" : ""} onChange={e=>setProdForm(f => ({...f,konsinye: e.target.value === "1" ? true : e.target.value === "0" ? false : null}))} style={inputS}>
+                  <option value="">{katMetin}</option>
+                  <option value="1">Evet, konsinye</option>
+                  <option value="0">Hayır, bizim malımız</option>
+                </select>
+                {d.etkin && (
+                  <div style={{marginTop:10}}>
+                    <div style={{fontSize:12,color:"#888",letterSpacing:"0.2px",fontWeight:600,marginBottom:4}}>BİZİM PAY (%) — boş bırakırsan kategorininki</div>
+                    <SayiGirisi kip="ondalik" min={0} max={100} value={prodForm.konsinye_pay_pct??""} onChange={v=>setProdForm(f => ({...f,konsinye_pay_pct:v}))}
+                           placeholder={kat?.konsinye_pay_pct != null ? "kategori: " + Number(kat.konsinye_pay_pct) : "örn: 40"} style={inputS}/>
+                    <div style={{fontSize:12,color:d.pay == null ? "#C87A6A" : "#8A8580",marginTop:6,lineHeight:1.5}}>
+                      {d.pay == null
+                        ? "Pay yazılmadı: ne burada ne kategoride. Kârlılık ve Konsinye Hesabı bu ürünü hesaplayamaz."
+                        : `${payMetni(d.pay)} (${d.kaynak}).${fiyat > 0 ? ` ₺${fiyat} satışta maliyet ₺${konsinyeMaliyet(fiyat, d.pay)}, bize ₺${fiyat - konsinyeMaliyet(fiyat, d.pay)} kalır.` : ""} Alış fiyatı kullanılmaz.`}
+                    </div>
+                  </div>
+                )}
+              </div>
+            );
+          })()}
           {/* Recetesi olmayan satis urunlerinin (tisort, gozluk, sapka) maliyeti
-              baska hicbir yerde tutulmuyor; urun karliligi raporu bu alani okur. */}
+              baska hicbir yerde tutulmuyor; urun karliligi raporu bu alani okur.
+              Konsinye urunde gizli: maliyet satistan hesaplanir. */}
+          {!konsinyeDurumu(prodForm, categories.find(c => c.id === prodForm.category_id), null).etkin && (
           <Field label="ALIŞ FİYATI (₺ / adet — opsiyonel)">
             <SayiGirisi kip="para" min={0} value={prodForm.cost_price??''}
                    onChange={v=>setProdForm(f => ({...f,cost_price:v}))}
@@ -667,6 +728,7 @@ export default function MenuMgmtPage() {
               kârlılık raporu bu ürünü göremez.
             </div>
           </Field>
+          )}
           <Field label="ANLIK INDIRIM (%)"><SayiGirisi kip="tam" min={0} max={99} value={prodForm.instant_discount_pct??''} onChange={v=>setProdForm(f => ({...f,instant_discount_pct:v}))} style={inputS}/></Field>
 
           {/* HAPPY HOUR */}
