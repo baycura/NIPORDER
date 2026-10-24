@@ -27,7 +27,9 @@ kendini dışarıda bırakabilir.
 
 - **Ürün Kârlılığı**: kaynak `pay` ("konsinye payı"). Maliyet satışın
   tedarikçi payı kadar. Kâr = bizim pay.
-- **Eksik Maliyetler**: konsinye ürün "alış fiyatı yok" diye listelenmez.
+- **Eksik Maliyetler**: payı yazılı konsinye ürün listelenmez. Konsinye ama
+  payı yok ise "KONSİNYE" tipiyle listelenir; alış fiyatı değil pay istenir.
+  Kârlılıkta böyle ürün "maliyet yok" sayılır, eski alış fiyatı kullanılmaz.
 - **Konsinye Hesabı** (`/konsinye`, yalnız sahip): ay ay, tedarikçi tedarikçi
   adet, satış, bizim pay, ödenecek. "Mutabakat metnini kopyala" WhatsApp için.
 

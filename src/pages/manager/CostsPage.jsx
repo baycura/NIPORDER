@@ -70,6 +70,7 @@ export default function CostsPage() {
   useEffect(yukle, [storeId]);
 
   const kaydet = async (r) => {
+    if (r.tip === "konsinye") return;
     const ham = degerler[r.kayit_id];
     const deger = Number(ham);
     if (!ham || !isFinite(deger) || deger <= 0) { alert("Sıfırdan büyük bir tutar gir"); return; }
@@ -185,7 +186,7 @@ export default function CostsPage() {
                   <span style={{
                     fontSize: 11, fontWeight: 700, letterSpacing: "0.2px", padding: "2px 7px",
                     borderRadius: 5, background: "#222", color: C.muted, flexShrink: 0,
-                  }}>{r.tip === "malzeme" ? "MALZEME" : "ÜRÜN"}</span>
+                  }}>{r.tip === "malzeme" ? "MALZEME" : r.tip === "konsinye" ? "KONSİNYE" : "ÜRÜN"}</span>
                   <span style={{ fontSize: 15, fontWeight: 700, flex: 1, minWidth: 0 }}>{r.ad}</span>
                   {Number(r.ciro) > 0 && (
                     <span style={{ fontSize: 13, color: C.ink, fontWeight: 700, fontVariantNumeric: "tabular-nums" }}>
@@ -203,6 +204,13 @@ export default function CostsPage() {
                   <div style={{ fontSize: 13, color: C.ink, display: "flex", alignItems: "center", gap: 6 }}>
                     <Ikon ad="onay" boy={14} />
                     {r.tip === "malzeme" ? "Birim maliyet" : "Alış fiyatı"} {birimYaz(bitti)} olarak kaydedildi
+                  </div>
+                ) : r.tip === "konsinye" ? (
+                  // Konsinye urunde alis fiyati yok; maliyet satisin tedarikci payi.
+                  // Pay burada degil, Menu Yonetimi'nde yazilir (docs/konsinye.md).
+                  <div style={{ fontSize: 13, color: C.muted, lineHeight: 1.6 }}>
+                    Tedarikçinin malı. Alış fiyatı girilmez; <b style={{ color: C.ink }}>bizim pay %</b> Menü Yönetimi'nde
+                    kategori ya da ürün formundaki "Konsinye" kutusuna yazılır.
                   </div>
                 ) : (
                   <div style={{ display: "flex", gap: 6, alignItems: "center" }}>

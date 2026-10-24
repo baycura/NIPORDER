@@ -19,8 +19,10 @@
 -- gibi (nip_mutfak_hakedis_raporu) ikram LISTE fiyatindan tedarikciye borc
 -- yazar; karlilikta ikramin bedeli eksi kar olarak gorunur. Dogrusu budur.
 --
--- Dokunulan raporlar: urun_karliligi (yeni kaynak 'pay'), eksik_maliyetler
--- (konsinye urun "alis fiyati eksik" listesine dusmez). Yeni rapor:
+-- Dokunulan raporlar: urun_karliligi (yeni kaynak 'pay'; konsinye ama payi
+-- yazilmamis urun 'yok' sayilir, eski alis fiyatina dusmez), eksik_maliyetler
+-- (payli konsinye listelenmez; paysiz konsinye 'konsinye' tipiyle listelenir,
+-- alis fiyati degil pay istenir). Yeni rapor:
 -- nip_konsinye_raporu — tedarikci bazinda satis, bizim pay, odenecek.
 --
 -- Bu dosya hicbir nesneyi kaldirmaz; yalniz ekler ve yeniden tanimlar.
@@ -113,7 +115,8 @@ $$;
 -- URUN KARLILIGI — yeni maliyet kaynagi 'pay' (konsinye payi).
 -- 20260825_urun_karliligi.sql ile ayni govde; farklar:
 --   kalem.taban  : ikramda liste fiyati, digerinde satis fiyati (tedarikci tabani)
---   hesap.kaynak : kitchen_consignment'tan hemen sonra 'pay'
+--   hesap.kaynak : kitchen_consignment'tan hemen sonra 'pay'; konsinye ama
+--                  payi yok ise 'yok' (alis fiyati varsa bile kullanilmaz)
 --   hesap.maliyet: 'pay' ise taban x (100 - pay) / 100
 -- ----------------------------------------------------------------------------
 create or replace function public.urun_karliligi(
@@ -196,6 +199,7 @@ begin
            case
              when p.kitchen_consignment                      then 'konsinye'
              when kp.pay is not null                         then 'pay'
+             when kp.mi                                      then 'yok'
              when r.product_id is not null and t.kayitsiz_adet = 0 then 'kayit'
              when r.product_id is not null and t.kayitli = 0 then 'tahmini'
              when r.product_id is not null                   then 'karma'
@@ -208,6 +212,7 @@ begin
               when p.kitchen_consignment then 0
               when kp.pay is not null
                 then t.taban * (100 - kp.pay) / 100.0
+              when kp.mi then 0
               when r.product_id is not null
                 then t.kayitli + coalesce(r.birim, 0) * t.kayitsiz_adet
               when coalesce(p.cost_price, 0) > 0
@@ -218,7 +223,8 @@ begin
       join public.products p on p.id = t.product_id
       left join public.categories c on c.id = p.category_id
       left join recete r on r.product_id = t.product_id
-      left join lateral (select public.nip_konsinye_pay(p.id) as pay) kp on true
+      left join lateral (select coalesce(public.nip_konsinye_mi(p.id), false) as mi,
+                                public.nip_konsinye_pay(p.id) as pay) kp on true
   )
   select
     h.product_id,
@@ -290,21 +296,25 @@ begin
        and i.store_id = p_store_id
      group by i.id, i.name, i.unit
   ),
-  -- Alis fiyati girilmemis urunler: recetesi yok, mutfak konsinyesi degil,
-  -- tedarikci konsinyesi de degil (onun maliyeti satistan hesaplanir).
+  -- Alis fiyati girilmemis urunler: recetesi yok, mutfak konsinyesi degil.
+  -- Tedarikci konsinyesi: payi yazildiysa listelenmez (maliyet satistan
+  -- hesaplanir); payi yoksa 'konsinye' tipiyle listelenir — alis fiyati
+  -- degil, pay istenir (CostsPage bu tipte kutu gostermez).
   urun as (
-    select 'urun'::text tip, p.id, p.name::text ad, coalesce(c.name, '—')::text alt,
-           ('Satış ₺' || trim(to_char(p.price, 'FM999999990.00')))::text nerede,
+    select (case when k.mi then 'konsinye' else 'urun' end)::text tip, p.id, p.name::text ad, coalesce(c.name, '—')::text alt,
+           (case when k.mi then 'Konsinye — bizim pay yazılmadı'
+                 else 'Satış ₺' || trim(to_char(p.price, 'FM999999990.00')) end)::text nerede,
            coalesce(s.ciro, 0)::numeric ciro,
            coalesce(s.adet, 0)::numeric adet
       from public.products p
       left join public.categories c on c.id = p.category_id
       left join satis s on s.product_id = p.id
+      left join lateral (select coalesce(public.nip_konsinye_mi(p.id), false) as mi,
+                                public.nip_konsinye_pay(p.id) as pay) k on true
      where p.store_id = p_store_id
-       and p.cost_price is null
        and not p.kitchen_consignment
-       and not coalesce(public.nip_konsinye_mi(p.id), false)
        and not exists (select 1 from public.recipes r where r.product_id = p.id)
+       and ((not k.mi and p.cost_price is null) or (k.mi and k.pay is null))
   )
   select * from malzeme
   union all
@@ -316,8 +326,8 @@ end $$;
 -- KONSINYE RAPORU — tedarikciye ne odenecek.
 -- Donem: isletme gunu (03:00) ile, odenmis fisler, odeme tarihine gore.
 -- Varsayilan: icinde bulunulan ay. satis = gercek tahsilat; taban = tedarikci
--- tabani (ikram liste fiyatindan); bizim_pay = taban x pay / 100 (ikramda
--- eksi: mali verdik, para almadik); tedarikci_pay = taban - bizim_pay.
+-- tabani (ikram liste fiyatindan); bizim_pay = satis - tedarikci_pay (ikramda
+-- eksi: mali verdik, para almadik); tedarikci_pay = taban x (100 - pay) / 100.
 -- ----------------------------------------------------------------------------
 create or replace function public.nip_konsinye_raporu(
   p_store_id uuid,
