@@ -99,8 +99,8 @@ function AppRoutes() {
         <Route path="tasks" element={<PrivateRoute deny={["viewer","parttime"]}><TasksPage /></PrivateRoute>} />
         <Route path="reports"          element={<PrivateRoute adminOnly allowViewer><ReportsPage /></PrivateRoute>} />
         <Route path="profit"           element={<PrivateRoute adminOnly><ProfitPage /></PrivateRoute>} />
-        {/* Konsinye: tedarikciye ne odenecek — yalniz sahip. RPC'de personel + magaza kapisi var. */}
-        <Route path="konsinye"         element={<PrivateRoute adminOnly><KonsinyePage /></PrivateRoute>} />
+        {/* Konsinye: aylik tedarikci hesaplari. Yoneticiler gorur (Ceren, Fatih), "Odendi" yalniz sahip (RPC is_admin). */}
+        <Route path="konsinye"         element={<PrivateRoute managerOnly><KonsinyePage /></PrivateRoute>} />
         {/* Satis raporu (adet): sahip ve gozlemci; RPC'ler personel + magaza kapisi koyar */}
         <Route path="sales"            element={<PrivateRoute adminOnly allowViewer><SalesPage /></PrivateRoute>} />
         <Route path="costs"            element={<PrivateRoute managerOnly><CostsPage /></PrivateRoute>} />

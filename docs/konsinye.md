@@ -45,3 +45,22 @@ düşer (ikramda bizim pay eksi olur). Göç: `20261101_konsinye_etiket.sql`.
 `nip_konsinye_mi(uuid)`, `nip_konsinye_pay(uuid)`, `nip_konsinye_tedarikci(uuid)`,
 `nip_konsinye_raporu(store, bas, bit)`; `urun_karliligi` ve `eksik_maliyetler`
 yeniden tanımlandı. IZIPIZI kategorisi %40 ile işaretlendi.
+
+## Aylık hesap kesimi ve "Ödendi" (1.11.2026)
+
+Her ayın 1'inde 04:15'te (`nip-konsinye-aylik` cron) geçen ayın hesabı
+tedarikçi tedarikçi kesilir ve `konsinye_hesaplar` tablosuna yazılır:
+adet, perakende toplamı, tedarikçi payı (etiket üzerinden), bizim pay,
+ürün satırları (`satirlar` jsonb). Sahibe Telegram özeti gider.
+
+- Kayıt "Bekliyor" olarak durur. Sahip (admin) Konsinye Hesabı sayfasında
+  "Ödendi"ye basınca kapanır (`nip_konsinye_odendi`). Geri alınabilir.
+- Ödenmiş kayıt yeniden kesimde değişmez. Bekleyen kayıt "Hesapları kes"
+  ile güncel satışla tazelenir (`nip_konsinye_hesap_kes`, yalnız admin).
+- Mağazanın tüm yöneticileri görür (RLS: `is_staff` + mağaza); "Ödendi"
+  ve "Hesapları kes" yalnız admin.
+- Her kart tedarikçiye giden Excel ile aynı düzendedir; "Excel (CSV) indir"
+  ve "Metni kopyala" düğmeleri vardır. "Canlı" sekmesi ayın o anki durumunu
+  gösterir, kesim yapmaz.
+
+Göç: `supabase/migrations/20261101_konsinye_hesaplar.sql`.
