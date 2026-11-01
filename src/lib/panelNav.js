@@ -43,6 +43,8 @@ export const GRUPLAR = [
       { to: "/product-stock",     icon: "stok", label: "Ürün Stoku" },
       { to: "/costs",             icon: "gider", label: "Eksik Maliyetler" },
       { to: "/retail",            icon: "raf", label: "Ürünler (Raf)", ozellik: "raf" },
+      // Konsinye hesaplari: yoneticiler de gorur (odendi yalniz sahip)
+      { to: "/konsinye",          icon: "raf", label: "Konsinye Hesabı" },
       // Merch sayfasi menuden kaldirildi: merch_products tisortlerin hicbir
       // yere bagli olmayan kopyasiydi (kasa/Shop/sayim products'a bakar), oraya
       // girilen stok kayboluyordu. Rota duruyor, menuden ulasilmiyor.
@@ -70,7 +72,6 @@ export const GRUPLAR = [
       { to: "/reports",        icon: "rapor", label: "Raporlar" },
       { to: "/sales",          icon: "sepet", label: "Satış Raporu" },
       { to: "/profit",         icon: "puan", label: "Ürün Kârlılığı" },
-      { to: "/konsinye",       icon: "raf", label: "Konsinye Hesabı" },
       { to: "/cash-history",   icon: "takvim", label: "Kasa Geçmişi" },
       { to: "/shifts",         icon: "takvim", label: "Vardiyalar" },
       { to: "/discounts",      icon: "kampanya", label: "İndirimler" },
