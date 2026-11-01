@@ -407,7 +407,7 @@ export default function RetailPage() {
                     <div style={{ fontSize: 12, color: d.pay == null ? "#C87A6A" : "#8A8580", marginTop: 6, lineHeight: 1.5 }}>
                       {d.pay == null
                         ? "Pay yazılmadı: ne burada ne markada. Raporlar bu ürünü hesaplayamaz."
-                        : `${payMetni(d.pay)} (${d.kaynak}).${fiyat > 0 ? ` ₺${fiyat} satışta maliyet ₺${konsinyeMaliyet(fiyat, d.pay)}, bize ₺${fiyat - konsinyeMaliyet(fiyat, d.pay)} kalır.` : " Fiyat kasada belirlenince pay satış anında hesaplanır."}`}
+                        : `${payMetni(d.pay)} (${d.kaynak}).${fiyat > 0 ? ` ₺${fiyat} etikette tedarikçiye ₺${konsinyeMaliyet(fiyat, d.pay)}, bize ₺${fiyat - konsinyeMaliyet(fiyat, d.pay)} kalır. İndirim bizim paydan düşer.` : " Fiyat kasada belirlenince pay o fiyattan hesaplanır."}`}
                     </div>
                   </div>
                 )}

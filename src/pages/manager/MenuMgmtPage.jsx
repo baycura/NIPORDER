@@ -707,7 +707,7 @@ export default function MenuMgmtPage() {
                     <div style={{fontSize:12,color:d.pay == null ? "#C87A6A" : "#8A8580",marginTop:6,lineHeight:1.5}}>
                       {d.pay == null
                         ? "Pay yazılmadı: ne burada ne kategoride. Kârlılık ve Konsinye Hesabı bu ürünü hesaplayamaz."
-                        : `${payMetni(d.pay)} (${d.kaynak}).${fiyat > 0 ? ` ₺${fiyat} satışta maliyet ₺${konsinyeMaliyet(fiyat, d.pay)}, bize ₺${fiyat - konsinyeMaliyet(fiyat, d.pay)} kalır.` : ""} Alış fiyatı kullanılmaz.`}
+                        : `${payMetni(d.pay)} (${d.kaynak}).${fiyat > 0 ? ` ₺${fiyat} etikette tedarikçiye ₺${konsinyeMaliyet(fiyat, d.pay)}, bize ₺${fiyat - konsinyeMaliyet(fiyat, d.pay)} kalır. İndirim bizim paydan düşer.` : ""} Alış fiyatı kullanılmaz.`}
                     </div>
                   </div>
                 )}

@@ -20,7 +20,8 @@ const tl = (n) => (Number(n) < 0 ? "−" : "") + fmtTL(Math.abs(Number(n) || 0))
 //
 // Donem: isletme gunu (03:00) ile, odenmis fisler, odeme tarihine gore —
 // Urun Karliligi ile ayni kesim, iki rapor birbirini tutsun.
-// Ikram: tedarikciye liste fiyatindan borc yazar (mal gitti, para gelmedi).
+// Tedarikci payi ETIKET fiyatindan (sahip 1.11); indirim ve ikram bizim paydan
+// duser, ikramda bizim pay eksi olur (mal gitti, para gelmedi).
 export default function KonsinyePage() {
   const { staffUser } = useAuth();
   const storeIds = staffUser?.store_ids || [];
@@ -127,7 +128,7 @@ export default function KonsinyePage() {
       </div>
       <p style={{ fontSize: 13, color: C.muted, margin: "6px 0 14px", lineHeight: 1.5, maxWidth: "60ch" }}>
         Tedarikçinin malı olan ürünlerin (konsinye) ay içi satışı ve tedarikçiye ödenecek tutar.
-        Pay, Menü Yönetimi'nde kategori, marka ya da ürün üzerinde tanımlanır. Gün 03:00'te biter; ikram tedarikçiye liste fiyatından yazılır.
+        Pay, Menü Yönetimi'nde kategori, marka ya da ürün üzerinde tanımlanır. Tedarikçi payı etiket fiyatından hesaplanır; indirim ve ikram bizim paydan düşer. Gün 03:00'te biter.
       </p>
 
       <div style={{ display: "flex", gap: 8, marginBottom: 14, flexWrap: "wrap", alignItems: "center" }}>
