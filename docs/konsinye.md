@@ -8,8 +8,10 @@ maliyetlerini bu şekilde girebiliriz."
 Konsinye ürün tedarikçinin malıdır. Alış fiyatı yoktur. Satış olunca
 satışın bir yüzdesi bize kalır, kalanı tedarikçiye ödenir.
 
-    maliyet = satış × (100 − bizim pay) / 100
-    IZIPIZI: satış ₺5.000, bizim pay %40 → maliyet ₺3.000, kâr ₺2.000
+    tedarikçi payı = etiket fiyatı × (100 − bizim pay) / 100
+    bizim pay      = gerçek satış − tedarikçi payı
+    IZIPIZI: etiket ₺5.000, bizim pay %40 → tedarikçiye ₺3.000, bize ₺2.000
+    İndirimli satış (₺4.500): tedarikçiye yine ₺3.000, bize ₺1.500 (1.11 kuralı)
 
 ## Tanım yeri (en özel kazanır)
 
@@ -34,7 +36,8 @@ kendini dışarıda bırakabilir.
   adet, satış, bizim pay, ödenecek. "Mutabakat metnini kopyala" WhatsApp için.
 
 Dönem: işletme günü (03:00), ödenmiş fişler, ödeme tarihine göre.
-İkram: tedarikçiye liste fiyatından borç yazar; kârlılıkta eksi kâr görünür.
+Tedarikçi payı her zaman etiket fiyatından; indirim ve ikram bizim paydan
+düşer (ikramda bizim pay eksi olur). Göç: `20261101_konsinye_etiket.sql`.
 
 ## Veritabanı
 
