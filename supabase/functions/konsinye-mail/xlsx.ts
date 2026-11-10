@@ -14,8 +14,11 @@ export interface Sayfa { ad: string; genislik: number[]; satirlar: Satir[] }
 
 export const TL = '#,##0" ₺";-#,##0" ₺";"-"';
 
+// XML 1.0'da gecersiz kontrol karakterleri atilir (yapistirilan metinde dikey
+// sekme olur; tek karakter dosyayi acilmaz yapar).
 const esc = (s: string) =>
-  s.replace(/&/g, "&amp;").replace(/</g, "&lt;").replace(/>/g, "&gt;").replace(/"/g, "&quot;");
+  String(s).replace(/[\u0000-\u0008\u000B\u000C\u000E-\u001F\uFFFE\uFFFF]/g, "")
+    .replace(/&/g, "&amp;").replace(/</g, "&lt;").replace(/>/g, "&gt;").replace(/"/g, "&quot;");
 
 // 0 -> A, 25 -> Z, 26 -> AA
 export const kol = (n: number): string => {

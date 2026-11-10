@@ -10,8 +10,9 @@
 --     pay_karisik bayragi eklendi; sayfa ve Excel "karisik pay" der, satir
 --     bazli tutarlari kullanir.
 --  3) Tedarikci adi degisince ayni ay icin ikinci satir olusuyor, eski
---     "bekliyor" satir toplamda kaliyordu. Yeniden kesimde bu ay icin satisi
---     kalmayan bekliyor + kilitsiz satirlar SIFIRLANIR ve not alir (silinmez).
+--     "bekliyor" satir toplamda kaliyordu. Yeniden kesimde yeni raporda
+--     cikmayan bekliyor + kilitsiz satirlar "Kontrol et" notu alir; tutar
+--     SIFIRLANMAZ (gercek bir borc sessizce silinmesin).
 --  4) Telegram ozetinde to_char(... 'G') en_US ile "20,640" yaziyordu (TR'de
 --     20 lira 64 kurus okunur) -> "20.640". Odenmis satirlar "(odendi)" diye
 --     listelenir ve "Toplam odenecek"e girmez.
@@ -84,16 +85,17 @@ begin
     n := n + 1;
   end loop;
 
-  -- Bu ay icin satisi kalmayan eski "bekliyor" satirlar (tedarikci adi degisti
-  -- ya da urunler baska markaya tasindi): sifirla ve not yaz. Silinmez;
-  -- kilitli ya da odenmis satira dokunulmaz.
+  -- Bu ay icin YENI raporda satisi cikmayan eski "bekliyor" satirlar: tutar
+  -- SIFIRLANMAZ (inceleme 10.11: marka konsinyeden cikarilirsa ya da urun
+  -- tasinirsa odenmemis gercek bir borc listeden silinirdi). Satir oldugu gibi
+  -- kalir ve not alir; ad degistiyse yeni adla ikinci bir satir olusur, sahip
+  -- hangisinin gecerli oldugunu gorur. Kilitli ya da odenmis satira dokunulmaz.
   update public.konsinye_hesaplar h
-     set adet = 0, perakende = 0, satis = 0, tedarikci_pay = 0, bizim_pay = 0,
-         satirlar = '[]'::jsonb, pay_karisik = false,
-         duzeltme_notu = 'Yeniden kesimde bu adla satış bulunmadı (tedarikçi adı değişti ya da ürünler taşındı); tutar 0.',
+     set duzeltme_notu = 'Kontrol et: yeniden kesimde bu adla satış bulunmadı (tedarikçi adı değişmiş ya da ürünler taşınmış olabilir). Tutar önceki kesimden.',
          guncellendi = now()
    where h.store_id = p_store_id and h.donem = v_donem and h.durum = 'bekliyor' and not h.kilitli
      and (h.adet <> 0 or h.tedarikci_pay <> 0)
+     and h.duzeltme_notu is distinct from 'Kontrol et: yeniden kesimde bu adla satış bulunmadı (tedarikçi adı değişmiş ya da ürünler taşınmış olabilir). Tutar önceki kesimden.'
      and not (h.tedarikci = any(v_isimler));
   return n;
 end $$;

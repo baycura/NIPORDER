@@ -100,30 +100,40 @@ Deno.serve(async (req: Request) => {
   const kayitlar = (Array.isArray(body.kayitlar) ? body.kayitlar : []) as Kayit[];
   const sonuc = { gonderildi: 0, eposta_yok: 0, hata: 0 };
 
+  // Kayit yazilamazsa bir kez daha dener (yazilamayan basarili gonderim
+  // sonraki turda yeniden postalanirdi).
   const yaz = async (id: string, alan: Record<string, unknown>) => {
-    try { await supa.from("nip_reserve_onay_bildirim").update({ ...alan, son: new Date().toISOString() }).eq("rez_id", id); }
-    catch (_e) { /* kayit yazilamazsa bir sonraki tur yeniden dener */ }
+    for (let i = 0; i < 2; i++) {
+      try {
+        const { error } = await supa.from("nip_reserve_onay_bildirim")
+          .update({ ...alan, son: new Date().toISOString() }).eq("rez_id", id);
+        if (!error) return;
+      } catch (_e) { /* bir kez daha dene */ }
+    }
   };
+  // Deneme veritabaninda, gonderim aninda sayilir (nip_reserve_onay_gonder).
+  // Kurulum eksikse (anahtar ya da gonderici yok) o deneme geri verilir:
+  // anahtar girilince posta kendiliginden gider.
+  const geriVer = (k: Kayit) => Math.max(0, (Number(k.deneme) || 1) - 1);
 
-  let anahtarYok = false;
+  let kurulumEksik = "";
   for (const k of kayitlar.slice(0, 50)) {
     if (!k?.rez_id) continue;
     const adres = String(k.eposta || "").trim().toLowerCase();
     if (!eposta(adres)) { await yaz(k.rez_id, { durum: "eposta_yok", hata: null }); sonuc.eposta_yok++; continue; }
-    if (anahtarYok) { await yaz(k.rez_id, { durum: "hata", hata: "anahtar-yok" }); sonuc.hata++; continue; }
+    if (kurulumEksik) { await yaz(k.rez_id, { durum: "hata", hata: kurulumEksik, deneme: geriVer(k) }); sonuc.hata++; continue; }
     try {
       const { konu, html } = rezPosta(k);
       await mailGonder([adres], konu, html);
-      await yaz(k.rez_id, { durum: "gonderildi", hata: null, deneme: (Number(k.deneme) || 0) + 1 });
+      await yaz(k.rez_id, { durum: "gonderildi", hata: null });
       sonuc.gonderildi++;
     } catch (e) {
       const kod = e instanceof MailHata ? e.kod : "hata";
       if (kod === "anahtar-yok" || kod === "gonderici-yok") {
-        // Kurulum eksigi: deneme sayilmaz, anahtar girilince kendiliginden gider
-        anahtarYok = true;
-        await yaz(k.rez_id, { durum: "hata", hata: kod });
+        kurulumEksik = kod;
+        await yaz(k.rez_id, { durum: "hata", hata: kod, deneme: geriVer(k) });
       } else {
-        await yaz(k.rez_id, { durum: "hata", hata: String((e as Error).message || e).slice(0, 300), deneme: (Number(k.deneme) || 0) + 1 });
+        await yaz(k.rez_id, { durum: "hata", hata: String((e as Error).message || e).slice(0, 300) });
       }
       sonuc.hata++;
     }

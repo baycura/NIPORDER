@@ -8,11 +8,15 @@
 // rapor.ts ile XLSX uretilir; hepsi tek e-postaya eklenir. Alicilar ve son
 // gonderim sonucu konsinye_mail tablosunda (magaza basina bir satir; yalniz
 // personel okur — app_settings anon'a acik oldugu icin KULLANILMADI).
-// Cron'dan gelen basarisiz denemede yonetici Telegram'ina uyari gider.
+// E-posta gidemezse (anahtar yok, saglayici hatasi) dosyalar KAYBOLMAZ: yonetici
+// Telegram'ina belge olarak gider (telegramaGonder). Dosya uretilemeden biten
+// cron denemesinde Telegram'a yazili uyari gider.
 //
 // Cagirma: cron (pg_cron + pg_net, nip_konsinye_mail_gonder -> x-nip-cron
 // basligi, bot_config.webhook_secret) ya da Konsinye Hesabi sayfasindaki
-// "E-postayla gonder" (admin/manager JWT).
+// "E-postayla gonder" (yalniz sahip: admin JWT, kendi magazasi). Yonetici
+// (manager) sayfayi gorur ama gonderemez: gonderim gerekirse kesim de yapar,
+// kesim yalniz sahibindir (20261101_konsinye_yetki).
 //
 // E-posta saglayicisi ve gizli degiskenler: mail.ts (BREVO_API_KEY; MAIL_FROM
 // istege bagli). Anahtar yoksa fonksiyon acik hata verir, hicbir sey gondermez.
@@ -49,6 +53,33 @@ const donemNormalle = (v: unknown): string | null => {
 };
 const tl = (v: number) => (v < 0 ? "−" : "") + Math.round(Math.abs(v)).toLocaleString("tr-TR") + " ₺";
 const esc = (s: string) => s.replace(/&/g, "&amp;").replace(/</g, "&lt;").replace(/>/g, "&gt;");
+// E-posta gidemediginde yedek yol: Excel'leri yonetici Telegram sohbetlerine belge
+// olarak yolla. Bot anahtari bot_config'ten yalniz OKUNUR; hata metnine ve
+// kayitlara asla yazilmaz. Donen: gonderilen belge sayisi.
+// deno-lint-ignore no-explicit-any
+async function telegramaGonder(supa: any, ekler: Ek[], baslik: string): Promise<number> {
+  if (!ekler.length) return 0;
+  let n = 0;
+  try {
+    const { data: tok } = await supa.from("bot_config").select("value").eq("key", "telegram_bot_token").maybeSingle();
+    if (!tok?.value) return 0;
+    const { data: yon } = await supa.from("staff").select("telegram_chat_id").eq("role", "admin").eq("is_active", true).not("telegram_chat_id", "is", null);
+    for (const y of yon || []) {
+      for (let i = 0; i < ekler.length; i++) {
+        try {
+          const fd = new FormData();
+          fd.append("chat_id", String(y.telegram_chat_id));
+          if (i === 0) fd.append("caption", baslik.slice(0, 900));
+          fd.append("document", new Blob([ekler[i].icerik], { type: "application/vnd.openxmlformats-officedocument.spreadsheetml.sheet" }), ekler[i].ad);
+          const r = await fetch("https://api.telegram.org/bot" + tok.value + "/sendDocument", { method: "POST", body: fd });
+          if (r.ok) n++;
+        } catch (_e) { /* tek belge gidemediyse digerleri denenir */ }
+      }
+    }
+  } catch (_e) { /* yedek yol; hata e-posta sonucunu degistirmez */ }
+  return n;
+}
+
 function ozetHtml(hesaplar: Hesap[], etiket: string, toplam: number, bekleyen: number): string {
   const satir = hesaplar.map((h) => {
     const biz = h.pay_pct == null ? null : Number(h.pay_pct);
@@ -70,7 +101,7 @@ function ozetHtml(hesaplar: Hesap[], etiket: string, toplam: number, bekleyen: n
 <thead><tr style="background:#222;color:#fff">
 <th style="padding:7px 8px;text-align:left">Tedarikçi</th><th style="padding:7px 8px">Adet</th><th style="padding:7px 8px;text-align:right">Perakende</th><th style="padding:7px 8px">Tedarikçi / NIP</th><th style="padding:7px 8px;text-align:right">Ödenecek</th><th style="padding:7px 8px">Durum</th></tr></thead>
 <tbody>${satir}</tbody>
-<tfoot><tr style="background:#f2f2f2;font-weight:700"><td style="padding:7px 8px">Toplam ödenecek</td><td></td><td></td><td></td><td style="padding:7px 8px;text-align:right">${tl(toplam)}</td><td style="padding:7px 8px;text-align:center">bekleyen ${tl(bekleyen)}</td></tr></tfoot>
+<tfoot><tr style="background:#f2f2f2;font-weight:700"><td style="padding:7px 8px">Toplam tedarikçi payı</td><td></td><td></td><td></td><td style="padding:7px 8px;text-align:right">${tl(toplam)}</td><td style="padding:7px 8px;text-align:center">bekleyen ${tl(bekleyen)}</td></tr></tfoot>
 </table>
 <p style="margin:14px 0 0;color:#555;font-size:12px">Ödeme yapılınca "Ödendi" işareti: <a href="https://order.notinparis.me/konsinye">order.notinparis.me/konsinye</a>. Bu e-posta her ayın 1'inde kendiliğinden gönderilir.</p>
 </body></html>`;
@@ -85,6 +116,7 @@ Deno.serve(async (req: Request) => {
   // --- Yetki: cron sirri ya da yonetici oturumu (eur-rate-sync ile ayni kalip) ---
   const cronHeader = req.headers.get("x-nip-cron") || "";
   let allowed = false, cron = false, admin = false;
+  let storeIds: string[] = [];
   if (cronHeader) {
     const { data: cfg } = await supa.from("bot_config").select("value").eq("key", "webhook_secret").maybeSingle();
     allowed = !!cfg?.value && cronHeader === cfg.value;
@@ -95,8 +127,9 @@ Deno.serve(async (req: Request) => {
     const uid = userData?.user?.id;
     if (uid) {
       const { data: staff } = await supa.from("staff").select("role, is_active, store_ids").eq("auth_id", uid).maybeSingle();
-      allowed = !!staff && staff.is_active !== false && ["admin", "manager", "owner"].includes(staff.role);
-      admin = !!staff && ["admin", "owner"].includes(staff.role);
+      allowed = !!staff && staff.is_active !== false && ["admin", "owner"].includes(staff.role);
+      admin = allowed;
+      storeIds = Array.isArray(staff?.store_ids) ? (staff!.store_ids as unknown[]).map(String) : [];
     }
   }
   if (!allowed) return json({ error: "Yetkisiz" }, 401);
@@ -104,6 +137,7 @@ Deno.serve(async (req: Request) => {
   let body: Record<string, unknown> = {};
   try { body = await req.json(); } catch { body = {}; }
   const storeId = typeof body.store_id === "string" && body.store_id ? body.store_id : PARIS;
+  if (!cron && !storeIds.includes(storeId)) return json({ error: "Bu mağaza için yetkin yok" }, 403);
   const donem = donemNormalle(body.donem) || gecenAy();
   const etiket = donemEtiketi(donem);
   const simdi = istanbul();
@@ -115,12 +149,12 @@ Deno.serve(async (req: Request) => {
   if (admin && Array.isArray(body.to) && body.to.length) alicilar = (body.to as unknown[]).map(String);
   alicilar = [...new Set(alicilar.map((a) => a.trim().toLowerCase()).filter(eposta))];
 
-  const sonucYaz = async (ok: boolean, mesaj: string, ekstra: Record<string, unknown> = {}) => {
+  const sonucYaz = async (ok: boolean, mesaj: string, ekstra: Record<string, unknown> = {}, sessiz = false) => {
     const value = { at: new Date().toISOString(), donem, ok, mesaj, alicilar, kaynak: cron ? "cron" : "panel", ...ekstra };
     try {
       await supa.from("konsinye_mail").upsert({ store_id: storeId, son: value, updated_at: new Date().toISOString() }, { onConflict: "store_id" });
     } catch (_e) { /* kayit yazilamazsa e-posta sonucu degismez */ }
-    if (!ok && cron) {
+    if (!ok && cron && !sessiz) {
       try {
         const { data: yon } = await supa.from("staff").select("telegram_chat_id").eq("role", "admin").eq("is_active", true).not("telegram_chat_id", "is", null);
         for (const y of yon || []) {
@@ -161,7 +195,7 @@ Deno.serve(async (req: Request) => {
   const bekleyen = hesaplar.filter((h) => h.durum !== "odendi").reduce((t, h) => t + Number(h.tedarikci_pay || 0), 0);
   const ekler: Ek[] = hesaplar.map((h) => ({ ad: dosyaAdi(h.tedarikci, h.donem), icerik: raporXlsx(h, hazirlanma) }));
   const konu = hesaplar.length
-    ? `Konsinye hesapları — ${etiket}: ${hesaplar.length} tedarikçi, ödenecek ${tl(toplam)}`
+    ? `Konsinye hesapları — ${etiket}: ${hesaplar.length} tedarikçi, bekleyen ödeme ${tl(bekleyen)}`
     : `Konsinye hesapları — ${etiket}: konsinye satışı yok`;
   const html = hesaplar.length
     ? ozetHtml(hesaplar, etiket, toplam, bekleyen)
@@ -173,7 +207,10 @@ Deno.serve(async (req: Request) => {
     return json({ ok: true, donem, alicilar, dosyalar: ekler.map((e) => e.ad), toplam, saglayici });
   } catch (e) {
     const m = (e as Error).message;
-    await sonucYaz(false, m, { dosyalar: ekler.map((e) => e.ad), toplam });
-    return json({ error: m }, 502);
+    // E-posta gidemedi: dosyalar yonetici Telegram'ina belge olarak gider.
+    const tg = await telegramaGonder(supa, ekler,
+      `📎 Konsinye hesapları — ${etiket}: ${hesaplar.length} tedarikçi, bekleyen ödeme ${tl(bekleyen)}\nE-posta gönderilemedi (${m.slice(0, 160)})\nDosyalar burada. Ödendi: order.notinparis.me/konsinye`);
+    await sonucYaz(false, tg ? `${m} Dosyalar Telegram'a gönderildi (${tg}).` : m, { dosyalar: ekler.map((e) => e.ad), toplam, telegram: tg }, tg > 0);
+    return json({ error: m, telegram: tg }, 502);
   }
 });

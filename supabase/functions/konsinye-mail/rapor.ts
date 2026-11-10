@@ -99,8 +99,11 @@ export function raporXlsx(h: Hesap, hazirlanma: string): Uint8Array {
   let r = 5; // 0 tabanli; Excel satiri r+1 = 6
   let topAdet = 0, topTop = 0, topBiz = 0, topTed = 0;
   for (const s of satirlar) {
-    const adet = n(s.adet), per = n(s.perakende);
-    const top = adet * per;
+    // Toplam kayitli tutardir (hesap kesimi); birim fiyat ondan turetilir. Ay icinde
+    // etiket fiyati degisen urunde yuvarlanmis birim x adet kayitla ayrisirdi.
+    const adet = n(s.adet);
+    const top = s.toplam != null ? n(s.toplam) : adet * n(s.perakende);
+    const per = adet > 0 ? top / adet : n(s.perakende);
     const xr = r + 1;
     koy(r, cUrun, { v: s.urun || "", s: S.metin });
     if (barkodlu) koy(r, cBarkod, { v: s.barkod ? String(s.barkod) : "", s: S.barkod });

@@ -147,12 +147,14 @@ export default function KonsinyePage() {
     const { data, error } = await supabase.functions.invoke("konsinye-mail", { body: { donem: kesimAy, store_id: storeId } });
     setBusy(null);
     let hataMetni = data?.error || null;
+    let tg = Number(data?.telegram) || 0;
     if (error) {
       hataMetni = error.message;
-      try { const j = await error.context?.json?.(); if (j?.error) hataMetni = j.error; } catch { /* govde okunamadi */ }
+      try { const j = await error.context?.json?.(); if (j?.error) hataMetni = j.error; if (j?.telegram) tg = Number(j.telegram) || 0; } catch { /* govde okunamadi */ }
     }
     hesaplariYukle();
-    if (hataMetni) { alert("Gönderilemedi: " + hataMetni); return; }
+    // E-posta gidemezse fonksiyon dosyalari sahibin Telegram'ina belge olarak yollar
+    if (hataMetni) { alert("E-posta gönderilemedi: " + hataMetni + (tg ? "\n\nDosyalar Telegram'a gönderildi." : "")); return; }
     alert(`Gönderildi: ${(data?.dosyalar || []).length} dosya → ${(data?.alicilar || []).join(", ")}`);
   };
 

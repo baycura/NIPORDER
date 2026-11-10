@@ -27,13 +27,18 @@ depo `baycura/NOTINPARIS`) ve **Order** (bu depo). Order paneli RESERVE'e
 
 1. **E-posta (otomatik).** Order her 10 dakikada (`nip-reserve-onay-bildirim`)
    ve panelde "Onayla"dan hemen sonra (`nip_reserve_onay_simdi`) RESERVE'den
-   son 3 günün onaylananlarını çeker (`nip_onaylananlari_ver`, aynı senkron
+   son 30 günün onaylananlarını çeker (`nip_onaylananlari_ver`, aynı senkron
    sırrı), `nip_reserve_onay_bildirim` tablosuna yazar ve `rez-bildirim` edge
    fonksiyonuna yollar. E-posta üyenin dilinde (tr/en/ru): etkinlik, tarih,
    kişi, kod, "Biletini aç" bağlantısı.
    Durumlar: `bekliyor`, `gonderildi`, `eposta_yok` (misafir), `hata`.
-   Anahtar yoksa (`anahtar-yok`) deneme sayılmaz; anahtar girilince
-   kendiliğinden gider (saatte bir yeniden denenir, etkinlik günü geçene kadar).
+   Deneme veritabanında, gönderim anında sayılır (en çok 3). Anahtar yoksa ya
+   da sağlayıcı anahtarı reddederse (`anahtar-yok`, `gonderici-yok`) fonksiyon
+   denemeyi geri verir: anahtar girilince kendiliğinden gider (saatte bir
+   yeniden denenir, etkinlik günü geçene kadar). Üç gönderimde de fonksiyondan
+   yanıt gelmezse kayıt `cevap-yok` olur; panel "gönderilemedi" der.
+   Onaydan sonra panel 4 ve 12 saniyede sonucu okur; e-posta gitmediyse
+   uyarır ve "Onaylı" süzgecine geçer (WhatsApp düğmesi orada).
 2. **WhatsApp (tek dokunuş).** Onaylı kartta "WhatsApp'tan haber ver": hazır
    mesajla açılır (etkinlik, tarih, isim, kişi, kod). E-postası olmayan misafir
    için tek yol budur; kart bunu söyler.
@@ -54,9 +59,10 @@ not, puanlama gibi kendi alanları değişiyor.
 ## Bilinen eksik
 
 `reservations_status_check` yalnız `pending / approved / rejected / used`
-kabul ediyor; "Gelmedi" (`no_show`) yazılamıyor. Order paneli bunu açık bir
-mesajla söyler ve puan düşmez. Düzeltme kısıtın değiştirilmesini ister
-(sahip onayı bekliyor).
+kabul ediyor; "Gelmedi" (`no_show`) yazılamıyor (sitede de hiç çalışmadı).
+Order panelinde "Gelmedi" düğmesi ve süzgeci bu yüzden köprü modunda
+gösterilmez (`gelmediAcik`, ReservePage.jsx). Düzeltme kısıtın değiştirilmesini
+ister (sahip onayı bekliyor); kısıt genişleyince `gelmediAcik = true` yapılır.
 
 Göçler: `supabase/reserve_migrations/20261110_uyelik_onaysiz_rez_onayli.sql`
 (RESERVE), `supabase/migrations/20261110_reserve_onay_bildirimi.sql` (Order).

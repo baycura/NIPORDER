@@ -100,7 +100,11 @@ notu ya da "ödemesi yapıldı" satırı. E-posta gövdesinde tedarikçi özeti
   gider; e-posta gönderilmez. Aynı anahtar rezervasyon onay e-postalarını da
   gönderir (`rez-bildirim`, bkz. `docs/rezervasyon-onay.md`).
 - Sayfada admin "E-postayla gönder" ile seçili ayı hemen yollar; panelin
-  altında alıcı ve son gönderim sonucu görünür.
+  altında alıcı ve son gönderim sonucu görünür. Fonksiyon bunu da denetler:
+  panelden yalnız sahip (admin) ve yalnız kendi mağazası için çağrılır;
+  yönetici (manager) 401 alır.
+- E-posta gidemezse (anahtar yok, sağlayıcı hatası) dosyalar sahibin
+  Telegram'ına belge olarak gider; hiçbir ay kaybolmaz.
 - Kayıt yoksa fonksiyon önce kesim yapar (`nip_konsinye_hesap_kes`).
 - Excel yazıcı: `supabase/functions/konsinye-mail/xlsx.ts` (fflate ile zip,
   stil + formül + önbellek değeri; Gmail önizlemesi formül hesaplamaz).
@@ -113,8 +117,9 @@ Göç: `supabase/migrations/20261101_konsinye_mail.sql`.
   yalnız bitmiş ayları sunar. Ayın o anki durumu "Canlı" sekmesindedir.
 - Bir tedarikçide ürün bazında farklı pay oranı varsa `pay_karisik` işaretlenir;
   sayfa, CSV ve Excel "karışık pay" der ve satır tutarlarını kullanır.
-- Tedarikçi adı değişirse eski addaki bekleyen satır yeniden kesimde
-  sıfırlanır ve not alır (silinmez); toplam iki kez sayılmaz.
+- Yeniden kesimde yeni raporda çıkmayan bekleyen satır (tedarikçi adı
+  değişti, ürün taşındı ya da konsinye işareti kalktı) "Kontrol et" notu
+  alır; tutarı sıfırlanmaz. Sahip hangisinin geçerli olduğunu görür.
 - Telegram özeti tutarları "20.640" biçiminde yazar; ödenmiş satırlar
   "(ödendi)" diye listelenir, "Toplam ödenecek"e girmez.
 - CSV'de pay oranı yazılmamışsa tutar yerine "pay yazılmadı" yazılır.

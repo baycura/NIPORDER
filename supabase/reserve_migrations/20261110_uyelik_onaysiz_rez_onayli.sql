@@ -100,9 +100,10 @@ declare v_serbest boolean := public.nip_yetkili_mi();
 begin
   if not v_serbest then
     if tg_op = 'INSERT' then
-      new.is_admin := false; new.tier := 'bronze';
-      new.trust_score := 100; new.loyalty_score := 0; new.reward_points := 0;
-      new.member_code := null; new.approved_at := null; new.status := 'pending';
+      -- Profili yalniz sistem acar (handle_new_user / servis). Uye kendi satirini
+      -- silip yeniden EKLEYEREK red / dondurma kararini ve puanini sifirlayamasin
+      -- (own_profile politikasi satir silmeye ve eklemeye izin veriyor).
+      raise exception 'profil yalnizca sistem tarafindan acilir' using errcode = '42501';
     else
       -- Uye kendi satirinda yetki, puan, sayac ve kimlik alanlarini degistiremez
       new.id := old.id; new.email := old.email; new.created_at := old.created_at;
@@ -168,7 +169,9 @@ create or replace trigger nip_rez_koru_trg
 
 -- ----------------------------------------------------------------------------
 -- 3) Onaylananlar (Order ceker, musteriye bildirir). Sir: order_sync_sir.
---    Yalniz son 3 gunde onaylanan ve tarihi gecmemis rezervasyonlar.
+--    Son 30 gunde onaylanan ve tarihi gecmemis rezervasyonlar (e-posta
+--    anahtari gec girilse de yaklasan etkinligin onayi gidebilsin; Order ayni
+--    rezervasyona bir kez yollar ve yalniz HALA onayli olanlara).
 -- ----------------------------------------------------------------------------
 create or replace function public.nip_onaylananlari_ver(p_sir text)
 returns json
@@ -196,7 +199,7 @@ begin
     from public.reservations r
     left join public.profiles p on p.id = r.profile_id
     where r.status = 'approved'
-      and r.approved_at > now() - interval '3 days'
+      and r.approved_at > now() - interval '30 days'
       and (r.event_date is null or r.event_date >= ((now() at time zone 'Europe/Istanbul')::date - 1))), '[]'::json);
 end $$;
 

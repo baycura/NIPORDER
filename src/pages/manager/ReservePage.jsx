@@ -82,21 +82,45 @@ const fmtTarihUzun = (d) => {
 };
 const saatDk = (iso) => iso ? new Date(iso).toLocaleTimeString("tr-TR", { timeZone: "Europe/Istanbul", hour: "2-digit", minute: "2-digit" }) : "";
 
+// wa.me: ulke kodlu, "+"siz, bastaki 0'siz numara ister. Sitede bazi numaralar
+// "+90+90532…" ya da "+900532…" diye kayitli; yerel modda "0532…" yazilabilir.
+// Kullanilamayan numarada "" doner (WhatsApp kisiyi sectirir, yanlis numaraya gitmez).
+const waTel = (p) => {
+  const s = String(p || "").trim();
+  let d = s.replace(/\D/g, "");
+  if (!d) return "";
+  if (!s.startsWith("+")) {
+    if (/^0[1-9]\d{9}$/.test(d)) d = "90" + d.slice(1);
+    else if (/^5\d{9}$/.test(d)) d = "90" + d;
+    else if (!/^90[1-9]\d{9}$/.test(d)) return "";
+  }
+  if (/^9090[1-9]\d{9}$/.test(d)) d = d.slice(2);
+  else if (/^900[1-9]\d{9}$/.test(d)) d = "90" + d.slice(3);
+  if (d.startsWith("90")) return /^90[1-9]\d{9}$/.test(d) ? d : "";
+  return d.length >= 8 && d.length <= 15 ? d : "";
+};
+
 // Onaydan sonra musteriye giden WhatsApp mesaji (site panelindeki "WhatsApp ile
-// Gonder" ile ayni bilgi). wa.me yalniz rakam ister.
+// Gonder" ile ayni bilgi). Numara kullanilamiyorsa mesaj yine hazirlanir.
 const waOnayLinki = (r) => {
-  const tel = String(r.phone || "").replace(/\D/g, "");
-  if (!tel) return null;
-  const misafir = Array.isArray(r.guest_names) && r.guest_names.length ? "\nDavetliler: " + r.guest_names.join(", ") : "";
-  const metin = "🎫 NOT IN PARIS — Rezervasyon onayı\n\n"
+  if (!String(r.phone || "").trim()) return null;
+  const tel = waTel(r.phone);
+  const misafirler = Array.isArray(r.guest_names) ? r.guest_names.filter(Boolean).join(", ") : String(r.guest_names || "").trim();
+  const misafir = misafirler ? "\nDavetliler: " + misafirler : "";
+  const metin = "🎫 " + MARKA.buyuk + " — Rezervasyon onayı\n\n"
     + "Etkinlik: " + (r.event_name || "—") + "\n"
     + "Tarih: " + fmtTarihUzun(r.event_date) + (r.event_time ? " · " + r.event_time : "") + "\n"
     + "İsim: " + (r.name || "—") + "\n"
     + "Kişi: " + (r.guest_count || 1) + misafir + "\n"
     + "Kod: " + (r.qr_id || "—") + "\n\n"
-    + "Kapıda bu kodu göstermen yeterli.\n" + RESERVATION_URL;
+    + "Kapıda bu kodu göstermen yeterli." + (rezervasyonYerel ? "" : "\n" + RESERVATION_URL);
   return "https://wa.me/" + tel + "?text=" + encodeURIComponent(metin);
 };
+
+// "Gelmedi": rezervasyon sitesinin veritabani (RESERVE) "no_show" durumunu kabul
+// etmiyor (reservations_status_check). Dugme orada hic calismadi; kisit
+// genisletilene kadar kopru modunda gosterilmez. Yerel modda calisir.
+const gelmediAcik = rezervasyonYerel;
 
 // E-posta bildiriminin karttaki ozeti (nip_reserve_onay_bildirim satiri)
 const bildirimOzeti = (b) => {
@@ -259,7 +283,8 @@ function Rezervasyonlar({ uyar }) {
     eminZaman.current = setTimeout(() => setEmin(null), 4000);
   };
   const zamanlar = useRef([]);
-  useEffect(() => () => { clearTimeout(eminZaman.current); zamanlar.current.forEach(clearTimeout); }, []);
+  const canli = useRef(true);
+  useEffect(() => { canli.current = true; return () => { canli.current = false; clearTimeout(eminZaman.current); zamanlar.current.forEach(clearTimeout); }; }, []);
 
   const bildirimOku = async (kayitlar) => {
     if (rezervasyonYerel) return;
@@ -284,10 +309,25 @@ function Rezervasyonlar({ uyar }) {
 
   // Onaydan hemen sonra: Order onaylananlari ceker ve e-postayi yollar (10 dk'lik
   // cron'u beklemeden). E-posta birkac saniyede gider; durum iki kez okunur.
-  const musteriyeBildir = () => {
+  // Gitmediyse (kurulum eksik, adres yok, saglayici hatasi) bir kez uyarir ve
+  // "Onayli" suzgecine gecer: "WhatsApp'tan haber ver" dugmesi orada.
+  const musteriyeBildir = (r) => {
     if (rezervasyonYerel) return;
+    let uyarildi = false;
+    const bak = async () => {
+      if (!canli.current) return;
+      await yukle();
+      // Misafire zaten "e-postasi yok" dendi; ikinci uyari yalniz uyede
+      if (!r?.id || !r.profile_id || uyarildi || !canli.current) return;
+      const { data: b } = await supabase.from("nip_reserve_onay_bildirim").select("durum,hata").eq("rez_id", r.id).maybeSingle();
+      if (!canli.current || !b || b.durum === "gonderildi" || b.durum === "bekliyor") return;
+      uyarildi = true;
+      uyar((r.name || "Müşteri") + ": e-posta gitmedi — WhatsApp'tan haber ver", true);
+      setDurum("approved");
+    };
     supabase.rpc("nip_reserve_onay_simdi").then(() => {
-      for (const ms of [4000, 12000]) zamanlar.current.push(setTimeout(() => { yukle(); }, ms));
+      if (!canli.current) return;
+      for (const ms of [4000, 12000]) zamanlar.current.push(setTimeout(bak, ms));
     }, () => { /* cron 10 dakikada bir yine dener */ });
   };
 
@@ -314,8 +354,10 @@ function Rezervasyonlar({ uyar }) {
           if (u2.error) throw u2.error;
         }
       }
-      uyar(rezervasyonYerel ? "Onaylandı ✓" : r.profile_id ? "Onaylandı ✓ Müşteriye e-posta gidiyor" : "Onaylandı ✓ Misafirin e-postası yok: WhatsApp'tan haber ver");
-      yukle(); musteriyeBildir();
+      uyar(rezervasyonYerel ? "Onaylandı ✓" : r.profile_id ? "Onaylandı ✓ E-posta sıraya alındı" : "Onaylandı ✓ Misafirin e-postası yok: WhatsApp'tan haber ver");
+      // Misafirde e-posta yok: "WhatsApp'tan haber ver" dugmesi Onayli suzgecinde
+      if (!rezervasyonYerel && !r.profile_id) setDurum("approved");
+      yukle(); musteriyeBildir(r);
     } catch (e) { uyar("Onaylanamadı: " + e.message, true); } finally { setBusy(false); }
   };
 
@@ -346,7 +388,7 @@ function Rezervasyonlar({ uyar }) {
     } catch (e) {
       // RESERVE'de reservations_status_check "no_show" durumunu tanimiyor (10.11.2026
       // bulgusu): durum yazilamaz, puan da dusmez. Ham kisit metni yerine sebep.
-      const kisit = /status_check|check constraint/i.test(e?.message || "");
+      const kisit = /reservations_status_check/i.test(e?.message || "");
       uyar(kisit ? "Gelmedi yazılamadı: rezervasyon veritabanı bu durumu henüz kabul etmiyor. Güven puanı değişmedi." : "İşaretlenemedi: " + e.message, true);
     } finally { setBusy(false); }
   };
@@ -410,7 +452,7 @@ function Rezervasyonlar({ uyar }) {
       </div>
 
       <div style={{ display: "flex", gap: 6, flexWrap: "wrap", marginBottom: 8 }}>
-        {[["pending", "Bekleyen"], ["approved", "Onaylı"], ["used", "Girdi"], ["no_show", "Gelmedi"], ["rejected", "Red"], ["", "Hepsi"]].map(([k, ad]) =>
+        {[["pending", "Bekleyen"], ["approved", "Onaylı"], ["used", "Girdi"], ["no_show", "Gelmedi"], ["rejected", "Red"], ["", "Hepsi"]].filter(([k]) => k !== "no_show" || gelmediAcik).map(([k, ad]) =>
           <Cip key={k} aktif={durum === k} onClick={() => setDurum(k)}>{ad}{k && sayac[k] ? " · " + sayac[k] : ""}</Cip>)}
       </div>
       <select value={etkinlik} onChange={e => setEtkinlik(e.target.value)} style={{ ...inputS, marginBottom: 12 }}>
@@ -447,9 +489,9 @@ function Rezervasyonlar({ uyar }) {
             {r.status === "pending" && <button disabled={busy} onClick={() => onayla(r)} style={btnS(C.up, "#000")}>Onayla</button>}
             {r.status === "approved" && <button disabled={busy} onClick={() => girisYap(r)} style={btnS(C.ink, "#000")}>Giriş</button>}
             {r.status === "approved" && waOnayLinki(r) && (
-              <a href={waOnayLinki(r)} target="_blank" rel="noreferrer" style={{ ...btnS("#0F0F0F", "#7FD4A0"), textDecoration: "none" }}>WhatsApp'tan haber ver</a>
+              <a href={waOnayLinki(r)} target="_blank" rel="noreferrer" style={{ ...btnS("#0F0F0F", "#7FD4A0"), textDecoration: "none" }}>{waTel(r.phone) ? "WhatsApp'tan haber ver" : "WhatsApp (numara hatalı — kişiyi seç)"}</a>
             )}
-            {r.status !== "approved" && r.phone && <a href={"https://wa.me/" + String(r.phone).replace(/\D/g, "")} target="_blank" rel="noreferrer" style={{ ...btnS("#0F0F0F", C.muted), textDecoration: "none" }}>WhatsApp</a>}
+            {r.status !== "approved" && waTel(r.phone) && <a href={"https://wa.me/" + waTel(r.phone)} target="_blank" rel="noreferrer" style={{ ...btnS("#0F0F0F", C.muted), textDecoration: "none" }}>WhatsApp</a>}
             <span style={{ flex: 1 }} />
             {/* Geri alinmaz: ilk dokunus sorar, ikinci dokunus yapar (4 sn) */}
             {r.status === "pending" && (
@@ -458,7 +500,7 @@ function Rezervasyonlar({ uyar }) {
                 {emin === r.id + ":r" ? "Emin misin? Reddet" : "Reddet"}
               </button>
             )}
-            {r.status === "approved" && (
+            {r.status === "approved" && gelmediAcik && (
               <button disabled={busy} onClick={() => emin === r.id + ":g" ? gelmedi(r) : eminSor(r.id + ":g")}
                 style={btnS(emin === r.id + ":g" ? C.down : "#0F0F0F", emin === r.id + ":g" ? "#000" : C.down)}>
                 {emin === r.id + ":g" ? (r.profile_id ? "Emin misin? −40 güven" : "Emin misin? Gelmedi") : "Gelmedi"}
