@@ -304,7 +304,7 @@ export default function KonsinyePage() {
               </div>
               {liste.map(h => {
                 const acikBu = acik === h.id;
-                const { biz, ted } = paylar(h);
+                const { ted } = paylar(h);
                 const odendi = h.durum === "odendi";
                 return (
                   <div key={h.id} style={{ ...kart, padding: 0, overflow: "hidden", marginBottom: 10, borderColor: odendi ? C.line : "#3A3A3A" }}>

@@ -93,10 +93,12 @@ notu ya da "ödemesi yapıldı" satırı. E-posta gövdesinde tedarikçi özeti
   yalnız personel okur, yazma yalnız edge fonksiyonu). Varsayılan alıcı
   cerenbaycura@gmail.com. `app_settings` kullanılmadı: anon'a açık okunur.
 - Sağlayıcı anahtarı edge fonksiyonu gizli değişkenlerinde (Supabase →
-  Edge Functions → Secrets): `BREVO_API_KEY` **ya da** `RESEND_API_KEY`,
-  ve `MAIL_FROM` ("Not in Paris <adres>"; Brevo'da doğrulanmış gönderici).
+  Edge Functions → Secrets): `BREVO_API_KEY` (ya da `RESEND_API_KEY`).
+  Gönderici adresi: Brevo hesabındaki doğrulanmış ilk gönderici kendiliğinden
+  kullanılır; `MAIL_FROM` ("Not in Paris <adres>") isteğe bağlıdır.
   Anahtar yoksa fonksiyon açık hata verir, cron'da sahibe Telegram uyarısı
-  gider; e-posta gönderilmez.
+  gider; e-posta gönderilmez. Aynı anahtar rezervasyon onay e-postalarını da
+  gönderir (`rez-bildirim`, bkz. `docs/rezervasyon-onay.md`).
 - Sayfada admin "E-postayla gönder" ile seçili ayı hemen yollar; panelin
   altında alıcı ve son gönderim sonucu görünür.
 - Kayıt yoksa fonksiyon önce kesim yapar (`nip_konsinye_hesap_kes`).
@@ -104,3 +106,15 @@ notu ya da "ödemesi yapıldı" satırı. E-posta gövdesinde tedarikçi özeti
   stil + formül + önbellek değeri; Gmail önizlemesi formül hesaplamaz).
 
 Göç: `supabase/migrations/20261101_konsinye_mail.sql`.
+
+### Hesap düzeni (10.11.2026, `20261110_konsinye_duzen.sql`)
+
+- Süren ay kesilmez ve "Ödendi" işaretlenmez (yarım ay donmasın); sayfa
+  yalnız bitmiş ayları sunar. Ayın o anki durumu "Canlı" sekmesindedir.
+- Bir tedarikçide ürün bazında farklı pay oranı varsa `pay_karisik` işaretlenir;
+  sayfa, CSV ve Excel "karışık pay" der ve satır tutarlarını kullanır.
+- Tedarikçi adı değişirse eski addaki bekleyen satır yeniden kesimde
+  sıfırlanır ve not alır (silinmez); toplam iki kez sayılmaz.
+- Telegram özeti tutarları "20.640" biçiminde yazar; ödenmiş satırlar
+  "(ödendi)" diye listelenir, "Toplam ödenecek"e girmez.
+- CSV'de pay oranı yazılmamışsa tutar yerine "pay yazılmadı" yazılır.
