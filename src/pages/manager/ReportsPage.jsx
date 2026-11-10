@@ -14,7 +14,7 @@ const hv = "'Bebas Neue','Barlow Condensed','Coolvetica Condensed',sans-serif";
 /* Dark palette — matches the staff app shell (#0C0C0C body) */
 const C = {
   card: "#161616", cardLine: "#262626", ink: "#F0EDE8", muted: "#8A8A86",
-  faint: "#5A5A56", accent: "#FFFFFF", up: "#8A8580", down: "#C87A6A",
+  faint: "#8A8A86", accent: "#FFFFFF", up: "#8A8580", down: "#C87A6A",
 };
 
 const fmtTL = (n) => "₺" + Number(n || 0).toLocaleString("tr-TR", { maximumFractionDigits: 0 });
@@ -171,7 +171,7 @@ export default function ReportsPage() {
   const card = { background: C.card, border: `1px solid ${C.cardLine}`, borderRadius: 12, padding: 16 };
 
   return (
-    <div style={{ padding: 16, fontFamily: cv, maxWidth: 900, margin: "0 auto", paddingBottom: 80, color: C.ink }}>
+    <div style={{ fontFamily: cv, maxWidth: 900, margin: "0 auto", color: C.ink }}>
       <div style={{ display: "flex", justifyContent: "space-between", alignItems: "baseline", flexWrap: "wrap", gap: 8 }}>
         <h1 style={{ fontFamily: hv, fontWeight: 900, fontSize: 34, margin: 0, letterSpacing: 1 }}>Gün Özeti</h1>
         <div style={{ fontSize: 12, color: C.faint }}>

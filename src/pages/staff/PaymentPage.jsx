@@ -5,7 +5,8 @@ import { useAuth } from "../../contexts/AuthContext.jsx";
 import Ikon from "../../components/Ikon.jsx";
 import SayiGirisi from "../../components/SayiGirisi.jsx";
 import { ozellik } from "../../lib/profil.js";
-import { BorclularPaneli, tl } from "../../components/BorcTahsil.jsx";
+import { BorclularPaneli } from "../../components/BorcTahsil.jsx";
+import { tl } from "../../lib/para.js";
 import { telefonNormalize } from "../../lib/telefon.js";
 import KasaSayKarti from "../../components/KasaSayKarti.jsx";
 import { IptalPenceresi } from "../../components/HesapDuzelt.jsx";
@@ -43,6 +44,9 @@ export default function PaymentPage() {
   const [orders, setOrders] = useState([]);
   const [tables, setTables] = useState({});
   const [loading, setLoading] = useState(true);
+  // Liste cekilemedi: bos liste "bekleyen hesap yok" demek DEGIL. Eski liste
+  // ekranda kalir, ustte uyari seridi cikar.
+  const [yukHata, setYukHata] = useState(false);
   const [modal, setModal] = useState(null);
   // Kart varsayilan: parti saatinde odemelerin %86'si (120/140) kart, gun
   // genelinde de kart basta. Varsayilan "cash" iken her tahsilatta bir fazla
@@ -102,7 +106,12 @@ export default function PaymentPage() {
       sessiz ? null : supabase.from("customers").select("id, name, phone, points, outstanding_balance").order("name"),
     ]);
     if (no !== yuklemeNo.current) return;
-    if (sessiz && (hesapHata || masaHata)) { setLoading(false); return; }
+    if (hesapHata || masaHata) {
+      // Uye listesi ayri sorgu: geldiyse kaybolmasin (borc icin kisi secimi).
+      if (custRes?.data) setCustomers(custRes.data);
+      setYukHata(true); setLoading(false); return;
+    }
+    setYukHata(false);
     const tabMap = {};
     (tabs || []).forEach(t => { tabMap[t.id] = t.name; });
     setTables(tabMap);
@@ -395,7 +404,7 @@ export default function PaymentPage() {
     setModal(null); load();
   };
 
-  if (loading) return (<div style={{color:"#888",fontFamily:cv,padding:20}}>Yukleniyor...</div>);
+  if (loading) return (<div style={{color:"#888",fontFamily:cv,padding:20}}>Yükleniyor…</div>);
 
   // Isimle ya da telefonun son haneleriyle aranir — kasada en hizli yol
   // "telefonunuzun son 4 hanesi?" diye sorup yazmak.
@@ -408,6 +417,27 @@ export default function PaymentPage() {
     return String(c.phone || "").replace(/\D/g, "").includes(rakam);
   });
 
+  // "KALAN" KISAYOLU kutuya sunucunun BEKLEDIGI tutari yazar (nip_odeme_al,
+  // v_beklenen): kalem secildiyse secilenler, hesap bolunmusse odenmemis kalan,
+  // yoksa hesap toplami — yani yukaridaki beklenenTL. Eskiden hep hesap
+  // toplamini yaziyordu: kalem seciliyken ya da yarim odenmis hesapta "fazla"
+  // farki cikiyor, kasiyerden neden isteniyordu. Kurusa yuvarlanir (kayan
+  // nokta artigi kutuya dusmesin); sunucunun esigi 0,005 oldugu icin fark
+  // cikmaz. Puan dali bugunku davranis: sunucu puanli odemede kilidi atlar.
+  const kalanKisayol = (usePoints && uyeId)
+    ? Math.max(0, Number(modal?.total || 0) - ptsCover(modal))
+    : (secimListesi.length || bolunmus)
+      ? Math.round(beklenenTL * 100) / 100
+      : Number(modal?.total || 0);
+
+  // Dugme neden basilmiyor: completePayment'taki uc kontrolun AYNISI, sirasi
+  // da ayni. Eskiden dugme etkin gorunuyor, basinca uyari penceresi cikiyordu.
+  // (completePayment'taki uyarilar yedek olarak duruyor.)
+  const tutarYok = !(Number(amount) > 0) && !(usePoints && ptsCover(modal) >= Number(modal?.total || 0));
+  const kisiYok = method === "debt" && !uyeId;
+  const nedenYok = farkVar && farkNedeni.trim().length < 2;
+  const engel = tutarYok ? "Tutar gir" : kisiYok ? "Önce kişi seç" : nedenYok ? "Fark nedenini yaz" : null;
+
   return (
     <div style={{fontFamily:cv,color:"#F0EDE8"}}>
       <div style={{fontSize:24,fontWeight:800,marginBottom:4}}>Kasa</div>
@@ -416,6 +446,14 @@ export default function PaymentPage() {
         {orders.filter(o => bayatMi(o.created_at)).length > 0 &&
           <span style={{color:"#FFFFFF"}}> · {orders.filter(o => bayatMi(o.created_at)).length} UNUTULMUŞ</span>}
       </div>
+
+      {yukHata && (
+        <div role="alert" style={{display:"flex",alignItems:"center",gap:10,background:"#1A1A1A",border:"1px solid #C87A6A",borderRadius:12,padding:"10px 14px",fontSize:13,marginBottom:12}}>
+          <span style={{color:"#C87A6A",display:"flex",flexShrink:0}}><Ikon ad="uyari" boy={16}/></span>
+          <span style={{flex:1,lineHeight:1.4}}>Bağlantı kurulamadı — liste güncel olmayabilir.</span>
+          <button onClick={() => load()} style={{minHeight:44,padding:"0 14px",flexShrink:0,background:"transparent",color:"#F0EDE8",border:"1px solid #3A3A3A",borderRadius:10,fontSize:13,fontWeight:700,cursor:"pointer",fontFamily:"inherit"}}>Tekrar dene</button>
+        </div>
+      )}
 
       {bildirim && <Bildirim metin={bildirim.metin} key={bildirim.id}/>}
       {iptalHesap && (() => {
@@ -472,7 +510,7 @@ export default function PaymentPage() {
         );
       })()}
 
-      {orders.length === 0 && <div style={{textAlign:"center",padding:40,color:"#888888",fontSize:13}}>Bekleyen hesap yok</div>}
+      {orders.length === 0 && !yukHata && <div style={{textAlign:"center",padding:40,color:"#888888",fontSize:13}}>Bekleyen hesap yok</div>}
 
       {orders.map(o => {
         const where = o.table_id ? (tables[o.table_id] || "Masa") + (o.customer_name ? " · " + o.customer_name : "") : (o.customer_name || "Misafir");
@@ -497,44 +535,49 @@ export default function PaymentPage() {
             </div>
             <div style={{textAlign:"right",flexShrink:0}}>
               <div style={{fontSize:16,fontWeight:800,color:"#F0EDE8",fontVariantNumeric:"tabular-nums"}}>
-                ₺{yarim ? Math.round(b.kalan) : (o.total || 0)}
+                {tl(yarim ? b.kalan : o.total)}
               </div>
               {yarim && (
-                <div style={{fontSize:10,color:"#C87A6A",fontWeight:700,marginTop:2,whiteSpace:"nowrap"}}>
+                <div style={{fontSize:12,color:"#C87A6A",fontWeight:700,marginTop:2,whiteSpace:"nowrap"}}>
                   kaldı · {b.odemeSayisi} ödeme
                 </div>
               )}
             </div>
             <div style={{display:"flex",flexDirection:"column",gap:5}}>
-              <button onClick={() => openPay(o)} style={{padding:"8px 14px",background:"#FFFFFF",color:"#000",border:"none",borderRadius:8,fontSize:12,fontWeight:800,cursor:"pointer"}}>Tahsil Et</button>
-              {eski && <button onClick={() => cancelOrder(o)} style={{padding:"6px 14px",background:"transparent",color:"#C87A6A",border:"1px solid #2A2A2A",borderRadius:8,fontSize:11,fontWeight:700,cursor:"pointer"}}>İptal</button>}
+              <button onClick={() => openPay(o)} style={{minHeight:44,padding:"10px 16px",background:"#FFFFFF",color:"#000",border:"none",borderRadius:8,fontSize:13,fontWeight:800,cursor:"pointer"}}>Tahsil Et</button>
+              {eski && <button onClick={() => cancelOrder(o)} style={{minHeight:40,padding:"6px 14px",background:"transparent",color:"#C87A6A",border:"1px solid #2A2A2A",borderRadius:8,fontSize:11,fontWeight:700,cursor:"pointer"}}>İptal</button>}
             </div>
           </div>
         );
       })}
 
       {modal && (
-        <div onClick={() => setModal(null)} style={{position:"fixed",inset:0,background:"rgba(0,0,0,0.75)",display:"flex",alignItems:"flex-end",justifyContent:"center",zIndex:100}}>
+        <div onClick={() => {
+            // Dolu formu karartiya dokunmak SILMEZ (secili kalemler, fark nedeni,
+            // secilen kisi, yarim yazilmis yeni kisi); onu yalniz "Vazgeç" kapatir.
+            const kirli = secimListesi.length > 0 || !!farkNedeni.trim() || !!customerId || !!yeniKisi;
+            if (!kirli && !busy) setModal(null);
+          }} style={{position:"fixed",inset:0,background:"rgba(0,0,0,0.75)",display:"flex",alignItems:"flex-end",justifyContent:"center",zIndex:100}}>
           <div onClick={e=>e.stopPropagation()} style={{background:"#161616",border:"1px solid #2A2A2A",borderRadius:"16px 16px 0 0",padding:20,width:"100%",maxWidth:500,maxHeight:"90vh",overflowY:"auto"}}>
-            <div style={{fontSize:18,fontWeight:800,color:"#F0EDE8",marginBottom:16}}>Odeme Al</div>
+            <div style={{fontSize:18,fontWeight:800,color:"#F0EDE8",marginBottom:16}}>Ödeme al</div>
 
             <div style={{background:"#0C0C0C",border:"1px solid #2A2A2A",borderRadius:10,padding:14,marginBottom:14}}>
               {modal.stores?.slug && <div style={{display:"inline-block",background:modal.stores.slug==="doner"?"#FFFFFF":"#222222",color:modal.stores.slug==="doner"?"#000":"#F0EDE8",padding:"2px 8px",borderRadius:6,fontSize:12,fontWeight:600,letterSpacing:"0.2px",marginBottom:6}}>{modal.stores.slug==="doner"?"DÖNER":"PARIS"}</div>}
-              <div style={{fontSize:11,color:"#888",marginBottom:8}}>{modal.table_id ? (tables[modal.table_id] || "Masa") + (modal.customer_name ? " · " + modal.customer_name : "") : (modal.customer_name || "Misafir")}</div>
+              <div style={{fontSize:15,fontWeight:700,color:"#F0EDE8",marginBottom:8}}>{modal.table_id ? (tables[modal.table_id] || "Masa") + (modal.customer_name ? " · " + modal.customer_name : "") : (modal.customer_name || "Misafir")}</div>
               {/* Puan kullanilinca hesap toplami ile kasada alinacak tutar ayrisir;
                   kasiyerin bakmasi gereken KALAN, en buyuk rakam olmali. */}
               {usePoints && uyeId && ptsCover(modal) > 0 ? (
                 <>
                   <div style={{display:"flex",justifyContent:"space-between",alignItems:"baseline",fontSize:12,color:"#888"}}>
-                    <span>Hesap toplamı</span><span style={{fontVariantNumeric:"tabular-nums"}}>₺{modal.total || 0}</span>
+                    <span>Hesap toplamı</span><span style={{fontVariantNumeric:"tabular-nums"}}>{tl(modal.total)}</span>
                   </div>
                   <div style={{display:"flex",justifyContent:"space-between",alignItems:"baseline",fontSize:12,color:"#888",marginTop:4}}>
-                    <span>Puandan düşen</span><span style={{fontVariantNumeric:"tabular-nums"}}>−₺{ptsCover(modal)}</span>
+                    <span>Puandan düşen</span><span style={{fontVariantNumeric:"tabular-nums"}}>−{tl(ptsCover(modal))}</span>
                   </div>
                   <div style={{height:1,background:"#2A2A2A",margin:"10px 0"}}></div>
                   <div style={{display:"flex",justifyContent:"space-between",alignItems:"baseline"}}>
                     <span style={{fontSize:15,fontWeight:800}}>Kalan</span>
-                    <span style={{fontSize:30,fontWeight:800,fontVariantNumeric:"tabular-nums"}}>₺{Math.max(0, Number(modal.total||0) - ptsCover(modal))}</span>
+                    <span style={{fontSize:30,fontWeight:800,fontVariantNumeric:"tabular-nums"}}>{tl(Math.max(0, Number(modal.total||0) - ptsCover(modal)))}</span>
                   </div>
                 </>
               ) : bolunmus ? (
@@ -543,21 +586,21 @@ export default function PaymentPage() {
                    ise o buyuk yazilir, odenen ustte kucuk durur. */
                 <>
                   <div style={{display:"flex",justifyContent:"space-between",alignItems:"baseline",fontSize:12,color:"#888"}}>
-                    <span>Hesap toplamı</span><span style={{fontVariantNumeric:"tabular-nums"}}>₺{Math.round(odenenTLOnce + odenmemisTL)}</span>
+                    <span>Hesap toplamı</span><span style={{fontVariantNumeric:"tabular-nums"}}>{tl(odenenTLOnce + odenmemisTL)}</span>
                   </div>
                   <div style={{display:"flex",justifyContent:"space-between",alignItems:"baseline",fontSize:12,color:"#7FA88A",marginTop:4}}>
-                    <span>Daha önce ödenen</span><span style={{fontVariantNumeric:"tabular-nums"}}>−₺{Math.round(odenenTLOnce)}</span>
+                    <span>Daha önce ödenen</span><span style={{fontVariantNumeric:"tabular-nums"}}>−{tl(odenenTLOnce)}</span>
                   </div>
                   <div style={{height:1,background:"#2A2A2A",margin:"10px 0"}}></div>
                   <div style={{display:"flex",justifyContent:"space-between",alignItems:"baseline"}}>
                     <span style={{fontSize:15,fontWeight:800}}>Kalan</span>
-                    <span style={{fontSize:30,fontWeight:800,fontVariantNumeric:"tabular-nums"}}>₺{Math.round(odenmemisTL)}</span>
+                    <span style={{fontSize:30,fontWeight:800,fontVariantNumeric:"tabular-nums"}}>{tl(odenmemisTL)}</span>
                   </div>
                 </>
               ) : (
                 <div style={{display:"flex",justifyContent:"space-between",alignItems:"baseline"}}>
                   <span style={{fontSize:15,fontWeight:800}}>Kalan</span>
-                  <span style={{fontSize:30,fontWeight:800,fontVariantNumeric:"tabular-nums"}}>₺{modal.total || 0}</span>
+                  <span style={{fontSize:30,fontWeight:800,fontVariantNumeric:"tabular-nums"}}>{tl(modal.total)}</span>
                 </div>
               )}
             </div>
@@ -609,7 +652,7 @@ export default function PaymentPage() {
                       <button onClick={()=>setYeniKisi(null)} style={{flex:1,padding:"10px",background:"transparent",color:"#888",border:"1px solid #333",borderRadius:8,fontSize:12,fontWeight:700,cursor:"pointer",fontFamily:"inherit"}}>Vazgeç</button>
                       <button onClick={kisiEkle} disabled={yeniBusy || yeniKisi.ad.trim().length < 2}
                         style={{flex:2,padding:"10px",background:yeniKisi.ad.trim().length < 2?"#242424":"#FFFFFF",color:yeniKisi.ad.trim().length < 2?"#666":"#000",border:"none",borderRadius:8,fontSize:12,fontWeight:800,cursor:"pointer",fontFamily:"inherit",opacity:yeniBusy?0.6:1}}>
-                        {yeniBusy ? "Kaydediliyor..." : "Kaydet ve seç"}
+                        {yeniBusy ? "Kaydediliyor…" : "Kaydet ve seç"}
                       </button>
                     </div>
                   </div>
@@ -617,13 +660,14 @@ export default function PaymentPage() {
                 <input value={customerSearch} onChange={e=>setCustomerSearch(e.target.value)} placeholder="İsim ya da telefonun son haneleri..." style={{width:"100%",padding:"10px 12px",background:"#0C0C0C",border:"1px solid #2A2A2A",borderRadius:8,color:"#F0EDE8",fontSize:13,outline:"none",marginBottom:8,fontFamily:"inherit"}}/>
                 <div style={{maxHeight:160,overflowY:"auto"}}>
                   {filteredCustomers.slice(0,30).map(c => (
-                    <div key={c.id} onClick={()=>secUye(c.id)} style={{padding:"8px 10px",background:customerId===c.id?"rgba(255,255,255,0.2)":"transparent",border:"1px solid "+(customerId===c.id?"#FFFFFF":"transparent"),borderRadius:6,cursor:"pointer",marginBottom:4,display:"flex",justifyContent:"space-between",alignItems:"center",gap:8}}>
-                      <div style={{fontSize:13,color:"#F0EDE8",minWidth:0,overflow:"hidden",textOverflow:"ellipsis",whiteSpace:"nowrap"}}>{c.name}</div>
-                      <div style={{display:"flex",gap:8,alignItems:"center",flexShrink:0}}>
-                        {Number(c.points) > 0 && <div style={{fontSize:11,color:"#FFFFFF",fontWeight:700}}>{c.points}p</div>}
-                        {Number(c.outstanding_balance) > 0 && <div style={{fontSize:11,color:"#FFFFFF",fontWeight:700}}>₺{c.outstanding_balance}</div>}
-                      </div>
-                    </div>
+                    <button type="button" key={c.id} onClick={()=>secUye(c.id)} aria-pressed={customerId === c.id}
+                      style={{width:"100%",minHeight:44,boxSizing:"border-box",textAlign:"left",fontFamily:"inherit",padding:"8px 10px",background:customerId===c.id?"rgba(255,255,255,0.2)":"transparent",border:"1px solid "+(customerId===c.id?"#FFFFFF":"transparent"),borderRadius:6,cursor:"pointer",marginBottom:4,display:"flex",justifyContent:"space-between",alignItems:"center",gap:8}}>
+                      <span style={{fontSize:13,color:"#F0EDE8",minWidth:0,overflow:"hidden",textOverflow:"ellipsis",whiteSpace:"nowrap"}}>{c.name}</span>
+                      <span style={{display:"flex",gap:8,alignItems:"center",flexShrink:0}}>
+                        {Number(c.points) > 0 && <span style={{fontSize:11,color:"#8A8580",fontWeight:700}}>{c.points} puan</span>}
+                        {Number(c.outstanding_balance) > 0 && <span style={{fontSize:11,color:"#C87A6A",fontWeight:700}}>borç {tl(c.outstanding_balance)}</span>}
+                      </span>
+                    </button>
                   ))}
                   {filteredCustomers.length === 0 && (
                     method==="debt"
@@ -634,7 +678,7 @@ export default function PaymentPage() {
                       : <div style={{fontSize:12,color:"#888888",padding:"10px 2px"}}>Eşleşen üye yok</div>
                   )}
                 </div>
-                <div style={{fontSize:10,color:"#888",marginTop:6}}>
+                <div style={{fontSize:12,color:"#888",marginTop:6,lineHeight:1.45}}>
                   {method==="debt"
                     ? "NOT: Ödeme alınmaz, tutar bu kişinin borcuna yazılır. Kişi ödeyince Kasa > Borçlular'dan tahsil et."
                     : "Üye seçilirse bu hesap ona yazılır ve puan kazanır. En hızlısı: “telefonunuzun son 4 hanesi?”"}
@@ -709,9 +753,9 @@ export default function PaymentPage() {
                             6 biralik tek satirda gidenin 1 birasi odenebilmeli. */}
                         {!bitti && kalanA > 1 && secA > 0 && (
                           <div onClick={e => e.stopPropagation()} style={{display:"flex",alignItems:"center",gap:4,flexShrink:0}}>
-                            <button onClick={() => adetDegis(k, -1)} style={{width:30,height:30,borderRadius:8,background:"#222",color:"#fff",border:"1px solid #333",fontSize:16,fontWeight:800,cursor:"pointer",lineHeight:1}}>−</button>
+                            <button onClick={() => adetDegis(k, -1)} aria-label="Azalt" style={{width:40,height:40,flexShrink:0,borderRadius:8,background:"#222",color:"#fff",border:"1px solid #333",fontSize:16,fontWeight:800,cursor:"pointer",lineHeight:1}}>−</button>
                             <span style={{minWidth:16,textAlign:"center",fontSize:13,fontWeight:800}}>{secA}</span>
-                            <button onClick={() => adetDegis(k, +1)} style={{width:30,height:30,borderRadius:8,background:"#222",color:"#fff",border:"1px solid #333",fontSize:16,fontWeight:800,cursor:"pointer",lineHeight:1}}>+</button>
+                            <button onClick={() => adetDegis(k, +1)} aria-label="Artır" style={{width:40,height:40,flexShrink:0,borderRadius:8,background:"#222",color:"#fff",border:"1px solid #333",fontSize:16,fontWeight:800,cursor:"pointer",lineHeight:1}}>+</button>
                           </div>
                         )}
                         <span style={{fontSize:13,fontWeight:800,color:bitti?"#555":"#F0EDE8",flexShrink:0,fontVariantNumeric:"tabular-nums"}}>
@@ -747,7 +791,7 @@ export default function PaymentPage() {
                     ₺{v}
                   </button>
                 ))}
-                <button onClick={()=>{setAmount(String(Math.max(0, Number(modal.total||0) - (usePoints && uyeId ? ptsCover(modal) : 0)))); setFarkNedeni(""); setFarkTuru(null);}}
+                <button onClick={()=>{setAmount(String(kalanKisayol)); setFarkNedeni(""); setFarkTuru(null);}}
                   style={{flex:1.3,padding:"12px 0",background:"#FFFFFF",color:"#0C0C0C",border:"1px solid #FFFFFF",
                           borderRadius:10,fontSize:14,fontWeight:700,cursor:"pointer",fontFamily:"inherit"}}>
                   Kalan
@@ -761,7 +805,7 @@ export default function PaymentPage() {
                 <div style={{marginTop:10,padding:"11px 13px",background:"#0C0C0C",
                              border:"1px solid #C87A6A",borderRadius:10}}>
                   <div style={{fontSize:13,fontWeight:800,color:"#C87A6A",marginBottom:2}}>
-                    Hesap ₺{Math.round(Number(modal.total||0))} — {farkTutari > 0 ? "fazla" : "eksik"} ₺{Math.abs(Math.round(farkTutari))}
+                    {secimListesi.length ? "Seçilen" : bolunmus ? "Kalan" : "Hesap"} ₺{hesapTL} — {farkTutari > 0 ? "fazla" : "eksik"} ₺{farkMutlak}
                   </div>
                   <div style={{fontSize:12,color:"#888",marginBottom:9,lineHeight:1.5}}>
                     Yanlış yazdıysan "Kalan"a bas. Doğruysa bu fark ne? Seç ve nedenini yaz.
@@ -802,16 +846,15 @@ export default function PaymentPage() {
 
 
             <div style={{display:"flex",gap:8}}>
-              <button onClick={() => setModal(null)} style={{flex:1,padding:"14px",background:"transparent",color:"#888",border:"1px solid #333",borderRadius:10,fontSize:14,fontWeight:700,cursor:"pointer"}}>Iptal</button>
-              <button onClick={completePayment} disabled={busy || (farkVar && farkNedeni.trim().length < 2)}
+              <button onClick={() => setModal(null)} style={{flex:1,padding:"14px",background:"transparent",color:"#888",border:"1px solid #333",borderRadius:10,fontSize:14,fontWeight:700,cursor:"pointer"}}>Vazgeç</button>
+              <button onClick={completePayment} disabled={busy || !!engel}
                 style={{flex:2,padding:"14px",border:"none",borderRadius:10,fontSize:14,fontWeight:800,
                         fontFamily:"inherit",opacity:busy?0.6:1,
-                        background:(farkVar && farkNedeni.trim().length < 2)?"#242424":"#FFFFFF",
-                        color:(farkVar && farkNedeni.trim().length < 2)?"#666":"#000",
-                        cursor:(farkVar && farkNedeni.trim().length < 2)?"default":"pointer"}}>
-                {busy?"Kaydediliyor..."
-                  :(farkVar && farkNedeni.trim().length < 2)?"Fark nedenini yaz"
-                  :(method==="debt"?"Borca Yaz":"Tahsilat")}</button>
+                        background:engel?"#242424":"#FFFFFF",
+                        color:engel?"#8A8580":"#000",
+                        cursor:engel?"default":"pointer"}}>
+                {busy?"Kaydediliyor…"
+                  :engel || (method==="debt"?"Borca Yaz":"Tahsilat")}</button>
             </div>
           </div>
         </div>

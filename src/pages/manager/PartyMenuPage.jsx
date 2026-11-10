@@ -42,6 +42,9 @@ export default function PartyMenuPage() {
   const [ara, setAra] = useState("");
   const [sadeceSecili, setSadeceSecili] = useState(false);
   const [bekleyen, setBekleyen] = useState({});   // { [id]: true } — istek ucarken
+  // Telefonda StaffLayout'un ust seridi (57px, sticky) yapiskan ozetin ustunu
+  // ortuyordu. Masaustunde ust serit yok, kaydirma main'in icinde: 0 kalir.
+  const isMobile = typeof window !== "undefined" ? window.innerWidth < 900 : true;
 
   const yukle = async () => {
     setHata(null);
@@ -203,7 +206,7 @@ export default function PartyMenuPage() {
 
         {/* Yapiskan ozet: kac urun secili ve kac kategori kisitlanmis. */}
         <div style={{
-          position: "sticky", top: 0, zIndex: 20, marginBottom: 10,
+          position: "sticky", top: isMobile ? 57 : 0, zIndex: 20, marginBottom: 10,
           background: C.card, border: `1px solid ${C.line}`, borderRadius: 12, padding: "12px 14px",
           boxShadow: "0 6px 16px rgba(0,0,0,0.45)",
         }}>

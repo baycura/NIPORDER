@@ -223,7 +223,7 @@ export default function RecipesMgmtPage() {
     return ingredients.filter(i => !i.is_consumable && i.name.toLocaleLowerCase("tr").includes(q)).slice(0, 12);
   }, [ingSearch, ingredients]);
 
-  if (loading) return (<div style={{ color: "#888", fontFamily: cv, padding: 20 }}>Yukleniyor...</div>);
+  if (loading) return (<div style={{ color: "#888", fontFamily: cv, padding: 20 }}>Yükleniyor…</div>);
 
   const noRecipe = products.filter(p => productRecipes(p.id).length === 0).length;
   const filtered = products
@@ -380,7 +380,7 @@ export default function RecipesMgmtPage() {
               <div style={{ display: "flex", alignItems: "center", justifyContent: "space-between", gap: 10, marginBottom: 8 }}>
                 <div style={{ flex: 1, minWidth: 0 }}>
                   <div style={{ fontSize: 14, fontWeight: 700 }}>{ing.name}</div>
-                  <div style={{ fontSize: 11, color: c > 0 ? "#FFFFFF" : "#2A2A2A", marginTop: 2, fontWeight: 600 }}>
+                  <div style={{ fontSize: 11, color: c > 0 ? "#FFFFFF" : "#C87A6A", marginTop: 2, fontWeight: 600 }}>
                     {c > 0 ? "₺" + c.toFixed(2) : <><Ikon ad="uyari" boy={12} style={{ marginRight: 4 }}/>maliyet girilmemiş</>}
                     {Number(ing.waste_pct) > 0 && <span style={{ color: "#F0EDE8" }}> · +%{ing.waste_pct} fire</span>}
                   </div>
@@ -491,7 +491,7 @@ export default function RecipesMgmtPage() {
               <div style={{ fontSize: 14, fontWeight: 700 }}>{p.name}</div>
               <div style={{ fontSize: 11, color: "#888", marginTop: 2 }}>
                 {p.categories?.name && <span style={{ marginRight: 8 }}>{p.categories.name}</span>}
-                {n > 0 ? <span style={{ color: "#FFFFFF" }}>{n} malzeme</span> : <span style={{ color: "#2A2A2A" }}>reçete yok</span>}
+                {n > 0 ? <span style={{ color: "#FFFFFF" }}>{n} malzeme</span> : <span style={{ color: "#C87A6A", fontWeight: 700 }}>reçete yok</span>}
               </div>
             </div>
             <div style={{ textAlign: "right", flexShrink: 0 }}>

@@ -24,9 +24,15 @@ export default function TablesMgmtPage() {
   const [tCap, setTCap] = useState("");
   const [tSort, setTSort] = useState("");
 
-  const load = async () => {
-    setLoading(true);
-    const { data } = await supabase.from("cafe_tables").select("*").in("store_id", staffUser?.store_ids?.length ? staffUser.store_ids : ["00000000-0000-0000-0000-000000000000"]).order("sort_order").order("name");
+  // sessiz: kayit / silme sonrasi tazelemede sayfa "Yükleniyor" yazisina
+  // dusmesin (liste sokulup kaydirma basa sariyordu). Ilk acilis yine yukleme
+  // yazisini gosterir.
+  const load = async (sessiz) => {
+    if (!sessiz) setLoading(true);
+    const { data, error } = await supabase.from("cafe_tables").select("*").in("store_id", staffUser?.store_ids?.length ? staffUser.store_ids : ["00000000-0000-0000-0000-000000000000"]).order("sort_order").order("name");
+    // Sessiz tazeleme basarisizsa (sinyal koptu) ekrandaki liste kalsin:
+    // bos listeyle degistirmek sayfayi bosaltirdi.
+    if (sessiz && error) return;
     setTables(data || []);
     setLoading(false);
   };
@@ -66,24 +72,24 @@ export default function TablesMgmtPage() {
       const { error } = await supabase.from("cafe_tables").update(payload).eq("id", modal.data.id);
       if (error) { alert("Hata: " + error.message); return; }
     }
-    setModal(null); load();
+    setModal(null); load(true);
   };
 
   const deleteTable = async (t) => {
     if (!confirm('"' + t.name + '" silinsin mi?')) return;
     const { error } = await supabase.from("cafe_tables").delete().eq("id", t.id);
     if (error) { alert("Hata: " + error.message); return; }
-    load();
+    load(true);
   };
 
   const addAllPresets = async () => {
     if (!confirm("7 hazir masayi ekle (Bar 1-2, Masa 1-3, Teras 1-2)?")) return;
     const { error } = await supabase.from("cafe_tables").insert(PRESETS.map(p => ({...p, store_id: staffUser?.store_ids?.[0], is_walkin: false})));
     if (error) { alert("Hata: " + error.message); return; }
-    load();
+    load(true);
   };
 
-  if (loading) return (<div style={{color:"#888",fontFamily:cv,padding:20}}>Yukleniyor...</div>);
+  if (loading) return (<div style={{color:"#888",fontFamily:cv,padding:20}}>Yükleniyor…</div>);
 
   return (
     <div style={{fontFamily:cv,color:"#F0EDE8"}}>
@@ -109,7 +115,7 @@ export default function TablesMgmtPage() {
             <div style={{fontSize:14,fontWeight:700,color:"#F0EDE8",marginBottom:4}}>{t.name}</div>
             <div style={{fontSize:11,color:"#888",marginBottom:10}}>{t.capacity || 4} kisilik · sira {t.sort_order || 0}</div>
             <div style={{display:"flex",gap:4}}>
-              <button onClick={() => openEdit(t)} style={{flex:1,padding:"6px",background:"#222",color:"#aaa",border:"1px solid #333",borderRadius:6,fontSize:11,cursor:"pointer"}}>Duzenle</button>
+              <button onClick={() => openEdit(t)} style={{flex:1,padding:"6px",background:"#222",color:"#aaa",border:"1px solid #333",borderRadius:6,fontSize:11,cursor:"pointer"}}>Düzenle</button>
               <button onClick={() => deleteTable(t)} style={{flex:1,padding:"6px",background:"transparent",color:"#C87A6A",border:"1px solid #2A2A2A",borderRadius:6,fontSize:11,cursor:"pointer"}}>Sil</button>
             </div>
           </div>
@@ -119,14 +125,14 @@ export default function TablesMgmtPage() {
       {modal && (
         <div onClick={() => setModal(null)} style={{position:"fixed",inset:0,background:"rgba(0,0,0,0.75)",display:"flex",alignItems:"flex-end",justifyContent:"center",zIndex:100}}>
           <div onClick={e => e.stopPropagation()} style={{background:"#161616",border:"1px solid #2A2A2A",borderRadius:"16px 16px 0 0",padding:20,width:"100%",maxWidth:500}}>
-            <div style={{fontSize:18,fontWeight:800,color:"#F0EDE8",marginBottom:16}}>{modal.mode==="new"?"Yeni Masa":"Masayi Duzenle"}</div>
+            <div style={{fontSize:18,fontWeight:800,color:"#F0EDE8",marginBottom:16}}>{modal.mode==="new"?"Yeni Masa":"Masayı Düzenle"}</div>
             <Field label="MASA ADI"><input autoFocus value={tName} onChange={e=>setTName(e.target.value)} placeholder="Bar 1, Masa 3, Teras 2..." style={inputS}/></Field>
             <div style={{display:"flex",gap:8}}>
               <Field label="KAPASITE" style={{flex:1}}><SayiGirisi kip="tam" value={tCap} onChange={v=>setTCap(v)} style={inputS}/></Field>
               <Field label="SIRA" style={{flex:1}}><SayiGirisi kip="tam" value={tSort} onChange={v=>setTSort(v)} style={inputS}/></Field>
             </div>
             <div style={{display:"flex",gap:8,marginTop:10}}>
-              <button onClick={() => setModal(null)} style={{flex:1,padding:"12px",background:"transparent",color:"#888",border:"1px solid #333",borderRadius:10,fontSize:14,fontWeight:700,cursor:"pointer"}}>Iptal</button>
+              <button onClick={() => setModal(null)} style={{flex:1,padding:"12px",background:"transparent",color:"#888",border:"1px solid #333",borderRadius:10,fontSize:14,fontWeight:700,cursor:"pointer"}}>İptal</button>
               <button onClick={saveTable} style={{flex:2,padding:"12px",background:"#FFFFFF",color:"#000",border:"none",borderRadius:10,fontSize:14,fontWeight:800,cursor:"pointer"}}>Kaydet</button>
             </div>
           </div>

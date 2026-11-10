@@ -33,12 +33,18 @@ export default function MenuMgmtPage() {
   // surukleme kolu ve ok dugmeleri durmasin.
   const [sirala, setSirala] = useState(false);
 
-  const load = async () => {
-    setLoading(true);
-    const [{data: cats}, {data: prods}] = await Promise.all([
+  // sessiz: kayit / silme / siralama sonrasi tazelemede sayfa "Yükleniyor"
+  // yazisina dusmesin (liste sokulup kaydirma basa sariyordu). Ilk acilis
+  // yine yukleme yazisini gosterir.
+  const load = async (sessiz) => {
+    if (!sessiz) setLoading(true);
+    const [{data: cats, error: katHata}, {data: prods, error: urunHata}] = await Promise.all([
       supabase.from("categories").select("*").in("store_id", staffUser?.store_ids?.length ? staffUser.store_ids : ["00000000-0000-0000-0000-000000000000"]).order("sort_order"),
       supabase.from("products").select("*").in("store_id", staffUser?.store_ids?.length ? staffUser.store_ids : ["00000000-0000-0000-0000-000000000000"]).order("sort_order"),
     ]);
+    // Sessiz tazeleme basarisizsa (sinyal koptu) ekrandaki liste kalsin:
+    // bos listeyle degistirmek sayfayi bosaltirdi.
+    if (sessiz && (katHata || urunHata)) return;
     setCategories(cats || []);
     setProducts(prods || []);
     // Tukenen urune "haber ver" diyen musteri sayisi — hangi urunu geri getirmek
@@ -107,7 +113,7 @@ export default function MenuMgmtPage() {
       ? await supabase.from("categories").insert(payload)
       : await supabase.from("categories").update(payload).eq("id", catModal.data.id);
     if (res.error) { alert("Hata: " + res.error.message); setBusy(false); return; }
-    setCatModal(null); setBusy(false); load();
+    setCatModal(null); setBusy(false); load(true);
   };
 
   // Donen deger: silindi mi. Pencere ancak silme gerceklestiyse kapanir.
@@ -117,7 +123,7 @@ export default function MenuMgmtPage() {
     if (!confirm('"' + c.name + '" silinsin mi?')) return false;
     const { error } = await supabase.from("categories").delete().eq("id", c.id);
     if (error) { alert("Silinemedi: " + error.message); return false; }
-    load();
+    load(true);
     return true;
   };
 
@@ -176,7 +182,7 @@ export default function MenuMgmtPage() {
 
   const saveProd = async () => {
     if (busy) return;
-    if (!prodForm.name?.trim()) { alert("Urun adi gerekli"); return; }
+    if (!prodForm.name?.trim()) { alert("Ürün adı gerekli"); return; }
     // Validate options_config groups
     if (prodForm.has_options) {
       const groups = (prodForm.options_config && prodForm.options_config.groups) || [];
@@ -233,7 +239,7 @@ export default function MenuMgmtPage() {
       ? await supabase.from("products").insert(payload)
       : await supabase.from("products").update(payload).eq("id", prodModal.data.id);
     if (res.error) { alert("Hata: " + res.error.message); setBusy(false); return; }
-    setProdModal(null); setBusy(false); load();
+    setProdModal(null); setBusy(false); load(true);
   };
 
   // Donen deger: silindi mi. Pencerenin dibindeki "Bu urunu sil" buna bakar —
@@ -243,7 +249,7 @@ export default function MenuMgmtPage() {
     if (!confirm('"' + p.name + '" silinsin mi?')) return false;
     const { error: pdErr } = await supabase.from("products").delete().eq("id", p.id);
     if (pdErr) { alert("Silinemedi: " + pdErr.message); return false; }
-    load();
+    load(true);
     return true;
   };
 
@@ -277,17 +283,26 @@ export default function MenuMgmtPage() {
     gs[gIdx] = {...gs[gIdx], options:(gs[gIdx].options||[]).filter((_,i)=>i!==optIdx)};
     setProdForm(f => ({...f, options_config:{groups:gs}}));
   };
-  const reorderProducts = async (fromIdx, toIdx) => {
-    if (fromIdx == null || fromIdx === toIdx) return;
-    const reordered = [...visibleProducts];
-    const [moved] = reordered.splice(fromIdx, 1);
-    reordered.splice(toIdx, 0, moved);
+  // Yeni sira ONCE ekranda uygulanir, sonra sunucuya yazilir: ok tusuna
+  // basinca satir hemen yer degistirir, sayfa yeniden kurulmaz. Sunucuya giden
+  // istekler ayni (kategorinin tamami 10, 20, 30...).
+  const siraKaydet = async (reordered) => {
+    const yeniSira = new Map(reordered.map((prod, i) => [prod.id, (i + 1) * 10]));
+    setProducts(ps => ps.map(x => (yeniSira.has(x.id) ? { ...x, sort_order: yeniSira.get(x.id) } : x)));
     await Promise.all(
       reordered.map((prod, i) =>
         supabase.from("products").update({ sort_order: (i + 1) * 10 }).eq("id", prod.id)
       )
     );
-    load();
+    load(true);
+  };
+
+  const reorderProducts = async (fromIdx, toIdx) => {
+    if (fromIdx == null || fromIdx === toIdx) return;
+    const reordered = [...visibleProducts];
+    const [moved] = reordered.splice(fromIdx, 1);
+    reordered.splice(toIdx, 0, moved);
+    await siraKaydet(reordered);
   };
 
   const moveProduct = async (p, dir) => {
@@ -303,19 +318,14 @@ export default function MenuMgmtPage() {
     const reordered = [...sameList];
     [reordered[idx], reordered[swapIdx]] = [reordered[swapIdx], reordered[idx]];
     // Reassign UNIQUE sort_orders (10, 20, 30, ...) to entire category — guarantees unique values + room for future moves
-    await Promise.all(
-      reordered.map((prod, i) =>
-        supabase.from("products").update({ sort_order: (i + 1) * 10 }).eq("id", prod.id)
-      )
-    );
-    load();
+    await siraKaydet(reordered);
   };
 
   const applyBedenPreset = () => {
     setProdForm(f => ({...f, has_options:true, options_config:{groups:[{name:"Beden", required:true, options:["XS","S","M","L","XL","XXL"]}]}}));
   };
 
-  if (loading) return (<div style={{color:"#888",fontFamily:cv,padding:20}}>Yukleniyor...</div>);
+  if (loading) return (<div style={{color:"#888",fontFamily:cv,padding:20}}>Yükleniyor…</div>);
 
   const visibleProducts = products.filter(p => p.category_id === selectedCat).sort((a,b) => ((a.sort_order||0) - (b.sort_order||0)) || (a.name||"").localeCompare(b.name||""));
   // Alt kategoriler ust kategorisinin hemen ardinda gorunsun
@@ -329,7 +339,7 @@ export default function MenuMgmtPage() {
   return (
     <div style={{fontFamily:cv,color:"#F0EDE8"}}>
       <div style={{fontSize:24,fontWeight:800,marginBottom:4}}>Menü Yönetimi</div>
-      <div style={{fontSize:11,color:"#888",letterSpacing:"1px",marginBottom:18}}>{categories.length} KATEGORI · {products.length} URUN</div>
+      <div style={{fontSize:11,color:"#888",letterSpacing:"1px",marginBottom:18}}>{categories.length} KATEGORİ · {products.length} ÜRÜN</div>
 
       {/* Categories row */}
       <div style={{display:"flex",gap:6,overflowX:"auto",marginBottom:12,paddingBottom:4}}>
@@ -442,7 +452,7 @@ export default function MenuMgmtPage() {
             <div style={{color:"#888888",fontSize:20,userSelect:"none",lineHeight:1,touchAction:"none",cursor:"grab",padding:"6px 2px"}} title="Sürükleyerek sırala"
               onTouchStart={(e)=>{ e.preventDefault(); setDragSrc(idx); }}
               onTouchMove={(e)=>{ e.preventDefault(); const t=e.touches[0]; const el=document.elementFromPoint(t.clientX,t.clientY); const card=el?.closest('[draggable="true"]'); if(card){ const all=Array.from(document.querySelectorAll('[draggable="true"]')); const other=all.indexOf(card); if(other>=0 && other!==dragOver) setDragOver(other); } }}
-              onTouchEnd={async()=>{ if(dragSrc==null||dragOver==null||dragSrc===dragOver){ setDragSrc(null); setDragOver(null); return; } const reordered=[...visibleProducts]; const [moved]=reordered.splice(dragSrc,1); reordered.splice(dragOver,0,moved); setDragSrc(null); setDragOver(null); await Promise.all(reordered.map((prod,i)=>supabase.from("products").update({sort_order:(i+1)*10}).eq("id",prod.id))); load(); }}
+              onTouchEnd={async()=>{ if(dragSrc==null||dragOver==null||dragSrc===dragOver){ setDragSrc(null); setDragOver(null); return; } const reordered=[...visibleProducts]; const [moved]=reordered.splice(dragSrc,1); reordered.splice(dragOver,0,moved); setDragSrc(null); setDragOver(null); await siraKaydet(reordered); }}
             >⋮⋮</div>
             <div style={{display:"flex",flexDirection:"column",gap:3}}>
               <button onClick={(e)=>{e.stopPropagation();moveProduct(p,"up");}} aria-label="Yukarı taşı" style={{background:"#2A2A2A",color:"#F0EDE8",border:"none",borderRadius:5,padding:"4px 9px",fontSize:11,cursor:"pointer",lineHeight:1}}>▲</button>
@@ -471,8 +481,8 @@ export default function MenuMgmtPage() {
       {catModal && (
         <Modal onClose={()=>setCatModal(null)} title={catModal.mode==="new"?"Yeni Kategori":"Kategoriyi Düzenle"}>
           <Field label="AD (Türkçe)"><input value={catForm.name||""} onChange={e=>setCatForm(f => ({...f,name:e.target.value}))} style={inputS}/></Field>
-          <Field label="NAME (English)"><input value={catForm.name_en||""} onChange={e=>setCatForm(f => ({...f,name_en:e.target.value}))} placeholder="Optional" style={inputS}/></Field>
-          <Field label="НАЗВАНИЕ (Rusca)"><input value={catForm.name_ru||""} onChange={e=>setCatForm(f => ({...f,name_ru:e.target.value}))} placeholder="Opsiyonel - RU secilince gorunur" style={inputS}/></Field>
+          <Field label="AD (İngilizce)"><input value={catForm.name_en||""} onChange={e=>setCatForm(f => ({...f,name_en:e.target.value}))} placeholder="İsteğe bağlı" style={inputS}/></Field>
+          <Field label="AD (Rusça)"><input value={catForm.name_ru||""} onChange={e=>setCatForm(f => ({...f,name_ru:e.target.value}))} placeholder="İsteğe bağlı — müşteri RU seçince görünür" style={inputS}/></Field>
           <Field label="IKON (emoji)"><input value={catForm.icon||""} onChange={e=>setCatForm(f => ({...f,icon:e.target.value}))} placeholder="👕" style={inputS}/></Field>
           {/* Urun basina 152 kayit yerine kategori basina bir varsayilan.
               Musteri menusundeki "~8 dk" rozeti boylece calisir hale gelir. */}
@@ -485,8 +495,8 @@ export default function MenuMgmtPage() {
               hazırlanma süresi hiç gösterilmez.
             </div>
           </Field>
-          <Field label="SIRA (kucuk=once)"><SayiGirisi kip="tam" value={catForm.sort_order||0} onChange={v=>setCatForm(f => ({...f,sort_order:v}))} style={inputS}/></Field>
-          <Field label="UST KATEGORI">
+          <Field label="SIRA (küçük = önce)"><SayiGirisi kip="tam" value={catForm.sort_order||0} onChange={v=>setCatForm(f => ({...f,sort_order:v}))} style={inputS}/></Field>
+          <Field label="ÜST KATEGORİ">
             <select value={catForm.parent_id||""} onChange={e=>setCatForm(f => ({...f,parent_id:e.target.value||null}))} style={inputS}>
               <option value="">— Yok (menude sekme olur) —</option>
               {categories.filter(c => !c.parent_id && c.id !== catModal.data?.id && !c.show_in_shop)
@@ -501,11 +511,11 @@ export default function MenuMgmtPage() {
           <div style={{fontSize:10,color:"#888888",marginTop:-6,marginBottom:12,lineHeight:1.5}}>
             Menü her saat okunur; bu aralığın dışında ürünler silik görünür ve sipariş butonu çalışmaz.
             Başlığın altında aralık yazar. Boş bırakırsan kısıt yoktur.<br/>
-            Kategoriyi tamamen <b>gizlemek</b> için Kategori Zamanlama sayfasını kullan.
+            Kategoriyi tamamen <b>gizlemek</b> için Kategori Saatleri sayfasını kullan.
           </div>
           <label style={{display:"flex",alignItems:"center",gap:8,marginBottom:12,cursor:"pointer"}}>
             <input type="checkbox" checked={catForm.show_in_party_menu!==false} onChange={e=>setCatForm(f => ({...f,show_in_party_menu:e.target.checked}))}/>
-            <span style={{fontSize:13,color:"#F0EDE8"}}>Parti menusunde goster</span>
+            <span style={{fontSize:13,color:"#F0EDE8"}}>Parti menüsünde göster</span>
           </label>
           {/* KIM GORSUN? Tek secim: eskiden iki ayri onay kutusu vardi ve ikisi
               de bos kalinca kategori sessizce musteri menusune dusuyordu. */}
@@ -613,8 +623,8 @@ export default function MenuMgmtPage() {
               </div>
             )}
           </Field>
-          <Field label="NAME (English)"><input value={prodForm.name_en||""} onChange={e=>setProdForm(f => ({...f,name_en:e.target.value}))} placeholder="Optional - shown when customer selects EN" style={inputS}/></Field>
-          <Field label="НАЗВАНИЕ (Rusca)"><input value={prodForm.name_ru||""} onChange={e=>setProdForm(f => ({...f,name_ru:e.target.value}))} placeholder="Opsiyonel - RU secilince gorunur" style={inputS}/></Field>
+          <Field label="AD (İngilizce)"><input value={prodForm.name_en||""} onChange={e=>setProdForm(f => ({...f,name_en:e.target.value}))} placeholder="İsteğe bağlı — müşteri EN seçince görünür" style={inputS}/></Field>
+          <Field label="AD (Rusça)"><input value={prodForm.name_ru||""} onChange={e=>setProdForm(f => ({...f,name_ru:e.target.value}))} placeholder="İsteğe bağlı — müşteri RU seçince görünür" style={inputS}/></Field>
           <Field label="MARKA (opsiyonel)"><input value={prodForm.brand||""} onChange={e=>setProdForm(f => ({...f,brand:e.target.value}))} placeholder="Orn: Rapha, Le Bon Bain..." style={inputS}/></Field>
           <Field label="BARKOD (opsiyonel)">
             <div style={{display:"flex",gap:8}}>
@@ -630,8 +640,8 @@ export default function MenuMgmtPage() {
                         onOkundu={(kod)=>setProdForm(f => ({...f,barkod:String(kod).replace(/\s+/g,"")}))} onKapat={()=>setBarkodOkut(false)}/>
           )}
           <Field label="AÇIKLAMA (Türkçe)"><textarea value={prodForm.description||""} onChange={e=>setProdForm(f => ({...f,description:e.target.value}))} rows={2} style={{...inputS,resize:"vertical"}}/></Field>
-          <Field label="DESCRIPTION (English)"><textarea value={prodForm.description_en||""} onChange={e=>setProdForm(f => ({...f,description_en:e.target.value}))} rows={2} placeholder="Optional - shown when customer selects EN" style={{...inputS,resize:"vertical"}}/></Field>
-          <Field label="ОПИСАНИЕ (Rusca)"><textarea value={prodForm.description_ru||""} onChange={e=>setProdForm(f => ({...f,description_ru:e.target.value}))} rows={2} placeholder="Opsiyonel - RU secilince gorunur" style={{...inputS,resize:"vertical"}}/></Field>
+          <Field label="AÇIKLAMA (İngilizce)"><textarea value={prodForm.description_en||""} onChange={e=>setProdForm(f => ({...f,description_en:e.target.value}))} rows={2} placeholder="İsteğe bağlı — müşteri EN seçince görünür" style={{...inputS,resize:"vertical"}}/></Field>
+          <Field label="AÇIKLAMA (Rusça)"><textarea value={prodForm.description_ru||""} onChange={e=>setProdForm(f => ({...f,description_ru:e.target.value}))} rows={2} placeholder="İsteğe bağlı — müşteri RU seçince görünür" style={{...inputS,resize:"vertical"}}/></Field>
           <Field label="SHOP ALT GRUBU (opsiyonel)">
             <input list="nip-shop-groups" value={prodForm.shop_group||""} onChange={e=>setProdForm(f => ({...f,shop_group:e.target.value}))}
               placeholder="örn: Tişörtler, Şapkalar, Takılar" style={inputS}/>
@@ -729,7 +739,7 @@ export default function MenuMgmtPage() {
             </div>
           </Field>
           )}
-          <Field label="ANLIK INDIRIM (%)"><SayiGirisi kip="tam" min={0} max={99} value={prodForm.instant_discount_pct??''} onChange={v=>setProdForm(f => ({...f,instant_discount_pct:v}))} style={inputS}/></Field>
+          <Field label="ANLIK İNDİRİM (%)"><SayiGirisi kip="tam" min={0} max={99} value={prodForm.instant_discount_pct??''} onChange={v=>setProdForm(f => ({...f,instant_discount_pct:v}))} style={inputS}/></Field>
 
           {/* HAPPY HOUR */}
         <div style={{background:"#0C0C0C",border:"1px solid #222",borderRadius:10,padding:12,marginBottom:10}}>

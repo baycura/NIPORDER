@@ -19,12 +19,18 @@ export default function TasksPage() {
 
   const isPatron = staffUser && PATRON_ROLES.includes(staffUser.role);
 
-  const load = async () => {
-    setLoading(true);
-    const [{ data: tasksData }, { data: staffData }] = await Promise.all([
+  // sessiz: isaretleme / ekleme / silme ve canli guncelleme sonrasi liste
+  // "Yükleniyor" yazisina dusmesin (kutucuga her dokunusta liste sokulup
+  // yeniden kuruluyordu). Ilk acilis ve dukkan degisimi yine gosterir.
+  const load = async (sessiz) => {
+    if (!sessiz) setLoading(true);
+    const [{ data: tasksData, error: gorevHata }, { data: staffData, error: kisiHata }] = await Promise.all([
       supabase.from("tasks").select("*").eq("store_id", storeId).order("created_at", { ascending: false }),
       supabase.from("staff").select("id, name, role, is_active").eq("is_active", true).order("name")
     ]);
+    // Sessiz tazeleme basarisizsa (sinyal koptu) ekrandaki liste kalsin:
+    // bos listeyle degistirmek sayfayi bosaltirdi.
+    if (sessiz && (gorevHata || kisiHata)) return;
     setTasks(tasksData || []);
     const map = {};
     (staffData || []).forEach(s => { map[s.id] = s.name; });
@@ -37,7 +43,7 @@ export default function TasksPage() {
 
   useEffect(() => {
     const channel = supabase.channel(`tasks-${storeId}`)
-      .on("postgres_changes", { event: "*", schema: "public", table: "tasks", filter: `store_id=eq.${storeId}` }, () => load())
+      .on("postgres_changes", { event: "*", schema: "public", table: "tasks", filter: `store_id=eq.${storeId}` }, () => load(true))
       .subscribe();
     return () => { supabase.removeChannel(channel); };
   }, [storeId]);
@@ -54,7 +60,7 @@ export default function TasksPage() {
     if (error) { alert("Görev eklenemedi: " + error.message); return; }
     setForm({ title: "", description: "", assigned_to: [] });
     setModal(false);
-    load();
+    load(true);
   };
 
   const toggle = async (task) => {
@@ -67,14 +73,14 @@ export default function TasksPage() {
     }).eq("id", task.id).select("id");
     if (error) { alert("Değiştirilemedi: " + error.message); return; }
     if (!data?.length) { alert("Değiştirilemedi: bu işlem için yetkin yok."); return; }
-    load();
+    load(true);
   };
 
   const deleteTask = async (id) => {
     if (!confirm("Görevi silmek istediğine emin misin?")) return;
     const { error } = await supabase.from("tasks").delete().eq("id", id);
     if (error) { alert("Silinemedi: " + error.message); return; }
-    load();
+    load(true);
   };
 
   const formatDate = (iso) => new Date(iso).toLocaleString("tr-TR", {
@@ -86,7 +92,7 @@ export default function TasksPage() {
   const done = visibleTasks.filter(t => t.done);
 
   return (
-    <div style={{ padding: 16, maxWidth: 900, margin: "0 auto", color: "#F0EDE8" }}>
+    <div style={{ maxWidth: 900, margin: "0 auto", color: "#F0EDE8" }}>
       <div style={{ display: "flex", justifyContent: "space-between", alignItems: "center", marginBottom: 16, flexWrap: "wrap", gap: 8 }}>
         <h1 style={{ fontSize: 24, fontWeight: 900, letterSpacing: 1, margin: 0, fontFamily: "'Coolvetica Condensed','Barlow Condensed','Bebas Neue',sans-serif", display: "flex", alignItems: "center", gap: 10 }}><Ikon ad="gorev" boy={24}/>GÖREVLER</h1>
         <div style={{ display: "flex", gap: 8 }}>
@@ -100,7 +106,7 @@ export default function TasksPage() {
         </div>
       </div>
 
-      {loading ? <div style={{ color: "#888", padding: 20 }}>Yükleniyor...</div> : (
+      {loading ? <div style={{ color: "#888", padding: 20 }}>Yükleniyor…</div> : (
         <>
           <div style={{ marginBottom: 24 }}>
             <h2 style={{ fontSize: 13, color: "#888", marginBottom: 8, fontWeight: 700, letterSpacing: 1 }}>AKTİF ({active.length})</h2>

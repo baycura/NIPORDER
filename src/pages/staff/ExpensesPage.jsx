@@ -3,12 +3,14 @@ import { supabase } from "../../lib/supabase.js";
 import { useAuth } from "../../contexts/AuthContext.jsx";
 import Ikon from "../../components/Ikon.jsx";
 import { GIDER_KATEGORILERI } from "../../lib/gider.js";
+import SayiGirisi from "../../components/SayiGirisi.jsx";
+import Bildirim from "../../components/Bildirim.jsx";
 
 const cv = "-apple-system,BlinkMacSystemFont,'Segoe UI',Roboto,sans-serif";
 const hv = "'Bebas Neue','Barlow Condensed','Coolvetica Condensed',sans-serif";
 const C = {
   card: "#161616", cardLine: "#262626", ink: "#F0EDE8", muted: "#8A8A86",
-  faint: "#5A5A56", accent: "#FFFFFF", green: "#FFFFFF", red: "#C87A6A",
+  faint: "#8A8A86", accent: "#FFFFFF", green: "#FFFFFF", red: "#C87A6A",
 };
 
 const CATS = GIDER_KATEGORILERI;
@@ -43,6 +45,10 @@ export default function ExpensesPage() {
   const [sheet, setSheet] = useState(false);
   const [saving, setSaving] = useState(false);
   const [form, setForm] = useState({ category: "gida", amount: "", description: "", payment_method: "kasa" });
+  const [formHata, setFormHata] = useState(null);
+  const [bildirim, setBildirim] = useState(null);
+  // Formda bir sey degisince eski uyari kalmasin.
+  const formDegis = (yama) => { setForm(f => ({ ...f, ...yama })); setFormHata(null); };
 
   const range = useMemo(() => {
     const now = new Date();
@@ -90,13 +96,17 @@ export default function ExpensesPage() {
   }, [filtered]);
 
   async function save() {
-    const amount = parseFloat(String(form.amount).replace(",", "."));
-    if (!amount || amount <= 0) { alert("Tutar girmelisin"); return; }
-    if (!form.description.trim()) { alert("Ne alındığını yaz (örn. Hal — sebze)"); return; }
+    // SayiGirisi yukari noktali makine sayisi verir ("1.840" -> "1840",
+    // "12,50" -> "12.5"). Eskiden parseFloat("1.840") = 1,84 kaydediliyordu.
+    const amount = Number(form.amount);
+    if (!amount || amount <= 0) { setFormHata("Tutar girmelisin"); return; }
+    if (!form.description.trim()) { setFormHata("Ne alındığını yaz (örn. Hal — sebze)"); return; }
+    setFormHata(null);
     setSaving(true);
     if (DEMO) {
       setRows(r => [{ id: String(Math.random()), ...form, amount, expense_date: range.to, staff: { name: staffUser?.name || "Ben" }, staff_id: staffUser?.id }, ...r]);
       setSaving(false); setSheet(false); setForm({ category: "gida", amount: "", description: "", payment_method: "kasa" });
+      setBildirim({ id: Date.now(), metin: fmtTL(amount) + " gider kaydedildi" });
       return;
     }
     const { error } = await supabase.from("expenses").insert({
@@ -108,6 +118,8 @@ export default function ExpensesPage() {
     if (error) { alert("Kaydedilemedi: " + error.message); return; }
     setSheet(false);
     setForm({ category: "gida", amount: "", description: "", payment_method: "kasa" });
+    // Suzgec acikken yeni satir listede gorunmeyebilir; kayit yine de onaylanir.
+    setBildirim({ id: Date.now(), metin: fmtTL(amount) + " gider kaydedildi" });
     load();
   }
 
@@ -126,7 +138,7 @@ export default function ExpensesPage() {
   });
 
   return (
-    <div style={{ padding: 16, fontFamily: cv, maxWidth: 700, margin: "0 auto", paddingBottom: 120, color: C.ink }}>
+    <div style={{ fontFamily: cv, maxWidth: 700, margin: "0 auto", paddingBottom: 120, color: C.ink }}>
       <div style={{ display: "flex", justifyContent: "space-between", alignItems: "center", gap: 8 }}>
         <h1 style={{ fontFamily: hv, fontWeight: 900, fontSize: 34, margin: 0, letterSpacing: 1 }}>Giderler</h1>
         <div style={{ display: "flex", border: `1px solid ${C.cardLine}`, borderRadius: 999, overflow: "hidden" }}>
@@ -195,7 +207,7 @@ export default function ExpensesPage() {
                 </div>
                 <div style={{ fontWeight: 800, fontSize: 15, whiteSpace: "nowrap" }}>{fmtTL(r.amount)}</div>
                 {canDelete && (
-                  <button onClick={() => remove(r)} title="Sil" style={{ background: "none", border: "none", color: C.faint, cursor: "pointer", padding: 4, display: "flex" }}><Ikon ad="kapat" boy={14}/></button>
+                  <button onClick={() => remove(r)} title="Sil" aria-label="Gideri sil" style={{ background: "none", border: "none", color: C.faint, cursor: "pointer", padding: 4, display: "flex", alignItems: "center", justifyContent: "center", minWidth: 44, minHeight: 44, margin: "-5px -8px -5px -4px", flexShrink: 0 }}><Ikon ad="kapat" boy={14}/></button>
                 )}
               </div>
             );
@@ -204,7 +216,7 @@ export default function ExpensesPage() {
       ))}
 
       {!isViewer && (
-        <button onClick={() => setSheet(true)} style={{
+        <button onClick={() => { setFormHata(null); setSheet(true); }} style={{
           position: "fixed", left: "50%", transform: "translateX(-50%)", bottom: 84,
           background: C.accent, color: "#000", border: "none", borderRadius: 999,
           padding: "15px 30px", fontSize: 16, fontWeight: 800, cursor: "pointer",
@@ -218,34 +230,36 @@ export default function ExpensesPage() {
           <div style={{ position: "fixed", left: 0, right: 0, bottom: 0, background: "#111", borderTop: `1px solid ${C.cardLine}`, borderRadius: "16px 16px 0 0", padding: "18px 16px 26px", zIndex: 50, maxWidth: 700, margin: "0 auto" }}>
             <div style={{ display: "flex", justifyContent: "space-between", alignItems: "center", marginBottom: 14 }}>
               <b style={{ fontSize: 17 }}>Yeni Gider</b>
-              <button onClick={() => setSheet(false)} style={{ background: "none", border: "none", color: C.muted, cursor: "pointer", display: "flex" }}><Ikon ad="kapat" boy={17}/></button>
+              <button onClick={() => setSheet(false)} aria-label="Kapat" style={{ background: "none", border: "none", color: C.muted, cursor: "pointer", display: "flex" }}><Ikon ad="kapat" boy={17}/></button>
             </div>
 
-            <input
-              autoFocus inputMode="decimal" placeholder="₺ Tutar"
+            <SayiGirisi
+              kip="para" min={0} autoFocus placeholder="₺ Tutar" className="nip-buyuk-rakam"
               value={form.amount}
-              onChange={e => setForm(f => ({ ...f, amount: e.target.value }))}
+              onChange={v => formDegis({ amount: v })}
               style={{ width: "100%", boxSizing: "border-box", background: C.card, border: `1px solid ${C.cardLine}`, borderRadius: 10, color: C.ink, fontSize: 30, fontWeight: 800, padding: "12px 14px", outline: "none", textAlign: "center", fontFamily: hv }}
             />
 
             <input
               placeholder="Ne alındı? (örn. Hal — sebze meyve)"
               value={form.description}
-              onChange={e => setForm(f => ({ ...f, description: e.target.value }))}
+              onChange={e => formDegis({ description: e.target.value })}
               style={{ width: "100%", boxSizing: "border-box", background: C.card, border: `1px solid ${C.cardLine}`, borderRadius: 10, color: C.ink, fontSize: 15, padding: "12px 14px", outline: "none", marginTop: 8 }}
             />
 
             <div style={{ display: "flex", gap: 6, marginTop: 10, flexWrap: "wrap" }}>
               {CATS.map(c => (
-                <button key={c.key} onClick={() => setForm(f => ({ ...f, category: c.key }))} style={{...chip(form.category === c.key), display:"inline-flex", alignItems:"center", gap:6}}><Ikon ad={c.emoji} boy={14}/>{c.label}</button>
+                <button key={c.key} onClick={() => formDegis({ category: c.key })} style={{...chip(form.category === c.key), display:"inline-flex", alignItems:"center", gap:6}}><Ikon ad={c.emoji} boy={14}/>{c.label}</button>
               ))}
             </div>
 
             <div style={{ display: "flex", gap: 8, marginTop: 12 }}>
               {[["kasa", "nakit", "Kasadan"], ["kart", "kart", "Kart"]].map(([k, ik, l]) => (
-                <button key={k} onClick={() => setForm(f => ({ ...f, payment_method: k }))} style={{ ...chip(form.payment_method === k), flex: 1, display: "flex", alignItems: "center", justifyContent: "center", gap: 6 }}><Ikon ad={ik} boy={14}/>{l}</button>
+                <button key={k} onClick={() => formDegis({ payment_method: k })} style={{ ...chip(form.payment_method === k), flex: 1, display: "flex", alignItems: "center", justifyContent: "center", gap: 6 }}><Ikon ad={ik} boy={14}/>{l}</button>
               ))}
             </div>
+
+            {formHata && <div role="alert" style={{ color: C.red, fontSize: 13, marginTop: 12, marginBottom: -6 }}>{formHata}</div>}
 
             <button onClick={save} disabled={saving} style={{
               width: "100%", marginTop: 14, background: C.green, color: "#000", border: "none",
@@ -254,6 +268,9 @@ export default function ExpensesPage() {
           </div>
         </>
       )}
+
+      {/* alt=150: "+ Yeni Gider" dugmesinin ustunde dursun, onu kapatmasin. */}
+      {bildirim && <Bildirim key={bildirim.id} metin={bildirim.metin} alt={150} />}
     </div>
   );
 }

@@ -278,7 +278,7 @@ export default function HappyHourPage() {
             </div>
             <label style={{ display: "block", color: "#aaa", fontSize: 12, marginBottom: 8 }}>
               ÜRÜNLER VE YENİ FİYATLAR
-              <span style={{ color: selectedCount > 0 ? "#FFFFFF" : "#2A2A2A", fontWeight: 800, marginLeft: 8 }}>
+              <span style={{ color: selectedCount > 0 ? "#FFFFFF" : "#C87A6A", fontWeight: 800, marginLeft: 8 }}>
                 {selectedCount > 0 ? selectedCount + " ürün seçildi" : "henüz ürün seçmedin"}
               </span>
               {gizliSayi > 0 && <span style={{ color: "#888", marginLeft: 8 }}>({gizliSayi} ürün satışta değil, listede görünmez; fiyatı korunur)</span>}

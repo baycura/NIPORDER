@@ -3,6 +3,7 @@ import { supabase } from "../../lib/supabase.js";
 import { useAuth } from "../../contexts/AuthContext.jsx";
 import { optionsText } from "../../lib/productOptions.js";
 import Ikon from "../../components/Ikon.jsx";
+import Bildirim from "../../components/Bildirim.jsx";
 
 const cv = "-apple-system,BlinkMacSystemFont,'Segoe UI',Roboto,sans-serif";
 
@@ -43,6 +44,20 @@ export default function KitchenPage() {
   const audioCtxRef = useRef(null);
   const knownItemIdsRef = useRef(new Set());
   const wakeLockRef = useRef(null);
+  // Cift dokunus korumasi: asama dugmesi ayni yerde sirayla degisiyor; ikinci
+  // dokunus sonraki asamayi tetikliyordu ("Servis Edildi" bileti geri
+  // alinamaz bicimde listeden kaldirir). Kilit BILET basina: bir bilet
+  // islenirken baska bilete dokunmak engellenmez.
+  const kilitRef = useRef(new Set());
+  const [isleniyor, setIsleniyor] = useState({});
+  const [hata, setHata] = useState(null);
+  // Bekleme suresi render aninda hesaplaniyor; sakin donemde "12 dk" donup
+  // kaliyordu. 30 sn'de bir yalniz yeniden cizer, ag istegi atmaz.
+  const [, tik] = useState(0);
+  useEffect(() => {
+    const z = setInterval(() => tik(n => n + 1), 30000);
+    return () => clearInterval(z);
+  }, []);
 
   const load = async () => {
     const { data: orders } = await supabase
@@ -165,32 +180,53 @@ export default function KitchenPage() {
     return () => document.removeEventListener("visibilitychange", handler);
   }, [wakeLockOn]);
 
+  // Elleri dolu asci "Tamam"a basmak zorunda kalmasin: hata kisa yazi olarak
+  // cikar, ayrintisi konsolda kalir.
+  const guncellenemedi = (err) => {
+    try { console.error("[nip] mutfak:", err); } catch (e) { /* yoksay */ }
+    setHata({ m: "Güncellenemedi, tekrar dene", n: Date.now() });
+  };
+
   // Ticket-level actions: act on ALL items in an order in one click
   const startPreparingAll = async (orderId) => {
     const { error } = await supabase.from("order_items")
       .update({ kitchen_status: "preparing" })
       .eq("order_id", orderId)
       .eq("kitchen_status", "pending");
-    if (error) { alert("Güncellenemedi: " + error.message); return; }
-    load();
+    if (error) { guncellenemedi(error); return; }
+    await load();
   };
   const markAllReady = async (orderId) => {
     const { error } = await supabase.from("order_items")
       .update({ kitchen_status: "ready" })
       .eq("order_id", orderId)
       .in("kitchen_status", ["pending","preparing"]);
-    if (error) { alert("Güncellenemedi: " + error.message); return; }
-    load();
+    if (error) { guncellenemedi(error); return; }
+    await load();
   };
   const markServedAndClose = async (orderId) => {
     const { error } = await supabase.from("order_items")
       .update({ kitchen_status: "served" })
       .eq("order_id", orderId);
-    if (error) { alert("Güncellenemedi: " + error.message); return; }
-    load();
+    if (error) { guncellenemedi(error); return; }
+    await load();
   };
 
-  if (loading) return (<div style={{color:"#888",fontFamily:cv,padding:20}}>Yukleniyor...</div>);
+  // Dugme, islem + liste yenilenene kadar ve 700 ms daha kilitli kalir: ayni
+  // noktada beliren SONRAKI asama dugmesi ikinci dokunusu yutmasin.
+  const calistir = async (id, fn) => {
+    if (kilitRef.current.has(id)) return;
+    kilitRef.current.add(id);
+    setIsleniyor(s => ({ ...s, [id]: true }));
+    try { await fn(id); }
+    catch (e) { guncellenemedi(e); }
+    setTimeout(() => {
+      kilitRef.current.delete(id);
+      setIsleniyor(s => { const y = { ...s }; delete y[id]; return y; });
+    }, 700);
+  };
+
+  if (loading) return (<div style={{color:"#888",fontFamily:cv,padding:20}}>Yükleniyor…</div>);
 
   const totalItems = tickets.reduce((s,t) => s + t.items.length, 0);
 
@@ -206,23 +242,23 @@ export default function KitchenPage() {
       <div style={{display:"flex",justifyContent:"space-between",alignItems:"center",marginBottom:10,flexWrap:"wrap",gap:8}}>
         <div>
           <div style={{fontSize:24,fontWeight:800}}>Mutfak</div>
-          <div style={{fontSize:11,color:"#888",letterSpacing:"1px"}}>{tickets.length} AKTIF HESAP · {totalItems} URUN</div>
+          <div style={{fontSize:12,color:"#888",letterSpacing:"1px"}}>{tickets.length} AKTİF SİPARİŞ · {totalItems} ÜRÜN</div>
         </div>
-        <div style={{display:"flex",gap:6}}>
+        <div style={{display:"flex",gap:6,flexWrap:"wrap"}}>
           <button onClick={() => { setSoundOn(!soundOn); unlockEverything(); }} style={{padding:"8px 12px",background:soundOn?"#FFFFFF":"#444",color:soundOn?"#000":"#aaa",border:"none",borderRadius:8,fontSize:11,fontWeight:700,cursor:"pointer",letterSpacing:"1px"}}>
             <span style={{display:"flex",alignItems:"center",gap:6}}><Ikon ad={soundOn ? "ses" : "sessiz"} boy={14}/>{soundOn ? "SES AÇIK" : "SES KAPALI"}</span>
           </button>
-          <button onClick={() => { unlockEverything(); playLoudDing(audioCtxRef); }} style={{padding:"8px 12px",background:"#222",color:"#aaa",border:"1px solid #444",borderRadius:8,fontSize:11,fontWeight:700,cursor:"pointer",display:"inline-flex",alignItems:"center",gap:6}}><Ikon ad="zil" boy={14}/>Test</button>
+          <button onClick={() => { unlockEverything(); playLoudDing(audioCtxRef); }} style={{padding:"8px 12px",background:"#222",color:"#aaa",border:"1px solid #444",borderRadius:8,fontSize:11,fontWeight:700,cursor:"pointer",display:"inline-flex",alignItems:"center",gap:6}}><Ikon ad="zil" boy={14}/>SESİ DENE</button>
           <button onClick={unlockEverything} style={{padding:"8px 12px",background:wakeLockOn?"#FFFFFF":"#222222",color:wakeLockOn?"#000":"#8A8580",border:"none",borderRadius:8,fontSize:11,fontWeight:700,cursor:"pointer",letterSpacing:"1px"}}>
-            <span style={{display:"flex",alignItems:"center",gap:6}}><Ikon ad="ampul" boy={14}/>{wakeLockOn ? "EKRAN AÇIK" : "Aktifleştir"}</span>
+            <span style={{display:"flex",alignItems:"center",gap:6}}><Ikon ad="ampul" boy={14}/>{wakeLockOn ? "EKRAN AÇIK" : "EKRANI AÇIK TUT"}</span>
           </button>
         </div>
       </div>
 
       {!unlocked && (
-        <div onClick={unlockEverything} style={{background:"#161616",border:"1px solid #FFFFFF",color:"#F0EDE8",padding:"12px 16px",borderRadius:10,fontSize:13,marginBottom:14,cursor:"pointer",fontWeight:700}}>
-          Ses ve uyku engeli için buraya bir kez tıklayın (ZORUNLU)
-        </div>
+        <button onClick={unlockEverything} style={{display:"block",width:"100%",textAlign:"left",minHeight:48,background:"#161616",border:"1px solid #FFFFFF",color:"#F0EDE8",padding:"12px 16px",borderRadius:10,fontSize:13,marginBottom:14,cursor:"pointer",fontWeight:700,fontFamily:cv}}>
+          Sesli uyarı ve ekranın kapanmaması için bir kez dokun
+        </button>
       )}
 
       {tickets.length === 0 && <div style={{textAlign:"center",padding:60,color:"#888888",fontSize:14}}>Aktif sipariş yok</div>}
@@ -235,6 +271,7 @@ export default function KitchenPage() {
         const allPending = t.items.every(it => it.kitchen_status === "pending");
         const allReady = t.items.every(it => it.kitchen_status === "ready");
         const anyPending = t.items.some(it => it.kitchen_status === "pending");
+        const kilitli = !!isleniyor[t.order.id];
         const anyPreparing = t.items.some(it => it.kitchen_status === "preparing");
         const stage = allReady ? "ready" : (anyPending ? "pending" : "preparing");
 
@@ -248,7 +285,7 @@ export default function KitchenPage() {
                 {t.storeSlug && <div style={{display:"inline-block",background:t.storeSlug==="doner"?"#FFFFFF":"#222222",color:t.storeSlug==="doner"?"#000":"#F0EDE8",padding:"2px 8px",borderRadius:6,fontSize:12,fontWeight:600,letterSpacing:"0.2px",marginBottom:4}}>{t.storeSlug==="doner"?"DÖNER":"PARIS"}</div>}
                 <div style={{fontSize:16,fontWeight:800}}>{t.where}</div>
               </div>
-              <div style={{fontSize:13,color:urgent?"#FFFFFF":"#8A8580",fontWeight:800}}>{waitMin} dk{urgent && <Ikon ad="uyari" boy={13} style={{marginLeft:5}}/>}</div>
+              <div style={{fontSize:16,color:urgent?"#FFFFFF":"#8A8580",fontWeight:800,fontVariantNumeric:"tabular-nums",whiteSpace:"nowrap",flexShrink:0,marginLeft:8}}>{waitMin} dk{urgent && <Ikon ad="uyari" boy={14} style={{marginLeft:5}}/>}</div>
             </div>
 
             {t.order.note && (
@@ -276,17 +313,17 @@ export default function KitchenPage() {
 
             <div style={{marginTop:12,display:"flex",gap:6}}>
               {anyPending && (
-                <button onClick={() => startPreparingAll(t.order.id)} style={{flex:1,padding:"14px",background:"#FFFFFF",color:"#000",border:"none",borderRadius:10,fontSize:14,fontWeight:800,cursor:"pointer",letterSpacing:"0.5px"}}>
+                <button onClick={() => calistir(t.order.id, startPreparingAll)} disabled={kilitli} style={{flex:1,padding:"14px",background:"#FFFFFF",color:"#000",border:"none",borderRadius:10,fontSize:14,fontWeight:800,cursor:"pointer",letterSpacing:"0.5px",opacity:kilitli?0.5:1}}>
                   <Ikon ad="mutfak" boy={15} style={{marginRight:7}}/>Hazırlamaya başla
                 </button>
               )}
               {!anyPending && !allReady && (
-                <button onClick={() => markAllReady(t.order.id)} style={{flex:1,padding:"14px",background:"#FFFFFF",color:"#000",border:"none",borderRadius:10,fontSize:14,fontWeight:800,cursor:"pointer",letterSpacing:"0.5px"}}>
+                <button onClick={() => calistir(t.order.id, markAllReady)} disabled={kilitli} style={{flex:1,padding:"14px",background:"#FFFFFF",color:"#000",border:"none",borderRadius:10,fontSize:14,fontWeight:800,cursor:"pointer",letterSpacing:"0.5px",opacity:kilitli?0.5:1}}>
                   <Ikon ad="onay" boy={15} style={{marginRight:7}}/>Hepsi Hazır
                 </button>
               )}
               {allReady && (
-                <button onClick={() => markServedAndClose(t.order.id)} style={{flex:1,padding:"14px",background:"#FFFFFF",color:"#000",border:"none",borderRadius:10,fontSize:14,fontWeight:800,cursor:"pointer",letterSpacing:"0.5px"}}>
+                <button onClick={() => calistir(t.order.id, markServedAndClose)} disabled={kilitli} style={{flex:1,padding:"14px",background:"#FFFFFF",color:"#000",border:"none",borderRadius:10,fontSize:14,fontWeight:800,cursor:"pointer",letterSpacing:"0.5px",opacity:kilitli?0.5:1}}>
                   <Ikon ad="onay" boy={15} style={{marginRight:7}}/>Servis Edildi<Ikon ad="oksag" boy={13} style={{margin:"0 5px"}}/>Kapat
                 </button>
               )}
@@ -294,6 +331,8 @@ export default function KitchenPage() {
           </div>
         );
       })}
+
+      {hata && <Bildirim tur="hata" metin={hata.m} key={hata.n}/>}
     </div>
   );
 }

@@ -288,7 +288,7 @@ export default function ProductStockPage() {
   };
 
   return (
-    <div style={{ padding: 16, fontFamily: cv, maxWidth: 900, margin: "0 auto", paddingBottom: 80, color: C.ink }}>
+    <div style={{ fontFamily: cv, maxWidth: 900, margin: "0 auto", color: C.ink }}>
       <div style={{ display: "flex", alignItems: "baseline", justifyContent: "space-between", gap: 10, flexWrap: "wrap" }}>
         <div style={{ fontSize: 24, fontWeight: 800 }}>Ürün Stoku</div>
         <div style={{ fontSize: 12, color: C.faint }}>raf: adet · bar: reçeteden ≈ yapılabilir</div>

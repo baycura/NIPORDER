@@ -34,19 +34,26 @@ export default function RetailPage() {
 
   const storeId = staffUser?.store_ids?.[0];
 
-  const load = async () => {
-    setLoading(true);
-    const [{ data: brs }, { data: cats }] = await Promise.all([
+  // sessiz: kayit / silme / stok girisi sonrasi tazelemede sayfa "Yükleniyor"
+  // yazisina dusmesin (acik marka kapanmasa da kaydirma basa sariyordu).
+  // Ilk acilis yine yukleme yazisini gosterir.
+  const load = async (sessiz) => {
+    if (!sessiz) setLoading(true);
+    const [{ data: brs, error: markaHata }, { data: cats, error: katHata }] = await Promise.all([
       supabase.from("brands").select("*").in("store_id", staffUser?.store_ids?.length ? staffUser.store_ids : ["00000000-0000-0000-0000-000000000000"]).order("sort_order").order("name"),
       supabase.from("categories").select("*").eq("staff_only", true).order("sort_order"),
     ]);
+    // Sessiz tazeleme basarisizsa (sinyal koptu) ekrandaki liste kalsin:
+    // bos listeyle degistirmek sayfayi bosaltirdi.
+    if (sessiz && (markaHata || katHata)) return;
     const cat = (cats || [])[0] || null;
-    setCategory(cat);
     let prods = [];
     if (cat) {
-      const { data } = await supabase.from("products").select("*").eq("category_id", cat.id).order("sort_order").order("name");
+      const { data, error: urunHata } = await supabase.from("products").select("*").eq("category_id", cat.id).order("sort_order").order("name");
+      if (sessiz && urunHata) return;
       prods = data || [];
     }
+    setCategory(cat);
     setBrands(brs || []);
     setProducts(prods);
     setLoading(false);
@@ -68,7 +75,7 @@ export default function RetailPage() {
       : await supabase.from("brands").update(payload).eq("id", brandModal.data.id);
     setBusy(false);
     if (error) { alert("Hata: " + error.message); return; }
-    setBrandModal(null); load();
+    setBrandModal(null); load(true);
   };
   // Donen deger: silindi mi. Pencere ancak silme gerceklestiyse kapanir.
   const delBrand = async (b) => {
@@ -76,7 +83,7 @@ export default function RetailPage() {
     if (!confirm('"' + b.name + '" markası silinsin mi?' + (n ? "\n\n" + n + " ürün markasız kalacak (silinmez)." : ""))) return false;
     const { error } = await supabase.from("brands").delete().eq("id", b.id);
     if (error) { alert("Hata: " + error.message); return false; }
-    load();
+    load(true);
     return true;
   };
 
@@ -158,18 +165,18 @@ export default function RetailPage() {
       : await supabase.from("products").update(payload).eq("id", prodModal.data.id);
     setBusy(false);
     if (error) { alert("Hata: " + error.message); return; }
-    setProdModal(null); load();
+    setProdModal(null); load(true);
   };
   const stokEkleAc = (p) => {
     const vs = Array.isArray(p.variants) ? p.variants.filter(v => v?.name) : [];
     setEkle({ tur:"urun", id:p.id, ad:p.name, stok:Number(p.retail_stock)||0, bedenler:vs, takipsiz: p.track_stock !== true, storeId: p.store_id });
   };
-  const girisBitti = (s) => { setEkle(null); setSonGiris(s); load(); };
+  const girisBitti = (s) => { setEkle(null); setSonGiris(s); load(true); };
   const geriAl = async () => {
     if (!sonGiris) return;
     const { error } = await stokGeriAl(sonGiris);
     if (error) { alert("Geri alinamadi: " + error.message); return; }
-    setSonGiris(null); load();
+    setSonGiris(null); load(true);
   };
 
   // Donen deger: silindi mi. Pencerenin dibindeki "Bu urunu sil" buna bakar —
@@ -179,11 +186,11 @@ export default function RetailPage() {
     if (!confirm('"' + p.name + '" silinsin mi?')) return false;
     const { error } = await supabase.from("products").delete().eq("id", p.id);
     if (error) { alert("Silinemedi (geçmiş siparişlerde kullanılmış olabilir): " + error.message); return false; }
-    load();
+    load(true);
     return true;
   };
 
-  if (loading) return (<div style={{ color: "#888", fontFamily: cv, padding: 20 }}>Yukleniyor...</div>);
+  if (loading) return (<div style={{ color: "#888", fontFamily: cv, padding: 20 }}>Yükleniyor…</div>);
 
   const unbranded = products.filter(p => !p.brand_id);
   const totalStock = products.reduce((s, p) => s + (Number(p.retail_stock) || 0), 0);
@@ -194,7 +201,10 @@ export default function RetailPage() {
   // "Sil"e yanlislikla dokunmak urunu goturuyordu. Artik: karta dokun =
   // duzenle, silme urun penceresinin dibinde, kartta yalniz gunluk is olan
   // "+ Stok" kaliyor. Veri akisi, stok hesaplari ve sorgular aynen duruyor.
-  const ProductRow = ({ p }) => {
+  // Duz fonksiyon, bilesen DEGIL: render icinde tanimli bilesen her cizimde
+  // yeni tip sayilir, satirlar sokulup yeniden kurulurdu (odak ve kaydirma
+  // kaybolur). Icinde hook yok.
+  const urunSatiri = (p) => {
     const vs = Array.isArray(p.variants) ? p.variants : [];
     const stok = Number(p.retail_stock) || 0;
     const low = Number(p.retail_stock) <= 2;
@@ -216,7 +226,7 @@ export default function RetailPage() {
     return (
       // role/tabIndex/Enter: kart tiklanabilir bir div oldu; klavyeyle gezen
       // masaustu kullanicisi urun duzenlemeye ulasamaz olmasin.
-      <div onClick={() => openEditProduct(p)} role="button" tabIndex={0} aria-label={p.name + " — düzenle"}
+      <div key={p.id} onClick={() => openEditProduct(p)} role="button" tabIndex={0} aria-label={p.name + " — düzenle"}
         onKeyDown={(e) => { if (e.key === "Enter" || e.key === " ") { e.preventDefault(); openEditProduct(p); } }}
         style={{ background: "#161616", border: "1px solid #2A2A2A", borderRadius: 10, padding: "10px 12px", marginBottom: 8, display: "flex", alignItems: "center", gap: 10, cursor: "pointer", opacity: p.is_available === false ? 0.55 : 1 }}>
         <div style={{ flex: 1, minWidth: 0 }}>
@@ -312,7 +322,7 @@ export default function RetailPage() {
             </div>
             {open && (
               <div style={{ padding: "0 12px 12px" }}>
-                {list.map(p => <ProductRow key={p.id} p={p} />)}
+                {list.map(p => urunSatiri(p))}
                 {list.length === 0 && <div style={{ color: "#888888", fontSize: 12, padding: "6px 0 12px" }}>Bu markada ürün yok.</div>}
                 <button onClick={() => openNewProduct(b.id)} style={{ width: "100%", padding: "10px", background: "transparent", color: "#FFFFFF", border: "1px dashed #FFFFFF", borderRadius: 8, fontSize: 12, fontWeight: 700, cursor: "pointer" }}>+ {b.name} ürünü ekle</button>
               </div>
@@ -324,7 +334,7 @@ export default function RetailPage() {
       {unbranded.length > 0 && (
         <div style={{ marginTop: 16 }}>
           <div style={{ fontSize: 11, color: "#888", letterSpacing: "1.5px", fontWeight: 700, marginBottom: 8 }}>Markasız ürünler</div>
-          {unbranded.map(p => <ProductRow key={p.id} p={p} />)}
+          {unbranded.map(p => urunSatiri(p))}
         </div>
       )}
 

@@ -35,6 +35,11 @@ button { cursor: pointer; }
 @media (max-width: 900px) {
   input, select, textarea { font-size: 16px !important; }
 }
+/* Buyuk rakam kutulari (gider tutari, kasa sayimi, stok miktari): ustteki
+   16px kurali satir ici 30px'i eziyordu; telefonda rakam kucuk kaliyordu. */
+@media (max-width: 900px) {
+  input.nip-buyuk-rakam { font-size: 28px !important; }
+}
 
 /* Safe-area insets for iPhones */
 body {
@@ -51,4 +56,14 @@ body {
 .nip-splash-mark { animation: nip-pulse 1.4s ease-in-out infinite; }
 @media (prefers-reduced-motion: reduce) {
   .nip-splash-mark { animation: none; opacity: 0.9; }
+}
+
+/* Klavye odagi gorunsun. Butun girdilerde satir ici outline:none var;
+   :focus-visible dokunusta tetiklenmez, yalniz klavye / anahtar gezinmesinde. */
+button:focus-visible, a:focus-visible, [role="button"]:focus-visible {
+  outline: 2px solid #F0EDE8;
+  outline-offset: 2px;
+}
+input:focus-visible, select:focus-visible, textarea:focus-visible {
+  border-color: #F0EDE8 !important;
 }

@@ -97,3 +97,13 @@
    P7 will add:
      @font-face { font-family:'Coolvetica'; src:url('/fonts/coolvetica.woff2') format('woff2'); }
    ============================================================ */
+
+/* Musteri menusu (acik tema): klavye odagi */
+.nip-customer button:focus-visible, .nip-customer a:focus-visible {
+  outline: 2px solid #0A0A0A;
+  outline-offset: 2px;
+}
+.nip-customer input:focus-visible, .nip-customer select:focus-visible, .nip-customer textarea:focus-visible {
+  border-color: #0A0A0A !important;
+  box-shadow: 0 0 0 3px rgba(10, 10, 10, .12);
+}

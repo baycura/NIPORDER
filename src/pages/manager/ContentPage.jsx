@@ -20,9 +20,15 @@ export default function ContentPage() {
   const [form, setForm] = useState({});
   const [busy, setBusy] = useState(false);
 
-  const load = async () => {
-    setLoading(true);
-    const { data } = await supabase.from("posts").select("*").order("sort_order").order("created_at", { ascending: false });
+  // sessiz: kayit / silme sonrasi tazelemede sayfa "Yükleniyor" yazisina
+  // dusmesin (liste sokulup kaydirma basa sariyordu). Ilk acilis yine yukleme
+  // yazisini gosterir.
+  const load = async (sessiz) => {
+    if (!sessiz) setLoading(true);
+    const { data, error } = await supabase.from("posts").select("*").order("sort_order").order("created_at", { ascending: false });
+    // Sessiz tazeleme basarisizsa (sinyal koptu) ekrandaki liste kalsin:
+    // bos listeyle degistirmek sayfayi bosaltirdi.
+    if (sessiz && error) return;
     setPosts(data || []);
     setLoading(false);
   };
@@ -114,26 +120,26 @@ export default function ContentPage() {
       : await supabase.from("posts").update(payload).eq("id", modal.data.id);
     setBusy(false);
     if (error) { alert("Hata: " + error.message); return; }
-    setModal(null); load();
+    setModal(null); load(true);
   };
 
   const toggleActive = async (p) => {
     const { data, error } = await supabase.from("posts").update({ is_active: !p.is_active }).eq("id", p.id).select("id");
     if (error) { alert("Değiştirilemedi: " + error.message); return; }
     if (!data?.length) { alert("Değiştirilemedi: bu işlem için yetkin yok."); return; }
-    load();
+    load(true);
   };
   const del = async (p) => {
     if (!confirm('"' + p.title + '" silinsin mi?')) return;
     const { error } = await supabase.from("posts").delete().eq("id", p.id);
     if (error) { alert("Silinemedi: " + error.message); return; }
-    load();
+    load(true);
   };
 
   const filtered = posts.filter(p => p.kind === kind);
   const kindInfo = KINDS.find(k => k.key === kind);
 
-  if (loading) return (<div style={{color:"#888",fontFamily:cv,padding:20}}>Yukleniyor...</div>);
+  if (loading) return (<div style={{color:"#888",fontFamily:cv,padding:20}}>Yükleniyor…</div>);
 
   return (
     <div style={{fontFamily:cv,color:"#F0EDE8"}}>

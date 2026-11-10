@@ -19,7 +19,7 @@ import {
 //   kompakt      Gun Ozeti icin: fis listesi ve kural seridi gizli
 //   aksiyonlar   hero altina konacak dugme satiri (PaylasSatiri gibi)
 
-export const C = { card: "#161616", cardLine: "#262626", ink: "#F0EDE8", muted: "#8A8A86", faint: "#5A5A56", accent: "#FFFFFF", up: "#8A8580", down: "#C87A6A" };
+export const C = { card: "#161616", cardLine: "#262626", ink: "#F0EDE8", muted: "#8A8A86", faint: "#8A8A86", accent: "#FFFFFF", up: "#8A8580", down: "#C87A6A" };
 export const cv = "-apple-system,BlinkMacSystemFont,'Segoe UI',Roboto,sans-serif";
 export const hv = "'Bebas Neue','Barlow Condensed',sans-serif";
 export const kart = { background: C.card, border: `1px solid ${C.cardLine}`, borderRadius: 12, padding: 16 };
@@ -34,9 +34,10 @@ const dugme = (dolu) => ({
   background: dolu ? C.accent : "transparent", color: dolu ? "#000" : C.ink,
   border: `1px solid ${dolu ? C.accent : C.cardLine}`, flex: "1 1 150px",
 });
+// Pasif ok bilerek soluk (#5A5A56): metin degil, "buradan oteye gidilmez" isareti.
 const okDugme = (pasif) => ({
   width: 44, height: 44, borderRadius: 10, border: `1px solid ${C.cardLine}`, background: "transparent",
-  color: pasif ? C.faint : C.ink, cursor: pasif ? "default" : "pointer", display: "inline-flex", alignItems: "center", justifyContent: "center",
+  color: pasif ? "#5A5A56" : C.ink, cursor: pasif ? "default" : "pointer", display: "inline-flex", alignItems: "center", justifyContent: "center",
 });
 const rozet = { display: "inline-block", marginLeft: 6, padding: "1px 6px", borderRadius: 999, fontSize: 10, fontWeight: 700, letterSpacing: 0.6, background: "rgba(255,255,255,0.10)", color: C.ink };
 
@@ -312,7 +313,7 @@ export default function HakedisOzeti({
           {!kompakt && (
             <div style={{ fontSize: 11, color: C.faint, lineHeight: 1.6, marginTop: 12, padding: "0 4px" }}>
               Ödenmiş fişler sayılır; açık ve veresiye fişler ödendiği ayda girer. İkram ürün liste fiyatından ödenir. İndirimli ürün indirimli fiyattan sayılır.
-              {guncelleme && <> · Kaynak: nip_mutfak_hakedis_raporu · {saatMetni(guncelleme)}</>}
+              {guncelleme && <> · Son güncelleme {saatMetni(guncelleme)}</>}
             </div>
           )}
         </div>

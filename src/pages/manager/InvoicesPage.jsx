@@ -57,12 +57,18 @@ export default function InvoicesPage() {
   const [xmlInfo, setXmlInfo] = useState(null); // e-Fatura XML ozeti
   const [priceAlerts, setPriceAlerts] = useState([]);
 
-  const load = async () => {
-    setLoading(true);
-    const [{data: invs}, {data: ings}] = await Promise.all([
+  // sessiz: kayit / silme sonrasi tazelemede sayfa "Yükleniyor" yazisina
+  // dusmesin (liste sokulup kaydirma basa sariyordu). Ilk acilis yine yukleme
+  // yazisini gosterir.
+  const load = async (sessiz) => {
+    if (!sessiz) setLoading(true);
+    const [{data: invs, error: faturaHata}, {data: ings, error: malzemeHata}] = await Promise.all([
       supabase.from("supplier_invoices").select("*, supplier_invoice_items(*, ingredients(name, unit))").in("store_id", staffUser?.store_ids?.length ? staffUser.store_ids : ["00000000-0000-0000-0000-000000000000"]).order("invoice_date", {ascending: false}),
       supabase.from("ingredients").select("*").in("store_id", staffUser?.store_ids?.length ? staffUser.store_ids : ["00000000-0000-0000-0000-000000000000"]).order("name"),
     ]);
+    // Sessiz tazeleme basarisizsa (sinyal koptu) ekrandaki liste kalsin:
+    // bos listeyle degistirmek sayfayi bosaltirdi.
+    if (sessiz && (faturaHata || malzemeHata)) return;
     setInvoices(invs || []);
     setIngredients(ings || []);
     setLoading(false);
@@ -427,7 +433,7 @@ export default function InvoicesPage() {
         body: { supplier: form.supplier_name.trim(), alerts: anomalies },
       }).catch(() => {});
     }
-    setBusy(false); setModal(null); load();
+    setBusy(false); setModal(null); load(true);
     alert(anomalies.length
       ? "Fatura kaydedildi. " + anomalies.length + " üründe anormal fiyat artışı (%" + PRICE_ALERT_PCT + "+)" + (ozellik("telegram") ? " — sahibe Telegram uyarısı gönde" : ".") + "rildi."
       : STOK_YAZ ? "Fatura kaydedildi! Stok guncellendi."
@@ -438,10 +444,10 @@ export default function InvoicesPage() {
     if (!confirm(STOK_YAZ ? "Fatura silinsin mi? (Stok geri alinmaz)"
                           : "Fatura silinsin mi? (Bu fatura stoğa zaten dokunmadı)")) return;
     await supabase.from("supplier_invoices").delete().eq("id", inv.id);
-    load();
+    load(true);
   };
 
-  if (loading) return (<div style={{color:"#888",fontFamily:cv,padding:20}}>Yukleniyor...</div>);
+  if (loading) return (<div style={{color:"#888",fontFamily:cv,padding:20}}>Yükleniyor…</div>);
 
   const totalSpent = invoices.reduce((s,i) => s + Number(i.total_amount||0), 0);
 
@@ -520,9 +526,9 @@ export default function InvoicesPage() {
 
       {modal && (
         <Modal onClose={()=>setModal(null)} title={modal.mode === "manual" ? "Manuel Stok Girişi" : "Yeni Fatura"}>
-          <Field label="TEDARIKCI"><input value={form.supplier_name||""} onChange={e=>setForm(f => ({...f,supplier_name:e.target.value}))} placeholder="orn: Anadolu Efes" style={inputS}/></Field>
+          <Field label="TEDARİKÇİ"><input value={form.supplier_name||""} onChange={e=>setForm(f => ({...f,supplier_name:e.target.value}))} placeholder="orn: Anadolu Efes" style={inputS}/></Field>
           <div style={{display:"flex",gap:8}}>
-            <Field label="TARIH"><input type="date" value={form.invoice_date||""} onChange={e=>setForm(f => ({...f,invoice_date:e.target.value}))} style={inputS}/></Field>
+            <Field label="TARİH"><input type="date" value={form.invoice_date||""} onChange={e=>setForm(f => ({...f,invoice_date:e.target.value}))} style={inputS}/></Field>
             {modal.mode !== "manual" && (
               <Field label="FATURA NO"><input value={form.invoice_no||""} onChange={e=>setForm(f => ({...f,invoice_no:e.target.value}))} placeholder="XML'den gelir" style={inputS}/></Field>
             )}
@@ -678,8 +684,8 @@ export default function InvoicesPage() {
           </div>
 
           <div style={{display:"flex",gap:8}}>
-            <button onClick={()=>setModal(null)} style={cancelBtn}>Iptal</button>
-            <button onClick={saveInvoice} disabled={busy} style={{...saveBtn,opacity:busy?0.6:1}}>{busy?"Yukleniyor...":"Faturayı Kaydet"}</button>
+            <button onClick={()=>setModal(null)} style={cancelBtn}>İptal</button>
+            <button onClick={saveInvoice} disabled={busy} style={{...saveBtn,opacity:busy?0.6:1}}>{busy?"Kaydediliyor…":"Faturayı Kaydet"}</button>
           </div>
         </Modal>
       )}

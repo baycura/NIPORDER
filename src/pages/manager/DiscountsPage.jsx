@@ -4,8 +4,11 @@ import Ikon from "../../components/Ikon.jsx";
 
 const cv = "-apple-system,BlinkMacSystemFont,'Segoe UI',Roboto,sans-serif";
 const hv = "'Bebas Neue','Barlow Condensed','Coolvetica Condensed',sans-serif";
-const C = { bg: "#0C0C0C", card: "#161616", line: "#2A2A2A", ink: "#F0EDE8", muted: "#8A8A86", faint: "#666666", accent: "#FFFFFF", down: "#C87A6A" };
+const C = { bg: "#0C0C0C", card: "#161616", line: "#2A2A2A", ink: "#F0EDE8", muted: "#8A8A86", faint: "#8A8A86", accent: "#FFFFFF", down: "#C87A6A" };
 const tl = (n) => "₺" + Math.round(Number(n) || 0).toLocaleString("tr-TR");
+// Hesabin durumu, sahibin dilinde. Eskiden yalniz paid/open cevriliyordu;
+// "sent", "debt" gibi ham degerler ekrana oldugu gibi dusuyordu.
+const DURUM = { paid: "ödendi", open: "açık hesap", sent: "açık hesap", preparing: "açık hesap", ready: "açık hesap", debt: "veresiye", cancelled: "iptal" };
 
 // Pazartesi 00:00 (yerel). Kasa ve lig ile ayni hafta tanimi.
 const haftaBasi = () => {
@@ -122,7 +125,7 @@ export default function DiscountsPage() {
                   <span style={{ color: C.muted, fontWeight: 600 }}>{r.personel}</span>
                   <span>{new Date(r.tarih).toLocaleString("tr-TR", { day: "numeric", month: "short", hour: "2-digit", minute: "2-digit" })}</span>
                   <span>{tl(r.indirim)}/adet</span>
-                  <span>{r.durum === "paid" ? "ödendi" : r.durum === "open" ? "açık hesap" : r.durum}</span>
+                  <span>{DURUM[r.durum] || "—"}</span>
                   {r.neden && <span style={{ color: C.ink }}>“{r.neden}”</span>}
                 </div>
               </div>

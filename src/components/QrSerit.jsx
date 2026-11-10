@@ -23,12 +23,12 @@ export default function QrSerit({ serit, onAc, onKapat, mobil }) {
         </span>
       </button>
       <button onClick={onAc}
-        style={{minHeight:40,padding:"0 14px",borderRadius:9,border:"none",background:"#FFFFFF",color:"#000",
+        style={{minHeight:44,padding:"0 14px",borderRadius:9,border:"none",background:"#FFFFFF",color:"#000",
                 fontFamily:"inherit",fontSize:13,fontWeight:800,cursor:"pointer",flexShrink:0}}>
-        Aç
+        {serit.diger > 0 ? "Listeyi aç" : "Aç"}
       </button>
       <button onClick={onKapat} aria-label="Şeridi kapat"
-        style={{minWidth:40,minHeight:40,display:"flex",alignItems:"center",justifyContent:"center",
+        style={{minWidth:44,minHeight:44,display:"flex",alignItems:"center",justifyContent:"center",
                 background:"none",border:"none",color:"#8A8A86",cursor:"pointer",flexShrink:0}}>
         <Ikon ad="kapat" boy={16}/>
       </button>

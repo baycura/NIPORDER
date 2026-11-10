@@ -27,7 +27,7 @@ import Ikon from "./Ikon.jsx";
 
 const cv = "-apple-system,BlinkMacSystemFont,'Segoe UI',Roboto,sans-serif";
 const hv = "'Bebas Neue','Barlow Condensed','Coolvetica Condensed',sans-serif";
-const C = { kart: "#161616", cizgi: "#2A2A2A", koyu: "#0C0C0C", ink: "#F0EDE8", soluk: "#8A8580", silik: "#666666", ak: "#FFFFFF", kirmizi: "#C87A6A", yesil: "#7A9E7E" };
+const C = { kart: "#161616", cizgi: "#2A2A2A", koyu: "#0C0C0C", ink: "#F0EDE8", soluk: "#8A8580", silik: "#8A8A86", ak: "#FFFFFF", kirmizi: "#C87A6A", yesil: "#7A9E7E" };
 
 const fmt = (n) => Number(n || 0).toLocaleString("tr-TR", { maximumFractionDigits: 2 });
 
@@ -225,7 +225,7 @@ export default function StokEkleSheet({ kalem, storeId, ipucu, onKapat, onBitti 
         <div style={etiketS}>{yon === "dus" ? "DÜŞÜLECEK" : "EKLENECEK"} MİKTAR ({birim})</div>
         <div style={{ display: "flex", gap: 8, alignItems: "center", marginBottom: 10 }}>
           <button onClick={() => setMiktar(String(Math.max(0, (sayiya(miktar) || 0) - 1)))} style={adimBtn}>−</button>
-          <input value={miktar} onChange={e => { setMiktar(e.target.value); setHata(null); }} autoFocus
+          <input value={miktar} onChange={e => { setMiktar(e.target.value); setHata(null); }} autoFocus className="nip-buyuk-rakam"
             inputMode={urunMu ? "numeric" : "decimal"} placeholder="0"
             style={{ flex: 1, minWidth: 0, padding: "14px 12px", background: C.koyu, border: `1px solid ${C.cizgi}`, borderRadius: 10, color: C.ink,
               fontFamily: hv, fontSize: 30, fontWeight: 900, textAlign: "center", outline: "none", letterSpacing: 1 }} />

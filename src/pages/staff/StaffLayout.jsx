@@ -24,18 +24,21 @@ export default function StaffLayout() {
   const qrCalisir = !!staffUser && !isViewer && !isKitchen
     && (staffUser.store_ids || []).length > 0 && !pathname.startsWith("/kitchen");
   const qr = useQrSiparisZili({ staffUser, aktif: qrCalisir });
+  // Birden fazla yeni QR hesabi varsa ("+N hesap daha") tek hesaba degil
+  // listeye gidilir; eskiden yalniz sonuncusu aciliyor, digerleri kaciyordu.
   const qrHesabaGit = () => {
-    const id = qr.serit?.orderId;
+    const s = qr.serit;
     qr.seritKapat();
-    if (id) navigate(`/orders/${id}`);
+    if (s?.diger > 0) navigate("/orders");
+    else if (s?.orderId) navigate(`/orders/${s.orderId}`);
   };
   const qrSesDugmesi = qrCalisir && (
     <button onClick={qr.sesDegistir}
       aria-label={qr.sesAcik ? "Yeni QR siparişi sesi açık. Kapatmak için dokun." : "Yeni QR siparişi sesi kapalı. Açmak için dokun."}
       title={qr.sesAcik ? "QR sesi açık" : "QR sesi kapalı"}
-      style={{display:"flex",alignItems:"center",gap:4,minHeight:36,padding:"0 9px",borderRadius:8,flexShrink:0,
-              background:"none",border:"1px solid #2A2A2A",color:qr.sesAcik?"#F0EDE8":"#666",cursor:"pointer",
-              fontFamily:cv,fontSize:11,fontWeight:700}}>
+      style={{display:"flex",alignItems:"center",gap:4,minHeight:44,padding:"0 9px",borderRadius:8,flexShrink:0,
+              background:"none",border:"1px solid #2A2A2A",color:qr.sesAcik?"#F0EDE8":"#8A8580",cursor:"pointer",
+              fontFamily:cv,fontSize:12,fontWeight:700}}>
       <Ikon ad={qr.sesAcik ? "ses" : "sessiz"} boy={17}/>QR
     </button>
   );
@@ -149,30 +152,36 @@ export default function StaffLayout() {
     </div>);
   }
 
-  // Avatar kisayolu: vardiya sayfasi olan roller icin Vardiyam'a gider
-  const avatarTikla = (!isViewer && !isParttime) ? () => navigate("/myshift") : undefined;
+  // Avatar kisayolu: vardiya sayfasi olan roller Vardiyam'a gider. Part-time
+  // ve gozlemcinin alt barinda Menu sekmesi yok; avatar onlari Menu sayfasina
+  // (/hub) goturur — "Çıkış yap" orada, telefonda baska cikis yolu yoktu.
+  const hesabaGider = isViewer || isParttime;
+  const avatarTikla = () => navigate(hesabaGider ? "/hub" : "/myshift");
 
   return (<div style={{background:"#0C0C0C",minHeight:"100vh",fontFamily:cv}} onTouchStart={onTouchStart} onTouchEnd={onTouchEnd}>
-    <header style={{display:"flex",alignItems:"center",justifyContent:"space-between",padding:"10px 14px",background:"#161616",borderBottom:"1px solid #2A2A2A",position:"sticky",top:0,zIndex:40}}>
+    {/* Dikey dolgu 6px: 44px'lik dugmelerle ust serit eski yuksekliginde (57px) kalir. */}
+    <header style={{display:"flex",alignItems:"center",justifyContent:"space-between",padding:"6px 14px",background:"#161616",borderBottom:"1px solid #2A2A2A",position:"sticky",top:0,zIndex:40}}>
       <div style={{display:"flex",alignItems:"center",gap:8}}>
         <div style={{width:30,height:30,borderRadius:8,background:"#FFFFFF",display:"flex",alignItems:"center",justifyContent:"center",fontSize:16,color:"#000",fontWeight:900}}>{MARKA.harf}</div>
         <div lang={MARKA.dil} style={{color:"#F0EDE8",fontSize:15,fontWeight:400,fontFamily:"'Coolvetica Heavy',"+cv,textTransform:"uppercase",letterSpacing:"0.005em"}}>{MARKA.ad}</div>
       </div>
       <div style={{display:"flex",alignItems:"center",gap:8}}>
         {qrSesDugmesi}
-        <div onClick={avatarTikla} title={avatarTikla ? "Vardiyam" : undefined}
-             style={{width:30,height:30,borderRadius:"50%",background:color+"33",display:"flex",alignItems:"center",justifyContent:"center",color,fontSize:13,fontWeight:700,cursor:avatarTikla?"pointer":"default"}}>
-          {staffUser?.name?.[0]||"?"}
-        </div>
+        <button onClick={avatarTikla} aria-label={hesabaGider ? "Hesap ve çıkış" : "Vardiyam"} title={hesabaGider ? "Hesap ve çıkış" : "Vardiyam"}
+                style={{width:44,height:44,padding:0,background:"none",border:"none",display:"flex",alignItems:"center",justifyContent:"center",cursor:"pointer",flexShrink:0}}>
+          <span style={{width:30,height:30,borderRadius:"50%",background:color+"33",display:"flex",alignItems:"center",justifyContent:"center",color,fontSize:13,fontWeight:700,fontFamily:cv}}>
+            {staffUser?.name?.[0]||"?"}
+          </span>
+        </button>
       </div>
     </header>
-    <main style={{padding:"16px 14px",paddingBottom:84,minHeight:"calc(100vh - 56px)"}}><Outlet/></main>
+    <main style={{padding:"16px 14px",paddingBottom:84,minHeight:"calc(100vh - 57px)"}}><Outlet/></main>
     <QrSerit serit={qr.serit} onAc={qrHesabaGit} onKapat={qr.seritKapat} mobil/>
-    <nav style={{position:"fixed",bottom:0,left:0,right:0,background:"#161616",borderTop:"1px solid #2A2A2A",display:"flex",justifyContent:"space-around",padding:"8px 0 14px",zIndex:35,boxShadow:"0 -2px 12px rgba(0,0,0,0.5)"}}>
+    <nav style={{position:"fixed",bottom:0,left:0,right:0,background:"#161616",borderTop:"1px solid #2A2A2A",display:"flex",justifyContent:"space-around",padding:"0 0 14px",zIndex:35,boxShadow:"0 -2px 12px rgba(0,0,0,0.5)"}}>
       {sekmeler.map(item => (
-        <NavLink key={item.to} to={item.to} style={({isActive}) => ({display:"flex",flexDirection:"column",alignItems:"center",gap:3,textDecoration:"none",color:isActive?"#FFFFFF":"#666",padding:"4px 8px",minWidth:48})}>
+        <NavLink key={item.to} to={item.to} style={({isActive}) => ({display:"flex",flexDirection:"column",alignItems:"center",justifyContent:"center",gap:3,flex:1,minWidth:0,minHeight:54,paddingTop:8,textDecoration:"none",color:isActive?"#FFFFFF":"#8A8580",borderTop:"2px solid "+(isActive?"#FFFFFF":"transparent")})}>
           <Ikon ad={item.icon} boy={23}/>
-          <span style={{fontSize:12,letterSpacing:"0.2px",fontWeight:600}}>{item.label.toLocaleUpperCase("tr-TR")}</span>
+          <span style={{fontSize:12,letterSpacing:"0.2px",fontWeight:600,whiteSpace:"nowrap"}}>{(item.kisa || item.label).toLocaleUpperCase("tr-TR")}</span>
         </NavLink>
       ))}
     </nav>

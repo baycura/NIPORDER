@@ -3,6 +3,7 @@ import { supabase } from "../../lib/supabase.js";
 import { useAuth } from "../../contexts/AuthContext.jsx";
 import { optionsText } from "../../lib/productOptions.js";
 import Ikon from "../../components/Ikon.jsx";
+import { KALEM_DURUM, buyuk } from "../../lib/durum.js";
 
 const cv = "-apple-system,BlinkMacSystemFont,'Segoe UI',Roboto,sans-serif";
 
@@ -31,11 +32,18 @@ export default function KitchenDisplayPage() {
   const audioUnlockedRef = useRef(false);
   const wakeLockRef = useRef(null);
   const knownItemIdsRef = useRef(new Set());
+  // Bekleme suresi ve saat render aninda hesaplaniyor; sakin donemde donup
+  // kaliyordu. 30 sn'de bir yalniz yeniden cizer, ag istegi atmaz.
+  const [, tik] = useState(0);
+  useEffect(() => {
+    const z = setInterval(() => tik(n => n + 1), 30000);
+    return () => clearInterval(z);
+  }, []);
 
   const load = async () => {
     const { data: orders } = await supabase
       .from("orders")
-      .select("id, table_id, customer_name, created_at, status, origin_store_id, stores:origin_store_id(slug, name)")
+      .select("id, table_id, customer_name, created_at, status, note, origin_store_id, stores:origin_store_id(slug, name)")
       .in("status", ["open","sent","preparing","ready"])
       .order("created_at", {ascending:true});
 
@@ -108,7 +116,7 @@ export default function KitchenDisplayPage() {
     }
   };
 
-  if (loading) return (<div style={{fontFamily:cv,background:"#000",color:"#888",minHeight:"100vh",display:"flex",alignItems:"center",justifyContent:"center"}}>Yukleniyor...</div>);
+  if (loading) return (<div style={{fontFamily:cv,background:"#000",color:"#888",minHeight:"100vh",display:"flex",alignItems:"center",justifyContent:"center"}}>Yükleniyor…</div>);
 
   return (
     <div style={{fontFamily:cv,background:"#000",color:"#fff",minHeight:"100vh",padding:16}} onClick={unlock}>
@@ -131,7 +139,7 @@ export default function KitchenDisplayPage() {
       <div style={{display:"flex",justifyContent:"space-between",alignItems:"center",marginBottom:20}}>
         <div>
           <div style={{fontSize:32,fontWeight:900,letterSpacing:"-1px"}}>Mutfak</div>
-          <div style={{fontSize:12,color:"#888888",letterSpacing:"2px"}}>{tickets.length} AKTIF HESAP</div>
+          <div style={{fontSize:12,color:"#888888",letterSpacing:"2px"}}>{tickets.length} AKTİF SİPARİŞ</div>
         </div>
         <div style={{fontSize:14,color:"#888888"}}>{new Date().toLocaleTimeString("tr-TR",{hour:"2-digit",minute:"2-digit"})}</div>
       </div>
@@ -143,22 +151,28 @@ export default function KitchenDisplayPage() {
           const waitMin = Math.round((Date.now() - new Date(t.order.created_at).getTime()) / 60000);
           const urgent = waitMin >= 15;
           return (
-            <div key={t.order.id} style={{background:urgent?"#161616":"#141414",border:"2px solid "+(urgent?"#2A2A2A":"#222"),borderRadius:12,padding:14}}>
+            <div key={t.order.id} style={{background:urgent?"#161616":"#141414",border:"2px solid "+(urgent?"#FFFFFF":"#222"),borderRadius:12,padding:14}}>
               <div style={{display:"flex",justifyContent:"space-between",alignItems:"center",marginBottom:10}}>
                 <div style={{flex:1,minWidth:0}}>
                   {t.storeSlug && <div style={{display:"inline-block",background:t.storeSlug==="doner"?"#FFFFFF":"#222222",color:t.storeSlug==="doner"?"#000":"#F0EDE8",padding:"2px 8px",borderRadius:6,fontSize:12,fontWeight:600,letterSpacing:"0.2px",marginBottom:4}}>{t.storeSlug==="doner"?"DÖNER":"PARIS"}</div>}
                   <div style={{fontSize:18,fontWeight:800}}>{t.where}</div>
                 </div>
-                <div style={{fontSize:20,fontWeight:900,color:urgent?"#C87A6A":"#FFFFFF"}}>{waitMin}'</div>
+                <div style={{fontSize:20,fontWeight:900,color:urgent?"#C87A6A":"#FFFFFF",fontVariantNumeric:"tabular-nums",whiteSpace:"nowrap",flexShrink:0,marginLeft:8}}>{waitMin} dk{urgent && <Ikon ad="uyari" boy={16} style={{marginLeft:6}}/>}</div>
               </div>
+              {t.order.note && (
+                <div style={{background:"#161616",border:"1px solid #FFFFFF",borderRadius:8,padding:"8px 12px",marginBottom:10,fontSize:14,color:"#F0EDE8"}}>
+                  <Ikon ad="not" boy={14} style={{marginRight:5}}/><strong>Not:</strong> {t.order.note}
+                </div>
+              )}
               {t.items.map(it => {
                 const opts = optionsText(it.selected_options);
                 return (
                   <div key={it.id} style={{padding:"8px 0",borderTop:"1px solid #333"}}>
-                    <div style={{fontSize:16,fontWeight:700,color:it.kitchen_status==="ready"?"#FFFFFF":it.kitchen_status==="preparing"?"#FFFFFF":"#fff"}}>
+                    <div style={{fontSize:16,fontWeight:700,color:it.kitchen_status==="ready"?"#8A8580":"#F0EDE8"}}>
                       {it.quantity}× {it.product_name}
                       {it.is_takeaway && <span style={{marginLeft:8,padding:"3px 10px",background:"#FFFFFF",color:"#000",borderRadius:12,fontSize:12,fontWeight:800,letterSpacing:"0.5px"}}><Ikon ad="bardak" boy={12} style={{marginRight:5}}/>PAKET</span>}
-                      <span style={{fontSize:12,marginLeft:8,letterSpacing:"0.2px",color:"#888"}}>{it.kitchen_status?.toUpperCase()}</span>
+                      {it.kitchen_status === "ready" && <Ikon ad="onay" boy={14} style={{marginLeft:8}}/>}
+                      <span style={{fontSize:12,marginLeft:8,letterSpacing:"0.2px",color:"#888"}}>{buyuk(KALEM_DURUM[it.kitchen_status] || it.kitchen_status)}</span>
                     </div>
                     {opts && <div style={{fontSize:13,color:"#FFFFFF",marginTop:2,fontWeight:600}}>{opts}</div>}
                     {it.notes && <div style={{fontSize:12,color:"#aaa",fontStyle:"italic",marginTop:2}}>Not: {it.notes}</div>}

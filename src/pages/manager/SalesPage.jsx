@@ -16,7 +16,7 @@ import { optionsText } from "../../lib/productOptions.js";
 
 const cv = "-apple-system,BlinkMacSystemFont,'Segoe UI',Roboto,sans-serif";
 const hv = "'Bebas Neue','Barlow Condensed','Coolvetica Condensed',sans-serif";
-const C = { card: "#161616", cardLine: "#262626", ink: "#F0EDE8", muted: "#8A8A86", faint: "#666666", accent: "#FFFFFF", down: "#C87A6A" };
+const C = { card: "#161616", cardLine: "#262626", ink: "#F0EDE8", muted: "#8A8A86", faint: "#8A8A86", accent: "#FFFFFF", down: "#C87A6A" };
 const fmtTL = (n) => "₺" + Number(n || 0).toLocaleString("tr-TR", { maximumFractionDigits: 0 });
 const fmtN = (n) => Number(n || 0).toLocaleString("tr-TR", { maximumFractionDigits: 0 });
 const AY_KISA = ["Oca", "Şub", "Mar", "Nis", "May", "Haz", "Tem", "Ağu", "Eyl", "Eki", "Kas", "Ara"];
@@ -304,7 +304,7 @@ export default function SalesPage() {
   };
 
   return (
-    <div style={{ padding: 16, fontFamily: cv, maxWidth: 900, margin: "0 auto", paddingBottom: 80, color: C.ink }}>
+    <div style={{ fontFamily: cv, maxWidth: 900, margin: "0 auto", color: C.ink }}>
       <div style={{ display: "flex", alignItems: "baseline", justifyContent: "space-between", gap: 10, flexWrap: "wrap" }}>
         <div style={{ fontSize: 24, fontWeight: 800 }}>Satış Raporu</div>
         <div style={{ fontSize: 12, color: C.faint }}>kapanmış hesaplar · gün 03:00'te biter</div>
@@ -373,7 +373,7 @@ export default function SalesPage() {
               })}
             </div>
             <div style={{ fontSize: 11, color: C.faint, marginTop: 4 }}>
-              {gunSerisi.tur === "gun" ? "güne dokun → o günün ürünleri · koyu çubuk hafta sonu" : "haftalık toplam (uzun aralık)"}
+              {gunSerisi.tur === "gun" ? "güne dokun → o günün ürünleri · açık çubuk hafta sonu" : "haftalık toplam (uzun aralık)"}
             </div>
           </div>
         )}
@@ -396,7 +396,7 @@ export default function SalesPage() {
         {mod === "urun" && <button onClick={() => setGrupla(v => !v)} style={cip(grupla)}>Kategori</button>}
         <button onClick={metniKopyala} disabled={mod === "fis" ? !fisListesi.length : !liste.length}
                 style={{ ...cip(false), display: "inline-flex", alignItems: "center", gap: 6, opacity: (mod === "fis" ? fisListesi.length : liste.length) ? 1 : 0.5 }}>
-          <Ikon ad="kopyala" boy={14} />{kopyaDurum === "ok" ? "Kopyalandı" : kopyaDurum === "yok" ? "Olmadı" : "Kopyala"}
+          <Ikon ad="kopyala" boy={14} />{kopyaDurum === "ok" ? "Kopyalandı" : kopyaDurum === "yok" ? "Kopyalanamadı" : "Kopyala"}
         </button>
       </div>
 

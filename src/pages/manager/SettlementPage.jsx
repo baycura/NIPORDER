@@ -59,7 +59,7 @@ export default function SettlementPage() {
   );
 
   return (
-    <div style={{ padding: 16, fontFamily: cv, color: C.ink, maxWidth: 900, margin: "0 auto", paddingBottom: 80 }}>
+    <div style={{ fontFamily: cv, color: C.ink, maxWidth: 900, margin: "0 auto" }}>
       <div style={{ display: "flex", justifyContent: "space-between", alignItems: "baseline", flexWrap: "wrap", gap: 8 }}>
         <h1 style={{ fontFamily: hv, fontWeight: 900, fontSize: 34, margin: 0, letterSpacing: 1 }}>
           <Ikon ad="mutfakodeme" boy={22} style={{ marginRight: 10 }} />MUTFAĞA ÖDENECEK
