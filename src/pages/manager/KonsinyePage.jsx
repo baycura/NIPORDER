@@ -27,6 +27,14 @@ const tarihSaat = (d) => d ? new Date(d).toLocaleString("tr-TR", { timeZone: "Eu
 //
 // Tedarikci payi ETIKET fiyatindan (sahip 1.11); indirim ve ikram bizim paydan
 // duser, ikramda bizim pay eksi olur.
+//
+// E-POSTA: her ayin 1'inde 04:45'te konsinye-mail edge fonksiyonu tedarikci
+// basina bir Excel uretir ve konsinye_mail.alicilar adreslerine gonderir
+// (sahip 1.11: cerenbaycura@gmail.com). Admin "E-postayla gonder" ile ayni
+// e-postayi istediginde yollar; son gonderim sonucu panelin altinda gorunur.
+//
+// Elle duzeltilen kayit (kilitli, duzeltme_notu) "Duzeltildi" etiketi tasir;
+// yeniden kesim ona dokunmaz.
 export default function KonsinyePage() {
   const { staffUser, isAdmin } = useAuth();
   const storeIds = staffUser?.store_ids || [];
@@ -47,6 +55,7 @@ export default function KonsinyePage() {
 
   // Hesaplar
   const [hesaplar, setHesaplar] = useState(null);
+  const [mail, setMail] = useState(null);     // konsinye_mail: {alicilar, son}
   // Canli
   const [satirlar, setSatirlar] = useState(null);
   const istekNo = useRef(0);
@@ -71,6 +80,8 @@ export default function KonsinyePage() {
         if (error) { setHata(error.message); setHesaplar([]); return; }
         setHesaplar(data || []);
       });
+    supabase.from("konsinye_mail").select("alicilar,son").eq("store_id", storeId).maybeSingle()
+      .then(({ data }) => { if (no === istekNo.current) setMail(data || null); });
   };
   const canliYukle = () => {
     if (!storeId) return;
@@ -126,20 +137,44 @@ export default function KonsinyePage() {
     alert(`${ayEtiketi(kesimAy)}: ${Number(data) || 0} tedarikçi hesabı kesildi.`);
     hesaplariYukle();
   };
+  // Secili ayin hesaplarini tedarikci basina Excel olarak e-postayla yolla
+  // (konsinye-mail edge fonksiyonu; alicilar konsinye_mail tablosunda).
+  const mailGonder = async () => {
+    if (!isAdmin || !storeId) return;
+    const kime = (mail?.alicilar || []).join(", ") || "alıcı yok";
+    if (!confirm(`${ayEtiketi(kesimAy)} hesapları tedarikçi başına Excel olarak e-postayla gönderilsin mi?\nAlıcı: ${kime}`)) return;
+    setBusy("mail");
+    const { data, error } = await supabase.functions.invoke("konsinye-mail", { body: { donem: kesimAy, store_id: storeId } });
+    setBusy(null);
+    let hataMetni = data?.error || null;
+    if (error) {
+      hataMetni = error.message;
+      try { const j = await error.context?.json?.(); if (j?.error) hataMetni = j.error; } catch { /* govde okunamadi */ }
+    }
+    hesaplariYukle();
+    if (hataMetni) { alert("Gönderilemedi: " + hataMetni); return; }
+    alert(`Gönderildi: ${(data?.dosyalar || []).length} dosya → ${(data?.alicilar || []).join(", ")}`);
+  };
 
   // ---- Tedarikciye giden metin / CSV (Excel ile ayni duzen)
   const paylar = (h) => {
     const biz = h.pay_pct == null ? null : Number(h.pay_pct);
-    return { biz, ted: biz == null ? null : 100 - biz };
+    return { biz, ted: biz == null ? null : 100 - biz, karisik: biz != null && !!h.pay_karisik };
+  };
+  const oranMetni = (h) => {
+    const { biz, ted, karisik } = paylar(h);
+    return ted == null ? "pay yazılmadı" : karisik ? "karışık pay (ürün bazında)" : `%${ted} tedarikçi · %${biz} bizim`;
   };
   const metin = (h) => {
-    const { biz, ted } = paylar(h);
+    const { biz, ted, karisik } = paylar(h);
     const satir = (h.satirlar || []).map(s => `• ${s.urun}: ${fmtSayi(s.adet)} adet × ${fmtTL(s.perakende)} = ${fmtTL(s.toplam)}`);
     return [
       `${h.tedarikci.toUpperCase()} × NOT IN PARIS — ${ayKisa(h.donem)} Satış Raporu`,
       ...satir,
       `Toplam: ${fmtSayi(h.adet)} adet · perakende ${fmtTL(h.perakende)}`,
-      ted == null ? "Pay oranı yazılmadı." : `${h.tedarikci} payı %${ted}: ${tl(h.tedarikci_pay)} · NOT IN PARIS payı %${biz}: ${tl(h.bizim_pay)}`,
+      h.duzeltme_notu || "",
+      ted == null ? "Pay oranı yazılmadı." : karisik ? `${h.tedarikci} payı (ürün bazında karışık oran): ${tl(h.tedarikci_pay)} · NOT IN PARIS payı: ${tl(h.bizim_pay)}`
+        : `${h.tedarikci} payı %${ted}: ${tl(h.tedarikci_pay)} · NOT IN PARIS payı %${biz}: ${tl(h.bizim_pay)}`,
       "Paylar perakende (etiket) fiyatı üzerinden, KDV dahil.",
       h.durum === "odendi" ? `Ödendi: ${tarihSaat(h.odendi_at)}` : "",
       "Not in Paris · order.notinparis.me",
@@ -150,14 +185,16 @@ export default function KonsinyePage() {
     catch { setKopya("yok"); }
   };
   const csvIndir = (h) => {
-    const { biz, ted } = paylar(h);
+    const { biz, ted, karisik } = paylar(h);
     const q = (v) => `"${String(v ?? "").replace(/"/g, '""')}"`;
     const n = (v) => String(Math.round(Number(v) || 0));
-    const bas = ["Ürün", "Barkod", "Adet", "Perakende fiyatı", "Toplam (perakende)", `NOT IN PARIS payı${biz == null ? "" : " %" + biz}`, `${h.tedarikci} payı${ted == null ? "" : " %" + ted}`];
-    const satir = (h.satirlar || []).map(s => [q(s.urun), q(s.barkod || ""), n(s.adet), n(s.perakende), n(s.toplam), n(s.bizim_pay), n(s.tedarikci_pay)].join(";"));
-    const toplam = [q("TOPLAM"), "", n(h.adet), "", n(h.perakende), n(h.bizim_pay), n(h.tedarikci_pay)].join(";");
+    const pay = (v) => ted == null ? q("pay yazılmadı") : n(v);   // pay yoksa tutar yazilmaz (ekranla ayni)
+    const yuzde = (p) => ted == null || karisik ? "" : " %" + p;
+    const bas = ["Ürün", "Barkod", "Adet", "Perakende fiyatı", "Toplam (perakende)", `NOT IN PARIS payı${yuzde(biz)}`, `${h.tedarikci} payı${yuzde(ted)}`];
+    const satir = (h.satirlar || []).map(s => [q(s.urun), q(s.barkod || ""), n(s.adet), n(s.perakende), n(s.toplam), pay(s.bizim_pay), pay(s.tedarikci_pay)].join(";"));
+    const toplam = [q("TOPLAM"), "", n(h.adet), "", n(h.perakende), pay(h.bizim_pay), pay(h.tedarikci_pay)].join(";");
     const ust = [q(`${h.tedarikci.toUpperCase()} × NOT IN PARIS`), q(`${ayKisa(h.donem)} Satış Raporu`), q("Paylar perakende (etiket) fiyatı üzerinden; KDV dahil.")].join(";");
-    const icerik = "﻿" + [ust, "", bas.map(q).join(";"), ...satir, toplam, "", [q("Ödenecek tutar"), "", "", "", "", "", n(h.tedarikci_pay)].join(";")].join("\r\n");
+    const icerik = "﻿" + [ust, "", bas.map(q).join(";"), ...satir, toplam, "", [q("Ödenecek tutar"), "", "", "", "", "", pay(h.tedarikci_pay)].join(";"), ...(karisik ? [q("Ürün bazında farklı pay oranları; paylar satır bazında.")] : []), ...(h.duzeltme_notu ? [q(h.duzeltme_notu)] : [])].join("\r\n");
     const blob = new window.Blob([icerik], { type: "text/csv;charset=utf-8" });
     const a = document.createElement("a");
     a.href = window.URL.createObjectURL(blob);
@@ -230,13 +267,22 @@ export default function KonsinyePage() {
       {mod === "hesaplar" && (<>
         {isAdmin && (
           <div style={{ ...kart, display: "flex", alignItems: "center", gap: 10, flexWrap: "wrap", marginBottom: 12, padding: 12 }}>
-            <div style={{ fontSize: 12, color: C.muted, flex: "1 1 200px" }}>Kesim her ayın 1'inde 04:15'te kendiliğinden yapılır. Beklemeden kesmek ya da bekleyen bir ayı tazelemek için:</div>
+            <div style={{ fontSize: 12, color: C.muted, flex: "1 1 200px" }}>Kesim her ayın 1'inde 04:15'te kendiliğinden yapılır; 04:45'te Excel'ler e-postayla gider. Beklemeden kesmek, tazelemek ya da e-postayı şimdi göndermek için:</div>
             <select value={kesimAy} onChange={e => setKesimAy(e.target.value)} style={{ minHeight: 36, padding: "6px 10px", background: "#0C0C0C", color: C.ink, border: `1px solid ${C.line}`, borderRadius: 8, fontFamily: cv, fontSize: 12 }}>
-              {[0, 1, 2, 3].map(i => { const a = ayKaydir(buAy, -i); return <option key={a} value={a}>{ayEtiketi(a)}</option>; })}
+              {[1, 2, 3, 4].map(i => { const a = ayKaydir(buAy, -i); return <option key={a} value={a}>{ayEtiketi(a)}</option>; })}
             </select>
             <button type="button" onClick={kes} disabled={busy === "kes"} style={{ ...kucukDugme, background: C.accent, color: "#000", border: "none", opacity: busy === "kes" ? 0.6 : 1 }}>
               {busy === "kes" ? "Kesiliyor…" : "Hesapları kes"}
             </button>
+            <button type="button" onClick={mailGonder} disabled={busy === "mail"} style={{ ...kucukDugme, opacity: busy === "mail" ? 0.6 : 1 }}>
+              <Ikon ad="belge" boy={14} />{busy === "mail" ? "Gönderiliyor…" : "E-postayla gönder"}
+            </button>
+          </div>
+        )}
+        {mail && (
+          <div style={{ fontSize: 12, color: C.faint, margin: "0 4px 12px", lineHeight: 1.5 }}>
+            E-posta: {(mail.alicilar || []).join(", ") || "alıcı yok"} · her ayın 1'inde 04:45'te, tedarikçi başına bir Excel.
+            {mail.son ? <> Son gönderim {tarihSaat(mail.son.at)}{mail.son.donem ? ` (${ayKisa(mail.son.donem)})` : ""}: <span style={{ color: mail.son.ok ? C.ok : C.down }}>{mail.son.mesaj}</span></> : " Henüz gönderilmedi."}
           </div>
         )}
         {hesaplar === null && !hata && <div style={{ padding: 40, textAlign: "center", color: C.muted }}>Yükleniyor…</div>}
@@ -272,9 +318,10 @@ export default function KonsinyePage() {
                           <span style={{ fontSize: 11, fontWeight: 700, padding: "2px 8px", borderRadius: 999, background: odendi ? "rgba(127,178,122,0.15)" : "rgba(255,255,255,0.08)", color: odendi ? C.ok : C.ink }}>
                             {odendi ? "Ödendi" : "Bekliyor"}
                           </span>
+                          {h.kilitli && <span title="Elle düzeltildi; yeniden kesim dokunmaz" style={{ fontSize: 11, fontWeight: 700, padding: "2px 8px", borderRadius: 999, background: "rgba(200,122,106,0.15)", color: C.down }}>Düzeltildi</span>}
                         </div>
                         <div style={{ fontSize: 12, color: C.faint, marginTop: 3 }}>
-                          {fmtSayi(h.adet)} adet · perakende {fmtTL(h.perakende)} · {ted == null ? <span style={{ color: C.down }}>pay yazılmadı</span> : `%${ted} tedarikçi · %${biz} bizim`}
+                          {fmtSayi(h.adet)} adet · perakende {fmtTL(h.perakende)} · {ted == null ? <span style={{ color: C.down }}>pay yazılmadı</span> : oranMetni(h)}
                           {odendi && h.odendi_at ? ` · ödendi ${tarihSaat(h.odendi_at)}` : ""}
                         </div>
                       </div>
@@ -322,6 +369,7 @@ export default function KonsinyePage() {
                         <div style={{ fontSize: 11, color: C.faint, marginTop: 6 }}>
                           Gerçek tahsilat {fmtTL(h.satis)}. Kesim {tarihSaat(h.kesildi_at)}{h.guncellendi && h.guncellendi !== h.kesildi_at ? `, güncelleme ${tarihSaat(h.guncellendi)}` : ""}.{h.odeme_notu ? ` ${h.odeme_notu}` : ""}
                         </div>
+                        {h.duzeltme_notu && <div style={{ fontSize: 12, color: C.down, marginTop: 4 }}>{h.duzeltme_notu}</div>}
                         <div style={{ display: "flex", gap: 8, marginTop: 12, flexWrap: "wrap" }}>
                           {isAdmin && !odendi && (
                             <button type="button" onClick={() => odendiYaz(h, false)} disabled={busy === h.id}

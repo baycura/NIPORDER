@@ -64,3 +64,43 @@ adet, perakende toplamı, tedarikçi payı (etiket üzerinden), bizim pay,
   gösterir, kesim yapmaz.
 
 Göç: `supabase/migrations/20261101_konsinye_hesaplar.sql`.
+
+### Elle düzeltme (kilit)
+
+Kasaya girilmemiş bir satış hesaba elle eklenirse kayıt **kilitlenir**
+(`kilitli`, `duzeltme_notu`): yeniden kesim ödenmiş kayıt gibi ona da
+dokunmaz. Sayfada "Düzeltildi" etiketi ve not görünür; not tedarikçi
+Excel'ine ve kopyalanan metne de girer. Kasa kaydı sonradan girilirse kilit
+kaldırılıp yeniden kesilebilir. Örnek: Mashqhead Ekim 2026, Beige Linen
+Sailor Hat 1 → 2 adet (`20261101_konsinye_hesap_duzeltme.sql`).
+
+Yetki: `nip_konsinye_hesap_kes` SECURITY DEFINER olduğu için kimliği
+`current_user`'dan değil `auth.uid()` / `auth.role()`'den alır; oturumdan
+yalnız admin ve kendi mağazası için çağırabilir, cron ve edge fonksiyonu
+serbesttir. `nip_konsinye_aylik` yalnız cron (`20261101_konsinye_yetki.sql`).
+
+## Aylık e-posta (1.11.2026)
+
+Her ayın 1'inde 04:45'te (`nip-konsinye-mail` cron → `nip_konsinye_mail_gonder`
+→ edge fonksiyonu `konsinye-mail`) geçen ayın hesapları **tedarikçi başına bir
+Excel** olarak tek e-postayla gider. Dosya düzeni tedarikçiye elden gönderilen
+dosyayla aynı: başlık "MARKA × NOT IN PARIS / Ekim 2026 Satış Raporu", ürün
+satırları, formüllü toplam ve paylar, sarı "Ödenecek tutar", varsa düzeltme
+notu ya da "ödemesi yapıldı" satırı. E-posta gövdesinde tedarikçi özeti
+(adet, perakende, oran, ödenecek, durum) ve Konsinye Hesabı bağlantısı vardır.
+
+- Alıcılar ve son gönderim: `konsinye_mail` tablosu (mağaza başına bir satır;
+  yalnız personel okur, yazma yalnız edge fonksiyonu). Varsayılan alıcı
+  cerenbaycura@gmail.com. `app_settings` kullanılmadı: anon'a açık okunur.
+- Sağlayıcı anahtarı edge fonksiyonu gizli değişkenlerinde (Supabase →
+  Edge Functions → Secrets): `BREVO_API_KEY` **ya da** `RESEND_API_KEY`,
+  ve `MAIL_FROM` ("Not in Paris <adres>"; Brevo'da doğrulanmış gönderici).
+  Anahtar yoksa fonksiyon açık hata verir, cron'da sahibe Telegram uyarısı
+  gider; e-posta gönderilmez.
+- Sayfada admin "E-postayla gönder" ile seçili ayı hemen yollar; panelin
+  altında alıcı ve son gönderim sonucu görünür.
+- Kayıt yoksa fonksiyon önce kesim yapar (`nip_konsinye_hesap_kes`).
+- Excel yazıcı: `supabase/functions/konsinye-mail/xlsx.ts` (fflate ile zip,
+  stil + formül + önbellek değeri; Gmail önizlemesi formül hesaplamaz).
+
+Göç: `supabase/migrations/20261101_konsinye_mail.sql`.
