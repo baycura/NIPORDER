@@ -40,7 +40,7 @@ const GECERSIZ = "E-posta anahtarı geçersiz (sağlayıcı reddetti). Supabase 
 
 // Brevo: MAIL_FROM yoksa hesabin dogrulanmis (active) ilk gondericisi.
 // Bulunan adres bu calisma ornegi boyunca saklanir (her postada yeniden sorulmaz).
-// Liste okunamazsa (yanlis anahtar, ag hatasi) bu bir saglayici hatasidir;
+// Liste okunamazsa (ag hatasi, 5xx) bu bir saglayici hatasidir;
 // "gonderici yok" yalniz liste geldiginde ve dogrulanmis adres olmadiginda denir.
 let bulunanGonderici: { key: string; g: Gonderici } | null = null;
 async function brevoGonderici(key: string): Promise<Gonderici | null> {
