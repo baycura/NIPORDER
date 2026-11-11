@@ -63,11 +63,11 @@ export default function StaffMgmtPage() {
 
   const saveStaff = async () => {
     if (busy) return;
-    if (!form.name?.trim()) { uyar("Isim gerekli"); return; }
+    if (!form.name?.trim()) { uyar("İsim gerekli"); return; }
     setBusy(true);
 
     if (modal.mode === "new") {
-      if (!form.email?.trim() || !form.password?.trim()) { uyar("Email ve sifre gerekli"); setBusy(false); return; }
+      if (!form.email?.trim() || !form.password?.trim()) { uyar("E-posta ve şifre gerekli"); setBusy(false); return; }
       const { data: newId, error } = await supabase.rpc("admin_create_staff_with_auth", {
         p_email: form.email.trim(),
         p_password: form.password,
@@ -95,13 +95,13 @@ export default function StaffMgmtPage() {
       // sessizce 0 satir doner ve kullanici kaydettim saniyordu
       const { data: upd, error } = await supabase.from("staff").update(payload).eq("id", modal.data.id).select("id");
       if (error) { uyar("Hata: " + error.message); setBusy(false); return; }
-      if (!upd?.length) { uyar("Kaydedilemedi: bu islem icin yetkin yok (personel duzenlemeyi yalniz admin yapabilir)."); setBusy(false); return; }
+      if (!upd?.length) { uyar("Kaydedilemedi: bu işlem için yetkin yok (personeli yalnız admin düzenler)."); setBusy(false); return; }
     }
     setModal(null); setBusy(false); load(true);
   };
 
   const resetPassword = async () => {
-    if (!pwModal || !newPassword || newPassword.length < 6) { uyar("En az 6 karakter sifre gir"); return; }
+    if (!pwModal || !newPassword || newPassword.length < 6) { uyar("En az 6 karakterli şifre gir"); return; }
     if (busy) return;
     setBusy(true);
     const { error } = await supabase.rpc("admin_set_user_password", {
@@ -110,7 +110,7 @@ export default function StaffMgmtPage() {
     });
     setBusy(false);
     if (error) { uyar("Hata: " + error.message); return; }
-    alert(pwModal.name + " icin yeni sifre belirlendi:\n\n" + newPassword + "\n\nLutfen bu sifreyi personel ile paylasin.");
+    alert(pwModal.name + " için yeni şifre belirlendi:\n\n" + newPassword + "\n\nBu şifreyi personele ilet.");
     setPwModal(null); setNewPassword("");
   };
 
@@ -154,7 +154,7 @@ export default function StaffMgmtPage() {
                 </div>
                 <div style={{display:"flex",flexDirection:"column",gap:4,flexShrink:0}}>
                   <button onClick={() => openEdit(s)} style={{padding:"5px 9px",background:"#222",color:"#aaa",border:"1px solid #333",borderRadius:6,fontSize:10,cursor:"pointer",fontWeight:700}}>Düzenle</button>
-                  {s.email && <button onClick={() => { setPwModal(s); setNewPassword(""); }} style={{padding:"5px 9px",background:"rgba(255,255,255,0.15)",color:"#FFFFFF",border:"1px solid #FFFFFF",borderRadius:6,fontSize:10,cursor:"pointer",fontWeight:700}}>Sifre</button>}
+                  {s.email && <button onClick={() => { setPwModal(s); setNewPassword(""); }} style={{padding:"5px 9px",background:"rgba(255,255,255,0.15)",color:"#FFFFFF",border:"1px solid #FFFFFF",borderRadius:6,fontSize:10,cursor:"pointer",fontWeight:700}}>Şifre</button>}
                   <button onClick={() => toggleActive(s)} style={{padding:"5px 9px",background:s.is_active===false?"#2A2A2A":"transparent",color:s.is_active===false?"#F0EDE8":"#888",border:"1px solid #333",borderRadius:6,fontSize:10,cursor:"pointer"}}>{s.is_active===false?"Pasif":"Aktif"}</button>
                   <button onClick={() => deleteStaff(s)} style={{padding:"5px 9px",background:"transparent",color:"#C87A6A",border:"1px solid #2A2A2A",borderRadius:6,fontSize:10,cursor:"pointer"}}>Sil</button>
                 </div>
@@ -167,13 +167,13 @@ export default function StaffMgmtPage() {
       {modal && (
         <Modal onClose={() => setModal(null)} title={modal.mode==="new"?"Yeni Personel":"Personeli Düzenle"}>
           <Field label="AD SOYAD"><input value={form.name||""} onChange={e=>setForm(f => ({...f,name:e.target.value}))} style={inputS}/></Field>
-          <Field label="EMAIL"><input type="email" value={form.email||""} onChange={e=>setForm(f => ({...f,email:e.target.value}))} disabled={modal.mode==="edit"} style={{...inputS, opacity:modal.mode==="edit"?0.6:1}}/></Field>
-          {modal.mode==="new" && <Field label="SIFRE (en az 6 karakter)"><input type="text" value={form.password||""} onChange={e=>setForm(f => ({...f,password:e.target.value}))} placeholder="orn: garson2026" style={inputS}/></Field>}
+          <Field label="E-POSTA"><input type="email" value={form.email||""} onChange={e=>setForm(f => ({...f,email:e.target.value}))} disabled={modal.mode==="edit"} style={{...inputS, opacity:modal.mode==="edit"?0.6:1}}/></Field>
+          {modal.mode==="new" && <Field label="ŞİFRE (en az 6 karakter)"><input type="text" value={form.password||""} onChange={e=>setForm(f => ({...f,password:e.target.value}))} placeholder="örn: garson2026" style={inputS}/></Field>}
           <Field label="TELEFON"><input value={form.phone||""} onChange={e=>setForm(f => ({...f,phone:e.target.value}))} style={inputS}/></Field>
 
           <Field label="GORUNEN UNVAN (uygulamada gozukur)"><input value={form.display_role||""} onChange={e=>setForm(f => ({...f,display_role:e.target.value}))} placeholder="Yönetici" style={inputS}/></Field>
 
-          <Field label="GERCEK YETKI">
+          <Field label="GERÇEK YETKİ">
             <div style={{display:"flex",gap:6,flexWrap:"wrap"}}>
               {ROLES.map(r => (
                 <button key={r.key} onClick={()=>setForm(f => ({...f,role:r.key}))} style={{flex:"1 1 calc(50% - 6px)",minWidth:120,padding:"10px",background:form.role===r.key?"#FFFFFF":"#222",color:form.role===r.key?"#000":"#888",border:"1px solid "+(form.role===r.key?"#FFFFFF":"#333"),borderRadius:8,fontSize:11,fontWeight:700,cursor:"pointer"}}>{r.label}</button>
@@ -181,7 +181,7 @@ export default function StaffMgmtPage() {
             </div>
           </Field>
 
-          <Field label="MAGAZA YETKILERI (bos = sistem genelinde super yetki yok)">
+          <Field label="MAĞAZA YETKİLERİ (boş = hiçbir mağazada yetki yok)">
             <div style={{display:"flex",gap:6,flexWrap:"wrap"}}>
               {[{id:"c3c6e0c7-1821-4edd-993d-ad960cfbc452",label:"Paris"},{id:"c39da530-7f73-4f69-a752-029bf03790b1",label:"Berlin"}].map(st => {
                 const sel = (form.store_ids||[]).includes(st.id);
@@ -200,14 +200,14 @@ export default function StaffMgmtPage() {
       )}
 
       {pwModal && (
-        <Modal onClose={() => setPwModal(null)} title={"Sifre Sifirla: " + pwModal.name}>
+        <Modal onClose={() => setPwModal(null)} title={"Şifre sıfırla: " + pwModal.name}>
           <div style={{background:"rgba(255,255,255,0.1)",border:"1px solid rgba(255,255,255,0.3)",borderRadius:8,padding:12,marginBottom:16,fontSize:12,color:"#ddd",lineHeight:1.5}}>
-            Yeni bir sifre belirle. Kullanici bu sifreyle giris yapabilir.
+            Yeni bir şifre belirle. Personel bu şifreyle giriş yapar.
           </div>
-          <Field label="YENI SIFRE (en az 6 karakter)"><input autoFocus type="text" value={newPassword} onChange={e=>setNewPassword(e.target.value)} placeholder="orn: garson2026" style={inputS}/></Field>
+          <Field label="YENİ ŞİFRE (en az 6 karakter)"><input autoFocus type="text" value={newPassword} onChange={e=>setNewPassword(e.target.value)} placeholder="örn: garson2026" style={inputS}/></Field>
           <div style={{display:"flex",gap:8,marginTop:10}}>
             <button onClick={() => setPwModal(null)} style={cancelBtn}>İptal</button>
-            <button onClick={resetPassword} disabled={busy} style={{...saveBtn,opacity:busy?0.6:1}}>{busy?"Kaydediliyor...":"Sifreyi Belirle"}</button>
+            <button onClick={resetPassword} disabled={busy} style={{...saveBtn,opacity:busy?0.6:1}}>{busy?"Kaydediliyor…":"Şifreyi belirle"}</button>
           </div>
         </Modal>
       )}

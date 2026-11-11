@@ -55,7 +55,7 @@ export default function TablesMgmtPage() {
 
   const saveTable = async () => {
     const name = tName.trim();
-    if (!name) { uyar("Masa adi gerekli"); return; }
+    if (!name) { uyar("Masa adı gerekli"); return; }
     const payload = {
       name,
       capacity: Number(tCap) || 4,
@@ -85,7 +85,7 @@ export default function TablesMgmtPage() {
   };
 
   const addAllPresets = async () => {
-    if (!confirm("7 hazir masayi ekle (Bar 1-2, Masa 1-3, Teras 1-2)?")) return;
+    if (!confirm("7 hazır masa eklensin mi? (Bar 1-2, Masa 1-3, Teras 1-2)")) return;
     const { error } = await supabase.from("cafe_tables").insert(PRESETS.map(p => ({...p, store_id: staffUser?.store_ids?.[0], is_walkin: false})));
     if (error) { uyar("Hata: " + error.message); return; }
     load(true);
@@ -101,13 +101,13 @@ export default function TablesMgmtPage() {
       <div style={{display:"flex",gap:8,marginBottom:18,flexWrap:"wrap"}}>
         <button onClick={openNew} style={{padding:"10px 16px",background:"#FFFFFF",color:"#000",border:"none",borderRadius:10,fontSize:13,fontWeight:800,cursor:"pointer"}}>+ Yeni Masa</button>
         {tables.length === 0 && (
-          <button onClick={addAllPresets} style={{padding:"10px 16px",background:"transparent",color:"#FFFFFF",border:"1px dashed #FFFFFF",borderRadius:10,fontSize:13,fontWeight:700,cursor:"pointer"}}>Hazir masalari ekle (7)</button>
+          <button onClick={addAllPresets} style={{padding:"10px 16px",background:"transparent",color:"#FFFFFF",border:"1px dashed #FFFFFF",borderRadius:10,fontSize:13,fontWeight:700,cursor:"pointer"}}>Hazır masaları ekle (7)</button>
         )}
       </div>
 
       {tables.length === 0 && (
         <div style={{textAlign:"center",padding:40,color:"#888888",fontSize:13}}>
-          Henuz masa yok. Yeni masa ekle veya hazir seti kullan.
+          Henüz masa yok. Yeni masa ekle ya da hazır seti kullan.
         </div>
       )}
 
@@ -130,7 +130,7 @@ export default function TablesMgmtPage() {
             <div style={{fontSize:18,fontWeight:800,color:"#F0EDE8",marginBottom:16}}>{modal.mode==="new"?"Yeni Masa":"Masayı Düzenle"}</div>
             <Field label="MASA ADI"><input autoFocus value={tName} onChange={e=>setTName(e.target.value)} placeholder="Bar 1, Masa 3, Teras 2..." style={inputS}/></Field>
             <div style={{display:"flex",gap:8}}>
-              <Field label="KAPASITE" style={{flex:1}}><SayiGirisi kip="tam" value={tCap} onChange={v=>setTCap(v)} style={inputS}/></Field>
+              <Field label="KAPASİTE" style={{flex:1}}><SayiGirisi kip="tam" value={tCap} onChange={v=>setTCap(v)} style={inputS}/></Field>
               <Field label="SIRA" style={{flex:1}}><SayiGirisi kip="tam" value={tSort} onChange={v=>setTSort(v)} style={inputS}/></Field>
             </div>
             <div style={{display:"flex",gap:8,marginTop:10}}>
