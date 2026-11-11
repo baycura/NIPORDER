@@ -3,12 +3,13 @@ import { supabase } from "../../lib/supabase.js";
 import { useAuth } from "../../contexts/AuthContext.jsx";
 import Ikon from "../../components/Ikon.jsx";
 import { fmtTL, farkRengi } from "../../lib/cashCount.js";
+import { businessDayKey } from "../../lib/businessDay.js";
 
 const cv = "-apple-system,BlinkMacSystemFont,'Segoe UI',Roboto,sans-serif";
 
 const C = {
   card: "#161616", line: "#2A2A2A", ink: "#F0EDE8", muted: "#8A8A86",
-  faint: "#666666", accent: "#FFFFFF", down: "#C87A6A",
+  faint: "#8A8A86", accent: "#FFFFFF", down: "#C87A6A",
 };
 
 const gunAd = (g) =>
@@ -76,8 +77,13 @@ export default function CashCountsPage() {
     const out = [];
     const d = new Date(enEski + "T12:00");
     const bugun = new Date();
+    // Icinde bulunulan isletme gunu (03:00'te biter) henuz kapanmadi; kasasi
+    // sayilmamis olmasi normal. Eskiden ogleden sonra bugun, gece 00-03 arasi
+    // da dun "sayilmamis gece" diye yanlis alarm veriyordu.
+    const bugunKey = businessDayKey(bugun);
     while (d <= bugun) {
       const s = d.toISOString().slice(0, 10);
+      if (s >= bugunKey) break;
       if (!var_.has(s)) out.push(s);
       d.setDate(d.getDate() + 1);
     }
@@ -121,6 +127,7 @@ export default function CashCountsPage() {
           </div>
           <div style={{ fontSize: 13, color: C.muted, marginTop: 6, lineHeight: 1.6 }}>
             {eksikGunler.slice(-10).map(gunAd).join(" · ")}
+            {eksikGunler.length > 10 && ` · +${eksikGunler.length - 10} gece daha`}
           </div>
         </div>
       )}

@@ -1,4 +1,5 @@
 import { useRef, useState } from "react";
+import { tl } from "../lib/para.js";
 
 // ============================================================================
 // PARTI SERIDI — tek kategorinin urunleri, parmakla saga sola kayan tek satir.
@@ -46,7 +47,8 @@ const TABAN = 84;
 
 // Gece yarisi dort haneli tutari bir bakista okumak icin binlik ayraci: 3600
 // yerine 3.600. Tutar her zaman tam sayi gosterilir (kurus kasada yok).
-export const tl = (n) => "₺" + Math.round(Number(n) || 0).toLocaleString("tr-TR");
+// Tek tanim: lib/para.js. PartiKasa buradan import ediyor; yol bozulmasin.
+export { tl };
 
 export default function PartiSerit({
   baslik,          // kategori adi (sol etiket)
@@ -71,16 +73,17 @@ export default function PartiSerit({
     <div style={{ display: "flex", gap: ARA, alignItems: "stretch", flex: "1 1 0", minHeight: TABAN }}>
       {/* Sol etiket: kategori + kac urun oldugu. Sayi "serit devam ediyor"
           bilgisini kenardaki yarim karttan bagimsiz olarak da verir. */}
-      {/* Etiket olugu 76px: menudeki en uzun tek kelimelik kategori adi
+      {/* Etiket olugu 84px: menudeki en uzun tek kelimelik kategori adi
           "MEŞRUBATLAR" (11 harf) tek satira sigsin diye — 70px'te
-          "MEŞRUBATL / AR" diye kelime ortasindan boluyordu. Bosluklu adlar
+          "MEŞRUBATL / AR" diye kelime ortasindan boluyordu. (76px'ti; yazi
+          9px'ten 10px'e cikinca 84 oldu — 9px #66625E gece okunmuyordu.) Bosluklu adlar
           ("SOĞUK KAHVELER") boslugundan sarar; overflowWrap ise hicbir adin
           kirpilmamasini garanti eder. */}
-      <div style={{ width: 76, flexShrink: 0, display: "flex", flexDirection: "column", justifyContent: "center", gap: 3 }}>
-        <span style={{ fontSize: 9, fontWeight: 800, letterSpacing: "0.5px", color: "#66625E", lineHeight: 1.3, overflowWrap: "anywhere" }}>
+      <div style={{ width: 84, flexShrink: 0, display: "flex", flexDirection: "column", justifyContent: "center", gap: 3 }}>
+        <span style={{ fontSize: 10, fontWeight: 800, letterSpacing: "0.3px", color: "#A8A39C", lineHeight: 1.3, overflowWrap: "anywhere" }}>
           {String(baslik || "").toLocaleUpperCase("tr-TR")}
         </span>
-        <span style={{ fontSize: 9, fontWeight: 700, color: "#4A4642" }}>{urunler.length} ürün</span>
+        <span style={{ fontSize: 10, fontWeight: 700, color: "#8A8580" }}>{urunler.length} ürün</span>
       </div>
 
       <div style={{ flex: 1, minWidth: 0, position: "relative" }}>

@@ -93,14 +93,16 @@ export const GRUPLAR = [
 ];
 
 // Gozlemci (aile) kendi kucuk dunyasinda: 3 sayfa, degismedi
+// kisa: YALNIZ telefondaki alt barda yazilan ad ("MUTFAĞA ÖDENECEK" 360px'te
+// tasiyordu). Menu sayfasi ve kenar menusu tam label'i kullanir.
 const VIEWER_GRUP = [{
   ad: "GÖRÜNÜM",
   items: [
-    { to: "/reports",    icon: "rapor", label: "Raporlar" },
-    { to: "/sales",      icon: "sepet", label: "Satış Raporu" },
-    { to: "/settlement", icon: "mutfakodeme", label: "Mutfağa Ödenecek", ozellik: "mutfakHakedis" },
-    { to: "/expenses",   icon: "gider", label: "Giderler" },
-    { to: "/stock",      icon: "stok", label: "Stok" },
+    { to: "/reports",    icon: "rapor", label: "Raporlar", kisa: "Rapor" },
+    { to: "/sales",      icon: "sepet", label: "Satış Raporu", kisa: "Satış" },
+    { to: "/settlement", icon: "mutfakodeme", label: "Mutfağa Ödenecek", kisa: "Mutfak", ozellik: "mutfakHakedis" },
+    { to: "/expenses",   icon: "gider", label: "Giderler", kisa: "Gider" },
+    { to: "/stock",      icon: "stok", label: "Stok", kisa: "Stok" },
   ],
 }];
 

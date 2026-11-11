@@ -12,6 +12,8 @@ import KasaSayKarti from "../../components/KasaSayKarti.jsx";
 import Bildirim, { useSonListe } from "../../components/Bildirim.jsx";
 import { misafirHesapAc } from "../../lib/misafirHesap.js";
 import { useCanliYenile } from "../../lib/canliYenile.js";
+import { tl, sure } from "../../lib/para.js";
+import { personelHata } from "../../lib/errorText.js";
 
 const cv = "-apple-system,BlinkMacSystemFont,'Segoe UI',Roboto,sans-serif";
 
@@ -40,13 +42,12 @@ export default function TablesPage() {
   const [partiBusy, setPartiBusy] = useState(false);
   // Ortak masada birden fazla hesap var; satira dokununca kisiler aciliyor.
   const [acikOrtak, setAcikOrtak] = useState({});
+  // yukHata: liste cekilemedi (serit cikar, eski liste ekranda kalir).
+  // hata: bir islem basarisiz oldu — { m: metin, n: sayac } kisa bildirim.
+  const [yukHata, setYukHata] = useState(false);
+  const [hata, setHata] = useState(null);
+  const hataGoster = (err) => setHata({ m: personelHata(err), n: Date.now() });
 
-  // "38 dk" / "1 sa 12 dk"
-  const sure = (iso) => {
-    const dk = Math.max(0, Math.floor((Date.now() - new Date(iso).getTime()) / 60000));
-    if (dk < 60) return dk + " dk";
-    return Math.floor(dk / 60) + " sa " + (dk % 60) + " dk";
-  };
   const kalemAdedi = (o) => Number(o.order_items?.[0]?.count || 0);
 
   // sessiz: arka planda tazeleme (useCanliYenile). "Yukleniyor" ekrani
@@ -55,13 +56,16 @@ export default function TablesPage() {
   const yuklemeNo = useRef(0);
   const load = async (sessiz = false) => {
     const no = ++yuklemeNo.current;
-    if (!sessiz) setLoading(true);
+    // Tam yuklemede ekran bastan cizilir; eski hata bildirimi yeniden cikmasin.
+    if (!sessiz) { setLoading(true); setHata(null); }
     const [{data: tabs, error: masaHata}, {data: ords, error: hesapHata}] = await Promise.all([
       supabase.from("cafe_tables").select("*").in("store_id", staffUser?.store_ids?.length ? staffUser.store_ids : ["00000000-0000-0000-0000-000000000000"]).order("sort_order").order("name"),
       supabase.from("orders").select("id, table_id, customer_name, total, status, created_at, origin_store_id, stores:origin_store_id(slug, name), staff:staff_id(name), order_items(count)").in("origin_store_id", staffUser?.store_ids?.length ? staffUser.store_ids : ["00000000-0000-0000-0000-000000000000"]).in("status", ["open","sent","preparing","ready"]),
     ]);
     if (no !== yuklemeNo.current) return;
-    if (sessiz && (masaHata || hesapHata)) { setLoading(false); return; }
+    // Ilk yuklemede de: hata "0/0 dolu" gibi bos liste olarak gorunmesin.
+    if (masaHata || hesapHata) { setYukHata(true); setLoading(false); return; }
+    setYukHata(false);
     setTables(tabs || []);
     setOrders(ords || []);
     setLoading(false);
@@ -111,7 +115,7 @@ export default function TablesPage() {
     setPartiBusy(true);
     const { data, error } = await supabase.rpc("nip_parti_ac", { p_store_id: partiMagaza, p_ac: ac });
     setPartiBusy(false);
-    if (error) { alert(error.message); partiOku(); return; }
+    if (error) { hataGoster(error); partiOku(); return; }
     setParti(partiDurumOku(data, null));
   };
 
@@ -123,7 +127,7 @@ export default function TablesPage() {
     setAciliyor(true);
     const { data: newOrd, error, no } = await misafirHesapAc({ staffUser, table });
     setAciliyor(false);
-    if (error || !newOrd) { alert("Hata: " + (error?.message || "")); return; }
+    if (error || !newOrd) { hataGoster(error); return; }
     setSonrakiMisafir((no || 0) + 1);
     navigate("/orders/" + newOrd.id);
   };
@@ -143,10 +147,14 @@ export default function TablesPage() {
     // Ortak masada her kisi ayri hesap acar; normal masada acik hesap varsa ona gidilir
     const existing = table.shared ? null : tableHasOpenOrder(table.id);
     if (existing) { navigate("/orders/" + existing.id); return; }
+    // Cift dokunus ayni masaya ikinci hesabi acmasin (misafirAc ile ayni bayrak).
+    if (aciliyor) return;
+    setAciliyor(true);
     const { data: newOrd, error } = await supabase.from("orders").insert({
       table_id: table.id, origin_store_id: table.store_id, staff_id: staffUser?.id, status: "open", subtotal: 0, total: 0, discount_amount: 0,
     }).select().single();
-    if (error) { alert("Hata: " + error.message); return; }
+    setAciliyor(false);
+    if (error) { hataGoster(error); return; }
     navigate("/orders/" + newOrd.id);
   };
 
@@ -155,13 +163,16 @@ export default function TablesPage() {
     // Isim ARTIK ZORUNLU DEGIL: bos birakilirsa misafir olarak acilir.
     // Eskiden burada "İsim giriniz" uyarisi cikip akisi kesiyordu.
     if (!name) { setWalkinOpen(false); misafirAc(); return; }
+    if (aciliyor) return;
+    setAciliyor(true);
     const { data: newOrd, error } = await supabase.from("orders").insert({
       table_id: null, customer_name: name,
       customer_id: secilenUye?.id || null,
       origin_store_id: staffUser?.store_ids?.[0], staff_id: staffUser?.id,
       status: "open", subtotal: 0, total: 0, discount_amount: 0,
     }).select().single();
-    if (error) { alert("Hata: " + error.message); return; }
+    setAciliyor(false);
+    if (error) { hataGoster(error); return; }
     setWalkinOpen(false); setWalkinName(""); setSecilenUye(null);
     navigate("/orders/" + newOrd.id);
   };
@@ -179,12 +190,12 @@ export default function TablesPage() {
     const newName = editName.trim();
     if (!newName) return;
     const { error } = await supabase.from("cafe_tables").update({ name: newName }).eq("id", editTable.id);
-    if (error) { alert("Hata: " + error.message); return; }
+    if (error) { hataGoster(error); return; }
     setEditTable(null); setEditName("");
     load();
   };
 
-  if (loading) return <div style={{color:"#888",fontFamily:cv,padding:20}}>Yukleniyor...</div>;
+  if (loading) return <div style={{color:"#888",fontFamily:cv,padding:20}}>Yükleniyor…</div>;
 
   const occupiedCount = tables.filter(t => tableHasOpenOrder(t.id)).length;
   const acikToplam = orders.reduce((s, o) => s + Number(o.total || 0), 0);
@@ -216,7 +227,7 @@ export default function TablesPage() {
     } else {
       acikSatirlar.push({
         key: "t" + t.id, ad: t.name + " · " + ords.length + " kişi", tutar: toplam, masa: t, ords,
-        alt: ords.map(o => (o.customer_name || "İsimsiz") + " ₺" + (o.total || 0)).join(" · "),
+        alt: ords.map(o => (o.customer_name || "İsimsiz") + " " + tl(o.total)).join(" · "),
       });
     }
   });
@@ -225,12 +236,22 @@ export default function TablesPage() {
   return (
     <div style={{fontFamily:cv,color:"#F0EDE8"}}>
       <Bildirim/>
+      {/* Pencere acikken (klavye) bildirim ustte cikar: altta klavyenin arkasinda kalirdi. */}
+      {hata && <Bildirim tur="hata" konum={(walkinOpen || editTable) ? "ust" : "alt"} metin={hata.m} key={hata.n}/>}
       <div style={{marginBottom:14}}>
         <div style={{fontSize:24,fontWeight:800,color:"#F0EDE8",letterSpacing:"-0.4px"}}>Masalar</div>
         <div style={{fontSize:11,color:"#8A8580",letterSpacing:"1.5px",fontWeight:700,marginTop:3,textTransform:"uppercase"}}>
-          {occupiedCount}/{tables.length} dolu{acikToplam > 0 ? " · ₺" + acikToplam.toLocaleString("tr-TR") : ""}
+          {occupiedCount}/{tables.length} dolu{acikToplam > 0 ? " · " + tl(acikToplam) : ""}
         </div>
       </div>
+
+      {yukHata && (
+        <div role="alert" style={{display:"flex",alignItems:"center",gap:10,background:"#1A1A1A",border:"1px solid #C87A6A",borderRadius:12,padding:"10px 14px",fontSize:13,marginBottom:12}}>
+          <Ikon ad="uyari" boy={16}/>
+          <span style={{flex:1}}>Bağlantı kurulamadı — liste güncel olmayabilir.</span>
+          <button onClick={() => load()} style={{minHeight:44,padding:"0 14px",background:"transparent",color:"#F0EDE8",border:"1px solid #3A3A3A",borderRadius:10,fontWeight:700,fontFamily:"inherit"}}>Tekrar dene</button>
+        </div>
+      )}
 
       {/* Haftalik lig, tek satir: herkesin ilk actigi ekran burasi. Dokununca
           acilir; part-time'in Vardiyam sayfasi yok, ligi buradan gorur. */}
@@ -287,8 +308,8 @@ export default function TablesPage() {
       </div>
 
       <div style={{display:"flex",gap:8,marginBottom:16,overflowX:"auto"}}>
-        {[["all","TUMU"],["dis","DIŞ"],["cam","ÖN CAM"],["cowork","CO-WORK"]].map(([k,l]) => (
-          <button key={k} onClick={() => setFilter(k)} style={{padding:"8px 16px",border:"none",borderRadius:18,fontSize:11,fontWeight:700,letterSpacing:"1px",background:filter===k?"#FFFFFF":"#222",color:filter===k?"#000":"#888",cursor:"pointer",whiteSpace:"nowrap",flexShrink:0}}>{l}</button>
+        {[["all","TÜMÜ"],["dis","DIŞ"],["cam","ÖN CAM"],["cowork","CO-WORK"]].map(([k,l]) => (
+          <button key={k} onClick={() => setFilter(k)} aria-pressed={filter === k} style={{padding:"0 16px",minHeight:44,border:"none",borderRadius:22,fontSize:13,fontWeight:700,letterSpacing:"0.5px",background:filter===k?"#FFFFFF":"#222",color:filter===k?"#000":"#A8A39C",cursor:"pointer",whiteSpace:"nowrap",flexShrink:0}}>{l}</button>
         ))}
       </div>
 
@@ -297,7 +318,7 @@ export default function TablesPage() {
           <div style={{fontSize:11,color:"#8A8580",letterSpacing:"1.5px",fontWeight:700,textTransform:"uppercase"}}>
             Açık hesaplar — satıra dokun
           </div>
-          {acikSatirlar.map((s, i) => {
+          {acikSatirlar.map((s) => {
             const ortak = !!s.ords;
             const acik = ortak && acikOrtak[s.key];
             return (
@@ -305,14 +326,14 @@ export default function TablesPage() {
                 {/* KARTIN HER YERI hesabi aciyor. Eskiden yalnizca alttaki kucuk
                     dugme calisiyordu; servis sirasinda en cok iskalanan yer burasiydi. */}
                 <div onClick={ortak ? () => setAcikOrtak(p => ({...p, [s.key]: !p[s.key]})) : s.git}
-                  style={{background:"#1A1A1A",border:"1px solid "+(i===0?"#FFFFFF":"#2A2A2A"),borderRadius:12,
+                  style={{background:"#1A1A1A",border:"1px solid #2A2A2A",borderRadius:12,
                           padding:"13px 15px",cursor:"pointer",display:"flex",alignItems:"center",gap:12}}>
                   <div style={{flex:1,minWidth:0}}>
                     {s.magaza && <div style={{display:"inline-block",background:s.magaza==="doner"?"#FFFFFF":"#222222",color:s.magaza==="doner"?"#000":"#F0EDE8",padding:"2px 8px",borderRadius:6,fontSize:12,fontWeight:600,letterSpacing:"0.2px",marginBottom:4}}>{s.magaza==="doner"?"DÖNER":"PARIS"}</div>}
                     <div style={{fontSize:17,fontWeight:800,color:"#F0EDE8",overflow:"hidden",textOverflow:"ellipsis",whiteSpace:"nowrap"}}>{s.ad}</div>
                     <div style={{fontSize:12,color:"#888",marginTop:3,overflow:"hidden",textOverflow:"ellipsis",whiteSpace:"nowrap"}}>{s.alt}</div>
                   </div>
-                  <span style={{fontSize:18,fontWeight:800,fontVariantNumeric:"tabular-nums"}}>₺{s.tutar.toLocaleString("tr-TR")}</span>
+                  <span style={{fontSize:18,fontWeight:800,fontVariantNumeric:"tabular-nums"}}>{tl(s.tutar)}</span>
                   {/* Sahadaki en sik is: acik masaya bir urun daha. Tek dokunusla
                       ekleme katmani acik gelir; karta dokunmayi bozmaz. */}
                   {s.ekle && (
@@ -331,7 +352,7 @@ export default function TablesPage() {
                         style={{display:"flex",justifyContent:"space-between",alignItems:"center",background:"#0C0C0C",
                                 border:"1px solid #2A2A2A",borderRadius:8,padding:"10px 12px",cursor:"pointer"}}>
                         <span style={{fontSize:13,fontWeight:700,color:"#F0EDE8",flex:1,minWidth:0,overflow:"hidden",textOverflow:"ellipsis",whiteSpace:"nowrap"}}>{o.customer_name || "İsimsiz"}</span>
-                        <span style={{fontSize:13,fontWeight:800,fontVariantNumeric:"tabular-nums"}}>₺{o.total || 0}</span>
+                        <span style={{fontSize:13,fontWeight:800,fontVariantNumeric:"tabular-nums"}}>{tl(o.total)}</span>
                         <button onClick={(e) => { e.stopPropagation(); ekleGit(o.id); }} aria-label={"Ürün ekle: " + (o.customer_name || "İsimsiz")} title="Ürün ekle"
                           style={{width:44,height:44,marginLeft:8,flexShrink:0,background:"#FFFFFF",color:"#000",border:"none",borderRadius:"50%",cursor:"pointer",
                                   display:"flex",alignItems:"center",justifyContent:"center",fontFamily:"inherit"}}>
@@ -340,9 +361,9 @@ export default function TablesPage() {
                         <span style={{color:"#888888",display:"flex",marginLeft:6}}><Ikon ad="sag" boy={13}/></span>
                       </div>
                     ))}
-                    <button onClick={() => openOrderForTable(s.masa)}
-                      style={{padding:"10px",background:"transparent",color:"#F0EDE8",border:"1px solid #2A2A2A",
-                              borderRadius:8,fontSize:12,fontWeight:700,cursor:"pointer",fontFamily:"inherit"}}>
+                    <button onClick={() => openOrderForTable(s.masa)} disabled={aciliyor}
+                      style={{padding:"10px",minHeight:44,background:"transparent",color:"#F0EDE8",border:"1px solid #2A2A2A",
+                              borderRadius:8,fontSize:13,fontWeight:700,cursor:"pointer",fontFamily:"inherit",opacity:aciliyor?0.6:1}}>
                       + Yeni kişi
                     </button>
                   </div>
@@ -362,15 +383,15 @@ export default function TablesPage() {
           <div style={{display:"flex",gap:8,flexWrap:"wrap"}}>
             {bosMasalar.map(t => (
               <div key={t.id} style={{display:"flex",alignItems:"center",border:"1px solid #2A2A2A",borderRadius:10,overflow:"hidden"}}>
-                <button onClick={() => openOrderForTable(t)}
-                  style={{padding:"11px 14px",background:"transparent",color:"#F0EDE8",border:"none",
-                          fontSize:13,fontWeight:700,cursor:"pointer",fontFamily:"inherit"}}>
+                <button onClick={() => openOrderForTable(t)} disabled={aciliyor}
+                  style={{padding:"11px 14px",minHeight:44,background:"transparent",color:"#F0EDE8",border:"none",
+                          fontSize:13,fontWeight:700,cursor:"pointer",fontFamily:"inherit",opacity:aciliyor?0.6:1}}>
                   {t.name}{t.shared && <span style={{marginLeft:6,fontSize:12,color:"#8A8580",fontWeight:600,letterSpacing:"0.2px"}}>Ortak</span>}
                 </button>
                 <button onClick={(e) => {e.stopPropagation(); setEditTable(t); setEditName(t.name);}}
-                  title="Adını değiştir"
-                  style={{padding:"11px 9px 11px 3px",background:"transparent",border:"none",color:"#888888",
-                          cursor:"pointer",fontFamily:"inherit",display:"flex"}}><Ikon ad="kalem" boy={15}/></button>
+                  title="Adını değiştir" aria-label={"Masa adını değiştir: " + t.name}
+                  style={{minWidth:44,minHeight:44,padding:0,background:"transparent",border:"none",borderLeft:"1px solid #2A2A2A",color:"#888888",
+                          cursor:"pointer",fontFamily:"inherit",display:"flex",alignItems:"center",justifyContent:"center"}}><Ikon ad="kalem" boy={15}/></button>
               </div>
             ))}
           </div>
@@ -407,7 +428,7 @@ export default function TablesPage() {
 
             <div style={{display:"flex",gap:8,marginBottom:10}}>
               <button onClick={() => setWalkinOpen(false)} style={{flex:1,padding:"12px",background:"transparent",color:"#888",border:"1px solid #333",borderRadius:10,fontSize:14,fontWeight:700,cursor:"pointer"}}>İptal</button>
-              <button onClick={createWalkinOrder} style={{flex:2,padding:"12px",background:"#FFFFFF",color:"#000",border:"none",borderRadius:10,fontSize:14,fontWeight:800,cursor:"pointer"}}>Hesap Aç</button>
+              <button onClick={createWalkinOrder} disabled={aciliyor} style={{flex:2,padding:"12px",background:"#FFFFFF",color:"#000",border:"none",borderRadius:10,fontSize:14,fontWeight:800,cursor:"pointer",opacity:aciliyor?0.6:1}}>{aciliyor ? "Açılıyor…" : "Hesap Aç"}</button>
             </div>
             {/* Kacis yolu: modal acildi ama isim gerekmiyorsa akis kesilmesin. */}
             <button onClick={() => { setWalkinOpen(false); misafirAc(); }} style={{width:"100%",padding:"12px",background:"transparent",color:"#8A8580",border:"1px dashed #333",borderRadius:10,fontSize:13,fontWeight:700,cursor:"pointer",fontFamily:"inherit"}}>
@@ -420,12 +441,12 @@ export default function TablesPage() {
       {editTable && (
         <div onClick={() => setEditTable(null)} style={{position:"fixed",inset:0,background:"rgba(0,0,0,0.7)",display:"flex",alignItems:"center",justifyContent:"center",zIndex:100,padding:20}}>
           <div onClick={e => e.stopPropagation()} style={{background:"#1A1A1A",border:"1px solid #2A2A2A",borderRadius:16,padding:24,width:"100%",maxWidth:400}}>
-            <div style={{fontSize:18,fontWeight:800,color:"#F0EDE8",marginBottom:14}}>Masayi Duzenle</div>
+            <div style={{fontSize:18,fontWeight:800,color:"#F0EDE8",marginBottom:14}}>Masa adını değiştir</div>
             <input value={editName} onChange={e => setEditName(e.target.value)} autoFocus
               onKeyDown={e => e.key === "Enter" && saveTableName()}
               style={{width:"100%",padding:"14px 16px",background:"#0C0C0C",border:"1px solid #FFFFFF",borderRadius:10,color:"#F0EDE8",fontSize:16,outline:"none",marginBottom:14}}/>
             <div style={{display:"flex",gap:8}}>
-              <button onClick={() => setEditTable(null)} style={{flex:1,padding:"12px",background:"transparent",color:"#888",border:"1px solid #333",borderRadius:10,fontSize:14,fontWeight:700,cursor:"pointer"}}>Iptal</button>
+              <button onClick={() => setEditTable(null)} style={{flex:1,padding:"12px",background:"transparent",color:"#888",border:"1px solid #333",borderRadius:10,fontSize:14,fontWeight:700,cursor:"pointer"}}>İptal</button>
               <button onClick={saveTableName} style={{flex:2,padding:"12px",background:"#FFFFFF",color:"#000",border:"none",borderRadius:10,fontSize:14,fontWeight:800,cursor:"pointer"}}>Kaydet</button>
             </div>
           </div>

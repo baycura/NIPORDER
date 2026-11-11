@@ -39,14 +39,17 @@ export default function FixedExpensesPage() {
       .then(({ data }) => { setStores(data || []); setStoreId(data?.[0]?.id || ids[0]); });
   }, [staffUser?.id]);
 
-  const load = async () => {
+  // sessiz: kayit / silme / ac-kapa sonrasi tazelemede sayfa "Yükleniyor"
+  // yazisina dusmesin (liste sokulup kaydirma basa sariyordu). Ilk acilis ve
+  // dukkan degisimi yine yukleme yazisini gosterir.
+  const load = async (sessiz) => {
     if (!storeId) return;
-    setLoading(true);
+    if (!sessiz) setLoading(true);
     const now = new Date();
     const monthStart = new Date(now.getFullYear(), now.getMonth(), 1);
     const monthStartIso = monthStart.toISOString();
     const monthStartGun = monthStartIso.slice(0, 10);
-    const [{ data, error }, { data: ords }, { data: faturalar }] = await Promise.all([
+    const [{ data, error }, { data: ords, error: ciroHata }, { data: faturalar, error: faturaHata }] = await Promise.all([
       supabase.from("fixed_expenses").select("*").eq("store_id", storeId)
         .order("category").order("amount", { ascending: false }),
       // Ciro tanimi Bugun ekraniyla ayni: puanla odenen kisim dusulur, cunku
@@ -57,6 +60,9 @@ export default function FixedExpensesPage() {
         .eq("store_id", storeId).gte("invoice_date", monthStartGun),
     ]);
     if (error) console.error(error);
+    // Sessiz tazeleme basarisizsa (sinyal koptu) ekrandaki liste kalsin:
+    // bos listeyle degistirmek sayfayi bosaltirdi.
+    if (sessiz && (error || ciroHata || faturaHata)) return;
     setItems(data || []);
     setRevenue((ords || []).reduce((s, o) => s + Number(o.total || 0) - Number(o.points_used || 0), 0));
     setAlim((faturalar || []).reduce((s, f) => s + Number(f.total_amount || 0), 0));
@@ -86,22 +92,22 @@ export default function FixedExpensesPage() {
       : await supabase.from("fixed_expenses").update(payload).eq("id", modal.data.id);
     setBusy(false);
     if (error) { alert("Hata: " + error.message); return; }
-    setModal(null); load();
+    setModal(null); load(true);
   };
 
   const del = async (i) => {
     if (!confirm('"' + i.name + '" silinsin mi?')) return;
     const { error } = await supabase.from("fixed_expenses").delete().eq("id", i.id);
     if (error) { alert("Hata: " + error.message); return; }
-    load();
+    load(true);
   };
 
   const toggle = async (i) => {
     await supabase.from("fixed_expenses").update({ is_active: !i.is_active }).eq("id", i.id);
-    load();
+    load(true);
   };
 
-  if (loading) return (<div style={{ color: "#888", fontFamily: cv, padding: 20 }}>Yukleniyor...</div>);
+  if (loading) return (<div style={{ color: "#888", fontFamily: cv, padding: 20 }}>Yükleniyor…</div>);
 
   const active = items.filter(i => i.is_active !== false);
   const monthly = active.reduce((s, i) => s + Number(i.amount || 0), 0);
@@ -173,7 +179,7 @@ export default function FixedExpensesPage() {
         <div style={{ display: "flex", gap: 8, flexWrap: "wrap", marginBottom: 14 }}>
           {byCat.map(c => (
             <div key={c.key} style={{ background: "#1A1A1A", border: "1px solid #2A2A2A", borderRadius: 10, padding: "8px 12px", fontSize: 12 }}>
-              <span style={{ marginRight: 6 }}>{c.icon}</span>
+              <Ikon ad={c.icon} boy={14} style={{ marginRight: 6 }}/>
               <span style={{ color: "#888" }}>{c.label}</span>
               <b style={{ color: "#FFFFFF", marginLeft: 8 }}>{money(c.total)}</b>
             </div>
@@ -193,21 +199,23 @@ export default function FixedExpensesPage() {
             <div style={{ display: "flex", justifyContent: "space-between", alignItems: "flex-start", gap: 10 }}>
               <div style={{ flex: 1, minWidth: 0 }}>
                 <div style={{ fontSize: 14, fontWeight: 700 }}>
-                  {c.icon} {i.name}
+                  <Ikon ad={c.icon} boy={14} style={{ marginRight: 6 }}/>{i.name}
                   {off && <span style={{ marginLeft: 6, fontSize: 9, padding: "2px 6px", background: "#333", color: "#999", borderRadius: 6, fontWeight: 700 }}>Pasif</span>}
                 </div>
                 <div style={{ fontSize: 11, color: "#888", marginTop: 3 }}>
                   {c.label}{i.day_of_month ? " · her ayın " + i.day_of_month + "'i" : ""}{i.notes ? " · " + i.notes : ""}
                 </div>
               </div>
-              <div style={{ textAlign: "right", flexShrink: 0 }}>
-                <div style={{ fontSize: 16, fontWeight: 800, color: "#FFFFFF" }}>{money(i.amount)}</div>
-                <div style={{ display: "flex", gap: 4, marginTop: 6 }}>
-                  <button onClick={() => toggle(i)} style={{ padding: "5px 9px", background: "#222", color: "#aaa", border: "1px solid #333", borderRadius: 6, fontSize: 10, cursor: "pointer" }}>{off ? "Aç" : "Kapat"}</button>
-                  <button onClick={() => openEdit(i)} style={{ padding: "5px 9px", background: "#222", color: "#aaa", border: "1px solid #333", borderRadius: 6, fontSize: 10, cursor: "pointer" }}>Düzenle</button>
-                  <button onClick={() => del(i)} style={{ padding: "5px 9px", background: "transparent", color: "#C87A6A", border: "1px solid #2A2A2A", borderRadius: 6, fontSize: 10, cursor: "pointer" }}>Sil</button>
-                </div>
-              </div>
+              <div style={{ fontSize: 16, fontWeight: 800, color: "#FFFFFF", flexShrink: 0 }}>{money(i.amount)}</div>
+            </div>
+            {/* Dugmeler kendi satirinda: 40 px'lik dokunma hedefi tutarin
+                altina sigmiyor, telefonda gider adini uc satira kiriyordu.
+                "Sil" digerlerinden ayri durur — yanlis dokunus gideri
+                goturmesin. */}
+            <div style={{ display: "flex", justifyContent: "flex-end", flexWrap: "wrap", gap: 8, marginTop: 10 }}>
+              <button onClick={() => toggle(i)} style={{ minHeight: 40, padding: "0 12px", background: "#222", color: "#aaa", border: "1px solid #333", borderRadius: 6, fontSize: 12, cursor: "pointer", fontFamily: "inherit" }}>{off ? "Aç" : "Kapat"}</button>
+              <button onClick={() => openEdit(i)} style={{ minHeight: 40, padding: "0 12px", background: "#222", color: "#aaa", border: "1px solid #333", borderRadius: 6, fontSize: 12, cursor: "pointer", fontFamily: "inherit" }}>Düzenle</button>
+              <button onClick={() => del(i)} style={{ minHeight: 40, padding: "0 12px", marginLeft: 8, background: "transparent", color: "#C87A6A", border: "1px solid #2A2A2A", borderRadius: 6, fontSize: 12, cursor: "pointer", fontFamily: "inherit" }}>Sil</button>
             </div>
           </div>
         );
@@ -219,7 +227,7 @@ export default function FixedExpensesPage() {
           <Field label="KATEGORİ">
             <div style={{ display: "flex", gap: 6, flexWrap: "wrap" }}>
               {CATEGORIES.map(c => (
-                <button key={c.key} onClick={() => setForm(f => ({ ...f, category: c.key }))} style={{ padding: "8px 12px", background: form.category === c.key ? "#FFFFFF" : "#222", color: form.category === c.key ? "#000" : "#888", border: "1px solid " + (form.category === c.key ? "#FFFFFF" : "#333"), borderRadius: 8, fontSize: 12, fontWeight: 700, cursor: "pointer" }}>{c.icon} {c.label}</button>
+                <button key={c.key} onClick={() => setForm(f => ({ ...f, category: c.key }))} style={{ padding: "8px 12px", background: form.category === c.key ? "#FFFFFF" : "#222", color: form.category === c.key ? "#000" : "#888", border: "1px solid " + (form.category === c.key ? "#FFFFFF" : "#333"), borderRadius: 8, fontSize: 12, fontWeight: 700, cursor: "pointer" }}><Ikon ad={c.icon} boy={14} style={{ marginRight: 6 }}/>{c.label}</button>
               ))}
             </div>
           </Field>

@@ -109,3 +109,14 @@ export function errorText(err, lang = "tr") {
   const grup = M[anahtar(err)] || M.bilinmeyen;
   return grup[lang] || grup.tr;
 }
+
+// PERSONEL icin: ag / izin / oturum hatasi Turkce sebebe cevrilir; sunucunun
+// KENDI Turkce is kurali mesaji (raise exception: "hesabı ikram olarak kapat"
+// gibi) oldugu gibi kalir. errorText() tek basina bunlari "beklenmedik
+// aksilik"e cevirirdi — personel ne yapacagini bilemezdi.
+export function personelHata(err) {
+  const k = anahtar(err);
+  if (k !== "bilinmeyen") return errorText(err);
+  if (err) { try { console.error("[nip] hata:", err); } catch (e) { /* yoksay */ } }
+  return err?.context?.message || err?.message || (typeof err === "string" && err) || M.bilinmeyen.tr;
+}

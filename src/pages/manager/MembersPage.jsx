@@ -90,7 +90,7 @@ export default function MembersPage() {
 
   const saveMember = async () => {
     if (busy) return;
-    if (!form.name?.trim()) { alert("Isim gerekli"); return; }
+    if (!form.name?.trim()) { alert("İsim gerekli"); return; }
     setBusy(true);
     const payload = {
       name: form.name.trim(),
@@ -126,7 +126,7 @@ export default function MembersPage() {
         .map(([pid, v]) => ({ customer_id: customerId, product_id: pid, price: Number(v), amount: 0, is_active: true }));
       if (rows.length) {
         const { error: de } = await supabase.from("member_discounts").insert(rows);
-        if (de) alert("Uye indirimleri kaydedilemedi: " + de.message);
+        if (de) alert("Üye fiyatları kaydedilemedi: " + de.message);
       }
     }
     setModal(null); setBusy(false); load();
@@ -152,10 +152,20 @@ export default function MembersPage() {
     load();
   };
 
+  // Arama doluyken suzgec YOK SAYILIR: varsayilan suzgec "Borclular" oldugu
+  // icin borcsuz bir uyeyi arayan "Kayit yok" goruyordu. Telefonla da aranir
+  // (en az 3 rakam; "0532 123", son 4 hane). Telefon eslesmesi yalniz arama
+  // harf icermiyorsa calisir — yoksa "NIP-MBR-A1B2C3" gibi bir kodun
+  // rakamlari ilgisiz telefonlarla eslesirdi.
+  // Turkce kucultme "I"yi "ı" yapar: "NIP-MBR-…" kodu kucuk harfle yazilinca
+  // bulunmuyordu. Iki taraf da ayni bicime indirilir (ı -> i).
+  const duz = (v) => String(v || "").toLocaleLowerCase("tr-TR").replace(/ı/g, "i");
+  const aranan = duz(search.trim());
+  const arananRakam = /^[\d\s+().-]+$/.test(aranan) ? aranan.replace(/\D/g, "") : "";
   const filtered = members.filter(m => {
-    if (search) {
-      const s = search.toLowerCase();
-      if (!m.name?.toLowerCase().includes(s) && !m.email?.toLowerCase().includes(s) && !m.member_code?.toLowerCase().includes(s)) return false;
+    if (aranan) {
+      return [m.name, m.email, m.member_code].some(v => duz(v).includes(aranan))
+        || (arananRakam.length >= 3 && String(m.phone || "").replace(/\D/g, "").includes(arananRakam));
     }
     if (filter === "debtors") return Number(m.outstanding_balance) > 0;
     if (filter === "members") return !!m.auth_user_id;
@@ -168,12 +178,12 @@ export default function MembersPage() {
 
   // Yukleniyor ekrani yalniz ILK yuklemede: yenileme sirasinda acik pencereler
   // (tahsilat, dokum) kapanip yeniden acilmasin.
-  if (loading && !members.length) return (<div style={{color:"#888",fontFamily:cv,padding:20}}>Yukleniyor...</div>);
+  if (loading && !members.length) return (<div style={{color:"#888",fontFamily:cv,padding:20}}>Yükleniyor…</div>);
 
   return (
     <div style={{fontFamily:cv,color:"#F0EDE8"}}>
-      <div style={{fontSize:24,fontWeight:800,marginBottom:4}}>Uyeler & Borclular</div>
-      <div style={{fontSize:11,color:"#888",letterSpacing:"1px",marginBottom:14}}>{members.length} KAYITLI · {debtorCount} BORCLU</div>
+      <div style={{fontSize:24,fontWeight:800,marginBottom:4}}>Üyeler & Borçlular</div>
+      <div style={{fontSize:11,color:"#888",letterSpacing:"1px",marginBottom:14}}>{members.length} KAYITLI · {debtorCount} BORÇLU</div>
 
       {totalDebt > 0 && (
         <div style={{background:"#161616",border:"1px solid #FFFFFF",borderRadius:12,padding:14,marginBottom:14,display:"flex",justifyContent:"space-between",alignItems:"center"}}>
@@ -184,17 +194,18 @@ export default function MembersPage() {
         </div>
       )}
 
-      <input value={search} onChange={e=>setSearch(e.target.value)} placeholder="Isim ara..." style={{width:"100%",padding:"12px 14px",background:"#1A1A1A",border:"1px solid #2A2A2A",borderRadius:10,color:"#F0EDE8",fontSize:14,outline:"none",marginBottom:10,fontFamily:"inherit"}}/>
+      <input value={search} onChange={e=>setSearch(e.target.value)} placeholder="İsim, telefon, e-posta ya da üye kodu" style={{width:"100%",padding:"12px 14px",background:"#1A1A1A",border:"1px solid #2A2A2A",borderRadius:10,color:"#F0EDE8",fontSize:14,outline:"none",marginBottom:10,fontFamily:"inherit"}}/>
 
       <div style={{display:"flex",gap:6,marginBottom:14,overflowX:"auto"}}>
-        {[["debtors","BORCLULAR"],["members","UYELER"],["imported","ESKI SISTEM"],["all","HEPSI"]].map(([k,l]) => (
+        {[["debtors","BORÇLULAR"],["members","ÜYELER"],["imported","ESKİ SİSTEM"],["all","TÜMÜ"]].map(([k,l]) => (
           <button key={k} onClick={()=>setFilter(k)} style={{flexShrink:0,padding:"7px 12px",border:"none",borderRadius:16,fontSize:11,fontWeight:700,letterSpacing:"0.5px",background:filter===k?"#FFFFFF":"#222",color:filter===k?"#000":"#888",cursor:"pointer",whiteSpace:"nowrap"}}>{l}</button>
         ))}
       </div>
+      {aranan && <div style={{fontSize:12,color:"#8A8A86",margin:"-8px 0 14px"}}>Tüm kayıtlarda aranıyor</div>}
 
-      <button onClick={openNew} style={{padding:"10px 16px",background:"#FFFFFF",color:"#000",border:"none",borderRadius:10,fontSize:13,fontWeight:800,cursor:"pointer",marginBottom:14}}>+ Yeni Musteri</button>
+      <button onClick={openNew} style={{padding:"10px 16px",background:"#FFFFFF",color:"#000",border:"none",borderRadius:10,fontSize:13,fontWeight:800,cursor:"pointer",marginBottom:14}}>+ Yeni müşteri</button>
 
-      {filtered.length === 0 && <div style={{textAlign:"center",padding:30,color:"#888888",fontSize:12}}>Kayıt yok</div>}
+      {filtered.length === 0 && <div style={{textAlign:"center",padding:30,color:"#888888",fontSize:12}}>{aranan ? `“${search.trim()}” için kayıt yok` : "Kayıt yok"}</div>}
 
       {filtered.map(m => {
         const hasDebt = Number(m.outstanding_balance) > 0;
@@ -212,7 +223,7 @@ export default function MembersPage() {
                 {m.imported_from_old_system && <span style={{fontSize:9,padding:"2px 6px",background:"#2A2A2A",color:"#F0EDE8",borderRadius:6,fontWeight:700}}>Eski</span>}
               </div>
               {m.email && <div style={{fontSize:11,color:"#888",marginTop:2}}>{m.email}</div>}
-              <div style={{fontSize:10,color:"#888888",marginTop:2}}>{m.visit_count || 0} siparis</div>
+              <div style={{fontSize:10,color:"#888888",marginTop:2}}>{m.visit_count || 0} sipariş</div>
             </div>
             {hasDebt && (
               <div style={{textAlign:"right",flexShrink:0}}>
@@ -225,7 +236,7 @@ export default function MembersPage() {
       })}
 
       {modal && (
-        <Modal onClose={() => setModal(null)} title={modal.mode==="new"?"Yeni Musteri":(modal.data?.name || "Musteri")}>
+        <Modal onClose={() => setModal(null)} title={modal.mode==="new"?"Yeni müşteri":(modal.data?.name || "Müşteri")}>
           <Field label="AD SOYAD"><input value={form.name||""} onChange={e=>setForm(f => ({...f,name:e.target.value}))} style={inputS}/></Field>
           <div style={{display:"flex",gap:8}}>
             <Field label="EMAIL"><input value={form.email||""} onChange={e=>setForm(f => ({...f,email:e.target.value}))} style={inputS}/></Field>
@@ -241,7 +252,7 @@ export default function MembersPage() {
             <div style={{background:"#152015",border:"1px solid #2A2A2A",borderRadius:10,padding:12,marginBottom:12}}>
               <div style={{fontSize:12,color:"#F0EDE8",letterSpacing:"0.2px",fontWeight:600,marginBottom:8}}>Müşteri karnesi</div>
               <div style={{display:"flex",gap:14,flexWrap:"wrap",fontSize:12,color:"#ddd"}}>
-                <div><span style={{color:"#888"}}>Siparis:</span> <b>{stats.count}</b></div>
+                <div><span style={{color:"#888"}}>Sipariş:</span> <b>{stats.count}</b></div>
                 <div><span style={{color:"#888"}}>Harcama:</span> <b>₺{Math.round(stats.spent).toLocaleString("tr-TR")}</b></div>
                 <div><span style={{color:"#888"}}>Son:</span> <b>{stats.last ? new Date(stats.last).toLocaleDateString("tr-TR") : "—"}</b></div>
               </div>
@@ -256,7 +267,7 @@ export default function MembersPage() {
               Üye menüde liste fiyatını üstü çizili, kendi fiyatını yanında görür.
               <br/>Happy hour / kampanya bu fiyattan <b style={{color:"#FFFFFF"}}>daha ucuzsa</b> kampanya geçerli olur; değilse üye kendi fiyatını öder — yani her zaman düşük olanı öder.
             </div>
-            <input value={prodSearch} onChange={e=>setProdSearch(e.target.value)} placeholder="Urun ara..." style={{...inputS, marginBottom:8, padding:"8px 10px"}}/>
+            <input value={prodSearch} onChange={e=>setProdSearch(e.target.value)} placeholder="Ürün ara" style={{...inputS, marginBottom:8, padding:"8px 10px"}}/>
             <div style={{maxHeight:220,overflowY:"auto",border:"1px solid #2A2A2A",borderRadius:8,padding:"4px 8px",background:"#111"}}>
               {products.filter(p => !prodSearch || p.name?.toLowerCase().includes(prodSearch.toLowerCase())).map(p => {
                 const sel = prodDiscounts[p.id] !== undefined;
@@ -287,7 +298,7 @@ export default function MembersPage() {
               <SayiGirisi kip="tam" min={0} max={50} value={form.admin_discount||0} onChange={v=>setForm(f => ({...f,admin_discount:v}))} style={{...inputS,flex:1}}/>
               <span style={{fontSize:20,color:"#FFFFFF",fontWeight:700}}>%</span>
             </div>
-            <div style={{fontSize:10,color:"#888888",marginTop:6}}>NOT: Bu musteriye ozel indirim. Uye indirimi yerine bu uygulanir.</div>
+            <div style={{fontSize:10,color:"#888888",marginTop:6}}>Not: Bu müşteriye özel indirim. Üye indirimi yerine bu uygulanır.</div>
           </div>
 
           {modal.mode === "edit" && (() => {
@@ -321,7 +332,7 @@ export default function MembersPage() {
           <Field label="NOTLAR"><textarea value={form.notes||""} onChange={e=>setForm(f => ({...f,notes:e.target.value}))} rows={3} style={{...inputS,resize:"vertical"}}/></Field>
 
           <div style={{display:"flex",gap:8,marginTop:10}}>
-            <button onClick={() => setModal(null)} style={cancelBtn}>Iptal</button>
+            <button onClick={() => setModal(null)} style={cancelBtn}>İptal</button>
             {modal.mode==="edit" && !(Number(modal.data?.outstanding_balance) > 0) && <button onClick={() => { deleteMember(modal.data); setModal(null); }} style={{padding:"12px 14px",background:"transparent",color:"#C87A6A",border:"1px solid #2A2A2A",borderRadius:10,fontSize:12,fontWeight:700,cursor:"pointer"}}>Sil</button>}
             <button onClick={saveMember} disabled={busy} style={{...saveBtn,opacity:busy?0.6:1}}>{busy?"...":"Kaydet"}</button>
           </div>

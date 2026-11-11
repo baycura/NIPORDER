@@ -14,7 +14,7 @@ const hv = "'Bebas Neue','Barlow Condensed','Coolvetica Condensed',sans-serif";
 
 const C = {
   card: "#161616", line: "#2A2A2A", ink: "#F0EDE8", muted: "#8A8A86",
-  faint: "#666666", accent: "#FFFFFF", down: "#C87A6A", up: "#7FA88A",
+  faint: "#8A8A86", accent: "#FFFFFF", down: "#C87A6A", up: "#7FA88A",
 };
 
 // Kasa Sayimi — kapanista cekmecedeki nakdi sayip "olmasi gereken" ile
@@ -466,7 +466,7 @@ export default function CashCountPage() {
             </div>
             {kip === "toplam" ? (<>
               <div style={{ ...etiket, marginBottom: 8 }}>Çekmecedeki toplam nakit</div>
-              <SayiGirisi kip="para" min={0} value={toplamElle}
+              <SayiGirisi kip="para" min={0} value={toplamElle} className="nip-buyuk-rakam"
                      onChange={v => setToplamElle(v)} placeholder="Örn. 6450"
                      style={{ ...inputS, minHeight: 56, fontSize: 24, fontWeight: 800, textAlign: "center" }} />
               <div style={{ fontSize: 12, color: C.faint, marginTop: 7, lineHeight: 1.5 }}>

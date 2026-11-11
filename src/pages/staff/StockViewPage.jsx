@@ -33,6 +33,9 @@ export default function StockViewPage() {
   const [entry, setEntry] = useState(null);
   const [search, setSearch] = useState("");
   const [sonGiris, setSonGiris] = useState(null);
+  // Telefonda StaffLayout'un yapiskan ust seridi var; raf basligi onun
+  // arkasinda kaliyordu (StockCountPage ile ayni kalip).
+  const isMobile = typeof window !== "undefined" ? window.innerWidth < 900 : true;
 
   const load = async () => {
     const storeIds = staffUser?.store_ids?.length ? staffUser.store_ids : ["00000000-0000-0000-0000-000000000000"];
@@ -76,7 +79,7 @@ export default function StockViewPage() {
       {/* boxSizing olmadan %100 + yanlardaki 28px dolgu tasiyordu */}
       <input value={search} onChange={e => setSearch(e.target.value)} placeholder="Malzeme ya da raf ara..."
         style={{ width: "100%", boxSizing: "border-box", background: "#111", border: "1px solid #2A2A2A", borderRadius: 8, padding: "10px 14px", color: "#F0EDE8", fontFamily: cvc, fontSize: 14, marginBottom: 16 }} />
-      {loading && <div style={{ color: "#888", fontFamily: cvc, fontSize: 12, textAlign: "center", padding: 40 }}>Yükleniyor...</div>}
+      {loading && <div style={{ color: "#888", fontFamily: cvc, fontSize: 12, textAlign: "center", padding: 40 }}>Yükleniyor…</div>}
       {!loading && filtered.length === 0 && (
         <div style={{ color: "#888888", fontFamily: cvc, fontSize: 12, textAlign: "center", padding: 40 }}>
           {items.length === 0 ? "Henüz hammadde girilmemiş." : "Aramaya uyan malzeme yok."}
@@ -86,9 +89,9 @@ export default function StockViewPage() {
           gecmesin. Raf basliklari yapiskan, uzun listede nerede oldugun belli. */}
       {raflar.map(g => (
         <div key={g.ad} style={{ marginBottom: 14 }}>
-          <div style={{ position: "sticky", top: 0, zIndex: 2, background: "#0C0C0C", display: "flex", alignItems: "baseline", gap: 8, padding: "6px 2px 8px" }}>
+          <div style={{ position: "sticky", top: isMobile ? 57 : 0, zIndex: 2, background: "#0C0C0C", display: "flex", alignItems: "baseline", gap: 8, padding: "6px 2px 8px" }}>
             <span style={{ color: "#F0EDE8", fontFamily: cv, fontSize: 17 }}>{g.ad}</span>
-            <span style={{ color: "#666", fontFamily: cvc, fontSize: 11 }}>
+            <span style={{ color: "#8A8A86", fontFamily: cvc, fontSize: 12 }}>
               {g.items.length} kalem{g.uyari ? " · " : ""}
               {g.uyari ? <span style={{ color: "#C87A6A" }}>{g.uyari} kritik</span> : null}
             </span>
@@ -106,14 +109,14 @@ export default function StockViewPage() {
                   <span style={{ color: lvl !== "ok" ? "#C87A6A" : "#F0EDE8", fontFamily: cv, fontSize: 15 }}>
                     {Number(item.stock_qty) || 0} {item.unit}
                   </span>
-                  {sise != null && <span style={{ color: "#666", fontFamily: cvc, fontSize: 11 }}>≈{sise} {kapAdi(item)}</span>}
-                  {Number(item.min_stock) > 0 && <span style={{ color: "#666", fontFamily: cvc, fontSize: 11 }}>· min {Number(item.min_stock)} {item.unit}</span>}
+                  {sise != null && <span style={{ color: "#8A8A86", fontFamily: cvc, fontSize: 12 }}>≈{sise} {kapAdi(item)}</span>}
+                  {Number(item.min_stock) > 0 && <span style={{ color: "#8A8A86", fontFamily: cvc, fontSize: 12 }}>· min {Number(item.min_stock)} {item.unit}</span>}
                 </div>
               </div>
               <span style={{ background: color + "22", color, fontFamily: cvc, fontSize: 10, padding: "3px 7px", borderRadius: 4, flexShrink: 0 }}>{AL[lvl]}</span>
               {stokGirebilir && (
                 <button onClick={() => setEntry(item)} aria-label="Stoğa ekle"
-                  style={{ width: 38, height: 38, flexShrink: 0, background: "transparent", border: "1px solid #FFFFFF", color: "#FFFFFF", borderRadius: 9, cursor: "pointer", fontFamily: cv, fontSize: 18, lineHeight: 1 }}>+</button>
+                  style={{ width: 44, height: 44, margin: "-3px 0", flexShrink: 0, background: "transparent", border: "1px solid #FFFFFF", color: "#FFFFFF", borderRadius: 9, cursor: "pointer", fontFamily: cv, fontSize: 18, lineHeight: 1 }}>+</button>
               )}
             </div>
           );

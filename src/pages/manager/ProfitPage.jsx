@@ -9,7 +9,7 @@ const hv = "'Bebas Neue','Barlow Condensed','Coolvetica Condensed',sans-serif";
 // ReportsPage ile ayni palet — iki rapor ekrani ayni dilde konussun.
 const C = {
   card: "#161616", cardLine: "#262626", ink: "#F0EDE8", muted: "#8A8A86",
-  faint: "#666666", accent: "#FFFFFF", down: "#C87A6A",
+  faint: "#8A8A86", accent: "#FFFFFF", down: "#C87A6A",
 };
 
 const fmtTL = (n) => "₺" + Number(n || 0).toLocaleString("tr-TR", { maximumFractionDigits: 0 });
@@ -37,7 +37,7 @@ const KAYNAK = {
   karma:    { etiket: "karma",    renk: "#8A8A86", aciklama: "Satışların bir kısmı ölçüldü, kalanı bugünkü reçeteden tahmin edildi." },
   alis:     { etiket: "alış",     renk: "#8A8A86", aciklama: "Reçetesi yok; maliyet ürünün alış fiyatından geliyor." },
   pay:      { etiket: "konsinye payı", renk: "#8A8A86", aciklama: "Tedarikçinin malı; maliyet etiket fiyatının tedarikçi payı kadar (örn. %60). İndirim bizim paydan düşer. Dökümü Konsinye Hesabı'nda." },
-  konsinye: { etiket: "konsinye", renk: "#666666", aciklama: "Mutfak hazırlıyor, maliyeti bizde tutulmuyor — ay sonu hakediş olarak ödeniyor." },
+  konsinye: { etiket: "konsinye", renk: "#8A8A86", aciklama: "Mutfak hazırlıyor, maliyeti bizde tutulmuyor — ay sonu hakediş olarak ödeniyor." },
   yok:      { etiket: "maliyet yok", renk: "#C87A6A", aciklama: "Ne reçetesi ne alış fiyatı var. Kâr hesaplanamıyor." },
 };
 
@@ -98,7 +98,7 @@ export default function ProfitPage() {
   const etiket = { fontSize: 12, color: C.muted, letterSpacing: "0.2px", fontWeight: 600 };
 
   return (
-    <div style={{ padding: 16, fontFamily: cv, maxWidth: 900, margin: "0 auto", paddingBottom: 80, color: C.ink }}>
+    <div style={{ fontFamily: cv, maxWidth: 900, margin: "0 auto", color: C.ink }}>
       <div style={{ display: "flex", alignItems: "baseline", justifyContent: "space-between", gap: 10, flexWrap: "wrap" }}>
         <div style={{ fontSize: 24, fontWeight: 800 }}>Ürün Kârlılığı</div>
         <div style={{ fontSize: 12, color: C.faint }}>gün 03:00'te biter</div>

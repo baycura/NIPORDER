@@ -425,7 +425,7 @@ export default function StockCountPage() {
         {/* Yapiskan ozet: sayarken kac malzeme girdigin ve fark hep gorunur
             kalsin. Alt bar mobilde ekranin dibini kapatiyor, bu yuzden ustte. */}
         <div style={{
-          position: "sticky", top: isMobile ? 51 : 0, zIndex: 20, marginBottom: 10,
+          position: "sticky", top: isMobile ? 57 : 0, zIndex: 20, marginBottom: 10,
           background: C.card, border: `1px solid ${C.line}`, borderRadius: 12, padding: "12px 14px",
           boxShadow: "0 6px 16px rgba(0,0,0,0.45)",
         }}>

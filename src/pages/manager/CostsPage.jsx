@@ -10,7 +10,7 @@ const hv = "'Bebas Neue','Barlow Condensed','Coolvetica Condensed',sans-serif";
 
 const C = {
   card: "#161616", line: "#2A2A2A", ink: "#F0EDE8", muted: "#8A8A86",
-  faint: "#666666", accent: "#FFFFFF", down: "#C87A6A",
+  faint: "#8A8A86", accent: "#FFFFFF", down: "#C87A6A",
 };
 
 const fmtTL = (n) => "₺" + Number(n || 0).toLocaleString("tr-TR", { maximumFractionDigits: 0 });

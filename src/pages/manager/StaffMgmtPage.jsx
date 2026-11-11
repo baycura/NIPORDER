@@ -27,9 +27,15 @@ export default function StaffMgmtPage() {
 
   const ROLES = isAdmin ? [{ key:"admin", label:"Sahip (Tam yetki)" }, ...ROLES_BASE] : ROLES_BASE;
 
-  const load = async () => {
-    setLoading(true);
-    const { data } = await supabase.from("staff").select("*").order("name");
+  // sessiz: kayit / silme sonrasi tazelemede sayfa "Yükleniyor" yazisina
+  // dusmesin (liste sokulup kaydirma basa sariyordu). Ilk acilis yine yukleme
+  // yazisini gosterir.
+  const load = async (sessiz) => {
+    if (!sessiz) setLoading(true);
+    const { data, error } = await supabase.from("staff").select("*").order("name");
+    // Sessiz tazeleme basarisizsa (sinyal koptu) ekrandaki liste kalsin:
+    // bos listeyle degistirmek sayfayi bosaltirdi.
+    if (sessiz && error) return;
     setStaff(data || []);
     setLoading(false);
   };
@@ -88,7 +94,7 @@ export default function StaffMgmtPage() {
       if (error) { alert("Hata: " + error.message); setBusy(false); return; }
       if (!upd?.length) { alert("Kaydedilemedi: bu islem icin yetkin yok (personel duzenlemeyi yalniz admin yapabilir)."); setBusy(false); return; }
     }
-    setModal(null); setBusy(false); load();
+    setModal(null); setBusy(false); load(true);
   };
 
   const resetPassword = async () => {
@@ -109,17 +115,17 @@ export default function StaffMgmtPage() {
     const { data, error } = await supabase.from("staff").update({ is_active: !s.is_active }).eq("id", s.id).select("id");
     if (error) { alert("Hata: " + error.message); return; }
     if (!data?.length) { alert("Değiştirilemedi: bu işlem için yetkin yok."); return; }
-    load();
+    load(true);
   };
 
   const deleteStaff = async (s) => {
     if (!confirm('"' + s.name + '" silinsin mi?')) return;
     const { error } = await supabase.from("staff").delete().eq("id", s.id);
     if (error) { alert("Hata: " + error.message); return; }
-    load();
+    load(true);
   };
 
-  if (loading) return (<div style={{color:"#888",fontFamily:cv,padding:20}}>Yukleniyor...</div>);
+  if (loading) return (<div style={{color:"#888",fontFamily:cv,padding:20}}>Yükleniyor…</div>);
 
   return (
     <div style={{fontFamily:cv,color:"#F0EDE8"}}>
@@ -144,7 +150,7 @@ export default function StaffMgmtPage() {
                   {s.last_login && <div style={{fontSize:10,color:"#888888",marginTop:3}}>Son giris: {new Date(s.last_login).toLocaleDateString("tr-TR")}</div>}
                 </div>
                 <div style={{display:"flex",flexDirection:"column",gap:4,flexShrink:0}}>
-                  <button onClick={() => openEdit(s)} style={{padding:"5px 9px",background:"#222",color:"#aaa",border:"1px solid #333",borderRadius:6,fontSize:10,cursor:"pointer",fontWeight:700}}>Duzenle</button>
+                  <button onClick={() => openEdit(s)} style={{padding:"5px 9px",background:"#222",color:"#aaa",border:"1px solid #333",borderRadius:6,fontSize:10,cursor:"pointer",fontWeight:700}}>Düzenle</button>
                   {s.email && <button onClick={() => { setPwModal(s); setNewPassword(""); }} style={{padding:"5px 9px",background:"rgba(255,255,255,0.15)",color:"#FFFFFF",border:"1px solid #FFFFFF",borderRadius:6,fontSize:10,cursor:"pointer",fontWeight:700}}>Sifre</button>}
                   <button onClick={() => toggleActive(s)} style={{padding:"5px 9px",background:s.is_active===false?"#2A2A2A":"transparent",color:s.is_active===false?"#F0EDE8":"#888",border:"1px solid #333",borderRadius:6,fontSize:10,cursor:"pointer"}}>{s.is_active===false?"Pasif":"Aktif"}</button>
                   <button onClick={() => deleteStaff(s)} style={{padding:"5px 9px",background:"transparent",color:"#C87A6A",border:"1px solid #2A2A2A",borderRadius:6,fontSize:10,cursor:"pointer"}}>Sil</button>
@@ -156,7 +162,7 @@ export default function StaffMgmtPage() {
       </div>
 
       {modal && (
-        <Modal onClose={() => setModal(null)} title={modal.mode==="new"?"Yeni Personel":"Personeli Duzenle"}>
+        <Modal onClose={() => setModal(null)} title={modal.mode==="new"?"Yeni Personel":"Personeli Düzenle"}>
           <Field label="AD SOYAD"><input value={form.name||""} onChange={e=>setForm(f => ({...f,name:e.target.value}))} style={inputS}/></Field>
           <Field label="EMAIL"><input type="email" value={form.email||""} onChange={e=>setForm(f => ({...f,email:e.target.value}))} disabled={modal.mode==="edit"} style={{...inputS, opacity:modal.mode==="edit"?0.6:1}}/></Field>
           {modal.mode==="new" && <Field label="SIFRE (en az 6 karakter)"><input type="text" value={form.password||""} onChange={e=>setForm(f => ({...f,password:e.target.value}))} placeholder="orn: garson2026" style={inputS}/></Field>}
@@ -184,7 +190,7 @@ export default function StaffMgmtPage() {
           </Field>
 
           <div style={{display:"flex",gap:8,marginTop:10}}>
-            <button onClick={() => setModal(null)} style={cancelBtn}>Iptal</button>
+            <button onClick={() => setModal(null)} style={cancelBtn}>İptal</button>
             <button onClick={saveStaff} disabled={busy} style={{...saveBtn,opacity:busy?0.6:1}}>{busy?"Kaydediliyor...":"Kaydet"}</button>
           </div>
         </Modal>
@@ -197,7 +203,7 @@ export default function StaffMgmtPage() {
           </div>
           <Field label="YENI SIFRE (en az 6 karakter)"><input autoFocus type="text" value={newPassword} onChange={e=>setNewPassword(e.target.value)} placeholder="orn: garson2026" style={inputS}/></Field>
           <div style={{display:"flex",gap:8,marginTop:10}}>
-            <button onClick={() => setPwModal(null)} style={cancelBtn}>Iptal</button>
+            <button onClick={() => setPwModal(null)} style={cancelBtn}>İptal</button>
             <button onClick={resetPassword} disabled={busy} style={{...saveBtn,opacity:busy?0.6:1}}>{busy?"Kaydediliyor...":"Sifreyi Belirle"}</button>
           </div>
         </Modal>

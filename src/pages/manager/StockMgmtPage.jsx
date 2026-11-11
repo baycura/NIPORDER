@@ -139,14 +139,14 @@ export default function StockMgmtPage() {
       const { error } = await supabase.from("ingredients").update(payload).eq("id", modal.data.id);
       if (error) { alert("Hata: " + error.message); setBusy(false); return; }
     }
-    setModal(null); setBusy(false); load();
+    setModal(null); setBusy(false); load(true);
   };
 
   const del = async (i) => {
     if (!confirm('"' + i.name + '" silinsin mi?')) return;
     const { error } = await supabase.from("ingredients").delete().eq("id", i.id);
     if (error) { alert("Silinemedi: " + error.message); return; }
-    load();
+    load(true);
   };
 
   // Raflar: arama ve filtre uygulandiktan sonra grup grup toplanir.
@@ -161,7 +161,7 @@ export default function StockMgmtPage() {
     }
   ), [items, q]);
 
-  if (loading) return (<div style={{color:"#888",fontFamily:cv,padding:20}}>Yukleniyor...</div>);
+  if (loading) return (<div style={{color:"#888",fontFamily:cv,padding:20}}>Yükleniyor…</div>);
 
   const totalValue = items.reduce((s,i) => s + (Number(i.stock_qty)||0) * (Number(i.cost_per_unit)||0), 0);
   const lowStock = items.filter(i => Number(i.stock_qty) < 10).length;
@@ -204,7 +204,7 @@ export default function StockMgmtPage() {
                   <Ikon ad="ekle" boy={13}/> Stok
                 </button>
                 <div style={{display:"flex",flexDirection:"column",gap:4}}>
-                  <button onClick={() => openEdit(i)} style={{padding:"5px 9px",background:"#222",color:"#aaa",border:"1px solid #333",borderRadius:6,fontSize:10,cursor:"pointer"}}>Duzenle</button>
+                  <button onClick={() => openEdit(i)} style={{padding:"5px 9px",background:"#222",color:"#aaa",border:"1px solid #333",borderRadius:6,fontSize:10,cursor:"pointer"}}>Düzenle</button>
                   <button onClick={() => del(i)} style={{padding:"5px 9px",background:"transparent",color:"#C87A6A",border:"1px solid #2A2A2A",borderRadius:6,fontSize:10,cursor:"pointer"}}>Sil</button>
                 </div>
               </div>
@@ -215,7 +215,7 @@ export default function StockMgmtPage() {
 
   return (
     <div style={{fontFamily:cv,color:"#F0EDE8"}}>
-      <div style={{fontSize:24,fontWeight:800,marginBottom:4}}>Stok Yonetimi</div>
+      <div style={{fontSize:24,fontWeight:800,marginBottom:4}}>Stok Yönetimi</div>
       <div style={{fontSize:11,color:"#888",letterSpacing:"1px",marginBottom:14}}>{items.length} HAMMADDE · {lowStock} AZALAN</div>
 
       {sonGiris && (
@@ -265,7 +265,7 @@ export default function StockMgmtPage() {
       <input value={arama} onChange={e=>setArama(e.target.value)} placeholder="Malzeme ya da raf ara"
         style={{width:"100%",boxSizing:"border-box",padding:"10px 12px",minHeight:42,background:"#0C0C0C",border:"1px solid #2A2A2A",borderRadius:9,color:"#F0EDE8",fontFamily:cv,fontSize:14,outline:"none",marginBottom:12}}/>
 
-      {items.length === 0 && <div style={{textAlign:"center",padding:40,color:"#888888",fontSize:13}}>Hic hammadde yok. Ekle veya fatura yukle.</div>}
+      {items.length === 0 && <div style={{textAlign:"center",padding:40,color:"#888888",fontSize:13}}>Henüz malzeme yok. Ekle ya da fatura yükle.</div>}
       {items.length > 0 && gosterilen.length === 0 && <div style={{textAlign:"center",padding:30,color:"#888888",fontSize:13}}>Aramaya uyan malzeme yok.</div>}
 
       {gosterilen.map(g => {
@@ -314,7 +314,7 @@ export default function StockMgmtPage() {
       )}
 
       {modal && (
-        <Modal onClose={() => setModal(null)} title={modal.mode==="new"?"Yeni Hammadde":"Hammaddeyi Duzenle"}>
+        <Modal onClose={() => setModal(null)} title={modal.mode==="new"?"Yeni Hammadde":"Hammaddeyi Düzenle"}>
           <Field label="AD"><input value={form.name||""} onChange={e=>setForm(f => ({...f,name:e.target.value}))} placeholder="orn: Bud Ficinin" style={inputS}/></Field>
           {/* Raf: menudeki kategori gibi. Listede olmayan bir raf gerekiyorsa
               alttaki kutuya yazilir, yeni raf kendiliginden acilir. */}
@@ -363,7 +363,7 @@ export default function StockMgmtPage() {
               )}
             </Field>
           )}
-          <Field label={"BIRIM MALIYET (₺ / " + form.unit + ")"}>
+          <Field label={"BİRİM MALİYET (₺ / " + form.unit + ")"}>
             <SayiGirisi kip="para" value={form.cost_per_unit||0} onChange={v=>setForm(f => ({...f,cost_per_unit:v}))} style={inputS}/>
             {/* Mililitre/gram maliyeti tek basina okunmaz; litre/kilo fiyatina
                 cevrilince yanlislik goze carpar (Sut ₺205/litre yaziyordu). */}
@@ -415,7 +415,7 @@ export default function StockMgmtPage() {
           {VOL_UNITS.includes(form.unit) ? (
           <div style={{background:"#0C0C0C",border:"1px solid #2A2A2A",borderRadius:10,padding:12,marginBottom:12}}>
             <div style={{fontSize:12,color:"#8A8580",letterSpacing:"0.2px",fontWeight:600,marginBottom:8,display:"flex",alignItems:"center",gap:6}}><Ikon ad="stok" boy={13}/>ŞİŞE / FIÇI HESABI</div>
-            <Field label="BIR SISE / FICI HACMI (ml)">
+            <Field label="BİR ŞİŞE / FIÇI HACMİ (ml)">
               <SayiGirisi kip="ondalik" value={form.unit_volume_ml||""} onChange={v=>setForm(f => ({...f,unit_volume_ml:v}))} placeholder="70cl sise = 700 · 50L fici = 50000" style={inputS}/>
               {/* Sik boylar tek dokunusla: cin/viski/votka 50-70-100 cl gelir. */}
               <div style={{display:"flex",gap:6,flexWrap:"wrap",marginTop:7}}>
@@ -463,7 +463,7 @@ export default function StockMgmtPage() {
             <span style={{fontSize:13,color:"#F0EDE8"}}>Sarf malzeme (buz, pet bardak, pipet...) — recetelere tek dokunusla eklenir</span>
           </label>
           <div style={{display:"flex",gap:8,marginTop:10}}>
-            <button onClick={() => setModal(null)} style={cancelBtn}>Iptal</button>
+            <button onClick={() => setModal(null)} style={cancelBtn}>İptal</button>
             <button onClick={save} disabled={busy} style={{...saveBtn,opacity:busy?0.6:1}}>{busy?"...":"Kaydet"}</button>
           </div>
         </Modal>

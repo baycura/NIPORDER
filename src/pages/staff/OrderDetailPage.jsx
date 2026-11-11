@@ -14,6 +14,9 @@ import { useMasaustu, useGenisEkran, useDokunmatik } from "../../lib/ekran.js";
 import { misafirHesapAc } from "../../lib/misafirHesap.js";
 import Bildirim, { sonListe } from "../../components/Bildirim.jsx";
 import { IptalPenceresi, KaldirPenceresi, TasiPenceresi, MasaPenceresi } from "../../components/HesapDuzelt.jsx";
+import { tl } from "../../lib/para.js";
+import { HESAP_DURUM, KALEM_DURUM, buyuk } from "../../lib/durum.js";
+import { personelHata } from "../../lib/errorText.js";
 
 const cv = "-apple-system,BlinkMacSystemFont,'Segoe UI',Roboto,sans-serif";
 
@@ -540,8 +543,12 @@ export default function OrderDetailPage() {
     if (newQty <= 0) {
       const next = items.filter(i => i.id !== itemId);
       setItems(next); syncTotal(next);
+      // Adet 1'de "−" kalemi SILER: sessiz olmasin, "son eklenen" seridi de
+      // silinmis kalemi gostermeye devam etmesin.
+      if (sonEklenen?.id === itemId) setSonEklenen(null);
       const { error } = await supabase.from("order_items").delete().eq("id", itemId);
       if (error) { alert("Silinemedi: " + error.message); loadOrderOnly(); }
+      else setDuzBilgi({ metin: it.product_name + " silindi", id: Date.now() });
     } else {
       const next = items.map(i => i.id === itemId ? { ...i, quantity: newQty } : i);
       setItems(next); syncTotal(next);
@@ -550,12 +557,22 @@ export default function OrderDetailPage() {
     }
   };
 
+  // Ikisi de kutudan cikinca (onBlur) calisir. Kayit tutmazsa SOYLER: eskiden
+  // sessizdi, garson notu yazdim saniyor, mutfak gormuyordu. Dokunulmamis
+  // kutudan cikista ses yok (kaybolan bir sey yok). Giden veri ayni.
   const saveCustomerName = async () => {
-    await supabase.from("orders").update({ customer_name: customerNameEdit.trim() || null }).eq("id", orderId);
+    const yeni = customerNameEdit.trim() || null;
+    const degisti = yeni !== (order?.customer_name || null);
+    const { error } = await supabase.from("orders").update({ customer_name: yeni }).eq("id", orderId);
+    if (error) { if (degisti) alert("İsim kaydedilemedi: " + personelHata(error)); return; }
     loadOrderOnly();
   };
   const saveOrderNote = async () => {
-    await supabase.from("orders").update({ note: orderNote.trim() || null }).eq("id", orderId);
+    const yeni = orderNote.trim() || null;
+    const degisti = yeni !== (order?.note || null);
+    const { error } = await supabase.from("orders").update({ note: yeni }).eq("id", orderId);
+    if (error) { if (degisti) alert("Not kaydedilemedi: " + personelHata(error)); return; }
+    if (degisti) setDuzBilgi({ metin: yeni ? "Not kaydedildi" : "Not silindi", id: Date.now() });
     loadOrderOnly();
   };
 
@@ -658,7 +675,7 @@ export default function OrderDetailPage() {
     return true;
   };
 
-  if (loading) return (<div style={{color:"#888",fontFamily:cv,padding:20}}>Yukleniyor...</div>);
+  if (loading) return (<div style={{color:"#888",fontFamily:cv,padding:20}}>Yükleniyor…</div>);
   if (!order) return (<div style={{color:"#888",fontFamily:cv,padding:20}}>Sipariş bulunamadı</div>);
 
   const totalItems = items.reduce((s,i) => s + (i.quantity||0), 0);
@@ -713,7 +730,7 @@ export default function OrderDetailPage() {
                    display:"flex",alignItems:"center",gap:10,flexWrap:"wrap"}}>
         <span style={{flex:1,minWidth:120,fontSize:12,color:"#F0EDE8",overflow:"hidden",textOverflow:"ellipsis",whiteSpace:"nowrap",display:"inline-flex",alignItems:"center",gap:5}}>
           {sheet && <Ikon ad="onay" boy={13}/>}
-          {sheet ? <>{sonEklenen.ad} eklendi · Toplam <b>₺{order.total || 0}</b></> : <>Son eklenen: {sonEklenen.ad}{(sonKalem?.quantity || sonEklenen.adet) > 1 ? " ×" + (sonKalem?.quantity || sonEklenen.adet) : ""}</>}
+          {sheet ? <>{sonEklenen.ad} eklendi · Toplam <b>{tl(order.total)}</b></> : <>Son eklenen: {sonEklenen.ad}{(sonKalem?.quantity || sonEklenen.adet) > 1 ? " ×" + (sonKalem?.quantity || sonEklenen.adet) : ""}</>}
         </span>
         {sheet && sonKalem && (
           <div style={{display:"flex",alignItems:"center",gap:4,background:"#0C0C0C",borderRadius:20,padding:"2px 4px",flexShrink:0}}>
@@ -723,13 +740,13 @@ export default function OrderDetailPage() {
           </div>
         )}
         <button onClick={sonEklenenGeriAl}
-          style={{fontSize:11,fontWeight:700,border:"1px solid #2A2A2A",background:"transparent",color:"#F0EDE8",
-                  padding:"7px 11px",minHeight:36,borderRadius:8,cursor:"pointer",fontFamily:"inherit",flexShrink:0}}>
+          style={{fontSize:12,fontWeight:700,border:"1px solid #2A2A2A",background:"transparent",color:"#F0EDE8",
+                  padding:"7px 11px",minHeight:44,borderRadius:8,cursor:"pointer",fontFamily:"inherit",flexShrink:0}}>
           Geri al
         </button>
         {!sheet && (
           <button onClick={() => setSonEklenen(null)} aria-label="Kapat"
-            style={{background:"none",border:"none",color:"#888888",fontSize:16,lineHeight:1,cursor:"pointer",padding:0,flexShrink:0,fontFamily:"inherit"}}>×</button>
+            style={{width:40,height:40,display:"flex",alignItems:"center",justifyContent:"center",background:"none",border:"none",color:"#888888",fontSize:16,lineHeight:1,cursor:"pointer",padding:0,flexShrink:0,fontFamily:"inherit"}}>×</button>
         )}
       </div>
     );
@@ -781,7 +798,7 @@ export default function OrderDetailPage() {
               <input value={customerNameEdit} onChange={e=>setCustomerNameEdit(e.target.value)} onBlur={saveCustomerName} placeholder="Müşteri adı" style={{background:"#1A1A1A",border:"1px solid #2A2A2A",color:"#F0EDE8",fontSize:22,fontWeight:800,padding:"4px 10px",borderRadius:8,outline:"none",fontFamily:"inherit",width:220}}/>
             </div>
           )}
-          <div style={{fontSize:12,padding:"3px 8px",background:"#2A2A2A",color:"#aaa",borderRadius:6,fontWeight:600,letterSpacing:"0.2px"}}>{order.status?.toUpperCase()}</div>
+          <div style={{fontSize:12,padding:"3px 8px",background:"#2A2A2A",color:"#aaa",borderRadius:6,fontWeight:600,letterSpacing:"0.2px"}}>{buyuk(HESAP_DURUM[order.status] || order.status)}</div>
           {order.status !== "cancelled" && order.status !== "paid" && order.status !== "debt" && (
             <button onClick={() => setMasaAcik(true)}
               style={{display:"inline-flex",alignItems:"center",gap:5,minHeight:30,padding:"4px 10px",background:"transparent",border:"1px solid #3A3A3A",borderRadius:8,color:"#F0EDE8",fontSize:12,fontWeight:700,cursor:"pointer",fontFamily:"inherit"}}>
@@ -789,7 +806,7 @@ export default function OrderDetailPage() {
             </button>
           )}
         </div>
-        <div style={{fontSize:11,color:"#888",marginTop:4}}>{totalItems} ürün · ₺{order.total || 0}</div>
+        <div style={{fontSize:11,color:"#888",marginTop:4}}>{totalItems} ürün · <span style={{fontSize:15,fontWeight:800,color:"#F0EDE8",fontVariantNumeric:"tabular-nums"}}>{tl(order.total)}</span></div>
       </div>
 
       {/* UYE + NOT, KATLANIR. Kapaliyken tek ozet satiri; uye bagliysa beyaz
@@ -817,7 +834,7 @@ export default function OrderDetailPage() {
               <option value="">— Üye değil (misafir) —</option>
               {customers.map(c => (<option key={c.id} value={c.id}>{c.name}{c.phone ? " · " + c.phone : ""}</option>))}
             </select>
-            <div style={{fontSize:10,color:"#888888",marginTop:6,lineHeight:1.5}}>
+            <div style={{fontSize:12,color:"#888888",marginTop:6,lineHeight:1.5}}>
               {order?.customer_id
                 ? (ozelFiyatSayisi > 0
                     ? "Bu üyenin " + ozelFiyatSayisi + " özel fiyatı var — eklediğin ürünlere otomatik uygulanır (kampanya daha ucuzsa kampanya)."
@@ -851,25 +868,25 @@ export default function OrderDetailPage() {
                   )}
                   {it.is_treat
                     ? <span style={{color:"#F0EDE8",fontWeight:800}}><Ikon ad="hediye" boy={13} style={{marginRight:4}}/>İKRAM{verenAdi(it.treated_by) ? " — " + verenAdi(it.treated_by) : ""} · </span>
-                    : <span style={{color:"#888"}}>₺{it.final_price} · </span>}
+                    : <span style={{color:"#888"}}>{tl(it.final_price)}{it.quantity > 1 ? " × " + it.quantity + " = " + tl(Number(it.final_price) * Number(it.quantity)) : ""} · </span>}
                   {!it.is_treat && Number(it.manual_discount) > 0 && (
                     <span style={{color:"#F0EDE8",fontWeight:700}}>
                       −₺{Math.round(Number(it.manual_discount))} indirim{it.discount_note ? " · " + it.discount_note : ""} ·{" "}
                     </span>
                   )}
-                  <span style={{color:statusColor,fontWeight:700,letterSpacing:"1px"}}>{it.kitchen_status?.toUpperCase()}</span>
+                  <span style={{color:statusColor,fontWeight:700,letterSpacing:"0.2px"}}>{buyuk(KALEM_DURUM[it.kitchen_status] || it.kitchen_status)}</span>
                 </div>
                 <div style={{display:"flex",gap:6,flexWrap:"wrap"}}>
                 {canTakeaway(prod) && (
                   <button onClick={() => toggleItemTakeaway(it)}
                     style={{marginTop:6,padding:"6px 12px",background:it.is_takeaway?"#FFFFFF":"transparent",color:it.is_takeaway?"#000":"#888",
-                            border:"1px solid "+(it.is_takeaway?"#FFFFFF":"#3A3A3A"),borderRadius:20,fontSize:11,fontWeight:700,cursor:"pointer",fontFamily:"inherit"}}>
+                            border:"1px solid "+(it.is_takeaway?"#FFFFFF":"#3A3A3A"),borderRadius:20,minHeight:40,fontSize:12,fontWeight:700,cursor:"pointer",fontFamily:"inherit"}}>
                     {it.is_takeaway && <Ikon ad="onay" boy={12} style={{marginRight:4}}/>}<Ikon ad="bardak" boy={12} style={{marginRight:4}}/>Paket
                   </button>
                 )}
                 <button onClick={() => toggleTreat(it)}
                   style={{marginTop:6,padding:"6px 12px",background:it.is_treat?"#F0EDE8":"transparent",color:it.is_treat?"#000":"#888",
-                          border:"1px solid "+(it.is_treat?"#F0EDE8":"#3A3A3A"),borderRadius:20,fontSize:11,fontWeight:700,cursor:"pointer",fontFamily:"inherit"}}>
+                          border:"1px solid "+(it.is_treat?"#F0EDE8":"#3A3A3A"),borderRadius:20,minHeight:40,fontSize:12,fontWeight:700,cursor:"pointer",fontFamily:"inherit"}}>
                   {it.is_treat && <Ikon ad="onay" boy={12} style={{marginRight:4}}/>}<Ikon ad="hediye" boy={12} style={{marginRight:4}}/>İkram
                 </button>
                 {/* Kalem indirimi: adet basina TL. Ikramli kalemde anlamsiz, gizli. */}
@@ -878,7 +895,7 @@ export default function OrderDetailPage() {
                   return (
                     <button onClick={() => setIndirimModal({ it, tutar: ind > 0 ? String(ind) : "", not: it.discount_note || "" })}
                       style={{marginTop:6,padding:"6px 12px",background:ind>0?"#F0EDE8":"transparent",color:ind>0?"#000":"#888",
-                              border:"1px solid "+(ind>0?"#F0EDE8":"#3A3A3A"),borderRadius:20,fontSize:11,fontWeight:700,cursor:"pointer",fontFamily:"inherit"}}>
+                              border:"1px solid "+(ind>0?"#F0EDE8":"#3A3A3A"),borderRadius:20,minHeight:40,fontSize:12,fontWeight:700,cursor:"pointer",fontFamily:"inherit"}}>
                       <Ikon ad="kampanya" boy={12} style={{marginRight:4}}/>{ind > 0 ? "−₺" + ind + " indirim" : "İndirim"}
                     </button>
                   );
@@ -887,16 +904,16 @@ export default function OrderDetailPage() {
                 {order.status !== "cancelled" && order.status !== "paid" && order.status !== "debt" && Number(it.quantity) > Number(it.odenen_adet || 0) && String(it.id).slice(0, 5) !== "temp-" && (
                   <button onClick={() => setTasiKalem(it)}
                     style={{marginTop:6,padding:"6px 12px",background:"transparent",color:"#888",
-                            border:"1px solid #3A3A3A",borderRadius:20,fontSize:11,fontWeight:700,cursor:"pointer",fontFamily:"inherit"}}>
+                            border:"1px solid #3A3A3A",borderRadius:20,minHeight:40,fontSize:12,fontWeight:700,cursor:"pointer",fontFamily:"inherit"}}>
                     <Ikon ad="oksag" boy={12} style={{marginRight:4}}/>Taşı
                   </button>
                 )}
                 </div>
               </div>
               <div style={{display:"flex",alignItems:"center",gap:6,background:"#0C0C0C",borderRadius:20,padding:"3px 5px"}}>
-                <button onClick={() => changeQty(it.id, -1)} style={{width:44,height:44,background:"#2A2A2A",color:"#fff",border:"none",borderRadius:"50%",fontSize:20,cursor:"pointer",fontWeight:700}}>−</button>
+                <button onClick={() => changeQty(it.id, -1)} aria-label={it.product_name + " azalt"} style={{width:44,height:44,background:"#2A2A2A",color:"#fff",border:"none",borderRadius:"50%",fontSize:20,cursor:"pointer",fontWeight:700}}>−</button>
                 <div style={{minWidth:18,textAlign:"center",fontSize:13,fontWeight:800}}>{it.quantity}</div>
-                <button onClick={() => changeQty(it.id, +1)} style={{width:44,height:44,background:"#2A2A2A",color:"#fff",border:"none",borderRadius:"50%",fontSize:20,cursor:"pointer",fontWeight:700}}>+</button>
+                <button onClick={() => changeQty(it.id, +1)} aria-label={it.product_name + " artır"} style={{width:44,height:44,background:"#2A2A2A",color:"#fff",border:"none",borderRadius:"50%",fontSize:20,cursor:"pointer",fontWeight:700}}>+</button>
               </div>
             </div>
           );
@@ -931,19 +948,21 @@ export default function OrderDetailPage() {
               {/* Kart (ana) · Nakit · Diger. Bolme, uye, puan, borc ve indirim
                   "Diger"de: bugunku Kasa ekrani. */}
               <button onClick={() => hizliBas("card")} disabled={tahsilBusy || !(hizliTutar > 0)}
+                aria-label={(hizliKurulu === "card" ? "Kart tahsilatını onayla: " : "Kartla tahsil et: ") + tl(hizliTutar)}
                 style={{flex:2.6,minWidth:0,padding:"14px 8px",minHeight:50,border:"none",borderRadius:12,fontSize:13.5,fontWeight:800,cursor:"pointer",
-                        background:hizliKurulu==="card"?"#C87A6A":"#FFFFFF",color:"#000",opacity:tahsilBusy?0.6:1,
+                        background:hizliKurulu==="card"?"#C87A6A":"#FFFFFF",color:"#000",opacity:(tahsilBusy || !(hizliTutar > 0))?0.45:1,
                         boxShadow:"0 4px 16px rgba(0,0,0,0.5)",display:"inline-flex",alignItems:"center",justifyContent:"center",gap:5,fontFamily:"inherit",whiteSpace:"nowrap",overflow:"hidden",textOverflow:"ellipsis",fontVariantNumeric:"tabular-nums"}}>
                 {hizliKurulu === "card"
-                  ? <>Onayla ₺{Math.round(hizliTutar).toLocaleString("tr-TR")}</>
+                  ? <>{masaustu && <Ikon ad="kart" boy={15}/>}Onayla ₺{Math.round(hizliTutar).toLocaleString("tr-TR")}</>
                   : <><Ikon ad="kart" boy={15}/>Kart ₺{Math.round(hizliTutar).toLocaleString("tr-TR")}</>}
               </button>
               <button onClick={() => hizliBas("cash")} disabled={tahsilBusy || !(hizliTutar > 0)}
+                aria-label={(hizliKurulu === "cash" ? "Nakit tahsilatını onayla: " : "Nakit tahsil et: ") + tl(hizliTutar)}
                 style={{flex:1.3,minWidth:0,padding:"14px 6px",minHeight:50,borderRadius:12,fontSize:13,fontWeight:800,cursor:"pointer",
                         background:hizliKurulu==="cash"?"#C87A6A":"#161616",color:hizliKurulu==="cash"?"#000":"#F0EDE8",
-                        border:"1px solid "+(hizliKurulu==="cash"?"#C87A6A":"#3A3A3A"),opacity:tahsilBusy?0.6:1,
+                        border:"1px solid "+(hizliKurulu==="cash"?"#C87A6A":"#3A3A3A"),opacity:(tahsilBusy || !(hizliTutar > 0))?0.45:1,
                         boxShadow:"0 4px 16px rgba(0,0,0,0.5)",display:"inline-flex",alignItems:"center",justifyContent:"center",gap:4,fontFamily:"inherit",whiteSpace:"nowrap",overflow:"hidden"}}>
-                {hizliKurulu === "cash" ? "Onayla" : <><Ikon ad="nakit" boy={14}/>Nakit</>}
+                {hizliKurulu === "cash" ? <>{masaustu && <Ikon ad="nakit" boy={14}/>}Onayla</> : <><Ikon ad="nakit" boy={14}/>Nakit</>}
               </button>
               <button onClick={goToPayment} aria-label="Diğer ödeme: bölme, üye, puan, borç, indirim"
                 style={{flex:1.1,minWidth:0,padding:"14px 6px",minHeight:50,borderRadius:12,fontSize:12.5,fontWeight:700,cursor:"pointer",
@@ -974,10 +993,10 @@ export default function OrderDetailPage() {
             <div style={{display:"flex",alignItems:"center",gap:10,padding:"12px 14px",borderBottom:"1px solid #2A2A2A",flexShrink:0}}>
               <div style={{flex:1,minWidth:0}}>
                 <div style={{fontSize:15,fontWeight:800,overflow:"hidden",textOverflow:"ellipsis",whiteSpace:"nowrap"}}>
-                  {where || order.customer_name || "Hesap"} · {totalItems} ürün · ₺{order.total || 0}
+                  {where || order.customer_name || "Hesap"} · {totalItems} ürün · {tl(order.total)}
                 </div>
                 <div style={{fontSize:11,color:order.customer_id?"#FFFFFF":"#888",marginTop:2,overflow:"hidden",textOverflow:"ellipsis",whiteSpace:"nowrap"}}>
-                  Üye: {uyeAdi || "—"}{order.customer_id && ozelFiyatSayisi > 0 ? " · " + ozelFiyatSayisi + " özel fiyat" : ""}{kapali ? " · " + String(order.status).toUpperCase() : ""}
+                  Üye: {uyeAdi || "—"}{order.customer_id && ozelFiyatSayisi > 0 ? " · " + ozelFiyatSayisi + " özel fiyat" : ""}{kapali ? " · " + buyuk(HESAP_DURUM[order.status] || order.status) : ""}
                 </div>
               </div>
               <button onClick={() => setEkleAcik(false)}
@@ -998,7 +1017,7 @@ export default function OrderDetailPage() {
             {/* Hesap baska cihazdan odendiyse (realtime orders kanali) ekleme durur. */}
             {kapali ? (
               <div style={{padding:"12px 14px",borderTop:"1px solid #2A2A2A",fontSize:12,color:"#C87A6A",fontWeight:700,textAlign:"center",flexShrink:0}}>
-                Bu hesap kapandı ({order.status.toUpperCase()}) — ürün eklenemez.
+                Bu hesap kapandı ({buyuk(HESAP_DURUM[order.status] || order.status)}) — ürün eklenemez.
               </div>
             ) : (
               <div style={{flexShrink:0}}>{geriAlSeridi(true)}</div>
@@ -1009,7 +1028,9 @@ export default function OrderDetailPage() {
 
       </>)}
 
-      {duzBilgi && <Bildirim key={duzBilgi.id} metin={duzBilgi.metin}/>}
+      {/* Liste gorunumunde sabit alt cubugun USTUNDE: "X silindi" yazisi Kart/Nakit
+          dugmesindeki tutari ortmesin. Parti izgarasinda varsayilan yer. */}
+      {duzBilgi && <Bildirim key={duzBilgi.id} metin={duzBilgi.metin} alt={partiKasaAcik ? 96 : cubukAlt + 62}/>}
       {iptalAcik && (
         <IptalPenceresi order={order} ad={order.table_id ? (tables[order.table_id] || "Masa") : (order.customer_name || "Hesap")}
           kalemSayisi={items.length}
@@ -1057,12 +1078,19 @@ export default function OrderDetailPage() {
         <div onClick={() => setTreatModal(null)} style={{position:"fixed",inset:0,background:"rgba(0,0,0,0.75)",display:"flex",alignItems:"flex-end",justifyContent:"center",zIndex:100}}>
           <div onClick={e => e.stopPropagation()} style={{background:"#161616",border:"1px solid #2A2A2A",borderRadius:"16px 16px 0 0",padding:20,width:"100%",maxWidth:500}}>
             <div style={{fontSize:16,fontWeight:800,color:"#F0EDE8",marginBottom:2}}><Ikon ad="hediye" boy={16} style={{marginRight:6}}/>İkramı kim veriyor?</div>
-            <div style={{fontSize:11,color:"#888",marginBottom:14}}>{treatModal.product_name} · ₺{treatModal.final_price} hesaptan düşülecek</div>
+            {/* Ikram SATIRIN TAMAMINA uygulanir (applyTreat final_price'i 0 yapar):
+                3 × ₺280'de dusen ₺840'tir, birim fiyat degil. */}
+            <div style={{fontSize:12,color:"#888",marginBottom:treatModal.quantity > 1 ? 4 : 14,fontVariantNumeric:"tabular-nums"}}>
+              {treatModal.product_name}{treatModal.quantity > 1 ? " × " + treatModal.quantity : ""} · {tl(Number(treatModal.final_price) * Number(treatModal.quantity || 1))} hesaptan düşülecek
+            </div>
+            {treatModal.quantity > 1 && (
+              <div style={{fontSize:12,color:"#F0EDE8",marginBottom:14}}>Satırdaki {treatModal.quantity} adedin tamamı ikram olur.</div>
+            )}
             {treatVerenler().map(v => (
               <button key={v.id} onClick={() => { const it = treatModal; setTreatModal(null); applyTreat(it, v.id); }}
                 style={{width:"100%",padding:"13px 14px",marginBottom:7,display:"flex",alignItems:"center",gap:10,
                         background: v.ben ? "#161616" : "#222", color: v.ben ? "#F0EDE8" : "#ddd",
-                        border:"1px solid " + (v.ben ? "#E8C36A55" : "#333"), borderRadius:10,
+                        border:"1px solid " + (v.ben ? "#FFFFFF" : "#333"), borderRadius:10,
                         fontSize:14, fontWeight:700, cursor:"pointer", fontFamily:cv, textAlign:"left"}}>
                 <Ikon ad={v.ben ? "kisi" : "yildiz"} boy={14}/>{v.ben ? "Ben — " + v.ad : v.ad}
               </button>

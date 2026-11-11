@@ -5,6 +5,7 @@ import { ozellik } from "../../lib/profil.js";
 import Ikon from "../../components/Ikon.jsx";
 import ShopifyAyar from "../../components/ShopifyAyar.jsx";
 import SayiGirisi from "../../components/SayiGirisi.jsx";
+import Bildirim from "../../components/Bildirim.jsx";
 
 const cv = "-apple-system,BlinkMacSystemFont,'Segoe UI',Roboto,sans-serif";
 
@@ -16,11 +17,19 @@ export default function SettingsPage() {
   const [loading, setLoading] = useState(true);
   const [busy, setBusy] = useState(false);
   const [saved, setSaved] = useState(false);
+  // "Kaydedildi" onayi eskiden yalniz en alttaki dugmede 2 sn duruyordu ve
+  // sayfa yeniden kuruldugu icin gorunmuyordu. Artik ekranda kisa bir yazi.
+  const [bildirim, setBildirim] = useState(null);
 
-  const load = async () => {
-    setLoading(true);
+  // sessiz: kayit sonrasi tazelemede sayfa "Yükleniyor" yazisina dusmesin
+  // (kaydirma basa sariyordu). Ilk acilis yine yukleme yazisini gosterir.
+  const load = async (sessiz) => {
+    if (!sessiz) setLoading(true);
     // NOT: app_settings PK'si (key, store_id) — iki magaza var, sadece NIP'i oku
-    const { data } = await supabase.from("app_settings").select("*").eq("store_id", PARIS_STORE_ID);
+    const { data, error } = await supabase.from("app_settings").select("*").eq("store_id", PARIS_STORE_ID);
+    // Sessiz tazeleme basarisizsa (sinyal koptu) ekrandaki ayarlar kalsin:
+    // bos nesneyle degistirmek butun alanlari sifirlardi.
+    if (sessiz && error) return;
     const obj = {};
     (data || []).forEach(s => { obj[s.key] = s.value; });
     setSettings(obj);
@@ -42,7 +51,7 @@ export default function SettingsPage() {
       if (error) throw new Error(hataMetni(error));
       if (data?.error) throw new Error(data.error);
       alert("Kur cekildi: 1 € = ₺" + data.fetched + " (" + (data.source || "") + ")");
-      load();
+      load(true);
     } catch (e) { alert("Kur guncellenemedi: " + (e?.message || e)); }
     setEurBusy(false);
   };
@@ -68,14 +77,17 @@ export default function SettingsPage() {
     // Postgres 42P10 verir ve kayit SESSIZCE duserdi. Hatalari da gosteriyoruz.
     const rows = Object.entries(settings).map(([key, value]) => ({ key, value, store_id: PARIS_STORE_ID }));
     const { error } = await supabase.from("app_settings").upsert(rows, { onConflict: "key,store_id" });
+    if (error) { setBusy(false); alert("Ayarlar kaydedilemedi: " + (error.message || "bilinmeyen hata")); return; }
+    // Dugme tazeleme bitene kadar mesgul kalir: arada "Ayarları Kaydet" yazip
+    // kayit olmamis gibi gorunuyordu.
+    await load(true);
     setBusy(false);
-    if (error) { alert("Ayarlar kaydedilemedi: " + (error.message || "bilinmeyen hata")); return; }
-    await load();
+    setBildirim({ n: Date.now() });
     setSaved(true);
     setTimeout(() => setSaved(false), 2000);
   };
 
-  if (loading) return (<div style={{color:"#888",fontFamily:cv,padding:20}}>Yukleniyor...</div>);
+  if (loading) return (<div style={{color:"#888",fontFamily:cv,padding:20}}>Yükleniyor…</div>);
 
   const partyEnabled = settings.party_mode_enabled === true || settings.party_mode_enabled === "true";
   const partyFrom = settings.party_mode_from || "22:00";
@@ -208,9 +220,9 @@ export default function SettingsPage() {
 
       {/* Online odeme (PayTR) — profil modulu (paytr) */}
       {ozellik("paytr") && (
-      <Section icon="kart" title="Online Odeme (PayTR)" desc="Musteri siparis verdikten sonra telefonundan kartla odeyebilir. Kapatirsan buton musteri ekranindan kaybolur; kasa akisi degismez.">
-        <Toggle checked={settings.online_payment_enabled === true || settings.online_payment_enabled === "true"} onChange={v=>setKey("online_payment_enabled", v)} label="Online odeme aktif"/>
-        <div style={{fontSize:11,color:"#888",marginTop:6}}>NOT: Odeme PayTR guvenli sayfasinda gerceklesir; onay PayTR'den gelince siparis otomatik "odendi" olur ve kasadan duser.</div>
+      <Section icon="kart" title="Online Ödeme (PayTR)" desc="Müşteri sipariş verdikten sonra telefonundan kartla ödeyebilir. Kapatırsan buton müşteri ekranından kaybolur; kasa akışı değişmez.">
+        <Toggle checked={settings.online_payment_enabled === true || settings.online_payment_enabled === "true"} onChange={v=>setKey("online_payment_enabled", v)} label="Online ödeme aktif"/>
+        <div style={{fontSize:11,color:"#888",marginTop:6}}>NOT: Ödeme PayTR güvenli sayfasında gerçekleşir; onay PayTR'den gelince sipariş otomatik "ödendi" olur ve kasadan düşer.</div>
       </Section>
       )}
 
@@ -223,7 +235,8 @@ export default function SettingsPage() {
       {ozellik("shopify") && <ShopifyAyar />}
 
       {/* Save button */}
-      <button onClick={save} disabled={busy} style={{width:"100%",padding:"14px",background:"#FFFFFF",color:"#000",border:"none",borderRadius:12,fontSize:15,fontWeight:800,cursor:"pointer",marginTop:16,opacity:busy?0.6:1}}>{busy?"Kaydediliyor...":(saved?"✓ Kaydedildi":"Ayarlari Kaydet")}</button>
+      <button onClick={save} disabled={busy} style={{width:"100%",padding:"14px",background:"#FFFFFF",color:"#000",border:"none",borderRadius:12,fontSize:15,fontWeight:800,cursor:"pointer",marginTop:16,opacity:busy?0.6:1}}>{busy?"Kaydediliyor…":(saved?"✓ Kaydedildi":"Ayarları Kaydet")}</button>
+      {bildirim && <Bildirim metin="Ayarlar kaydedildi" key={bildirim.n}/>}
     </div>
   );
 }

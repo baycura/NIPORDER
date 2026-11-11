@@ -9,9 +9,10 @@ import { errorText } from "../../lib/errorText.js";
 import { ozellik, MARKA, rezervasyonYerel, PROFIL } from "../../lib/profil.js";
 import { euroKuru, euroGosterilsin, euroAdimi, euroYaz } from "../../lib/euro.js";
 import { STORE_SLUG } from "../../lib/stores.js";
-import { RESERVE_URL, RESERVE_KEY, RESERVATION_URL } from "../../lib/reserve.js";
+import { RESERVE_URL, RESERVE_KEY } from "../../lib/reserve.js";
 import { kvkkGuncelGetir, kvkkPendingKaydet, kvkkEksikMi } from "../../lib/kvkk.js";
 import Ikon from "../../components/Ikon.jsx";
+import Bildirim from "../../components/Bildirim.jsx";
 
 const cv = "-apple-system,BlinkMacSystemFont,'Segoe UI',Roboto,sans-serif";
 // Yerel rezervasyon formu (profil "temel") girdi stilleri
@@ -61,7 +62,25 @@ function getVoterKey() {
 }
 // Etkinlikler NIP'te rezervasyon sisteminin (NIP RESERVE) public verisinden
 // okunur (adresler lib/reserve.js'de); yerel modda bu veritabanindaki
-// events tablosundan ve rezervasyon formu burada acilir.
+// events tablosundan. Rezervasyon formu IKI MODDA DA burada acilir: musteri
+// menuden cikmaz (sahip, 11.11.2026: siteye yonlendirme kaldirildi).
+// Misafirin talepleri telefonunda bu anahtarda saklanan kodlarla bulunur.
+const REZ_ANAHTAR = "nip_rezlerim";
+const REZ_KOD_BICIM = /^[A-Z0-9]{2,6}-[A-Z0-9]{6,12}$/;
+const rezKodlari = () => {
+  try {
+    const a = JSON.parse(localStorage.getItem(REZ_ANAHTAR) || "[]");
+    return Array.isArray(a) ? a.filter(x => typeof x === "string" && REZ_KOD_BICIM.test(x)).slice(-20) : [];
+  } catch (e) { return []; }
+};
+const rezKodEkle = (kod) => {
+  const k = String(kod || "").trim().toUpperCase();
+  if (!REZ_KOD_BICIM.test(k)) return;
+  try {
+    const a = rezKodlari().filter(x => x !== k); a.push(k);
+    localStorage.setItem(REZ_ANAHTAR, JSON.stringify(a.slice(-20)));
+  } catch (e) { /* gizli sekme: kod yalniz bu oturumda gorunur */ }
+};
 const RIDES_URL = "https://notinparis.me/pages/rides";
 const YOUTUBE_URL = "https://www.youtube.com/@notinparis";
 const STRAVA_URL = "https://www.strava.com/clubs/notinparis";
@@ -163,11 +182,11 @@ const T = {
     multi_select: "birden fazla seçebilirsin",
     other_group: "Diğer",
     sold_out: "Tükendi",
-    optional: "SEÇENEKLI",
+    optional: "SEÇENEKLİ",
     cart: "Sepetim",
     continue: "Devam",
-    note_optional: "Örn: buzsuz, sekersiz",
-    optional_label: "NOT (OPSİYONEL)",
+    note_optional: "Örn: buzsuz, şekersiz",
+    optional_label: "NOT (İSTEĞE BAĞLI)",
     cancel: "İptal",
     add_to_cart: "Sepete Ekle",
     my_cart: "Sepetim",
@@ -181,7 +200,6 @@ const T = {
     submitting: "Gönderiliyor...",
     waiter_will_bring: "Garson siparişini masana getirecek",
     notif_promise: "Sipariş hazır olunca bildirim göndereceğiz",
-    please_choose: "Lütfen",
     takeaway: "Götür",
     takeaway_all: "Hepsini götür",
     takeaway_hint: "Paket bardakta hazırlanır",
@@ -192,6 +210,7 @@ const T = {
     preparing: "Hazırlanıyor...",
     notif_granted: "Hazır olunca bildirim alacaksın",
     notif_denied: "Bildirim engellendi. Sayfayı açık bırak — hazır olunca ses çalacak.",
+    notif_unsupported: "Bu telefonda bildirim gönderemiyoruz. Sayfayı açık tut — hazır olunca zil çalar.",
     notif_ask: "Bildirim izni ver",
     back_to_menu: "Menüye dön",
     order_ready_big: "SİPARİŞİN HAZIR!",
@@ -270,7 +289,6 @@ const T = {
     submitting: "Sending...",
     waiter_will_bring: "Server will bring it to your table",
     notif_promise: "We'll notify you when your order is ready",
-    please_choose: "Please choose",
     takeaway: "To go",
     takeaway_all: "All to go",
     takeaway_hint: "Served in a takeaway cup",
@@ -281,6 +299,7 @@ const T = {
     preparing: "Preparing...",
     notif_granted: "You'll be notified when ready",
     notif_denied: "Notifications blocked. Keep this page open — you'll hear a sound when ready.",
+    notif_unsupported: "We can't send notifications on this phone. Keep this page open — you'll hear a chime when it's ready.",
     notif_ask: "Enable notifications",
     back_to_menu: "Back to menu",
     order_ready_big: "YOUR ORDER IS READY!",
@@ -359,7 +378,6 @@ const T = {
     submitting: "Отправляем...",
     waiter_will_bring: "Официант принесёт заказ к вашему столу",
     notif_promise: "Мы сообщим, когда заказ будет готов",
-    please_choose: "Пожалуйста, выберите",
     takeaway: "С собой",
     takeaway_all: "Всё с собой",
     takeaway_hint: "Подаётся в стакане с собой",
@@ -370,6 +388,7 @@ const T = {
     preparing: "Готовится...",
     notif_granted: "Сообщим, когда будет готово",
     notif_denied: "Уведомления заблокированы. Не закрывайте страницу — прозвучит сигнал.",
+    notif_unsupported: "На этом телефоне уведомления недоступны. Не закрывайте страницу — когда заказ будет готов, прозвучит сигнал.",
     notif_ask: "Разрешить уведомления",
     back_to_menu: "Вернуться в меню",
     order_ready_big: "ВАШ ЗАКАЗ ГОТОВ!",
@@ -548,6 +567,8 @@ export default function CustomerMenu() {
   const [hhProductPrices, setHhProductPrices] = useState({});
   const [fadedProdInfo, setFadedProdInfo] = useState({});
   const [loading, setLoading] = useState(true);
+  // Menu sorgulari hata verdi (baglanti koptu): bos menu yerine "tekrar dene" ekrani.
+  const [yukHata, setYukHata] = useState(false);
   const [selectedCat, setSelectedCat] = useState(null);
   const [cart, setCart] = useState([]);
   const [optModal, setOptModal] = useState(null);
@@ -565,6 +586,26 @@ export default function CustomerMenu() {
     typeof Notification !== "undefined" ? Notification.permission : "unsupported"
   );
   const audioUnlockedRef = useRef(false);
+  // Kategori degisince liste basa donsun: yapiskan baslik + urun listesi olculur.
+  const basRef = useRef(null), listeRef = useRef(null);
+
+  // UYARI BILDIRIMI: tarayicinin alert() penceresi yerine ustte kisa yazi.
+  // Instagram/WhatsApp ic tarayicisinda alert alan adi basligiyla acilip
+  // fazladan dokunus istiyordu. Sure metnin uzunluguna gore (en az 3,5 sn).
+  // Sure dolunca burada da temizlenir: ekran degisince eski yazi yeniden cikmasin.
+  const [uyari, setUyari] = useState(null);
+  const bildir = (m) => {
+    const metin = String(m || "").trim();
+    if (!metin) return;
+    setUyari({ m: metin, k: Date.now(), s: Math.max(3500, metin.length * 70) });
+  };
+  useEffect(() => {
+    if (!uyari) return;
+    const z = setTimeout(() => setUyari(null), uyari.s + 150);
+    return () => clearTimeout(z);
+  }, [uyari]);
+  // Siparis gonderilemedi: kaybolan bildirim degil, sepette kalici kutu.
+  const [gonderHata, setGonderHata] = useState(null);
 
   const now = new Date();
   // PARTI MODU iki yoldan acilir:
@@ -593,7 +634,7 @@ export default function CustomerMenu() {
   // Cihazda "gordum" kaydi tutmuyoruz: ekranin isi uye olmayana ne
   // kacirdigini anlatmak, uye olunca isi bitiyor.
   // Kapatma yalniz bu acilis icin gecerli — sonraki aciliste yine gelir.
-  const [welcomeDismissed, setWelcomeDismissed] = useState(false);
+  const [welcomeDismissed, setWelcomeDismissed] = useState(() => !!searchParams.get("rez"));
   const forceWelcome = searchParams.get("welcome") === "1";   // onizleme icin
   // authLoading bitmeden karar verilmez; yoksa uyenin ekraninda bir an parliyor
   const showWelcome = forceWelcome
@@ -621,10 +662,10 @@ export default function CustomerMenu() {
   const savePf = async () => {
     if (pfBusy) return;
     const first = pf.first.trim(), last = pf.last.trim();
-    if (first.length < 2) { alert(t.pf_need_first); return; }
-    if (last.length < 2)  { alert(t.pf_need_last); return; }
+    if (first.length < 2) { bildir(t.pf_need_first); return; }
+    if (last.length < 2)  { bildir(t.pf_need_last); return; }
     const e164 = toE164(pf.dial, pf.tel);
-    if (!e164) { alert(t.pf_need_phone); return; }
+    if (!e164) { bildir(t.pf_need_phone); return; }
     setPfBusy(true);
     const patch = { name: first + " " + last, phone: e164 };
     // Kayit sunucuda: numara mağazada elle acilmis bir kayitta duruyor olabilir
@@ -633,14 +674,14 @@ export default function CustomerMenu() {
     // kalirdi — menuye hic giremiyordu.
     const { data, error } = await supabase.rpc("save_member_profile", { p_name: patch.name, p_phone: e164 });
     setPfBusy(false);
-    if (error) { alert(t.pf_error + " " + errorText(error, lang)); return; }
+    if (error) { bildir(t.pf_error + " " + errorText(error, lang)); return; }
     if (!data?.ok) {
       const st = data?.status;
-      if (st === "phone_taken") alert(t.pf_phone_taken);
-      else if (st === "needs_staff") alert(t.pf_phone_staff);
-      else if (st === "invalid") alert(t.pf_need_phone);
-      else if (st === "no_session" || st === "no_customer") alert(errorText({ code: "401" }, lang));
-      else alert(t.pf_error + " " + errorText(null, lang));
+      if (st === "phone_taken") bildir(t.pf_phone_taken);
+      else if (st === "needs_staff") bildir(t.pf_phone_staff);
+      else if (st === "invalid") bildir(t.pf_need_phone);
+      else if (st === "no_session" || st === "no_customer") bildir(errorText({ code: "401" }, lang));
+      else bildir(t.pf_error + " " + errorText(null, lang));
       return;
     }
     refreshCustomer(patch);
@@ -648,51 +689,89 @@ export default function CustomerMenu() {
 
 
   // Uye profili karti (uye seridine tiklayinca acilir)
-  // Rezervasyona TEK girisle gec: oturum varsa RESERVE'deki kopru fonksiyonu
-  // (order-sso) tek kullanimlik giris linki uretir, oraya oturumla inilir.
-  // Oturum yoksa ya da kopru duserse duz link — sayfa asla kilitlenmez.
-  const resvBusy = useRef(false);
-  // Yerel rezervasyon formu (profil "temel"): etkinlige dokununca acilir,
-  // talep anon INSERT ile reservations'a duser (status pending), personel
-  // Rezervasyon sayfasindan onaylar. Kod musteriye ekranda gosterilir.
-  const [rezForm, setRezForm] = useState(null);      // { ev, name, phone, guest_count, note, busy, sonuc }
-  const rezAc = (ev) => setRezForm({ ev, name: customer?.name || "", phone: customer?.phone || "", guest_count: 2, note: "", busy: false, sonuc: null });
+  // REZERVASYON FORMU — menunun icinde. Sahip (11.11.2026): "rezervasyon
+  // butonuna basarsan web sitesine yonlendiriyor, bu cok sacma."
+  //   Kopru modu (NIP): RPC nip_rezervasyon_iste -> rezervasyon sistemi (RESERVE).
+  //     Sitedeki kurallar sunucuda uygulanir (uyelere ozel, kapasite, kurallar).
+  //     Talep sahibin panelinde "Bekleyen" olarak gorunur; onaylaninca uyeye
+  //     e-posta gider, misafire personel WhatsApp'tan yazar.
+  //   Yerel mod (profil "temel"): talep bu veritabanindaki reservations'a duser.
+  // Kod musteriye ekranda gosterilir ve "Rezervasyonlarim"da durur.
+  const [rezForm, setRezForm] = useState(null);      // { ev, name, phone, guest_count, note, kural, busy, sonuc, bilgi, hata }
+  const rezAc = (ev) => setRezForm({ ev, name: customer?.name || "", phone: customer?.phone || "", guest_count: rezervasyonYerel ? 2 : 1, note: "", kural: false, busy: false, sonuc: null, bilgi: null, hata: null });
+  // Etkinligin kurallari (secili dilde; yoksa Turkce)
+  const rezKural = (ev) => String((lang === "en" && ev?.rules_en) || (lang === "ru" && ev?.rules_ru) || ev?.rules || "").trim();
+  const rezDolu = (ev) => ev && ev.capacity != null && Number(ev.approved_count || 0) >= Number(ev.capacity);
+  const rezHataMetni = (kod) => ({
+    ad: L("Adını yaz", "Enter your name", "Введите имя"),
+    telefon: L("Telefon numarası geçerli görünmüyor. Yurt dışı numarayı ülke koduyla yaz (+44…).", "That phone number does not look valid. Include the country code (+44…).", "Номер телефона выглядит неверно. Укажите код страны (+7…)."),
+    etkinlik_yok: L("Bu etkinlik artık rezervasyona açık değil.", "This event is no longer open for reservations.", "Бронирование на это событие закрыто."),
+    gecti: L("Bu etkinlik artık rezervasyona açık değil.", "This event is no longer open for reservations.", "Бронирование на это событие закрыто."),
+    uye_gerekli: L("Bu etkinlik üyelere özel. Üye girişi yap, tekrar dene.", "This event is for members. Sign in and try again.", "Событие только для участников. Войдите и попробуйте снова."),
+    guven_dusuk: L("Bu etkinlik için üyelik koşulu sağlanmıyor. Bize yaz, yardımcı olalım.", "Your membership does not meet this event's requirement. Message us and we will help.", "Условия участия не выполнены. Напишите нам — поможем."),
+    seviye_yetersiz: L("Bu etkinlik için üyelik koşulu sağlanmıyor. Bize yaz, yardımcı olalım.", "Your membership does not meet this event's requirement. Message us and we will help.", "Условия участия не выполнены. Напишите нам — поможем."),
+    dolu: L("Kapasite doldu.", "This event is full.", "Мест больше нет."),
+    kural: L("Devam etmek için etkinlik kurallarını onayla.", "Please accept the event rules to continue.", "Чтобы продолжить, примите правила события."),
+    zaten: L("Bu numarayla bu etkinlik için zaten bir talep var. Onaylanınca haber vereceğiz.", "There is already a request for this event with this number. We will let you know once it is confirmed.", "На этот номер уже есть заявка на это событие. Сообщим, когда подтвердим."),
+    cok_hizli: L("Biraz hızlı gittik — birkaç dakika sonra tekrar dene.", "That was a bit fast — please try again in a few minutes.", "Слишком часто — повторите через несколько минут."),
+  })[kod] || L("Talep gönderilemedi. Bağlantını kontrol edip tekrar dene.", "Could not send the request. Check your connection and try again.", "Не удалось отправить заявку. Проверьте связь и попробуйте снова.");
+
+  // Rezervasyonlarim: uye kendi taleplerini, misafir telefonundaki kodlarin
+  // taleplerini gorur. Liste okunamazsa bolum gosterilmez; form calisir.
+  const [rezlerim, setRezlerim] = useState(null);
+  const rezlerimOku = async () => {
+    if (rezervasyonYerel || !ozellik("rezervasyon")) return;
+    try {
+      const { data, error } = await supabase.rpc("nip_rezervasyonlarim", { p_kodlar: rezKodlari() });
+      if (!error) setRezlerim(Array.isArray(data) ? data : []);
+    } catch (e) { /* ag hatasi: eski liste ekranda kalir */ }
+  };
+  // E-postadaki baglanti (?rez=KOD): kod bu telefona eklenir.
+  useEffect(() => { rezKodEkle(searchParams.get("rez")); }, []);
+  const rezBekleyenVar = !!rezlerim?.some(r => r.durum === "pending");
+
   const rezGonder = async () => {
     if (!rezForm || rezForm.busy) return;
     const ad = String(rezForm.name || "").trim();
-    if (ad.length < 2) { alert(L("Adını yaz", "Enter your name", "Введите имя")); return; }
+    if (ad.length < 2) { bildir(L("Adını yaz", "Enter your name", "Введите имя")); return; }
     const tel = String(rezForm.phone || "").trim();
-    if (tel.length < 7) { alert(L("Telefonunu yaz — onayı oradan ileteceğiz", "Enter your phone — we'll confirm there", "Введите телефон — подтвердим по нему")); return; }
+    if (tel.replace(/\D/g, "").length < 7) { bildir(L("Telefonunu yaz — onayı oradan ileteceğiz", "Enter your phone — we'll confirm there", "Введите телефон — подтвердим по нему")); return; }
+    const kisi = Math.max(1, Math.min(20, Number(rezForm.guest_count) || 1));
+    const not = String(rezForm.note || "").trim().slice(0, 300) || null;
+    if (!rezervasyonYerel) {
+      if (rezKural(rezForm.ev) && !rezForm.kural) { setRezForm(f => f ? ({ ...f, hata: "kural" }) : f); bildir(rezHataMetni("kural")); return; }
+      setRezForm(f => f ? ({ ...f, busy: true, hata: null }) : f);
+      let sonuc = null, hataKodu = "baglanti";
+      try {
+        const { data, error } = await supabase.rpc("nip_rezervasyon_iste", {
+          p: { event_id: rezForm.ev.id, ad, telefon: tel, kisi, not, kural: !!rezForm.kural, dil: lang, cihaz: getVoterKey() },
+        });
+        if (!error && data?.ok && data.kod) sonuc = data;
+        else if (!error && data?.hata) hataKodu = data.hata;
+      } catch (e) { /* hataKodu = baglanti */ }
+      if (!sonuc) {
+        setRezForm(f => f ? ({ ...f, busy: false, hata: hataKodu }) : f);
+        if (hataKodu !== "uye_gerekli") bildir(rezHataMetni(hataKodu));
+        return;
+      }
+      rezKodEkle(sonuc.kod);
+      setUyari(null);   // onceki denemenin uyarisi sonuc ekraninin ustunde kalmasin
+      setRezForm(f => f ? ({ ...f, busy: false, sonuc: sonuc.kod, bilgi: sonuc, hata: null }) : f);
+      rezlerimOku();
+      return;
+    }
     setRezForm(f => ({ ...f, busy: true }));
     const b = new Uint8Array(3); crypto.getRandomValues(b);
     const kod = MARKA.kisa.replace(/[^A-Z0-9]/gi, "").toUpperCase().slice(0, 4) + "-" + Array.from(b, x => x.toString(16).padStart(2, "0")).join("").toUpperCase();
     const { error } = await supabase.from("reservations").insert({
       event_id: rezForm.ev.id, event_name: rezForm.ev.name, event_date: rezForm.ev.date, event_time: rezForm.ev.time || null,
-      name: ad, phone: tel, guest_count: Math.max(1, Math.min(20, Number(rezForm.guest_count) || 1)),
-      note: String(rezForm.note || "").trim().slice(0, 300) || null, status: "pending", qr_id: kod,
+      name: ad, phone: tel, guest_count: kisi,
+      note: not, status: "pending", qr_id: kod,
       customer_id: customer?.id || null,
     });
-    if (error) { setRezForm(f => ({ ...f, busy: false })); alert(L("Talep gönderilemedi: ", "Could not send: ", "Не удалось отправить: ") + errorText(error)); return; }
+    if (error) { setRezForm(f => ({ ...f, busy: false })); bildir(L("Talep gönderilemedi: ", "Could not send: ", "Не удалось отправить: ") + errorText(error, lang)); return; }
+    setUyari(null);
     setRezForm(f => ({ ...f, busy: false, sonuc: kod }));
-  };
-  const openReservation = async (e) => {
-    if (e) e.preventDefault();
-    if (resvBusy.current) return;
-    resvBusy.current = true;
-    try {
-      const { data: { session } } = await supabase.auth.getSession();
-      const tok = session?.access_token;
-      if (!tok) { window.location.assign(RESERVATION_URL); return; }
-      const r = await fetch(RESERVE_URL + "/functions/v1/order-sso", {
-        method: "POST",
-        headers: { "Content-Type": "application/json", apikey: RESERVE_KEY, Authorization: "Bearer " + RESERVE_KEY },
-        body: JSON.stringify({ order_token: tok }),
-      });
-      const j = await r.json().catch(() => ({}));
-      window.location.assign(j?.url || RESERVATION_URL);
-    } catch (err) {
-      window.location.assign(RESERVATION_URL);
-    } finally { resvBusy.current = false; }
   };
 
   // E-POSTA ILE GIRIS: Google'in "hesabini dogrula" ekranlari musteriyi
@@ -709,12 +788,15 @@ export default function CustomerMenu() {
   const [kvkkOk, setKvkkOk] = useState(false);
   const [kvkkMetinOpen, setKvkkMetinOpen] = useState(false);
   const [kvkkBusy, setKvkkBusy] = useState(false);
+  // Onay kutusu isaretlenmeden devam edilmek istendi: kutu kirmizi cerceveyle
+  // gosterilir. Kutu ASLA kendiliginden isaretlenmez (acik riza, lib/kvkk.js).
+  const [kvkkUyari, setKvkkUyari] = useState(false);
   useEffect(() => { kvkkGuncelGetir(lang).then(d => setKvkkDoc(d)); }, [lang]);
   const needsKvkk = !!(customer && kvkkDoc?.version && kvkkEksikMi(customer, kvkkDoc.version));
   const kvkkHazirla = () => {
     // Metin henuz DB'de yoksa (gocus bekleniyor) girisi kilitleme.
     if (!kvkkDoc?.version) return true;
-    if (!kvkkOk) { alert(t.kvkk_need); return false; }
+    if (!kvkkOk) { bildir(t.kvkk_need); setKvkkUyari(true); return false; }
     kvkkPendingKaydet(kvkkDoc.version);
     return true;
   };
@@ -725,13 +807,13 @@ export default function CustomerMenu() {
     // E-postadaki baglanti yeni sekmede acilabilir: donus bilgisi kayitli kalsin.
     durumYaz({ giris: true, yol: window.location.pathname + window.location.search });
     const email = otpEmail.trim().toLowerCase();
-    if (!/^[^\s@]+@[^\s@]+\.[^\s@]{2,}$/.test(email)) { alert(t.login_bad_email); return; }
+    if (!/^[^\s@]+@[^\s@]+\.[^\s@]{2,}$/.test(email)) { bildir(t.login_bad_email); return; }
     setOtpBusy(true);
     const { error } = await supabase.auth.signInWithOtp({
       email, options: { shouldCreateUser: true, emailRedirectTo: window.location.origin + "/menu" },
     });
     setOtpBusy(false);
-    if (error) { alert(errorText(error, lang)); return; }
+    if (error) { bildir(errorText(error, lang)); return; }
     setOtpSent(true);
   };
 
@@ -739,22 +821,22 @@ export default function CustomerMenu() {
     if (otpBusy) return;
     if (!kvkkHazirla()) return;
     const kod = otpCode.trim();
-    if (kod.length < 6) { alert(t.login_code_ph); return; }
+    if (kod.length < 6) { bildir(L("Kodun 6 hanesini de yaz", "Enter all 6 digits", "Введите все 6 цифр")); return; }
     setOtpBusy(true);
     const { error } = await supabase.auth.verifyOtp({ email: otpEmail.trim().toLowerCase(), token: kod, type: "email" });
     setOtpBusy(false);
-    if (error) { alert(errorText(error, lang)); return; }
+    if (error) { bildir(errorText(error, lang)); return; }
     // Oturum degisikligini AuthContext yakalar; profil eksikse tamamlama ekrani gelir
     setLoginSheet(false); setOtpSent(false); setOtpCode(""); setKvkkOk(false);
   };
 
   const kvkkYenidenOnayla = async () => {
     if (!kvkkDoc?.version || kvkkBusy) return;
-    if (!kvkkOk) { alert(t.kvkk_need); return; }
+    if (!kvkkOk) { bildir(t.kvkk_need); setKvkkUyari(true); return; }
     setKvkkBusy(true);
     const { ok, error } = await acceptKvkk(kvkkDoc.version, "reaccept");
     setKvkkBusy(false);
-    if (!ok) { alert((t.pf_error || "") + " " + (error?.message || "")); return; }
+    if (!ok) { bildir(t.pf_error + " " + errorText(error, lang)); return; }
     setKvkkOk(false);
   };
 
@@ -830,9 +912,17 @@ export default function CustomerMenu() {
   };
 
   // Alt sekmeler + siparis beklerken gezinme
-  const [custTab, setCustTab] = useState("menu");
+  const [custTab, setCustTab] = useState(() => (searchParams.get("rez") && ozellik("rezervasyon")) ? "events" : "menu");
   const [browsing, setBrowsing] = useState(false);
   const [feeds, setFeeds] = useState({});         // shopify-feed: events/rides
+  // Rezervasyonlarim: Etkinlik sekmesine girince ve uye degisince okunur;
+  // onay bekleyen varken 30 sn'de bir tazelenir (onay gelince kart degisir).
+  useEffect(() => { if (custTab === "events") rezlerimOku(); }, [custTab, customer?.id]);
+  useEffect(() => {
+    if (custTab !== "events" || !rezBekleyenVar) return;
+    const z = setInterval(rezlerimOku, 30000);
+    return () => clearInterval(z);
+  }, [custTab, rezBekleyenVar]);
   const [postFeeds, setPostFeeds] = useState({}); // posts: shop(urun)/blog
   useEffect(() => {
     const today = new Date(Date.now() + 3 * 3600 * 1000).toISOString().slice(0, 10); // TR gunu
@@ -849,7 +939,7 @@ export default function CustomerMenu() {
           .order("date", { ascending: true }).limit(40)
           .then(({ data }) => setFeeds(f => ({ ...f, events: data || [] })));
       } else {
-        fetch(RESERVE_URL + "/rest/v1/events?select=name,subtitle,date,time,genre,access_type&status=eq.active&date=gte." + today + "&order=date.asc&limit=40",
+        fetch(RESERVE_URL + "/rest/v1/events?select=id,name,subtitle,date,time,genre,access_type,capacity,approved_count,rules,rules_en,rules_ru,note&status=eq.active&date=gte." + today + "&order=date.asc&limit=40",
           { headers: { apikey: RESERVE_KEY } })
           .then(r => r.json())
           .then(d => setFeeds(f => ({ ...f, events: Array.isArray(d) ? d : [] })))
@@ -908,7 +998,7 @@ export default function CustomerMenu() {
     setVoteBusy(null);
     if (error || data?.error) {
       // data.error sunucunun kendi anlasilir metni; yoksa teknik hatayi cevir
-      alert(L("Oy gönderilemedi: ", "Could not send vote: ", "Не удалось отправить голос: ") + (data?.error || errorText(error, lang)));
+      bildir(L("Oy gönderilemedi: ", "Could not send vote: ", "Не удалось отправить голос: ") + (data?.error || errorText(error, lang)));
       return;
     }
     setMyVotes(s => ({ ...s, [poll.id]: { option_id: optionId || null, free_text: freeText || null } }));
@@ -935,6 +1025,10 @@ export default function CustomerMenu() {
 
   const load = async () => {
     setLoading(true);
+    setYukHata(false);
+    // Kategori + urun ekrana yazildi mi. Yazildiktan SONRAKI bir aksilik (ayar,
+    // happy hour hesabi) menuyu kapatmasin: eski davranis korunur.
+    let menuKuruldu = false;
     try {
       // 1) Resolve current store: qrToken → cafe_tables.store_id, else URL ?store=slug
       let tab = null;
@@ -955,9 +1049,12 @@ export default function CustomerMenu() {
       }
       setCurrentStoreId(storeId);
       setTable(tab);
+      // Magaza bulunamadi: cevrimdisi acilista uc sorgu da bos doner (supabase-js
+      // hata firlatmaz). Bos menu gostermek yerine hata ekranina gec.
+      if (!storeId) { setYukHata(true); setLoading(false); return; }
 
       // 2) Load store-scoped data in parallel
-      const [{data: cats}, {data: prods}, {data: appRows}, hhRes, {data: scheduleRules}, {data: hhRules}] = await Promise.all([
+      const [catsRes, prodsRes, {data: appRows}, hhRes, {data: scheduleRules}, {data: hhRules}] = await Promise.all([
         supabase.from("categories").select("*").eq("is_active", true).eq("store_id", storeId).order("sort_order"),
         supabase.from("products").select("*").eq("is_available", true).eq("store_id", storeId).order("sort_order"),
         supabase.from("app_settings").select("key,value").eq("store_id", storeId),
@@ -965,6 +1062,9 @@ export default function CustomerMenu() {
         supabase.from("category_schedule_rules").select("*").eq("is_active", true).eq("store_id", storeId),
         supabase.from("happy_hour_rules").select("*").eq("is_active", true).eq("store_id", storeId),
       ]);
+      // Iki ana sorgudan biri hata verdiyse menu cizilmez ("Bu kategoride urun yok" yanlis olurdu).
+      if (catsRes.error || prodsRes.error) { setYukHata(true); setLoading(false); return; }
+      const cats = catsRes.data, prods = prodsRes.data;
       // Cross-store: paris view also shows doner Kitchen category + its products
       const PARIS_STORE_UUID = "c3c6e0c7-1821-4edd-993d-ad960cfbc452";
       const DONER_STORE_UUID = "c39da530-7f73-4f69-a752-029bf03790b1";
@@ -1021,6 +1121,7 @@ export default function CustomerMenu() {
       setCategories(finalCatsAfterSchedule);
       setProducts(finalProds);
       setFadedProdInfo(fadedProdInfoLocal);
+      menuKuruldu = true;
 
       // 3) Convert app_settings rows → flat object {key1: value1, key2: value2}
       const settingsObj = {};
@@ -1035,7 +1136,7 @@ export default function CustomerMenu() {
         const firstTop = finalCatsAfterSchedule.find(c => !c.parent_id && !c.show_in_shop);
         if (firstTop) setSelectedCat(firstTop.id);
       }
-    } catch (e) { console.error("Menu load error", e); }
+    } catch (e) { console.error("Menu load error", e); if (!menuKuruldu) setYukHata(true); }
     setLoading(false);
   };
 
@@ -1055,7 +1156,9 @@ export default function CustomerMenu() {
       // Misafir siparis listesini okuyamaz (gizlilik) — durum RPC ile sorulur
       const { data: st } = await supabase.rpc("order_public_status", { p_order_id: successOrderId });
       if (!st || !st.item_count) return;
-      setSiparisDurum(st);
+      // 3 saniyede bir ayni cevap gelir: degismediyse eski nesne kalsin ki
+      // 2900 satirlik bilesen bosuna yeniden cizilmesin.
+      setSiparisDurum(prev => (prev && JSON.stringify(prev) === JSON.stringify(st)) ? prev : st);
       // Kasada odendiyse ekran "Hazirlaniyor"da kalmasin: odendi + afiyet olsun.
       if (st.status === "paid") {
         setOrderPaid(true);
@@ -1282,7 +1385,7 @@ export default function CustomerMenu() {
     });
     if (error) {
       setHaberVerilen(s => ({ ...s, [p.id]: false }));
-      alert(L("Kaydedilemedi, tekrar dener misin?","Could not save, try again?","Не удалось сохранить, попробуйте ещё раз"));
+      bildir(L("Kaydedilemedi, tekrar dener misin?","Could not save, try again?","Не удалось сохранить, попробуйте ещё раз"));
     }
   };
   const gLabel = (g) => (GROUP_I18N[g] && GROUP_I18N[g][lang]) || g;
@@ -1310,6 +1413,24 @@ export default function CustomerMenu() {
   useEffect(() => { setSelectedSub(null); }, [selectedCat]);
 
   const activeSubs = subCatsByParent[selectedCat] || [];
+
+  // Listede asagidayken kategori degistiren musteri yeni listenin ortasina
+  // dusuyordu. Liste basi yapiskan basligin hemen altina gelir; zaten
+  // yukaridaysa sayfa oynatilmaz. Olcum cizimden SONRA (baslik yuksekligi
+  // alt kategori satiriyla degisir).
+  const listeBasina = () => requestAnimationFrame(() => {
+    if (!listeRef.current || !basRef.current) return;
+    const y = listeRef.current.getBoundingClientRect().top + window.scrollY - basRef.current.offsetHeight;
+    if (window.scrollY > y) window.scrollTo(0, Math.max(0, y));
+  });
+  const katSec = (id, el) => {
+    setSelectedCat(id);
+    // Secilen cip satirin ortasina gelsin. scrollIntoView yerine satirin kendi
+    // kaydirmasi: eski iOS'ta secenekli scrollIntoView sayfayi da oynatiyor.
+    const satir = el?.parentElement;
+    if (satir) satir.scrollLeft += el.getBoundingClientRect().left - satir.getBoundingClientRect().left - (satir.clientWidth - el.offsetWidth) / 2;
+    listeBasina();
+  };
 
   // Menude urun arama. Uzun listede aranan seyi bulmak icin kategorileri tek tek
   // gezmek gerekiyordu; arama yazilinca kategori/alt kategori secimi devre disi
@@ -1344,9 +1465,10 @@ export default function CustomerMenu() {
 
     // Arama yaziliyken kategori secimi gecersiz — tum menude tek liste.
     if (aramaTerimi) {
+      // Uc dilde ad ve aciklama taranir: RU arayuzde "latte" yazan da bulsun.
+      const alanlar = (p) => [p.name, p.name_en, p.name_ru, p.description, p.description_en, p.description_ru];
       const eslesen = party(products).filter(p =>
-        sadelestir(pName(p)).includes(aramaTerimi) ||
-        sadelestir(p.description).includes(aramaTerimi) ||
+        alanlar(p).some(x => sadelestir(x).includes(aramaTerimi)) ||
         String(p.barkod || "").includes(aramaTerimi));
       return [sec("__arama", null, selectedCat, eslesen)];
     }
@@ -1400,13 +1522,6 @@ export default function CustomerMenu() {
   const cartTotal = useMemo(() => cart.reduce((s, it) => s + calcPrice(it.product, it.options) * it.quantity, 0), [cart, hh, memberDiscounts, hhProductPrices, uyeMi, hhSadeceUye]);
   const cartCount = useMemo(() => cart.reduce((s, it) => s + it.quantity, 0), [cart]);
 
-  const findInCart = (productId, options, note) => {
-    return cart.findIndex(c =>
-      c.product.id === productId &&
-      JSON.stringify(c.options || null) === JSON.stringify(options || null) &&
-      (c.note || "") === (note || "")
-    );
-  };
 
   // Take away: yalniz takeaway_cup tanimli urunlerde (sicak -> karton, soguk -> pet).
   // Sert alkollerde ve tabakta servis edilenlerde hic gosterilmez.
@@ -1420,18 +1535,23 @@ export default function CustomerMenu() {
 
   const onProductTap = (p) => {
     unlockAudio();
-    if (p.sold_out_today) { alert(t.sold_out_alert + (p.unavailable_reason || "")); return; }
+    if (p.sold_out_today) { bildir(t.sold_out_alert + (p.unavailable_reason || "")); return; }
     // Saat disinda "+" zaten gorunmuyor; yine de tek kapi olsun
     const blk = blockedInfo(p);
-    if (blk) { alert(`${hhmm(blk.window ? blk.start : blk.end)} – ${hhmm(blk.window ? blk.end : blk.start)} ${t.order_between}`); return; }
+    if (blk) { bildir(`${hhmm(blk.window ? blk.start : blk.end)} – ${hhmm(blk.window ? blk.end : blk.start)} ${t.order_between}`); return; }
     if (p.has_options && p.options_config) {
-      setOptModal(p); setOptSelected({}); setOptNote(""); setOptAdet(1);
+      setOptModal(p); setOptSelected({}); setOptNote(""); setOptAdet(1); setOptEksik(null);
     } else { addToCart(p, null, null); }
   };
 
   const addToCart = (product, options, note) => {
     setCart(prev => {
-      const idx = findInCart(product.id, options, note);
+      // prev uzerinde ara: ayni dokunusta art arda eklemede (secenek penceresinde
+      // adet 3) render anindaki eski sepete bakilirsa 1'lik 3 AYRI satir olusurdu.
+      const idx = prev.findIndex(c =>
+        c.product.id === product.id &&
+        JSON.stringify(c.options || null) === JSON.stringify(options || null) &&
+        (c.note || "") === (note || ""));
       if (idx >= 0) {
         const next = [...prev];
         next[idx] = { ...next[idx], quantity: next[idx].quantity + 1 };
@@ -1454,12 +1574,18 @@ export default function CustomerMenu() {
   // Secenek penceresinde adet. Eskiden 2 kadeh icin pencereyi iki kez acmak,
   // her seferinde secenekleri yeniden isaretlemek gerekiyordu.
   const [optAdet, setOptAdet] = useState(1);
+  // Zorunlu grup bos birakildi: hangi grup oldugu pencerenin ICINDE gosterilir.
+  const [optEksik, setOptEksik] = useState(null);
 
   const confirmOptions = () => {
     if (!optModal) return;
     const cfg = optModal.options_config || {};
     for (const group of cfg.groups || []) {
-      if (group.required && (group.multi?!((optSelected[group.name]||[]).length):!optSelected[group.name])) { alert(t.please_choose + " " + optT(group.name)); return; }
+      if (group.required && (group.multi?!((optSelected[group.name]||[]).length):!optSelected[group.name])) {
+        setOptEksik(group.name);
+        document.getElementById("optg-" + group.name)?.scrollIntoView({ block: "center" });
+        return;
+      }
     }
     for (let i = 0; i < optAdet; i++) addToCart(optModal, optSelected, optNote.trim() || null);
     setOptModal(null);
@@ -1479,9 +1605,9 @@ export default function CustomerMenu() {
       if (error) throw new Error(hataMetni(error));
       // Fonksiyonun kendi metni zaten musteri diliyle yazilmis (ornegin
       // "Puanların bu siparişi karşılıyor") — oldugu gibi gosterilir
-      if (data?.error) { alert(data.error); setPayBusy(false); return; }
+      if (data?.error) { bildir(data.error); setPayBusy(false); return; }
       setPayToken(data.token);
-    } catch (e) { alert(L("Ödeme başlatılamadı: ", "Payment could not start: ", "Не удалось начать оплату: ") + errorText(e, lang)); }
+    } catch (e) { bildir(L("Ödeme başlatılamadı: ", "Payment could not start: ", "Не удалось начать оплату: ") + errorText(e, lang)); }
     setPayBusy(false);
   };
 
@@ -1515,7 +1641,8 @@ export default function CustomerMenu() {
 
   const submitOrder = async () => {
     if (submitting || cart.length === 0) return;
-    if ((!table || table.shared) && !customerName.trim() && !customer) { alert(t.please_enter_name); return; }
+    setGonderHata(null);
+    if ((!table || table.shared) && !customerName.trim() && !customer) { bildir(t.please_enter_name); return; }
     unlockAudio(); askNotifPermissionSync();
     setSubmitting(true);
     try {
@@ -1554,7 +1681,7 @@ export default function CustomerMenu() {
       setOrderStage("pending");
       setBrowsing(false); setCustTab("menu");
       setCart([]); setOrderNote(""); setCheckoutOpen(false);
-    } catch (e) { alert(t.submit_failed + errorText(e, lang)); }
+    } catch (e) { setGonderHata(t.submit_failed + errorText(e, lang)); }
     setSubmitting(false);
   };
 
@@ -1576,6 +1703,16 @@ export default function CustomerMenu() {
       ))}
     </div>
   );
+
+  // Ustte kisa uyari; bes donus agacinin da son cocugu (sepet dugmesini kapatmaz).
+  // Metin bir sarmalayici icinde verilir: Bildirim kutusu left:50% ile durdugu
+  // icin genisligi ekranin YARISINDA kaliyor, uzun cumle telefonda 5-6 satira
+  // bolunuyordu. Sarmalayici kutuyu ekran genisligine (kenar bosluklu) acar.
+  // 90 = bildirimin kenar boslugu (32) + ic boslugu, cercevesi ve ikonu (58).
+  const UyariEl = uyari
+    ? <Bildirim key={uyari.k} tur="uyari" konum="ust" sure={uyari.s}
+        metin={<span style={{display:"block",width:"max-content",maxWidth:"calc(100vw - 90px)"}}>{uyari.m}</span>}/>
+    : null;
 
   if (needsProfile) {
     return (
@@ -1619,6 +1756,7 @@ export default function CustomerMenu() {
             {t.pf_signout}
           </button>
         </div>
+        {UyariEl}
       </div>
     );
   }
@@ -1681,12 +1819,15 @@ export default function CustomerMenu() {
         </div>
 
         <div>
-          <div style={{display:"flex",gap:16,marginBottom:16}}>
-            {["tr","en","ru"].map(k => (
-              <button key={k} onClick={() => setLanguage(k)}
-                style={{background:"none",border:"none",padding:"4px 0",cursor:"pointer",fontFamily:"inherit",
-                        fontSize:11,letterSpacing:"0.12em",fontWeight:700,
-                        color:lang===k?"#101214":"#B8BCC1"}}>{k.toUpperCase()}</button>
+          {/* Dil secimi tam adiyla, hap dugme: eskiden 11px "TR EN RU" ve secilmemis
+              olan #B8BCC1 (1,9:1) idi; turist dilini bulamiyordu. */}
+          <div style={{display:"flex",gap:8,marginBottom:16,flexWrap:"wrap"}}>
+            {[["tr","Türkçe"],["en","English"],["ru","Русский"]].map(([k, ad]) => (
+              <button key={k} onClick={() => setLanguage(k)} aria-pressed={lang === k} lang={k}
+                style={{minHeight:44,padding:"10px 16px",borderRadius:999,
+                        border:"1.5px solid " + (lang === k ? "#101214" : "#D5D8DC"),
+                        background:lang === k ? "#101214" : "#fff",color:lang === k ? "#fff" : "#444",
+                        fontSize:13,fontWeight:700,cursor:"pointer",fontFamily:"inherit"}}>{ad}</button>
             ))}
           </div>
           {/* Uyelik acik profilde iki yol: uye ol (giris penceresi) ya da menuye
@@ -1706,6 +1847,7 @@ export default function CustomerMenu() {
             </button>
           )}
         </div>
+        {UyariEl}
       </div>
     );
   }
@@ -1717,6 +1859,7 @@ export default function CustomerMenu() {
       <div className="nip-customer" style={{fontFamily:cv,background:"#fff",minHeight:"100vh",display:"flex",alignItems:"center",justifyContent:"center"}}>
         <img src={MARKA.logoYolu} alt={MARKA.ad} className="nip-splash-mark"
              style={{width:120,height:"auto",opacity:0.9}}/>
+        {UyariEl}
       </div>
     );
   }
@@ -1740,6 +1883,13 @@ export default function CustomerMenu() {
       <button onClick={startPay} disabled={payBusy} style={{padding:"14px 28px",background:"#000",color:"#fff",border:"none",borderRadius:12,fontSize:14,fontWeight:800,cursor:"pointer",marginBottom:14,opacity:payBusy?0.6:1}}>
         {payBusy ? L("Açılıyor...","Opening...","Открывается...") : <><Ikon ad="kart" boy={15} style={{marginRight:7}}/>{L("Kart ile Öde","Pay by Card","Оплатить картой")}</>}
       </button>
+    ) : null;
+    // Hesap toplami: musteri_sepet_gonder acik hesaba ekledigi icin tutar yalniz
+    // bu siparisin degil HESABIN tamami; o yuzden "hesap toplami" denir.
+    const HesapSatiri = siparisDurum && !orderPaid ? (
+      <div style={{fontSize:14,fontWeight:700,marginBottom:14,fontVariantNumeric:"tabular-nums"}}>
+        {L("Hesap toplamı","Bill total","Итого по счёту")}: ₺{Math.round(Number(siparisDurum.total) || 0).toLocaleString("tr-TR")} · {siparisDurum.item_count} {L("kalem","items","поз.")}
+      </div>
     ) : null;
     // Uyelik karti: misafire "uye ol, +N puan"; giris yapinca siparis uyelige
     // baglanir (nip_qr_siparis_sahiplen) ve "odeyince +N puan" yazar.
@@ -1795,8 +1945,9 @@ export default function CustomerMenu() {
               <div style={{fontSize:15,color:"#555",marginBottom:24,lineHeight:1.5}}>
                 {table ? (table.name + " · ") : ""}{t.pick_from_cashier}
               </div>
-              <PayBlock/>
-              <UyeKarti/>
+              {HesapSatiri}
+              {PayBlock()}
+              {UyeKarti()}
               {/* Cikis: eskiden yalniz "Tekrar cal" vardi; musteri bu ekranda kaliyordu. */}
               <div style={{display:"flex",flexDirection:"column",alignItems:"center",gap:10}}>
                 <button onClick={() => setBrowsing(true)} style={{padding:"14px 28px",background:"#000000",color:"#FFFFFF",border:"none",borderRadius:12,fontSize:14,fontWeight:800,cursor:"pointer"}}>
@@ -1810,8 +1961,9 @@ export default function CustomerMenu() {
               <Ikon ad="kalp" boy={68} kalin={1.15} style={{display:"block",margin:"0 auto 14px"}}/>
               <div style={{fontSize:26,fontWeight:800,marginBottom:8}}>{t.enjoy}</div>
               <div style={{fontSize:14,color:"#555",marginBottom:24,lineHeight:1.5}}>{t.thanks}</div>
-              <PayBlock/>
-              <UyeKarti/>
+              {HesapSatiri}
+              {PayBlock()}
+              {UyeKarti()}
               <button onClick={() => { setSuccessOrderId(null); setOrderStage("pending"); load(); }} style={{padding:"14px 28px",background:"#000000",color:"#FFFFFF",border:"none",borderRadius:12,fontSize:14,fontWeight:800,cursor:"pointer"}}>{t.new_order}</button>
             </>
           ) : (
@@ -1826,16 +1978,19 @@ export default function CustomerMenu() {
                 {t.preparing}
               </div>
               <div style={{marginBottom:10}}>
+                {/* "unsupported": iPhone Safari'de Notification yok. Eskiden siyah
+                    "Bildirim izni ver" dugmesi cikiyor, dokunus sessizce yutuluyordu. */}
                 {notifState === "granted" ? (
-                  <div style={{padding:"10px 14px",background:"#F5F5F5",border:"1px solid #E5E5E5",borderRadius:10,fontSize:12,color:"#444444"}}>{t.notif_granted}</div>
-                ) : notifState === "denied" ? (
-                  <div style={{padding:"10px 14px",background:"#FAF6EE",border:"1px solid #EDE6D8",borderRadius:10,fontSize:11,color:"#5A5348",lineHeight:1.5}}>{t.notif_denied}</div>
+                  <div style={{padding:"10px 14px",background:"#F5F5F5",border:"1px solid #E5E5E5",borderRadius:10,fontSize:13,color:"#444444"}}>{t.notif_granted}</div>
+                ) : notifState === "denied" || notifState === "unsupported" ? (
+                  <div style={{padding:"10px 14px",background:"#FAF6EE",border:"1px solid #EDE6D8",borderRadius:10,fontSize:13,color:"#5A5348",lineHeight:1.5}}>{notifState === "unsupported" ? t.notif_unsupported : t.notif_denied}</div>
                 ) : (
-                  <button onClick={askNotifPermissionSync} style={{padding:"10px 18px",background:"#000000",color:"#FFFFFF",border:"none",borderRadius:10,fontSize:12,fontWeight:800,cursor:"pointer"}}>{t.notif_ask}</button>
+                  <button onClick={askNotifPermissionSync} style={{padding:"10px 18px",minHeight:44,background:"#000000",color:"#FFFFFF",border:"none",borderRadius:10,fontSize:13,fontWeight:800,cursor:"pointer"}}>{t.notif_ask}</button>
                 )}
               </div>
-              <PayBlock/>
-              <UyeKarti/>
+              {HesapSatiri}
+              {PayBlock()}
+              {UyeKarti()}
               {/* Tek sekmeli profilde de cikis olsun: dugme her zaman var. */}
               <button onClick={() => setBrowsing(true)} style={{padding:"12px 24px",background:orderPaid?"#000":"#f2f2f2",color:orderPaid?"#fff":"#333",border:"none",borderRadius:12,fontSize:13,fontWeight:700,cursor:"pointer"}}>
                 {CUST_TABS.length > 1
@@ -1852,6 +2007,21 @@ export default function CustomerMenu() {
             </>
           )}
         </div>
+        {UyariEl}
+      </div>
+    );
+  }
+
+  // MENU YUKLENEMEDI. Takip ekrani yukarida dondugu icin acik siparisi olan
+  // musteri bu ekrana dusmez; sepet ve siparis kaydi yerel durumda durur.
+  if (yukHata) {
+    return (
+      <div lang={lang} className="nip-customer" style={{fontFamily:cv,background:"#fff",color:"#101214",minHeight:"100vh",display:"flex",flexDirection:"column",alignItems:"center",justifyContent:"center",gap:14,padding:28,textAlign:"center"}}>
+        <img src={MARKA.logoYolu} alt="" style={{width:56,height:"auto"}}/>
+        <div style={{fontSize:18,fontWeight:800}}>{L("Menü yüklenemedi","Menu could not load","Меню не загрузилось")}</div>
+        <div style={{fontSize:14,color:"#666",lineHeight:1.5}}>{L("İnternet bağlantını kontrol edip tekrar dene.","Check your connection and try again.","Проверьте интернет и попробуйте ещё раз.")}</div>
+        <button onClick={() => load()} style={{minHeight:48,padding:"0 28px",borderRadius:999,background:"#101214",color:"#fff",border:"none",fontSize:15,fontWeight:700,cursor:"pointer",fontFamily:"inherit"}}>{L("Tekrar dene","Try again","Повторить")}</button>
+        {UyariEl}
       </div>
     );
   }
@@ -1863,7 +2033,7 @@ export default function CustomerMenu() {
     // dilli. CSS buyuk harfi dile gore yapar; secili dili buraya yaziyoruz ki
     // Ingilizce/Rusca metin Turkce kuralla buyumesin.
     <div lang={lang} className="nip-customer nip-customer-shell" style={{fontFamily:cv,background:"#fff",minHeight:"100vh",color:"#000",paddingBottom:cart.length>0?156:96}}>
-      <div style={{borderBottom:"1px solid #eee",position:"sticky",top:0,background:"#fff",zIndex:20}}>
+      <div ref={basRef} style={{borderBottom:"1px solid #eee",position:"sticky",top:0,background:"#fff",zIndex:20}}>
         {(() => {
           // Duyuru seridi — Ayarlar > Duyuru Seridi'nden yonetilir (uc dilli, TR'ye dusme)
           const annOn = settings && (settings.announcement_enabled === true || settings.announcement_enabled === "true");
@@ -1891,14 +2061,14 @@ export default function CustomerMenu() {
           </div>
           <div style={{display:"flex",alignItems:"center",gap:8}}>
             {hh && custTab === "menu" && <div style={{background:"#000000",color:"#FFFFFF",padding:"4px 10px",borderRadius:10,fontSize:12,fontWeight:600,letterSpacing:"0.2px"}}>{t.happy_hour} -%{hh.discount_pct}{hhSadeceUye && !uyeMi ? " · " + L("üyelere","members","участникам") : ""}</div>}
-            <LangSwitcher/>
+            {LangSwitcher()}
           </div>
         </div>
         {custTab === "menu" && (
         <>
-        <div style={{display:"flex",gap:6,overflowX:"auto",marginTop:12,paddingBottom:4}}>
+        <div className="no-scrollbar" style={{display:"flex",gap:6,overflowX:"auto",marginTop:12,paddingBottom:4}}>
           {visibleCategories.map(c => (
-            <button key={c.id} onClick={() => setSelectedCat(c.id)} style={{flexShrink:0,padding:"8px 14px",border:"none",borderRadius:16,fontSize:12,fontWeight:700,background:selectedCat===c.id?"#000":"#f2f2f2",color:selectedCat===c.id?"#fff":"#333",cursor:"pointer",whiteSpace:"nowrap",letterSpacing:"0.3px"}}>
+            <button key={c.id} onClick={(e) => katSec(c.id, e.currentTarget)} style={{flexShrink:0,padding:"8px 14px",border:"none",borderRadius:16,fontSize:12,fontWeight:700,background:selectedCat===c.id?"#000":"#f2f2f2",color:selectedCat===c.id?"#fff":"#333",cursor:"pointer",whiteSpace:"nowrap",letterSpacing:"0.3px"}}>
               {/* Kategori emojisi cizilmiyor (20.09.2026, sahip karari). Emoji
                   her cihazda baska gorunuyor ve paletin disinda kaliyor —
                   components/Ikon.jsx'in basindaki gerekcenin aynisi. Veri
@@ -1908,12 +2078,12 @@ export default function CustomerMenu() {
           ))}
         </div>
         {activeSubs.length > 0 && (
-          <div style={{display:"flex",gap:6,overflowX:"auto",marginTop:8,paddingBottom:2}}>
+          <div className="no-scrollbar" style={{display:"flex",gap:6,overflowX:"auto",marginTop:8,paddingBottom:2}}>
             {[{id:null,label:t.all_group},
               ...activeSubs.map(sc => ({id:sc.id,label:cName(sc)})),
               ...(hasDirect ? [{id:"__diger",label:t.other_group}] : [])
             ].map(s => (
-              <button key={s.id || "__all"} onClick={() => setSelectedSub(s.id)}
+              <button key={s.id || "__all"} onClick={() => { setSelectedSub(s.id); listeBasina(); }}
                 style={{flexShrink:0,padding:"6px 12px",borderRadius:14,fontSize:11,fontWeight:700,cursor:"pointer",whiteSpace:"nowrap",letterSpacing:"0.3px",
                         border:"1px solid " + (selectedSub===s.id ? "#000" : "#ddd"),
                         background:selectedSub===s.id?"#000":"#fff",
@@ -1930,10 +2100,11 @@ export default function CustomerMenu() {
             <Ikon ad="ara" boy={15} style={{color:"#666666"}}/>
             <input value={menuSearch} onChange={e=>setMenuSearch(e.target.value)}
               placeholder={L("Ürün ara — latte, efes, aperol","Search — latte, beer, aperol","Поиск — латте, пиво, апероль")}
-              style={{flex:1,minWidth:0,border:"none",outline:"none",fontSize:13,color:"#000",background:"transparent",fontFamily:"inherit",padding:0}}/>
+              style={{flex:1,minWidth:0,border:"none",outline:"none",boxShadow:"none",fontSize:13,color:"#000",background:"transparent",fontFamily:"inherit",padding:0}}/>
             {menuSearch && (
               <button onClick={()=>setMenuSearch("")} aria-label={L("Aramayı temizle","Clear search","Очистить")}
-                style={{border:"none",background:"none",color:"#666666",fontSize:17,lineHeight:1,cursor:"pointer",padding:0,flexShrink:0,fontFamily:"inherit"}}>×</button>
+                style={{border:"none",background:"none",color:"#666666",fontSize:17,lineHeight:1,cursor:"pointer",padding:0,flexShrink:0,fontFamily:"inherit",
+                        width:44,height:44,margin:"-13px -12px -13px -4px",display:"flex",alignItems:"center",justifyContent:"center"}}>×</button>
             )}
           </div>
         </div>
@@ -1949,6 +2120,15 @@ export default function CustomerMenu() {
         </div>
       </div>
 
+      {/* QR okutuldu ama masa bulunamadi: siparis masasiz gider. Sessiz kalmasin. */}
+      {qrToken && !table && custTab === "menu" && (
+        <div role="status" style={{padding:"10px 16px",background:"#FBEFEC",borderBottom:"1px solid #E8C4BC",fontSize:13,color:"#A34A3A",fontWeight:600,lineHeight:1.45}}>
+          {L("Masa kodu tanınmadı. Sipariş verebilirsin; adını yaz, hazır olunca kasadan al. Masaya bağlamak için QR'ı yeniden okut.",
+             "Table code not recognised. You can still order: enter your name and pick up at the counter, or scan the QR again.",
+             "Код стола не распознан. Заказать можно: укажите имя и заберите на кассе или отсканируйте QR ещё раз.")}
+        </div>
+      )}
+
       {custTab === "menu" && (
       <div style={{padding:"8px 16px",background:"#faf6ee",borderBottom:"1px solid #f0e8d8",display:"flex",alignItems:"center",justifyContent:"space-between",gap:8}}>
         {customer ? (
@@ -1957,12 +2137,12 @@ export default function CustomerMenu() {
               <Ikon ad="yildiz" boy={13} style={{marginRight:5}}/>{L("Merhaba","Hi","Привет")} {customer.name?.split(" ")[0] || ""}
               {Object.keys(memberDiscounts).length > 0 && <span> — {L("üye fiyatların aktif","member prices active","цены для участников активны")}</span>}
             </span>
-            <span style={{fontSize:11,fontWeight:800,whiteSpace:"nowrap"}}>{L("Profilim","My profile","Профиль")}<Ikon ad="oksag" boy={12} style={{marginLeft:4}}/></span>
+            <span style={{fontSize:13,fontWeight:800,whiteSpace:"nowrap"}}>{L("Profilim","My profile","Профиль")}<Ikon ad="oksag" boy={12} style={{marginLeft:4}}/></span>
           </button>
         ) : ozellik("uyelik") ? (
           <>
             <span style={{fontSize:12,color:"#5A5348"}}><Ikon ad="yildiz" boy={13} style={{marginRight:5}}/>{L("Üye misin?","Member?","Участник клуба?")}</span>
-            <button onClick={() => setLoginSheet(true)} style={{padding:"6px 12px",background:"#000",color:"#fff",border:"none",borderRadius:10,fontSize:11,fontWeight:700,cursor:"pointer",whiteSpace:"nowrap"}}>
+            <button onClick={() => setLoginSheet(true)} style={{padding:"10px 14px",minHeight:40,background:"#000",color:"#fff",border:"none",borderRadius:10,fontSize:13,fontWeight:700,cursor:"pointer",whiteSpace:"nowrap"}}>
               {t.login_cta}
             </button>
           </>
@@ -1974,15 +2154,45 @@ export default function CustomerMenu() {
 
       {custTab !== "menu" && (
         <div style={{padding:"14px 16px"}}>
-          {custTab === "events" && !rezervasyonYerel && (
-            <a href={RESERVATION_URL} onClick={openReservation} rel="noreferrer" style={{display:"flex",justifyContent:"space-between",alignItems:"center",padding:"16px 18px",background:"#000",color:"#fff",borderRadius:14,textDecoration:"none",marginBottom:14}}>
-              <span style={{fontSize:14,fontWeight:800,display:"flex",alignItems:"center",gap:8}}><Ikon ad="etkinlik" boy={17}/>{L("Rezervasyon yap","Make a reservation","Забронировать")}</span>
-              <Ikon ad="oksag" boy={16}/>
-            </a>
+          {custTab === "events" && !rezervasyonYerel && rezlerim?.length > 0 && (
+            <div style={{marginBottom:18}}>
+              <div style={{fontSize:12,fontWeight:800,letterSpacing:"0.4px",color:"#666666",marginBottom:8}}>{L("REZERVASYONLARIM","MY RESERVATIONS","МОИ БРОНИ")}</div>
+              {rezlerim.map(r => {
+                const d = ({
+                  pending: { ad: L("Onay bekliyor","Awaiting approval","Ждёт подтверждения"), zemin: "#FFF6E0", renk: "#7A5A00" },
+                  approved: { ad: L("Onaylandı","Confirmed","Подтверждено"), zemin: "#E3F4E6", renk: "#1A6B2E" },
+                  rejected: { ad: L("Onaylanmadı","Not confirmed","Не подтверждено"), zemin: "#F3F3F3", renk: "#666666" },
+                  used: { ad: L("Giriş yapıldı","Checked in","Вход выполнен"), zemin: "#F3F3F3", renk: "#666666" },
+                })[r.durum] || { ad: r.durum, zemin: "#F3F3F3", renk: "#666666" };
+                return (
+                  <div key={r.kod} style={{border:"1px solid " + (r.durum === "approved" ? "#BFE3C6" : "#e8e8e8"),borderRadius:14,padding:"12px 14px",marginBottom:8,background:"#fff"}}>
+                    <div style={{display:"flex",alignItems:"flex-start",gap:8}}>
+                      <div style={{flex:1,minWidth:0}}>
+                        <div style={{fontSize:15,fontWeight:800,lineHeight:1.3}}>{r.etkinlik}</div>
+                        <div style={{fontSize:12,color:"#666666",marginTop:3}}>{r.tarih ? fmtDay(r.tarih) : ""}{r.saat ? " · " + r.saat : ""} · {r.kisi} {L("kişi","guests","гост.")}</div>
+                      </div>
+                      <span style={{fontSize:12,fontWeight:700,padding:"4px 9px",borderRadius:8,background:d.zemin,color:d.renk,flexShrink:0,display:"inline-flex",alignItems:"center",gap:4}}>
+                        {r.durum === "approved" && <Ikon ad="onay" boy={12}/>}{d.ad}
+                      </span>
+                    </div>
+                    {(r.durum === "approved" || r.durum === "pending") && (
+                      <div style={{marginTop:10,display:"flex",alignItems:"center",justifyContent:"space-between",gap:10,flexWrap:"wrap",background:"#f5f5f5",borderRadius:10,padding:"10px 12px"}}>
+                        <span style={{fontSize:12,color:"#666666",lineHeight:1.4}}>{r.durum === "approved"
+                          ? L("Kapıda bu kodu göster","Show this code at the door","Покажите этот код на входе")
+                          : L("Onaylanınca haber vereceğiz. Kodun:","We will let you know once confirmed. Your code:","Сообщим после подтверждения. Ваш код:")}</span>
+                        <span style={{fontSize:17,fontWeight:900,letterSpacing:"2px"}}>{r.kod}</span>
+                      </div>
+                    )}
+                  </div>
+                );
+              })}
+            </div>
           )}
-          {custTab === "events" && rezervasyonYerel && (
+          {custTab === "events" && feeds.events?.length > 0 && (
             <div style={{fontSize:12,color:"#666666",marginBottom:10,lineHeight:1.5}}>
-              {L("Etkinliğe dokun, yerini ayırt. Onayı telefonundan iletiriz.","Tap an event to book a spot. We confirm by phone.","Нажмите на событие, чтобы забронировать. Подтвердим по телефону.")}
+              {rezervasyonYerel
+                ? L("Etkinliğe dokun, yerini ayırt. Onayı telefonundan iletiriz.","Tap an event to book a spot. We confirm by phone.","Нажмите на событие, чтобы забронировать. Подтвердим по телефону.")
+                : L("Etkinliğe dokun, yerini buradan ayırt. Onaylanınca haber veririz.","Tap an event to book your spot right here. We will let you know once it is confirmed.","Нажмите на событие, чтобы забронировать прямо здесь. Сообщим, когда подтвердим.")}
             </div>
           )}
           {custTab === "events" && (
@@ -1994,9 +2204,8 @@ export default function CustomerMenu() {
                 </div>
               )}
               {(feeds.events || []).map((ev, i) => (
-                <a key={ev.id || i} href={rezervasyonYerel ? "#rezervasyon" : RESERVATION_URL}
-                   onClick={rezervasyonYerel ? (e) => { e.preventDefault(); rezAc(ev); } : openReservation}
-                   rel="noreferrer" style={{display:"flex",alignItems:"center",gap:10,padding:"14px 2px",borderBottom:"1px solid #f0f0f0",textDecoration:"none",color:"#000"}}>
+                <button key={ev.id || i} type="button" onClick={() => rezAc(ev)}
+                   style={{display:"flex",alignItems:"center",gap:10,width:"100%",minHeight:56,padding:"14px 2px",background:"none",border:"none",borderBottom:"1px solid #f0f0f0",textAlign:"left",color:"#000",cursor:"pointer",fontFamily:"inherit"}}>
                   <div style={{flex:1,minWidth:0}}>
                     <div style={{fontSize:15,fontWeight:800,lineHeight:1.3}}>
                       {ev.name}
@@ -2009,8 +2218,10 @@ export default function CustomerMenu() {
                   {ev.access_type && ev.access_type !== "open" && (
                     <span style={{fontSize:12,padding:"3px 7px",background:"#000",color:"#fff",borderRadius:6,fontWeight:600,letterSpacing:"0.2px",flexShrink:0}}>{L("ÜYE","MEMBERS","КЛУБ")}</span>
                   )}
-                  <span style={{fontSize:12,fontWeight:700,flexShrink:0}}>{L("Rezerve","Reserve","Бронь")}<Ikon ad="oksag" boy={12} style={{marginLeft:4}}/></span>
-                </a>
+                  {rezDolu(ev)
+                    ? <span style={{fontSize:12,fontWeight:700,flexShrink:0,color:"#666666"}}>{L("DOLU","FULL","МЕСТ НЕТ")}</span>
+                    : <span style={{fontSize:12,fontWeight:700,flexShrink:0}}>{L("Rezerve","Reserve","Бронь")}<Ikon ad="oksag" boy={12} style={{marginLeft:4}}/></span>}
+                </button>
               ))}
               {!rezervasyonYerel && (
               <a href={YOUTUBE_URL} target="_blank" rel="noreferrer" style={{display:"flex",justifyContent:"space-between",alignItems:"center",padding:"14px 16px",background:"#fafafa",border:"1px solid #eee",borderRadius:14,textDecoration:"none",color:"#000",marginTop:14}}>
@@ -2284,8 +2495,18 @@ export default function CustomerMenu() {
       )}
 
       {custTab === "menu" && (
-      <div style={{padding:"14px 16px"}}>
-        {visibleProducts.length === 0 && <div style={{textAlign:"center",color:"#666666",padding:40,fontSize:13}}>{t.category_empty}</div>}
+      <div ref={listeRef} style={{padding:"14px 16px"}}>
+        {visibleProducts.length === 0 && (aramaTerimi ? (
+          <div style={{textAlign:"center",color:"#666666",padding:"40px 12px",fontSize:14,lineHeight:1.5}}>
+            <div style={{overflowWrap:"anywhere"}}>{L(`“${menuSearch.trim()}” için sonuç yok`, `No results for “${menuSearch.trim()}”`, `По запросу «${menuSearch.trim()}» ничего не найдено`)}</div>
+            <button onClick={() => setMenuSearch("")}
+              style={{marginTop:14,minHeight:44,padding:"0 20px",background:"#fff",color:"#000",border:"1.5px solid #000",borderRadius:999,fontSize:14,fontWeight:700,cursor:"pointer",fontFamily:"inherit"}}>
+              {L("Aramayı temizle","Clear search","Очистить поиск")}
+            </button>
+          </div>
+        ) : (
+          <div style={{textAlign:"center",color:"#666666",padding:40,fontSize:13}}>{t.category_empty}</div>
+        ))}
         {productSections.map(sec => (
         <div key={sec.key}>
         {sec.title && (
@@ -2304,13 +2525,19 @@ export default function CustomerMenu() {
           const soldOut = p.sold_out_today;
           const cartIdx = cart.findIndex(c => c.product.id === p.id && !c.options);
           const inCart = cartIdx >= 0 ? cart[cartIdx].quantity : 0;
+          // Secenekli urun sepette ayri satirlar olarak durur (her secim ayri);
+          // "+" dugmesinde toplam adedi rozet olarak goster.
+          const secAdet = p.has_options ? cart.reduce((s, c) => c.product.id === p.id ? s + c.quantity : s, 0) : 0;
+          // Siparis edilemeyen satir solar AMA "neden" yazisi (saat araligi,
+          // tukendi nedeni) tam opak kalir: eskiden o da soluyordu.
+          const sol = soldOut || isFaded ? 0.45 : 1;
           return (
-            <div key={p.id + "-" + p.category_id} style={{display:"flex",gap:12,padding:"14px 0",borderBottom:"1px solid #f0f0f0",opacity:soldOut||isFaded?0.45:1}}>
+            <div key={p.id + "-" + p.category_id} style={{display:"flex",gap:12,padding:"14px 0",borderBottom:"1px solid #f0f0f0"}}>
               <div style={{flex:1,minWidth:0}}>
-                <div style={{fontSize:15,fontWeight:700,color:"#000",lineHeight:1.3}}>{pName(p)}</div>
-                {pDesc(p) && <div style={{fontSize:12,color:"#666",marginTop:3,lineHeight:1.4}}>{pDesc(p)}</div>}
+                <div style={{fontSize:15,fontWeight:700,color:"#000",lineHeight:1.3,opacity:sol}}>{pName(p)}</div>
+                {pDesc(p) && <div style={{fontSize:12,color:"#666",marginTop:3,lineHeight:1.4,opacity:sol}}>{pDesc(p)}</div>}
                 {blocked && (
-                  <div style={{fontSize:11,color:"#000000",marginTop:3,fontWeight:600}}>
+                  <div style={{fontSize:12,color:"#000000",marginTop:3,fontWeight:600}}>
                     {blocked.window
                       ? `${hhmm(blocked.start)} – ${hhmm(blocked.end)} ${t.order_between}`
                       : `${hhmm(blocked.end)} – ${hhmm(blocked.start)} ${t.order_between}`}
@@ -2323,11 +2550,11 @@ export default function CustomerMenu() {
                   const dk = p.prep_time_minutes
                     || categories.find(c => c.id === p.category_id)?.prep_time_minutes;
                   if (!dk) return null;
-                  return <div style={{fontSize:12,color:"#666666",marginTop:4,display:"flex",alignItems:"center",gap:5}}><Ikon ad="vardiya" boy={13}/><span>~{dk} {L("dk","min","мин")}</span></div>;
+                  return <div style={{fontSize:12,color:"#666666",marginTop:4,display:"flex",alignItems:"center",gap:5,opacity:sol}}><Ikon ad="vardiya" boy={13}/><span>~{dk} {L("dk","min","мин")}</span></div>;
                 })()}
-                {soldOut && <div style={{fontSize:11,color:"#A34A3A",marginTop:4,fontWeight:600}}>{p.unavailable_reason || t.sold_out}</div>}
-                {p.has_options && !soldOut && <div style={{fontSize:12,color:"#000000",marginTop:3,fontWeight:600,letterSpacing:"0.2px"}}>{t.optional}</div>}
-                <div style={{display:"flex",alignItems:"center",gap:10,marginTop:8}}>
+                {soldOut && <div style={{fontSize:12,color:"#A34A3A",marginTop:4,fontWeight:600}}>{p.unavailable_reason || t.sold_out}</div>}
+                {p.has_options && !soldOut && <div style={{fontSize:12,color:"#000000",marginTop:3,fontWeight:600,letterSpacing:"0.2px",opacity:sol}}>{t.optional}</div>}
+                <div style={{display:"flex",alignItems:"center",gap:10,marginTop:8,opacity:sol}}>
                   {dis && <span style={{fontSize:12,color:"#666666",textDecoration:"line-through"}}>₺{p.price}</span>}
                   <span style={{fontSize:15,fontWeight:800,color:"#000"}}>₺{fp}</span>
                   {p.currency === "EUR" && p.price_eur != null && (
@@ -2345,7 +2572,7 @@ export default function CustomerMenu() {
                   const uf = uyeOlursaFiyat(p);
                   if (uf == null || uf >= fp) return null;
                   return (
-                    <button onClick={uyeOlAc} style={{marginTop:6,background:"none",border:"none",padding:0,fontSize:12,color:"#000",fontWeight:700,cursor:"pointer",fontFamily:"inherit",textAlign:"left",display:"flex",alignItems:"center",gap:5}}>
+                    <button onClick={uyeOlAc} style={{marginTop:6,background:"none",border:"none",padding:0,fontSize:12,color:"#000",fontWeight:700,cursor:"pointer",fontFamily:"inherit",textAlign:"left",display:"flex",alignItems:"center",gap:5,opacity:sol}}>
                       <Ikon ad="uye" boy={12}/>{L(`Üye olursan ₺${uf}`, `Members pay ₺${uf} — join`, `Для участников ₺${uf} — вступить`)}
                     </button>
                   );
@@ -2355,17 +2582,19 @@ export default function CustomerMenu() {
                 <div style={{display:"flex",alignItems:"center",flexShrink:0}}>
                   {inCart > 0 && !p.has_options ? (
                     <div style={{display:"flex",alignItems:"center",gap:8,background:"#000",borderRadius:24,padding:"4px 6px"}}>
-                      <button onClick={() => updateQty(cartIdx, -1)} style={{width:44,height:44,background:"transparent",color:"#fff",border:"none",borderRadius:"50%",fontSize:18,cursor:"pointer",fontWeight:700}}>−</button>
+                      <button onClick={() => updateQty(cartIdx, -1)} aria-label={L("Azalt","Decrease","Меньше")} style={{width:44,height:44,background:"transparent",color:"#fff",border:"none",borderRadius:"50%",fontSize:18,cursor:"pointer",fontWeight:700}}>−</button>
                       <div style={{minWidth:18,textAlign:"center",color:"#fff",fontSize:14,fontWeight:800}}>{inCart}</div>
-                      <button onClick={() => updateQty(cartIdx, +1)} style={{width:44,height:44,background:"transparent",color:"#fff",border:"none",borderRadius:"50%",fontSize:18,cursor:"pointer",fontWeight:700}}>+</button>
+                      <button onClick={() => updateQty(cartIdx, +1)} aria-label={L("Artır","Increase","Больше")} style={{width:44,height:44,background:"transparent",color:"#fff",border:"none",borderRadius:"50%",fontSize:18,cursor:"pointer",fontWeight:700}}>+</button>
                     </div>
                   ) : (
                     // Ekle dugmesi: 2px cerceveli, 900 kalinlikta "+" fazla sertti.
                     // Cizgi ikon (Ikon "ekle") ayni 44px dokunma alanini korur,
                     // satirin icinde bagirmaz.
-                    <button onClick={() => onProductTap(p)} aria-label={L("Sepete ekle","Add to cart","В корзину")}
-                      style={{width:44,height:44,flexShrink:0,background:"transparent",color:"#000",border:"none",borderRadius:8,cursor:"pointer",display:"flex",alignItems:"center",justifyContent:"center",padding:0}}>
+                    <button onClick={() => onProductTap(p)}
+                      aria-label={L("Sepete ekle","Add to cart","В корзину") + (secAdet > 0 ? L(` — sepette ${secAdet} adet`, ` — ${secAdet} in cart`, ` — в корзине: ${secAdet}`) : "")}
+                      style={{position:"relative",width:44,height:44,flexShrink:0,background:"transparent",color:"#000",border:"none",borderRadius:8,cursor:"pointer",display:"flex",alignItems:"center",justifyContent:"center",padding:0}}>
                       <Ikon ad="ekle" boy={22}/>
+                      {secAdet > 0 && <span aria-hidden="true" style={{position:"absolute",top:0,right:0,minWidth:18,height:18,padding:"0 4px",boxSizing:"border-box",borderRadius:9,background:"#000",color:"#fff",fontSize:11,fontWeight:800,display:"flex",alignItems:"center",justifyContent:"center",fontVariantNumeric:"tabular-nums"}}>{secAdet}</span>}
                     </button>
                   )}
                 </div>
@@ -2399,45 +2628,103 @@ export default function CustomerMenu() {
       )}
 
       {CUST_TABS.length > 1 && (
-      <nav style={{position:"fixed",bottom:0,left:0,right:0,background:"#fff",borderTop:"1px solid #eee",display:"flex",justifyContent:"space-around",padding:"8px 0 16px",zIndex:50,boxShadow:"0 -2px 12px rgba(0,0,0,0.06)"}}>
+      <nav aria-label={L("Bölümler","Sections","Разделы")} style={{position:"fixed",bottom:0,left:0,right:0,background:"#fff",borderTop:"1px solid #eee",display:"flex",justifyContent:"space-around",padding:"8px 0 16px",zIndex:50,boxShadow:"0 -2px 12px rgba(0,0,0,0.06)"}}>
         {CUST_TABS.map(tab => (
-          <button key={tab.key} onClick={() => setCustTab(tab.key)} style={{display:"flex",flexDirection:"column",alignItems:"center",gap:2,background:"none",border:"none",cursor:"pointer",color:custTab===tab.key?"#000":"#999",padding:"4px 8px",minWidth:52}}>
+          <button key={tab.key} onClick={() => { setCustTab(tab.key); if (tab.key !== custTab) window.scrollTo(0, 0); }}
+            aria-current={custTab === tab.key ? "page" : undefined}
+            style={{display:"flex",flexDirection:"column",alignItems:"center",justifyContent:"center",gap:2,background:"none",border:"none",cursor:"pointer",color:custTab===tab.key?"#000":"#666",padding:"6px 8px",minWidth:52,minHeight:48,fontFamily:"inherit"}}>
             <Ikon ad={tab.icon} boy={21}/>
-            <span style={{fontSize:9,fontWeight:custTab===tab.key?800:600,letterSpacing:"0.3px"}}>{tab[["en","ru"].includes(lang)?lang:"tr"]}</span>
+            <span style={{fontSize:11,fontWeight:custTab===tab.key?800:600,letterSpacing:"0.3px"}}>{tab[["en","ru"].includes(lang)?lang:"tr"]}</span>
           </button>
         ))}
       </nav>
       )}
 
       {rezForm && (
-        <div onClick={() => !rezForm.busy && setRezForm(null)} style={{position:"fixed",inset:0,background:"rgba(0,0,0,0.5)",display:"flex",alignItems:"flex-end",justifyContent:"center",zIndex:120}}>
-          <div onClick={e=>e.stopPropagation()} style={{background:"#fff",borderRadius:"18px 18px 0 0",padding:"22px 20px 30px",width:"100%",maxWidth:520}}>
+        <div role="dialog" aria-modal="true" aria-label={L("Rezervasyon","Reservation","Бронирование")} onClick={() => !rezForm.busy && setRezForm(null)} style={{position:"fixed",inset:0,background:"rgba(0,0,0,0.5)",display:"flex",alignItems:"flex-end",justifyContent:"center",zIndex:120}}>
+          <div onClick={e=>e.stopPropagation()} style={{background:"#fff",borderRadius:"18px 18px 0 0",padding:"22px 20px calc(30px + env(safe-area-inset-bottom))",width:"100%",maxWidth:520,maxHeight:"92vh",overflowY:"auto"}}>
             {rezForm.sonuc ? (
               <>
-                <div style={{fontSize:18,fontWeight:800,marginBottom:6}}>{L("Talebin alındı","Request received","Заявка принята")}</div>
+                <div style={{fontSize:18,fontWeight:800,marginBottom:6,display:"flex",alignItems:"center",gap:8}}>
+                  <Ikon ad="onay" boy={18}/>
+                  {rezForm.bilgi?.durum === "approved"
+                    ? L("Rezervasyonun onaylı","Your reservation is confirmed","Ваша бронь подтверждена")
+                    : rezForm.bilgi?.zaten
+                      ? L("Bu etkinlik için talebin zaten var","You already have a request for this event","У вас уже есть заявка на это событие")
+                      : L("Talebin alındı","Request received","Заявка принята")}
+                </div>
                 <div style={{fontSize:13,color:"#444",lineHeight:1.6,marginBottom:14}}>
                   {rezForm.ev.name} · {fmtDay(rezForm.ev.date)}{rezForm.ev.time ? " · " + rezForm.ev.time : ""}<br/>
-                  {L("Onaylanınca telefonundan haber vereceğiz. Kapıda bu kodu göster:","We'll confirm by phone. Show this code at the door:","Подтвердим по телефону. Покажите этот код на входе:")}
+                  {rezervasyonYerel
+                    ? L("Onaylanınca telefonundan haber vereceğiz. Kapıda bu kodu göster:","We'll confirm by phone. Show this code at the door:","Подтвердим по телефону. Покажите этот код на входе:")
+                    : rezForm.bilgi?.durum === "approved"
+                      ? L("Kapıda bu kodu göster:","Show this code at the door:","Покажите этот код на входе:")
+                      : rezForm.bilgi?.eposta
+                        ? L("Onaylanınca e-posta ile haber vereceğiz. Durumu bu sayfada, Rezervasyonlarım altında görürsün. Kapıda bu kodu göster:","We will e-mail you once it is confirmed. You can follow it on this page under My reservations. Show this code at the door:","Сообщим по e-mail после подтверждения. Статус виден на этой странице в разделе «Мои брони». Покажите этот код на входе:")
+                        : L("Onaylanınca telefonundan haber vereceğiz. Durumu bu sayfada, Rezervasyonlarım altında görürsün. Kapıda bu kodu göster:","We will message you once it is confirmed. You can follow it on this page under My reservations. Show this code at the door:","Сообщим по телефону после подтверждения. Статус виден на этой странице в разделе «Мои брони». Покажите этот код на входе:")}
                 </div>
                 <div style={{fontSize:26,fontWeight:900,letterSpacing:"3px",textAlign:"center",padding:"14px",background:"#f5f5f5",borderRadius:12,marginBottom:14}}>{rezForm.sonuc}</div>
-                <button onClick={() => setRezForm(null)} style={{width:"100%",padding:"14px",background:"#000",color:"#fff",border:"none",borderRadius:12,fontSize:14,fontWeight:800,cursor:"pointer",fontFamily:"inherit"}}>{L("Tamam","Done","Готово")}</button>
+                <button onClick={() => setRezForm(null)} style={{width:"100%",minHeight:48,padding:"14px",background:"#000",color:"#fff",border:"none",borderRadius:12,fontSize:14,fontWeight:800,cursor:"pointer",fontFamily:"inherit"}}>{L("Tamam","Done","Готово")}</button>
               </>
             ) : (
               <>
-                <div style={{fontSize:18,fontWeight:800,marginBottom:2}}>{rezForm.ev.name}</div>
-                <div style={{fontSize:12.5,color:"#666666",marginBottom:16}}>{fmtDay(rezForm.ev.date)}{rezForm.ev.time ? " · " + rezForm.ev.time : ""}{rezForm.ev.genre ? " · " + rezForm.ev.genre : ""}</div>
-                <input value={rezForm.name} onChange={e=>setRezForm(f=>({...f,name:e.target.value}))} placeholder={L("Ad Soyad","Full name","Имя и фамилия")} autoComplete="name" style={rezInputS}/>
-                <input value={rezForm.phone} onChange={e=>setRezForm(f=>({...f,phone:e.target.value}))} placeholder={L("Telefon","Phone","Телефон")} type="tel" inputMode="tel" autoComplete="tel" style={rezInputS}/>
-                <div style={{display:"flex",alignItems:"center",gap:10,marginBottom:10}}>
-                  <span style={{fontSize:13,fontWeight:700,flex:1}}>{L("Kişi sayısı","Guests","Гостей")}</span>
-                  <button onClick={()=>setRezForm(f=>({...f,guest_count:Math.max(1,(Number(f.guest_count)||1)-1)}))} style={rezStepS} aria-label="-">−</button>
-                  <span style={{fontSize:16,fontWeight:800,minWidth:24,textAlign:"center"}}>{rezForm.guest_count}</span>
-                  <button onClick={()=>setRezForm(f=>({...f,guest_count:Math.min(20,(Number(f.guest_count)||1)+1)}))} style={rezStepS} aria-label="+">+</button>
+                <div style={{display:"flex",alignItems:"flex-start",gap:10}}>
+                  <div style={{flex:1,minWidth:0}}>
+                    <div style={{fontSize:18,fontWeight:800,marginBottom:2}}>{rezForm.ev.name}</div>
+                    <div style={{fontSize:12.5,color:"#666666",marginBottom:16}}>{fmtDay(rezForm.ev.date)}{rezForm.ev.time ? " · " + rezForm.ev.time : ""}{rezForm.ev.genre ? " · " + rezForm.ev.genre : ""}</div>
+                  </div>
+                  <button onClick={() => !rezForm.busy && setRezForm(null)} aria-label={L("Kapat","Close","Закрыть")} style={{width:44,height:44,margin:"-10px -10px 0 0",background:"none",border:"none",cursor:"pointer",display:"flex",alignItems:"center",justifyContent:"center",flexShrink:0,color:"#000"}}><Ikon ad="kapat" boy={18}/></button>
                 </div>
-                <input value={rezForm.note} onChange={e=>setRezForm(f=>({...f,note:e.target.value}))} placeholder={L("Not (isteğe bağlı)","Note (optional)","Примечание (необязательно)")} style={rezInputS}/>
-                <button onClick={rezGonder} disabled={rezForm.busy} style={{width:"100%",padding:"14px",background:rezForm.busy?"#DDDDDD":"#000",color:rezForm.busy?"#666":"#fff",border:"none",borderRadius:12,fontSize:14,fontWeight:800,cursor:rezForm.busy?"default":"pointer",fontFamily:"inherit"}}>
-                  {rezForm.busy ? "…" : L("Rezervasyon iste","Request a reservation","Отправить заявку")}
-                </button>
+                {!rezervasyonYerel && rezForm.ev.note && (
+                  <div style={{fontSize:12.5,color:"#444",lineHeight:1.5,background:"#f7f7f7",borderRadius:12,padding:"10px 12px",marginBottom:12,whiteSpace:"pre-line"}}>{rezForm.ev.note}</div>
+                )}
+                {rezDolu(rezForm.ev) ? (
+                  <div role="status" style={{fontSize:14,fontWeight:700,textAlign:"center",padding:"18px 12px",background:"#f5f5f5",borderRadius:12}}>
+                    {L("Bu etkinliğin kapasitesi doldu.","This event is full.","На это событие мест больше нет.")}
+                  </div>
+                ) : (!rezervasyonYerel && !customer && (rezForm.hata === "uye_gerekli" || rezForm.ev.access_type === "members_only")) ? (
+                  <>
+                    <div role="status" style={{fontSize:14,lineHeight:1.5,padding:"14px 14px",background:"#f5f5f5",borderRadius:12,marginBottom:12}}>
+                      <b>{L("Bu etkinlik üyelere özel.","This event is for members.","Это событие только для участников.")}</b><br/>
+                      {L("Üyelik ücretsiz ve hemen açılır. Giriş yap, sonra etkinliğe yeniden dokun.","Membership is free and opens right away. Sign in, then tap the event again.","Членство бесплатное и открывается сразу. Войдите и снова нажмите на событие.")}
+                    </div>
+                    <button onClick={() => { setRezForm(null); uyeOlAc(); }} style={{width:"100%",minHeight:48,padding:"14px",background:"#000",color:"#fff",border:"none",borderRadius:12,fontSize:14,fontWeight:800,cursor:"pointer",fontFamily:"inherit"}}>{t.login_cta}</button>
+                  </>
+                ) : (
+                  <>
+                    <label style={{display:"block",fontSize:12,fontWeight:700,color:"#666666",marginBottom:4}} htmlFor="rez-ad">{L("Ad Soyad","Full name","Имя и фамилия")}</label>
+                    <input id="rez-ad" value={rezForm.name} onChange={e=>setRezForm(f=>({...f,name:e.target.value}))} autoComplete="name" maxLength={80} style={rezInputS}/>
+                    <label style={{display:"block",fontSize:12,fontWeight:700,color:"#666666",marginBottom:4}} htmlFor="rez-tel">{L("Telefon","Phone","Телефон")}</label>
+                    <input id="rez-tel" value={rezForm.phone} onChange={e=>setRezForm(f=>({...f,phone:e.target.value,hata:f.hata==="telefon"?null:f.hata}))} placeholder="05xx xxx xx xx" type="tel" inputMode="tel" autoComplete="tel" maxLength={24}
+                      style={{...rezInputS, borderColor: rezForm.hata === "telefon" ? "#C0392B" : "#eee"}}/>
+                    <div style={{display:"flex",alignItems:"center",gap:10,marginBottom:10}}>
+                      <span style={{fontSize:13,fontWeight:700,flex:1}}>{L("Kişi sayısı (sen dahil)","Guests (including you)","Гостей (включая вас)")}</span>
+                      <button onClick={()=>setRezForm(f=>({...f,guest_count:Math.max(1,(Number(f.guest_count)||1)-1)}))} style={{...rezStepS,width:44,height:44}} aria-label={L("Azalt","Decrease","Уменьшить")}>−</button>
+                      <span style={{fontSize:16,fontWeight:800,minWidth:24,textAlign:"center"}} aria-live="polite">{rezForm.guest_count}</span>
+                      <button onClick={()=>setRezForm(f=>({...f,guest_count:Math.min(20,(Number(f.guest_count)||1)+1)}))} style={{...rezStepS,width:44,height:44}} aria-label={L("Artır","Increase","Увеличить")}>+</button>
+                    </div>
+                    <input value={rezForm.note} onChange={e=>setRezForm(f=>({...f,note:e.target.value}))} placeholder={L("Not (isteğe bağlı)","Note (optional)","Примечание (необязательно)")} maxLength={300} style={rezInputS}/>
+                    {!rezervasyonYerel && rezKural(rezForm.ev) && (
+                      <div style={{border:"1px solid " + (rezForm.hata === "kural" ? "#C0392B" : "#e8e8e8"),borderRadius:12,padding:"12px 12px 4px",marginBottom:12}}>
+                        <div style={{fontSize:12,fontWeight:800,marginBottom:6}}>{L("Etkinlik kuralları","Event rules","Правила события")}</div>
+                        <div style={{fontSize:12.5,color:"#444",lineHeight:1.55,whiteSpace:"pre-line",maxHeight:150,overflowY:"auto",marginBottom:8}}>{rezKural(rezForm.ev)}</div>
+                        <label style={{display:"flex",alignItems:"center",gap:10,minHeight:44,cursor:"pointer",fontSize:13,fontWeight:700}}>
+                          <input type="checkbox" checked={!!rezForm.kural} onChange={e=>setRezForm(f=>({...f,kural:e.target.checked,hata:f.hata==="kural"?null:f.hata}))} style={{width:20,height:20,accentColor:"#000",flexShrink:0}}/>
+                          {L("Kuralları okudum, kabul ediyorum","I have read and accept the rules","Я прочитал(а) и принимаю правила")}
+                        </label>
+                      </div>
+                    )}
+                    <button onClick={rezGonder} disabled={rezForm.busy} style={{width:"100%",minHeight:48,padding:"14px",background:rezForm.busy?"#DDDDDD":"#000",color:rezForm.busy?"#666":"#fff",border:"none",borderRadius:12,fontSize:14,fontWeight:800,cursor:rezForm.busy?"default":"pointer",fontFamily:"inherit"}}>
+                      {rezForm.busy ? L("Gönderiliyor…","Sending…","Отправляем…") : L("Rezervasyon iste","Request a reservation","Отправить заявку")}
+                    </button>
+                    <div style={{fontSize:11.5,color:"#666666",lineHeight:1.5,marginTop:10,textAlign:"center"}}>
+                      {L("Talebin onaya düşer; onaylanınca haber veririz. Adın ve telefonun yalnız bu rezervasyon için kullanılır.","Your request goes for approval; we will let you know once it is confirmed. Your name and phone are used only for this reservation.","Заявка уходит на подтверждение; сообщим, когда подтвердим. Имя и телефон используются только для этой брони.")}
+                    </div>
+                    {kvkkDoc && (
+                      <button type="button" onClick={() => setKvkkMetinOpen(true)} style={{display:"block",margin:"0 auto",minHeight:44,padding:"0 12px",background:"none",border:"none",color:"#000",fontSize:12,fontWeight:700,textDecoration:"underline",cursor:"pointer",fontFamily:"inherit"}}>{t.kvkk_read}</button>
+                    )}
+                  </>
+                )}
               </>
             )}
           </div>
@@ -2476,7 +2763,7 @@ export default function CustomerMenu() {
                           <span style={{fontWeight:700}}>₺{Math.round(Number(o.total||0))}</span>
                         </div>
                       ))}
-                      <div style={{fontSize:11,color:"#EDE6D8",marginTop:6,lineHeight:1.5}}>
+                      <div style={{fontSize:12,color:"#5A5348",marginTop:6,lineHeight:1.5}}>
                         {L("Kasada ödenince kapanır ve puanların işlenir.","Closes when paid at the counter — that's when your points land.","Закрывается при оплате на кассе — тогда начислятся баллы.")}
                       </div>
                     </>)}
@@ -2591,18 +2878,19 @@ export default function CustomerMenu() {
               {eur(calcPrice(optModal, optSelected)) && <span style={{color:"#9A9A9A",marginLeft:6}}>{eur(calcPrice(optModal, optSelected))}</span>}
             </div>
             {(optModal.options_config?.groups || []).map(group => (
-              <div key={group.name} style={{marginBottom:14}}>
+              <div key={group.name} id={"optg-" + group.name} style={{marginBottom:14}}>
                 <div style={{fontSize:11,color:"#333",letterSpacing:"1px",fontWeight:700,marginBottom:6}}>
-                  {optT(group.name)?.toLocaleUpperCase(lang)}{group.required && <span style={{color:"#A34A3A",marginLeft:4}}>*</span>}
+                  {optT(group.name)?.toLocaleUpperCase(lang)}{group.required && <><span style={{color:"#A34A3A",marginLeft:4}}>*</span><span style={{color:"#A34A3A",fontWeight:600,marginLeft:4,letterSpacing:0}}>{L("zorunlu","required","обязательно")}</span></>}
                   {group.multi && <span style={{color:"#666666",fontWeight:600,marginLeft:6}}>· {t.multi_select}</span>}
                 </div>
+                {optEksik === group.name && <div role="alert" style={{fontSize:12,fontWeight:700,color:"#A34A3A",marginBottom:6}}>{L("Birini seçmelisin","Please choose one","Выберите вариант")}</div>}
                 <div style={{display:"flex",flexWrap:"wrap",gap:6}}>
                   {(group.options || []).map(opt => {
                     // Fiyat farki secenek ustunde gorunur — musteri sepette surprizle karsilasmasin
                     const pm = Number(group.price_modifiers?.[opt] || 0);
                     const sel = group.multi ? (optSelected[group.name]||[]).includes(opt) : optSelected[group.name]===opt;
                     return (
-                    <button key={opt} onClick={()=>setOptSelected(group.multi?{...optSelected,[group.name]:((optSelected[group.name]||[]).includes(opt)?(optSelected[group.name]||[]).filter(x=>x!==opt):[...(optSelected[group.name]||[]),opt])}:{...optSelected,[group.name]:opt})} style={{padding:"10px 14px",background:sel?"#000":"#f2f2f2",color:sel?"#fff":"#333",border:"none",borderRadius:10,fontSize:13,fontWeight:700,cursor:"pointer"}}>
+                    <button key={opt} onClick={()=>{setOptEksik(null);setOptSelected(group.multi?{...optSelected,[group.name]:((optSelected[group.name]||[]).includes(opt)?(optSelected[group.name]||[]).filter(x=>x!==opt):[...(optSelected[group.name]||[]),opt])}:{...optSelected,[group.name]:opt});}} style={{padding:"10px 14px",minHeight:44,background:sel?"#000":"#f2f2f2",color:sel?"#fff":"#333",border:"none",borderRadius:10,fontSize:13,fontWeight:700,cursor:"pointer"}}>
                       {optT(opt)}
                       {pm !== 0 && <span style={{fontSize:11,fontWeight:800,marginLeft:5,color:sel?"#FFFFFF":"#666666"}}>{pm > 0 ? "+" : "−"}₺{Math.abs(pm)}</span>}
                     </button>
@@ -2619,16 +2907,16 @@ export default function CustomerMenu() {
             <div style={{display:"flex",alignItems:"center",justifyContent:"space-between",gap:12,padding:"12px 0",borderTop:"1px solid #f0f0f0",marginBottom:12}}>
               <span style={{fontSize:13.5,fontWeight:600}}>{L("Adet","Quantity","Количество")}</span>
               <div style={{display:"flex",alignItems:"center",gap:6,background:"#000",borderRadius:24,padding:"3px 5px",color:"#fff"}}>
-                <button onClick={() => setOptAdet(a => Math.max(1, a - 1))} disabled={optAdet <= 1}
+                <button onClick={() => setOptAdet(a => Math.max(1, a - 1))} disabled={optAdet <= 1} aria-label={L("Azalt","Decrease","Меньше")}
                   style={{width:44,height:44,background:"transparent",color:optAdet<=1?"#666":"#fff",border:"none",borderRadius:"50%",fontSize:18,cursor:optAdet<=1?"default":"pointer",fontWeight:700,fontFamily:"inherit"}}>−</button>
                 <div style={{minWidth:20,textAlign:"center",fontSize:14,fontWeight:800,fontVariantNumeric:"tabular-nums"}}>{optAdet}</div>
-                <button onClick={() => setOptAdet(a => Math.min(20, a + 1))}
+                <button onClick={() => setOptAdet(a => Math.min(20, a + 1))} aria-label={L("Artır","Increase","Больше")}
                   style={{width:44,height:44,background:"transparent",color:"#fff",border:"none",borderRadius:"50%",fontSize:18,cursor:"pointer",fontWeight:700,fontFamily:"inherit"}}>+</button>
               </div>
             </div>
             <div style={{display:"flex",gap:8}}>
               <button onClick={() => setOptModal(null)} style={{flex:1,padding:"14px",background:"#fff",color:"#666",border:"1px solid #ddd",borderRadius:12,fontSize:14,fontWeight:700,cursor:"pointer"}}>{t.cancel}</button>
-              <button onClick={confirmOptions} style={{flex:2,padding:"14px",background:"#000",color:"#fff",border:"none",borderRadius:12,fontSize:14,fontWeight:800,cursor:"pointer"}}>{t.add_to_cart}{optAdet > 1 ? " · " + optAdet : ""}</button>
+              <button onClick={confirmOptions} style={{flex:2,padding:"14px",background:"#000",color:"#fff",border:"none",borderRadius:12,fontSize:14,fontWeight:800,cursor:"pointer"}}>{t.add_to_cart} · ₺{calcPrice(optModal, optSelected) * optAdet}</button>
             </div>
           </div>
         </div>
@@ -2648,9 +2936,10 @@ export default function CustomerMenu() {
 
             {/* KVKK: acik riza checkbox — "kayit olarak kabul" YOK */}
             {kvkkDoc?.version && (
-              <label style={{display:"flex",gap:10,alignItems:"flex-start",marginBottom:14,cursor:"pointer"}}>
-                <input type="checkbox" checked={kvkkOk} onChange={e=>setKvkkOk(e.target.checked)}
-                  style={{marginTop:3,width:18,height:18,flexShrink:0}}/>
+              <label style={{display:"flex",gap:10,alignItems:"flex-start",marginBottom:14,cursor:"pointer",
+                             ...(kvkkUyari && !kvkkOk ? {border:"1.5px solid #A34A3A",background:"#FBF1EE",borderRadius:10,padding:10} : null)}}>
+                <input type="checkbox" checked={kvkkOk} onChange={e=>{setKvkkOk(e.target.checked);setKvkkUyari(false);}}
+                  style={{marginTop:1,width:22,height:22,flexShrink:0}}/>
                 <span style={{fontSize:12,color:"#333",lineHeight:1.45}}>
                   {kvkkDoc.summary || t.kvkk_check}
                   {" "}
@@ -2669,13 +2958,13 @@ export default function CustomerMenu() {
                     WhatsApp) Google'in kendisi OAuth'u reddettigi icin dokununca
                     bozuk Google sayfasi yerine yol gosteren aciklama cikar. */}
                 <button onClick={() => {
-                  if (inAppBrowser) { alert(t.login_inapp); return; }
+                  if (inAppBrowser) { bildir(t.login_inapp); return; }
                   if (!kvkkHazirla()) return;
                   // Google /menu'ye doner: masa, sepet ve siparis geri kurulsun.
                   durumYaz({ giris: true, yol: window.location.pathname + window.location.search });
                   signInWithGoogle();
                 }}
-                  style={{width:"100%",padding:"14px",background:(!kvkkDoc?.version||kvkkOk)?"#000":"#DDDDDD",color:(!kvkkDoc?.version||kvkkOk)?"#fff":"#666",border:"none",borderRadius:12,fontSize:14,fontWeight:800,cursor:(!kvkkDoc?.version||kvkkOk)?"pointer":"default",fontFamily:"inherit"}}>
+                  style={{width:"100%",padding:"14px",background:"#000",color:"#fff",border:"none",borderRadius:12,fontSize:14,fontWeight:800,cursor:"pointer",fontFamily:"inherit"}}>
                   {t.login_google}
                 </button>
                 <div style={{display:"flex",alignItems:"center",gap:10,margin:"14px 0",color:"#666666",fontSize:11,fontWeight:700}}>
@@ -2684,8 +2973,8 @@ export default function CustomerMenu() {
                 <input value={otpEmail} onChange={e=>setOtpEmail(e.target.value)} placeholder={t.login_email_ph}
                   type="email" inputMode="email" autoComplete="email"
                   style={{width:"100%",padding:"13px 14px",background:"#f7f7f7",border:"1px solid #eee",borderRadius:12,fontSize:15,outline:"none",fontFamily:"inherit",marginBottom:10}}/>
-                <button onClick={sendOtp} disabled={otpBusy || !!(kvkkDoc?.version && !kvkkOk)}
-                  style={{width:"100%",padding:"14px",background:(otpBusy||(kvkkDoc?.version&&!kvkkOk))?"#DDDDDD":"#000000",color:(otpBusy||(kvkkDoc?.version&&!kvkkOk))?"#666666":"#FFFFFF",border:"none",borderRadius:12,fontSize:14,fontWeight:800,cursor:(otpBusy||(kvkkDoc?.version&&!kvkkOk))?"default":"pointer",fontFamily:"inherit"}}>
+                <button onClick={sendOtp} disabled={otpBusy}
+                  style={{width:"100%",padding:"14px",background:otpBusy?"#DDDDDD":"#000000",color:otpBusy?"#666666":"#FFFFFF",border:"none",borderRadius:12,fontSize:14,fontWeight:800,cursor:otpBusy?"default":"pointer",fontFamily:"inherit"}}>
                   {otpBusy ? "..." : t.login_send}
                 </button>
               </>
@@ -2731,8 +3020,8 @@ export default function CustomerMenu() {
             <div style={{fontSize:18,fontWeight:800,marginBottom:6}}>{t.kvkk_re_title}</div>
             <div style={{fontSize:13,color:"#666",lineHeight:1.5,marginBottom:14}}>{t.kvkk_re_note}</div>
             <label style={{display:"flex",gap:10,alignItems:"flex-start",marginBottom:14,cursor:"pointer"}}>
-              <input type="checkbox" checked={kvkkOk} onChange={e=>setKvkkOk(e.target.checked)}
-                style={{marginTop:3,width:18,height:18,flexShrink:0}}/>
+              <input type="checkbox" checked={kvkkOk} onChange={e=>{setKvkkOk(e.target.checked);setKvkkUyari(false);}}
+                style={{marginTop:1,width:22,height:22,flexShrink:0}}/>
               <span style={{fontSize:12,color:"#333",lineHeight:1.45}}>
                 {kvkkDoc?.summary || t.kvkk_check}
                 {" "}
@@ -2759,15 +3048,22 @@ export default function CustomerMenu() {
         <div onClick={() => setCheckoutOpen(false)} style={{position:"fixed",inset:0,background:"rgba(0,0,0,0.55)",display:"flex",alignItems:"flex-end",justifyContent:"center",zIndex:110}}>
           <div onClick={e=>e.stopPropagation()} style={{background:"#fff",borderRadius:"18px 18px 0 0",padding:20,width:"100%",maxWidth:520,maxHeight:"92vh",overflowY:"auto"}}>
             <div style={{display:"flex",justifyContent:"space-between",alignItems:"center",marginBottom:14}}>
-              <div style={{fontSize:20,fontWeight:800}}>{t.my_cart}</div>
+              {/* Masa adi basligin altinda: musteri siparisi nereye gonderdigini gorsun. */}
+              <div style={{minWidth:0}}>
+                <div style={{fontSize:20,fontWeight:800}}>{t.my_cart}</div>
+                <div style={{fontSize:12,color:"#666",marginTop:2}}>{table ? table.name : L("Masasız · kasadan teslim","No table · pick up at the counter","Без стола · получение на кассе")}</div>
+              </div>
               {/* Odenecek tutar EN USTTE — eskiden yalnizca listenin sonundaydi,
                   musteri ne odeyecegini gormek icin sepeti sonuna kadar iniyordu. */}
-              <div style={{display:"flex",alignItems:"center",gap:12}}>
+              <div style={{display:"flex",alignItems:"center",gap:4,flexShrink:0}}>
                 <div style={{textAlign:"right"}}>
                   <div style={{fontSize:12,fontWeight:600,letterSpacing:"0.2px",textTransform:"uppercase",color:"#666666"}}>{t.to_pay_at_register}</div>
                   <div style={{fontSize:22,fontWeight:800,marginTop:2,fontVariantNumeric:"tabular-nums"}}>₺{cartTotal - Math.min(usePoints ? walletBalance : 0, cartTotal)}</div>
                 </div>
-                <button onClick={() => setCheckoutOpen(false)} style={{background:"none",border:"none",fontSize:24,cursor:"pointer",padding:0,color:"#666"}}>×</button>
+                <button onClick={() => setCheckoutOpen(false)} aria-label={L("Kapat","Close","Закрыть")}
+                  style={{background:"none",border:"none",cursor:"pointer",padding:0,color:"#666",width:44,height:44,marginRight:-10,flexShrink:0,display:"flex",alignItems:"center",justifyContent:"center"}}>
+                  <Ikon ad="kapat" boy={20}/>
+                </button>
               </div>
             </div>
             {takeawayLines.length > 1 && (
@@ -2797,20 +3093,20 @@ export default function CustomerMenu() {
                     </button>
                   )}
                 </div>
-                {/* Adet 1 iken "−" yerine KALDIR. Eskiden urunu silmenin tek yolu
-                    sayiyi sifira indirmekti ve bunu kimse kendiliginden bulmuyordu. */}
-                {c.quantity <= 1 ? (
+                {/* Adet kutusu HER ZAMAN cizilir. Eskiden adet 1 iken yalniz "Kaldir"
+                    vardi: ikinci latteyi eklemek icin sepeti kapatip secenekleri
+                    yeniden isaretlemek gerekiyordu. Adet 1 iken sol dugme cop
+                    kutusudur (kaldirir), 2 ve ustunde "−". */}
+                <div style={{display:"flex",alignItems:"center",gap:6,background:"#f2f2f2",borderRadius:20,padding:"3px 5px",flexShrink:0}}>
                   <button onClick={() => updateQty(idx, -1)}
-                    style={{padding:"8px 10px",background:"transparent",color:"#666666",border:"1px solid #ddd",borderRadius:8,fontSize:11,fontWeight:700,cursor:"pointer",fontFamily:"inherit",whiteSpace:"nowrap"}}>
-                    {L("Kaldır","Remove","Убрать")}
+                    aria-label={c.quantity <= 1 ? L("Kaldır","Remove","Убрать") : L("Azalt","Decrease","Меньше")}
+                    style={{width:44,height:44,background:"transparent",color:"#000",border:"none",borderRadius:"50%",fontSize:18,cursor:"pointer",fontWeight:700,display:"flex",alignItems:"center",justifyContent:"center",padding:0}}>
+                    {c.quantity <= 1 ? <Ikon ad="cop" boy={16}/> : "−"}
                   </button>
-                ) : (
-                  <div style={{display:"flex",alignItems:"center",gap:6,background:"#f2f2f2",borderRadius:20,padding:"3px 5px"}}>
-                    <button onClick={() => updateQty(idx, -1)} style={{width:44,height:44,background:"transparent",color:"#000",border:"none",borderRadius:"50%",fontSize:18,cursor:"pointer",fontWeight:700}}>−</button>
-                    <div style={{minWidth:18,textAlign:"center",fontSize:13,fontWeight:800}}>{c.quantity}</div>
-                    <button onClick={() => updateQty(idx, +1)} style={{width:44,height:44,background:"transparent",color:"#000",border:"none",borderRadius:"50%",fontSize:18,cursor:"pointer",fontWeight:700}}>+</button>
-                  </div>
-                )}
+                  <div style={{minWidth:18,textAlign:"center",fontSize:13,fontWeight:800,fontVariantNumeric:"tabular-nums"}}>{c.quantity}</div>
+                  <button onClick={() => updateQty(idx, +1)} aria-label={L("Artır","Increase","Больше")}
+                    style={{width:44,height:44,background:"transparent",color:"#000",border:"none",borderRadius:"50%",fontSize:18,cursor:"pointer",fontWeight:700,padding:0}}>+</button>
+                </div>
               </div>
             ))}
             {(!table || table.shared) && (
@@ -2861,16 +3157,18 @@ export default function CustomerMenu() {
             })()}
             <div style={{display:"flex",justifyContent:"space-between",alignItems:"center",marginTop:16,padding:"14px 0",borderTop:"2px solid #000"}}>
               <div style={{fontSize:13,color:"#333",letterSpacing:"1px",fontWeight:700}}>{t.total}</div>
-              <div style={{fontSize:22,fontWeight:800}}>
+              <div style={{fontSize:22,fontWeight:800,fontVariantNumeric:"tabular-nums"}}>
                 ₺{cartTotal}
-                {eur(cartTotal) && <span style={{fontSize:13,color:"#9A9A9A",fontWeight:500,marginLeft:8}}>{eur(cartTotal)}</span>}
+                {eur(cartTotal) && <span style={{fontSize:13,color:"#666",fontWeight:500,marginLeft:8}}>{eur(cartTotal)}</span>}
               </div>
-              {eurAcik && (
-                <div style={{fontSize:11,color:"#9A9A9A",marginTop:2}}>
-                  {L("Ödeme ₺ olarak alınır; € yaklaşıktır.","Payment is taken in ₺; € is approximate.","Оплата принимается в ₺; € — приблизительно.")}
-                </div>
-              )}
             </div>
+            {/* Euro notu toplam satirinin ALTINDA: flex satirin ucuncu cocuguyken
+                EN/RU'da "TOTAL | ₺450 ≈ €8 | Payment is taken…" yan yana sikisiyordu. */}
+            {eurAcik && (
+              <div style={{fontSize:12,color:"#666",textAlign:"right",marginTop:-8,marginBottom:8}}>
+                {L("Ödeme ₺ olarak alınır; € yaklaşıktır.","Payment is taken in ₺; € is approximate.","Оплата принимается в ₺; € — приблизительно.")}
+              </div>
+            )}
             {customer && usePoints && walletBalance > 0 && (() => {
               const kullanilacak = Math.min(walletBalance, cartTotal);
               return (
@@ -2889,9 +3187,12 @@ export default function CustomerMenu() {
               // Isim yazilmadan siparis butonu calismaz (masasiz / ortak masa)
               const nameOk = (table && !table.shared) || !!(customerName.trim() || customer?.name);
               return (
+                <>
+                {gonderHata && <div role="alert" style={{marginTop:12,padding:"10px 12px",background:"#FBEFEC",border:"1px solid #E8C4BC",borderRadius:10,fontSize:13,color:"#A34A3A",fontWeight:600,lineHeight:1.45}}>{gonderHata}</div>}
                 <button onClick={submitOrder} disabled={submitting || !nameOk} style={{width:"100%",marginTop:14,padding:"16px",background:nameOk?"#000000":"#ddd",color:nameOk?"#FFFFFF":"#999",border:"none",borderRadius:14,fontSize:15,fontWeight:800,cursor:nameOk?"pointer":"not-allowed",opacity:submitting?0.6:1}}>
                   {submitting ? t.submitting : nameOk ? t.submit_order : t.please_enter_name}
                 </button>
+                </>
               );
             })()}
             <div style={{textAlign:"center",fontSize:11,color:"#666666",marginTop:10}}>
@@ -2900,6 +3201,7 @@ export default function CustomerMenu() {
           </div>
         </div>
       )}
+      {UyariEl}
     </div>
   );
 }

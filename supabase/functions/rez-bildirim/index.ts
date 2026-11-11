@@ -11,11 +11,15 @@
 // Panel (Rezervasyon sayfasi) durumu karttan gosterir; e-postasi olmayan
 // misafir icin "WhatsApp'tan haber ver" dugmesi vardir.
 //
+// Kaynak: talep musteri menusunden (uygulama) acildiysa e-postadaki dugme
+// siteye degil menudeki "Rezervasyonlarim"a gider (kaynak = "uygulama").
+//
 // E-posta saglayicisi: mail.ts (BREVO_API_KEY). Dil: uyenin dili (tr/en/ru).
 import { createClient } from "npm:@supabase/supabase-js@2";
 import { eposta, MailHata, mailGonder } from "./mail.ts";
 
 const SITE = "https://reservation.notinparis.me";
+const UYGULAMA = (Deno.env.get("APP_URL") || "https://order.notinparis.me").replace(/\/+$/, "");
 const json = (body: unknown, status = 200) =>
   new Response(JSON.stringify(body), { status, headers: { "Content-Type": "application/json" } });
 const esc = (s: unknown) => String(s ?? "").replace(/&/g, "&amp;").replace(/</g, "&lt;").replace(/>/g, "&gt;");
@@ -24,6 +28,7 @@ interface Kayit {
   rez_id: string; ad?: string | null; eposta?: string | null; dil?: string | null;
   etkinlik?: string | null; tarih?: string | null; saat?: string | null;
   kisi?: number | null; qr_id?: string | null; deneme?: number | null;
+  kaynak?: string | null;   // "uygulama": musteri menusunden acilan talep
 }
 
 const YEREL: Record<string, string> = { tr: "tr-TR", en: "en-GB", ru: "ru-RU" };
@@ -40,18 +45,24 @@ const METIN: Record<string, Record<string, string>> = {
     etkinlik: "Etkinlik", tarih: "Tarih", kisi: "Kişi", kod: "Kod", kisiBirim: "kişi",
     dugme: "Biletini aç", kapi: "Kapıda QR kodunu göster. Bilet tek kullanımlıktır.",
     yol: "Bilet: siteye giriş yap, Biletlerim bölümünü aç.", iptal: "Gelemeyeceksen lütfen bize haber ver.",
+    dugmeUyg: "Rezervasyonunu aç", kapiUyg: "Kapıda bu kodu göster. Kod tek kullanımlıktır.",
+    yolUyg: "Rezervasyonun menüde: Etkinlik sekmesi, Rezervasyonlarım.",
   },
   en: {
     konu: "Your reservation is confirmed", selam: "Hello", onay: "Your reservation is confirmed.",
     etkinlik: "Event", tarih: "Date", kisi: "Guests", kod: "Code", kisiBirim: "",
     dugme: "Open your ticket", kapi: "Show your QR code at the door. The ticket is single-use.",
     yol: "Ticket: sign in on the site and open My Tickets.", iptal: "If you cannot come, please let us know.",
+    dugmeUyg: "Open your reservation", kapiUyg: "Show this code at the door. The code is single-use.",
+    yolUyg: "Your reservation is in the menu: Events tab, My reservations.",
   },
   ru: {
     konu: "Ваша бронь подтверждена", selam: "Здравствуйте", onay: "Ваша бронь подтверждена.",
     etkinlik: "Событие", tarih: "Дата", kisi: "Гостей", kod: "Код", kisiBirim: "",
     dugme: "Открыть билет", kapi: "Покажите QR-код на входе. Билет одноразовый.",
     yol: "Билет: войдите на сайт и откройте раздел «Мои билеты».", iptal: "Если не сможете прийти, пожалуйста, сообщите нам.",
+    dugmeUyg: "Открыть бронь", kapiUyg: "Покажите этот код на входе. Код одноразовый.",
+    yolUyg: "Бронь в меню: вкладка «События», «Мои брони».",
   },
 };
 
@@ -60,6 +71,8 @@ export function rezPosta(k: Kayit): { konu: string; html: string } {
   const m = METIN[dil];
   const tarih = [tarihYaz(k.tarih, dil), k.saat].filter(Boolean).join(" · ");
   const kisi = Math.max(1, Number(k.kisi) || 1);
+  const uyg = k.kaynak === "uygulama";
+  const adres = uyg ? `${UYGULAMA}/menu?rez=${encodeURIComponent(String(k.qr_id || ""))}` : SITE;
   const satir = (ad: string, deger: string) => deger
     ? `<tr><td style="padding:7px 14px 7px 0;color:#777;font-size:13px;white-space:nowrap;vertical-align:top">${esc(ad)}</td><td style="padding:7px 0;font-size:15px;font-weight:700;color:#111">${esc(deger)}</td></tr>`
     : "";
@@ -76,12 +89,12 @@ export function rezPosta(k: Kayit): { konu: string; html: string } {
       ${satir(m.kisi, `${kisi}${m.kisiBirim ? " " + m.kisiBirim : ""}`)}
       ${satir(m.kod, String(k.qr_id || ""))}
     </table>
-    <a href="${SITE}" style="display:inline-block;background:#000;color:#fff;text-decoration:none;padding:13px 22px;border-radius:8px;font-weight:700;font-size:14px">${esc(m.dugme)}</a>
-    <p style="margin:18px 0 4px;font-size:13px;color:#444;line-height:1.5">${esc(m.kapi)}</p>
-    <p style="margin:0 0 4px;font-size:13px;color:#444;line-height:1.5">${esc(m.yol)}</p>
+    <a href="${esc(adres)}" style="display:inline-block;background:#000;color:#fff;text-decoration:none;padding:13px 22px;border-radius:8px;font-weight:700;font-size:14px">${esc(uyg ? m.dugmeUyg : m.dugme)}</a>
+    <p style="margin:18px 0 4px;font-size:13px;color:#444;line-height:1.5">${esc(uyg ? m.kapiUyg : m.kapi)}</p>
+    <p style="margin:0 0 4px;font-size:13px;color:#444;line-height:1.5">${esc(uyg ? m.yolUyg : m.yol)}</p>
     <p style="margin:0;font-size:13px;color:#444;line-height:1.5">${esc(m.iptal)}</p>
   </div>
-  <p style="margin:12px 4px 0;font-size:11px;color:#999">Not in Paris · Fethiye · reservation.notinparis.me</p>
+  <p style="margin:12px 4px 0;font-size:11px;color:#999">Not in Paris · Fethiye · ${uyg ? "order.notinparis.me" : "reservation.notinparis.me"}</p>
 </div></body></html>`;
   return { konu, html };
 }
