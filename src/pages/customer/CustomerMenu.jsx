@@ -9,7 +9,7 @@ import { errorText } from "../../lib/errorText.js";
 import { ozellik, MARKA, rezervasyonYerel, PROFIL } from "../../lib/profil.js";
 import { euroKuru, euroGosterilsin, euroAdimi, euroYaz } from "../../lib/euro.js";
 import { STORE_SLUG } from "../../lib/stores.js";
-import { RESERVE_URL, RESERVE_KEY, RESERVATION_URL } from "../../lib/reserve.js";
+import { RESERVE_URL, RESERVE_KEY } from "../../lib/reserve.js";
 import { kvkkGuncelGetir, kvkkPendingKaydet, kvkkEksikMi } from "../../lib/kvkk.js";
 import Ikon from "../../components/Ikon.jsx";
 import Bildirim from "../../components/Bildirim.jsx";
@@ -62,7 +62,25 @@ function getVoterKey() {
 }
 // Etkinlikler NIP'te rezervasyon sisteminin (NIP RESERVE) public verisinden
 // okunur (adresler lib/reserve.js'de); yerel modda bu veritabanindaki
-// events tablosundan ve rezervasyon formu burada acilir.
+// events tablosundan. Rezervasyon formu IKI MODDA DA burada acilir: musteri
+// menuden cikmaz (sahip, 11.11.2026: siteye yonlendirme kaldirildi).
+// Misafirin talepleri telefonunda bu anahtarda saklanan kodlarla bulunur.
+const REZ_ANAHTAR = "nip_rezlerim";
+const REZ_KOD_BICIM = /^[A-Z0-9]{2,6}-[A-Z0-9]{6,12}$/;
+const rezKodlari = () => {
+  try {
+    const a = JSON.parse(localStorage.getItem(REZ_ANAHTAR) || "[]");
+    return Array.isArray(a) ? a.filter(x => typeof x === "string" && REZ_KOD_BICIM.test(x)).slice(-20) : [];
+  } catch (e) { return []; }
+};
+const rezKodEkle = (kod) => {
+  const k = String(kod || "").trim().toUpperCase();
+  if (!REZ_KOD_BICIM.test(k)) return;
+  try {
+    const a = rezKodlari().filter(x => x !== k); a.push(k);
+    localStorage.setItem(REZ_ANAHTAR, JSON.stringify(a.slice(-20)));
+  } catch (e) { /* gizli sekme: kod yalniz bu oturumda gorunur */ }
+};
 const RIDES_URL = "https://notinparis.me/pages/rides";
 const YOUTUBE_URL = "https://www.youtube.com/@notinparis";
 const STRAVA_URL = "https://www.strava.com/clubs/notinparis";
@@ -616,7 +634,7 @@ export default function CustomerMenu() {
   // Cihazda "gordum" kaydi tutmuyoruz: ekranin isi uye olmayana ne
   // kacirdigini anlatmak, uye olunca isi bitiyor.
   // Kapatma yalniz bu acilis icin gecerli — sonraki aciliste yine gelir.
-  const [welcomeDismissed, setWelcomeDismissed] = useState(false);
+  const [welcomeDismissed, setWelcomeDismissed] = useState(() => !!searchParams.get("rez"));
   const forceWelcome = searchParams.get("welcome") === "1";   // onizleme icin
   // authLoading bitmeden karar verilmez; yoksa uyenin ekraninda bir an parliyor
   const showWelcome = forceWelcome
@@ -671,51 +689,87 @@ export default function CustomerMenu() {
 
 
   // Uye profili karti (uye seridine tiklayinca acilir)
-  // Rezervasyona TEK girisle gec: oturum varsa RESERVE'deki kopru fonksiyonu
-  // (order-sso) tek kullanimlik giris linki uretir, oraya oturumla inilir.
-  // Oturum yoksa ya da kopru duserse duz link — sayfa asla kilitlenmez.
-  const resvBusy = useRef(false);
-  // Yerel rezervasyon formu (profil "temel"): etkinlige dokununca acilir,
-  // talep anon INSERT ile reservations'a duser (status pending), personel
-  // Rezervasyon sayfasindan onaylar. Kod musteriye ekranda gosterilir.
-  const [rezForm, setRezForm] = useState(null);      // { ev, name, phone, guest_count, note, busy, sonuc }
-  const rezAc = (ev) => setRezForm({ ev, name: customer?.name || "", phone: customer?.phone || "", guest_count: 2, note: "", busy: false, sonuc: null });
+  // REZERVASYON FORMU — menunun icinde. Sahip (11.11.2026): "rezervasyon
+  // butonuna basarsan web sitesine yonlendiriyor, bu cok sacma."
+  //   Kopru modu (NIP): RPC nip_rezervasyon_iste -> rezervasyon sistemi (RESERVE).
+  //     Sitedeki kurallar sunucuda uygulanir (uyelere ozel, kapasite, kurallar).
+  //     Talep sahibin panelinde "Bekleyen" olarak gorunur; onaylaninca uyeye
+  //     e-posta gider, misafire personel WhatsApp'tan yazar.
+  //   Yerel mod (profil "temel"): talep bu veritabanindaki reservations'a duser.
+  // Kod musteriye ekranda gosterilir ve "Rezervasyonlarim"da durur.
+  const [rezForm, setRezForm] = useState(null);      // { ev, name, phone, guest_count, note, kural, busy, sonuc, bilgi, hata }
+  const rezAc = (ev) => setRezForm({ ev, name: customer?.name || "", phone: customer?.phone || "", guest_count: rezervasyonYerel ? 2 : 1, note: "", kural: false, busy: false, sonuc: null, bilgi: null, hata: null });
+  // Etkinligin kurallari (secili dilde; yoksa Turkce)
+  const rezKural = (ev) => String((lang === "en" && ev?.rules_en) || (lang === "ru" && ev?.rules_ru) || ev?.rules || "").trim();
+  const rezDolu = (ev) => ev && ev.capacity != null && Number(ev.approved_count || 0) >= Number(ev.capacity);
+  const rezHataMetni = (kod) => ({
+    ad: L("Adını yaz", "Enter your name", "Введите имя"),
+    telefon: L("Telefon numarası geçerli görünmüyor. Yurt dışı numarayı ülke koduyla yaz (+44…).", "That phone number does not look valid. Include the country code (+44…).", "Номер телефона выглядит неверно. Укажите код страны (+7…)."),
+    etkinlik_yok: L("Bu etkinlik artık rezervasyona açık değil.", "This event is no longer open for reservations.", "Бронирование на это событие закрыто."),
+    gecti: L("Bu etkinlik artık rezervasyona açık değil.", "This event is no longer open for reservations.", "Бронирование на это событие закрыто."),
+    uye_gerekli: L("Bu etkinlik üyelere özel. Üye girişi yap, tekrar dene.", "This event is for members. Sign in and try again.", "Событие только для участников. Войдите и попробуйте снова."),
+    guven_dusuk: L("Bu etkinlik için üyelik koşulu sağlanmıyor. Bize yaz, yardımcı olalım.", "Your membership does not meet this event's requirement. Message us and we will help.", "Условия участия не выполнены. Напишите нам — поможем."),
+    seviye_yetersiz: L("Bu etkinlik için üyelik koşulu sağlanmıyor. Bize yaz, yardımcı olalım.", "Your membership does not meet this event's requirement. Message us and we will help.", "Условия участия не выполнены. Напишите нам — поможем."),
+    dolu: L("Kapasite doldu.", "This event is full.", "Мест больше нет."),
+    kural: L("Devam etmek için etkinlik kurallarını onayla.", "Please accept the event rules to continue.", "Чтобы продолжить, примите правила события."),
+    zaten: L("Bu numarayla bu etkinlik için zaten bir talep var. Onaylanınca haber vereceğiz.", "There is already a request for this event with this number. We will let you know once it is confirmed.", "На этот номер уже есть заявка на это событие. Сообщим, когда подтвердим."),
+    cok_hizli: L("Biraz hızlı gittik — birkaç dakika sonra tekrar dene.", "That was a bit fast — please try again in a few minutes.", "Слишком часто — повторите через несколько минут."),
+  })[kod] || L("Talep gönderilemedi. Bağlantını kontrol edip tekrar dene.", "Could not send the request. Check your connection and try again.", "Не удалось отправить заявку. Проверьте связь и попробуйте снова.");
+
+  // Rezervasyonlarim: uye kendi taleplerini, misafir telefonundaki kodlarin
+  // taleplerini gorur. Liste okunamazsa bolum gosterilmez; form calisir.
+  const [rezlerim, setRezlerim] = useState(null);
+  const rezlerimOku = async () => {
+    if (rezervasyonYerel || !ozellik("rezervasyon")) return;
+    try {
+      const { data, error } = await supabase.rpc("nip_rezervasyonlarim", { p_kodlar: rezKodlari() });
+      if (!error) setRezlerim(Array.isArray(data) ? data : []);
+    } catch (e) { /* ag hatasi: eski liste ekranda kalir */ }
+  };
+  // E-postadaki baglanti (?rez=KOD): kod bu telefona eklenir.
+  useEffect(() => { rezKodEkle(searchParams.get("rez")); }, []);
+  const rezBekleyenVar = !!rezlerim?.some(r => r.durum === "pending");
+
   const rezGonder = async () => {
     if (!rezForm || rezForm.busy) return;
     const ad = String(rezForm.name || "").trim();
     if (ad.length < 2) { bildir(L("Adını yaz", "Enter your name", "Введите имя")); return; }
     const tel = String(rezForm.phone || "").trim();
-    if (tel.length < 7) { bildir(L("Telefonunu yaz — onayı oradan ileteceğiz", "Enter your phone — we'll confirm there", "Введите телефон — подтвердим по нему")); return; }
+    if (tel.replace(/\D/g, "").length < 7) { bildir(L("Telefonunu yaz — onayı oradan ileteceğiz", "Enter your phone — we'll confirm there", "Введите телефон — подтвердим по нему")); return; }
+    const kisi = Math.max(1, Math.min(20, Number(rezForm.guest_count) || 1));
+    const not = String(rezForm.note || "").trim().slice(0, 300) || null;
+    if (!rezervasyonYerel) {
+      if (rezKural(rezForm.ev) && !rezForm.kural) { setRezForm(f => f ? ({ ...f, hata: "kural" }) : f); bildir(rezHataMetni("kural")); return; }
+      setRezForm(f => f ? ({ ...f, busy: true, hata: null }) : f);
+      let sonuc = null, hataKodu = "baglanti";
+      try {
+        const { data, error } = await supabase.rpc("nip_rezervasyon_iste", {
+          p: { event_id: rezForm.ev.id, ad, telefon: tel, kisi, not, kural: !!rezForm.kural, dil: lang, cihaz: getVoterKey() },
+        });
+        if (!error && data?.ok && data.kod) sonuc = data;
+        else if (!error && data?.hata) hataKodu = data.hata;
+      } catch (e) { /* hataKodu = baglanti */ }
+      if (!sonuc) {
+        setRezForm(f => f ? ({ ...f, busy: false, hata: hataKodu }) : f);
+        if (hataKodu !== "uye_gerekli") bildir(rezHataMetni(hataKodu));
+        return;
+      }
+      rezKodEkle(sonuc.kod);
+      setRezForm(f => f ? ({ ...f, busy: false, sonuc: sonuc.kod, bilgi: sonuc, hata: null }) : f);
+      rezlerimOku();
+      return;
+    }
     setRezForm(f => ({ ...f, busy: true }));
     const b = new Uint8Array(3); crypto.getRandomValues(b);
     const kod = MARKA.kisa.replace(/[^A-Z0-9]/gi, "").toUpperCase().slice(0, 4) + "-" + Array.from(b, x => x.toString(16).padStart(2, "0")).join("").toUpperCase();
     const { error } = await supabase.from("reservations").insert({
       event_id: rezForm.ev.id, event_name: rezForm.ev.name, event_date: rezForm.ev.date, event_time: rezForm.ev.time || null,
-      name: ad, phone: tel, guest_count: Math.max(1, Math.min(20, Number(rezForm.guest_count) || 1)),
-      note: String(rezForm.note || "").trim().slice(0, 300) || null, status: "pending", qr_id: kod,
+      name: ad, phone: tel, guest_count: kisi,
+      note: not, status: "pending", qr_id: kod,
       customer_id: customer?.id || null,
     });
     if (error) { setRezForm(f => ({ ...f, busy: false })); bildir(L("Talep gönderilemedi: ", "Could not send: ", "Не удалось отправить: ") + errorText(error, lang)); return; }
     setRezForm(f => ({ ...f, busy: false, sonuc: kod }));
-  };
-  const openReservation = async (e) => {
-    if (e) e.preventDefault();
-    if (resvBusy.current) return;
-    resvBusy.current = true;
-    try {
-      const { data: { session } } = await supabase.auth.getSession();
-      const tok = session?.access_token;
-      if (!tok) { window.location.assign(RESERVATION_URL); return; }
-      const r = await fetch(RESERVE_URL + "/functions/v1/order-sso", {
-        method: "POST",
-        headers: { "Content-Type": "application/json", apikey: RESERVE_KEY, Authorization: "Bearer " + RESERVE_KEY },
-        body: JSON.stringify({ order_token: tok }),
-      });
-      const j = await r.json().catch(() => ({}));
-      window.location.assign(j?.url || RESERVATION_URL);
-    } catch (err) {
-      window.location.assign(RESERVATION_URL);
-    } finally { resvBusy.current = false; }
   };
 
   // E-POSTA ILE GIRIS: Google'in "hesabini dogrula" ekranlari musteriyi
@@ -856,9 +910,17 @@ export default function CustomerMenu() {
   };
 
   // Alt sekmeler + siparis beklerken gezinme
-  const [custTab, setCustTab] = useState("menu");
+  const [custTab, setCustTab] = useState(() => (searchParams.get("rez") && ozellik("rezervasyon")) ? "events" : "menu");
   const [browsing, setBrowsing] = useState(false);
   const [feeds, setFeeds] = useState({});         // shopify-feed: events/rides
+  // Rezervasyonlarim: Etkinlik sekmesine girince ve uye degisince okunur;
+  // onay bekleyen varken 30 sn'de bir tazelenir (onay gelince kart degisir).
+  useEffect(() => { if (custTab === "events") rezlerimOku(); }, [custTab, customer?.id]);
+  useEffect(() => {
+    if (custTab !== "events" || !rezBekleyenVar) return;
+    const z = setInterval(rezlerimOku, 30000);
+    return () => clearInterval(z);
+  }, [custTab, rezBekleyenVar]);
   const [postFeeds, setPostFeeds] = useState({}); // posts: shop(urun)/blog
   useEffect(() => {
     const today = new Date(Date.now() + 3 * 3600 * 1000).toISOString().slice(0, 10); // TR gunu
@@ -875,7 +937,7 @@ export default function CustomerMenu() {
           .order("date", { ascending: true }).limit(40)
           .then(({ data }) => setFeeds(f => ({ ...f, events: data || [] })));
       } else {
-        fetch(RESERVE_URL + "/rest/v1/events?select=name,subtitle,date,time,genre,access_type&status=eq.active&date=gte." + today + "&order=date.asc&limit=40",
+        fetch(RESERVE_URL + "/rest/v1/events?select=id,name,subtitle,date,time,genre,access_type,capacity,approved_count,rules,rules_en,rules_ru,note&status=eq.active&date=gte." + today + "&order=date.asc&limit=40",
           { headers: { apikey: RESERVE_KEY } })
           .then(r => r.json())
           .then(d => setFeeds(f => ({ ...f, events: Array.isArray(d) ? d : [] })))
@@ -2090,15 +2152,45 @@ export default function CustomerMenu() {
 
       {custTab !== "menu" && (
         <div style={{padding:"14px 16px"}}>
-          {custTab === "events" && !rezervasyonYerel && (
-            <a href={RESERVATION_URL} onClick={openReservation} rel="noreferrer" style={{display:"flex",justifyContent:"space-between",alignItems:"center",padding:"16px 18px",background:"#000",color:"#fff",borderRadius:14,textDecoration:"none",marginBottom:14}}>
-              <span style={{fontSize:14,fontWeight:800,display:"flex",alignItems:"center",gap:8}}><Ikon ad="etkinlik" boy={17}/>{L("Rezervasyon yap","Make a reservation","Забронировать")}</span>
-              <Ikon ad="oksag" boy={16}/>
-            </a>
+          {custTab === "events" && !rezervasyonYerel && rezlerim?.length > 0 && (
+            <div style={{marginBottom:18}}>
+              <div style={{fontSize:12,fontWeight:800,letterSpacing:"0.4px",color:"#666666",marginBottom:8}}>{L("REZERVASYONLARIM","MY RESERVATIONS","МОИ БРОНИ")}</div>
+              {rezlerim.map(r => {
+                const d = ({
+                  pending: { ad: L("Onay bekliyor","Awaiting approval","Ждёт подтверждения"), zemin: "#FFF6E0", renk: "#7A5A00" },
+                  approved: { ad: L("Onaylandı","Confirmed","Подтверждено"), zemin: "#E3F4E6", renk: "#1A6B2E" },
+                  rejected: { ad: L("Onaylanmadı","Not confirmed","Не подтверждено"), zemin: "#F3F3F3", renk: "#666666" },
+                  used: { ad: L("Giriş yapıldı","Checked in","Вход выполнен"), zemin: "#F3F3F3", renk: "#666666" },
+                })[r.durum] || { ad: r.durum, zemin: "#F3F3F3", renk: "#666666" };
+                return (
+                  <div key={r.kod} style={{border:"1px solid " + (r.durum === "approved" ? "#BFE3C6" : "#e8e8e8"),borderRadius:14,padding:"12px 14px",marginBottom:8,background:"#fff"}}>
+                    <div style={{display:"flex",alignItems:"flex-start",gap:8}}>
+                      <div style={{flex:1,minWidth:0}}>
+                        <div style={{fontSize:15,fontWeight:800,lineHeight:1.3}}>{r.etkinlik}</div>
+                        <div style={{fontSize:12,color:"#666666",marginTop:3}}>{r.tarih ? fmtDay(r.tarih) : ""}{r.saat ? " · " + r.saat : ""} · {r.kisi} {L("kişi","guests","гост.")}</div>
+                      </div>
+                      <span style={{fontSize:12,fontWeight:700,padding:"4px 9px",borderRadius:8,background:d.zemin,color:d.renk,flexShrink:0,display:"inline-flex",alignItems:"center",gap:4}}>
+                        {r.durum === "approved" && <Ikon ad="onay" boy={12}/>}{d.ad}
+                      </span>
+                    </div>
+                    {(r.durum === "approved" || r.durum === "pending") && (
+                      <div style={{marginTop:10,display:"flex",alignItems:"center",justifyContent:"space-between",gap:10,flexWrap:"wrap",background:"#f5f5f5",borderRadius:10,padding:"10px 12px"}}>
+                        <span style={{fontSize:12,color:"#666666",lineHeight:1.4}}>{r.durum === "approved"
+                          ? L("Kapıda bu kodu göster","Show this code at the door","Покажите этот код на входе")
+                          : L("Onaylanınca haber vereceğiz. Kodun:","We will let you know once confirmed. Your code:","Сообщим после подтверждения. Ваш код:")}</span>
+                        <span style={{fontSize:17,fontWeight:900,letterSpacing:"2px"}}>{r.kod}</span>
+                      </div>
+                    )}
+                  </div>
+                );
+              })}
+            </div>
           )}
-          {custTab === "events" && rezervasyonYerel && (
+          {custTab === "events" && feeds.events?.length > 0 && (
             <div style={{fontSize:12,color:"#666666",marginBottom:10,lineHeight:1.5}}>
-              {L("Etkinliğe dokun, yerini ayırt. Onayı telefonundan iletiriz.","Tap an event to book a spot. We confirm by phone.","Нажмите на событие, чтобы забронировать. Подтвердим по телефону.")}
+              {rezervasyonYerel
+                ? L("Etkinliğe dokun, yerini ayırt. Onayı telefonundan iletiriz.","Tap an event to book a spot. We confirm by phone.","Нажмите на событие, чтобы забронировать. Подтвердим по телефону.")
+                : L("Etkinliğe dokun, yerini buradan ayırt. Onaylanınca haber veririz.","Tap an event to book your spot right here. We will let you know once it is confirmed.","Нажмите на событие, чтобы забронировать прямо здесь. Сообщим, когда подтвердим.")}
             </div>
           )}
           {custTab === "events" && (
@@ -2110,9 +2202,8 @@ export default function CustomerMenu() {
                 </div>
               )}
               {(feeds.events || []).map((ev, i) => (
-                <a key={ev.id || i} href={rezervasyonYerel ? "#rezervasyon" : RESERVATION_URL}
-                   onClick={rezervasyonYerel ? (e) => { e.preventDefault(); rezAc(ev); } : openReservation}
-                   rel="noreferrer" style={{display:"flex",alignItems:"center",gap:10,padding:"14px 2px",borderBottom:"1px solid #f0f0f0",textDecoration:"none",color:"#000"}}>
+                <button key={ev.id || i} type="button" onClick={() => rezAc(ev)}
+                   style={{display:"flex",alignItems:"center",gap:10,width:"100%",minHeight:56,padding:"14px 2px",background:"none",border:"none",borderBottom:"1px solid #f0f0f0",textAlign:"left",color:"#000",cursor:"pointer",fontFamily:"inherit"}}>
                   <div style={{flex:1,minWidth:0}}>
                     <div style={{fontSize:15,fontWeight:800,lineHeight:1.3}}>
                       {ev.name}
@@ -2125,8 +2216,10 @@ export default function CustomerMenu() {
                   {ev.access_type && ev.access_type !== "open" && (
                     <span style={{fontSize:12,padding:"3px 7px",background:"#000",color:"#fff",borderRadius:6,fontWeight:600,letterSpacing:"0.2px",flexShrink:0}}>{L("ÜYE","MEMBERS","КЛУБ")}</span>
                   )}
-                  <span style={{fontSize:12,fontWeight:700,flexShrink:0}}>{L("Rezerve","Reserve","Бронь")}<Ikon ad="oksag" boy={12} style={{marginLeft:4}}/></span>
-                </a>
+                  {rezDolu(ev)
+                    ? <span style={{fontSize:12,fontWeight:700,flexShrink:0,color:"#666666"}}>{L("DOLU","FULL","МЕСТ НЕТ")}</span>
+                    : <span style={{fontSize:12,fontWeight:700,flexShrink:0}}>{L("Rezerve","Reserve","Бронь")}<Ikon ad="oksag" boy={12} style={{marginLeft:4}}/></span>}
+                </button>
               ))}
               {!rezervasyonYerel && (
               <a href={YOUTUBE_URL} target="_blank" rel="noreferrer" style={{display:"flex",justifyContent:"space-between",alignItems:"center",padding:"14px 16px",background:"#fafafa",border:"1px solid #eee",borderRadius:14,textDecoration:"none",color:"#000",marginTop:14}}>
@@ -2546,34 +2639,88 @@ export default function CustomerMenu() {
       )}
 
       {rezForm && (
-        <div onClick={() => !rezForm.busy && setRezForm(null)} style={{position:"fixed",inset:0,background:"rgba(0,0,0,0.5)",display:"flex",alignItems:"flex-end",justifyContent:"center",zIndex:120}}>
-          <div onClick={e=>e.stopPropagation()} style={{background:"#fff",borderRadius:"18px 18px 0 0",padding:"22px 20px 30px",width:"100%",maxWidth:520}}>
+        <div role="dialog" aria-modal="true" aria-label={L("Rezervasyon","Reservation","Бронирование")} onClick={() => !rezForm.busy && setRezForm(null)} style={{position:"fixed",inset:0,background:"rgba(0,0,0,0.5)",display:"flex",alignItems:"flex-end",justifyContent:"center",zIndex:120}}>
+          <div onClick={e=>e.stopPropagation()} style={{background:"#fff",borderRadius:"18px 18px 0 0",padding:"22px 20px calc(30px + env(safe-area-inset-bottom))",width:"100%",maxWidth:520,maxHeight:"92vh",overflowY:"auto"}}>
             {rezForm.sonuc ? (
               <>
-                <div style={{fontSize:18,fontWeight:800,marginBottom:6}}>{L("Talebin alındı","Request received","Заявка принята")}</div>
+                <div style={{fontSize:18,fontWeight:800,marginBottom:6,display:"flex",alignItems:"center",gap:8}}>
+                  <Ikon ad="onay" boy={18}/>
+                  {rezForm.bilgi?.durum === "approved"
+                    ? L("Rezervasyonun onaylı","Your reservation is confirmed","Ваша бронь подтверждена")
+                    : rezForm.bilgi?.zaten
+                      ? L("Bu etkinlik için talebin zaten var","You already have a request for this event","У вас уже есть заявка на это событие")
+                      : L("Talebin alındı","Request received","Заявка принята")}
+                </div>
                 <div style={{fontSize:13,color:"#444",lineHeight:1.6,marginBottom:14}}>
                   {rezForm.ev.name} · {fmtDay(rezForm.ev.date)}{rezForm.ev.time ? " · " + rezForm.ev.time : ""}<br/>
-                  {L("Onaylanınca telefonundan haber vereceğiz. Kapıda bu kodu göster:","We'll confirm by phone. Show this code at the door:","Подтвердим по телефону. Покажите этот код на входе:")}
+                  {rezervasyonYerel
+                    ? L("Onaylanınca telefonundan haber vereceğiz. Kapıda bu kodu göster:","We'll confirm by phone. Show this code at the door:","Подтвердим по телефону. Покажите этот код на входе:")
+                    : rezForm.bilgi?.durum === "approved"
+                      ? L("Kapıda bu kodu göster:","Show this code at the door:","Покажите этот код на входе:")
+                      : rezForm.bilgi?.eposta
+                        ? L("Onaylanınca e-posta ile haber vereceğiz. Durumu bu sayfada, Rezervasyonlarım altında görürsün. Kapıda bu kodu göster:","We will e-mail you once it is confirmed. You can follow it on this page under My reservations. Show this code at the door:","Сообщим по e-mail после подтверждения. Статус виден на этой странице в разделе «Мои брони». Покажите этот код на входе:")
+                        : L("Onaylanınca telefonundan haber vereceğiz. Durumu bu sayfada, Rezervasyonlarım altında görürsün. Kapıda bu kodu göster:","We will message you once it is confirmed. You can follow it on this page under My reservations. Show this code at the door:","Сообщим по телефону после подтверждения. Статус виден на этой странице в разделе «Мои брони». Покажите этот код на входе:")}
                 </div>
                 <div style={{fontSize:26,fontWeight:900,letterSpacing:"3px",textAlign:"center",padding:"14px",background:"#f5f5f5",borderRadius:12,marginBottom:14}}>{rezForm.sonuc}</div>
-                <button onClick={() => setRezForm(null)} style={{width:"100%",padding:"14px",background:"#000",color:"#fff",border:"none",borderRadius:12,fontSize:14,fontWeight:800,cursor:"pointer",fontFamily:"inherit"}}>{L("Tamam","Done","Готово")}</button>
+                <button onClick={() => setRezForm(null)} style={{width:"100%",minHeight:48,padding:"14px",background:"#000",color:"#fff",border:"none",borderRadius:12,fontSize:14,fontWeight:800,cursor:"pointer",fontFamily:"inherit"}}>{L("Tamam","Done","Готово")}</button>
               </>
             ) : (
               <>
-                <div style={{fontSize:18,fontWeight:800,marginBottom:2}}>{rezForm.ev.name}</div>
-                <div style={{fontSize:12.5,color:"#666666",marginBottom:16}}>{fmtDay(rezForm.ev.date)}{rezForm.ev.time ? " · " + rezForm.ev.time : ""}{rezForm.ev.genre ? " · " + rezForm.ev.genre : ""}</div>
-                <input value={rezForm.name} onChange={e=>setRezForm(f=>({...f,name:e.target.value}))} placeholder={L("Ad Soyad","Full name","Имя и фамилия")} autoComplete="name" style={rezInputS}/>
-                <input value={rezForm.phone} onChange={e=>setRezForm(f=>({...f,phone:e.target.value}))} placeholder={L("Telefon","Phone","Телефон")} type="tel" inputMode="tel" autoComplete="tel" style={rezInputS}/>
-                <div style={{display:"flex",alignItems:"center",gap:10,marginBottom:10}}>
-                  <span style={{fontSize:13,fontWeight:700,flex:1}}>{L("Kişi sayısı","Guests","Гостей")}</span>
-                  <button onClick={()=>setRezForm(f=>({...f,guest_count:Math.max(1,(Number(f.guest_count)||1)-1)}))} style={rezStepS} aria-label="-">−</button>
-                  <span style={{fontSize:16,fontWeight:800,minWidth:24,textAlign:"center"}}>{rezForm.guest_count}</span>
-                  <button onClick={()=>setRezForm(f=>({...f,guest_count:Math.min(20,(Number(f.guest_count)||1)+1)}))} style={rezStepS} aria-label="+">+</button>
+                <div style={{display:"flex",alignItems:"flex-start",gap:10}}>
+                  <div style={{flex:1,minWidth:0}}>
+                    <div style={{fontSize:18,fontWeight:800,marginBottom:2}}>{rezForm.ev.name}</div>
+                    <div style={{fontSize:12.5,color:"#666666",marginBottom:16}}>{fmtDay(rezForm.ev.date)}{rezForm.ev.time ? " · " + rezForm.ev.time : ""}{rezForm.ev.genre ? " · " + rezForm.ev.genre : ""}</div>
+                  </div>
+                  <button onClick={() => !rezForm.busy && setRezForm(null)} aria-label={L("Kapat","Close","Закрыть")} style={{width:44,height:44,margin:"-10px -10px 0 0",background:"none",border:"none",cursor:"pointer",display:"flex",alignItems:"center",justifyContent:"center",flexShrink:0,color:"#000"}}><Ikon ad="kapat" boy={18}/></button>
                 </div>
-                <input value={rezForm.note} onChange={e=>setRezForm(f=>({...f,note:e.target.value}))} placeholder={L("Not (isteğe bağlı)","Note (optional)","Примечание (необязательно)")} style={rezInputS}/>
-                <button onClick={rezGonder} disabled={rezForm.busy} style={{width:"100%",padding:"14px",background:rezForm.busy?"#DDDDDD":"#000",color:rezForm.busy?"#666":"#fff",border:"none",borderRadius:12,fontSize:14,fontWeight:800,cursor:rezForm.busy?"default":"pointer",fontFamily:"inherit"}}>
-                  {rezForm.busy ? "…" : L("Rezervasyon iste","Request a reservation","Отправить заявку")}
-                </button>
+                {!rezervasyonYerel && rezForm.ev.note && (
+                  <div style={{fontSize:12.5,color:"#444",lineHeight:1.5,background:"#f7f7f7",borderRadius:12,padding:"10px 12px",marginBottom:12,whiteSpace:"pre-line"}}>{rezForm.ev.note}</div>
+                )}
+                {rezDolu(rezForm.ev) ? (
+                  <div role="status" style={{fontSize:14,fontWeight:700,textAlign:"center",padding:"18px 12px",background:"#f5f5f5",borderRadius:12}}>
+                    {L("Bu etkinliğin kapasitesi doldu.","This event is full.","На это событие мест больше нет.")}
+                  </div>
+                ) : (!rezervasyonYerel && !customer && (rezForm.hata === "uye_gerekli" || rezForm.ev.access_type === "members_only")) ? (
+                  <>
+                    <div role="status" style={{fontSize:14,lineHeight:1.5,padding:"14px 14px",background:"#f5f5f5",borderRadius:12,marginBottom:12}}>
+                      <b>{L("Bu etkinlik üyelere özel.","This event is for members.","Это событие только для участников.")}</b><br/>
+                      {L("Üyelik ücretsiz ve hemen açılır. Giriş yap, sonra etkinliğe yeniden dokun.","Membership is free and opens right away. Sign in, then tap the event again.","Членство бесплатное и открывается сразу. Войдите и снова нажмите на событие.")}
+                    </div>
+                    <button onClick={() => { setRezForm(null); uyeOlAc(); }} style={{width:"100%",minHeight:48,padding:"14px",background:"#000",color:"#fff",border:"none",borderRadius:12,fontSize:14,fontWeight:800,cursor:"pointer",fontFamily:"inherit"}}>{t.login_cta}</button>
+                  </>
+                ) : (
+                  <>
+                    <label style={{display:"block",fontSize:12,fontWeight:700,color:"#666666",marginBottom:4}} htmlFor="rez-ad">{L("Ad Soyad","Full name","Имя и фамилия")}</label>
+                    <input id="rez-ad" value={rezForm.name} onChange={e=>setRezForm(f=>({...f,name:e.target.value}))} autoComplete="name" maxLength={80} style={rezInputS}/>
+                    <label style={{display:"block",fontSize:12,fontWeight:700,color:"#666666",marginBottom:4}} htmlFor="rez-tel">{L("Telefon","Phone","Телефон")}</label>
+                    <input id="rez-tel" value={rezForm.phone} onChange={e=>setRezForm(f=>({...f,phone:e.target.value,hata:f.hata==="telefon"?null:f.hata}))} placeholder="05xx xxx xx xx" type="tel" inputMode="tel" autoComplete="tel" maxLength={24}
+                      style={{...rezInputS, borderColor: rezForm.hata === "telefon" ? "#C0392B" : "#eee"}}/>
+                    <div style={{display:"flex",alignItems:"center",gap:10,marginBottom:10}}>
+                      <span style={{fontSize:13,fontWeight:700,flex:1}}>{L("Kişi sayısı (sen dahil)","Guests (including you)","Гостей (включая вас)")}</span>
+                      <button onClick={()=>setRezForm(f=>({...f,guest_count:Math.max(1,(Number(f.guest_count)||1)-1)}))} style={{...rezStepS,width:44,height:44}} aria-label={L("Azalt","Decrease","Уменьшить")}>−</button>
+                      <span style={{fontSize:16,fontWeight:800,minWidth:24,textAlign:"center"}} aria-live="polite">{rezForm.guest_count}</span>
+                      <button onClick={()=>setRezForm(f=>({...f,guest_count:Math.min(20,(Number(f.guest_count)||1)+1)}))} style={{...rezStepS,width:44,height:44}} aria-label={L("Artır","Increase","Увеличить")}>+</button>
+                    </div>
+                    <input value={rezForm.note} onChange={e=>setRezForm(f=>({...f,note:e.target.value}))} placeholder={L("Not (isteğe bağlı)","Note (optional)","Примечание (необязательно)")} maxLength={300} style={rezInputS}/>
+                    {!rezervasyonYerel && rezKural(rezForm.ev) && (
+                      <div style={{border:"1px solid " + (rezForm.hata === "kural" ? "#C0392B" : "#e8e8e8"),borderRadius:12,padding:"12px 12px 4px",marginBottom:12}}>
+                        <div style={{fontSize:12,fontWeight:800,marginBottom:6}}>{L("Etkinlik kuralları","Event rules","Правила события")}</div>
+                        <div style={{fontSize:12.5,color:"#444",lineHeight:1.55,whiteSpace:"pre-line",maxHeight:150,overflowY:"auto",marginBottom:8}}>{rezKural(rezForm.ev)}</div>
+                        <label style={{display:"flex",alignItems:"center",gap:10,minHeight:44,cursor:"pointer",fontSize:13,fontWeight:700}}>
+                          <input type="checkbox" checked={!!rezForm.kural} onChange={e=>setRezForm(f=>({...f,kural:e.target.checked,hata:f.hata==="kural"?null:f.hata}))} style={{width:20,height:20,accentColor:"#000",flexShrink:0}}/>
+                          {L("Kuralları okudum, kabul ediyorum","I have read and accept the rules","Я прочитал(а) и принимаю правила")}
+                        </label>
+                      </div>
+                    )}
+                    <button onClick={rezGonder} disabled={rezForm.busy} style={{width:"100%",minHeight:48,padding:"14px",background:rezForm.busy?"#DDDDDD":"#000",color:rezForm.busy?"#666":"#fff",border:"none",borderRadius:12,fontSize:14,fontWeight:800,cursor:rezForm.busy?"default":"pointer",fontFamily:"inherit"}}>
+                      {rezForm.busy ? L("Gönderiliyor…","Sending…","Отправляем…") : L("Rezervasyon iste","Request a reservation","Отправить заявку")}
+                    </button>
+                    <div style={{fontSize:11.5,color:"#666666",lineHeight:1.5,marginTop:10,textAlign:"center"}}>
+                      {L("Talebin onaya düşer; onaylanınca haber veririz. Adın ve telefonun yalnız bu rezervasyon için kullanılır.","Your request goes for approval; we will let you know once it is confirmed. Your name and phone are used only for this reservation.","Заявка уходит на подтверждение; сообщим, когда подтвердим. Имя и телефон используются только для этой брони.")}
+                      {kvkkDoc && <> <button type="button" onClick={() => setKvkkMetinOpen(true)} style={{background:"none",border:"none",padding:0,color:"#000",fontSize:11.5,fontWeight:700,textDecoration:"underline",cursor:"pointer",fontFamily:"inherit"}}>{t.kvkk_read}</button></>}
+                    </div>
+                  </>
+                )}
               </>
             )}
           </div>
