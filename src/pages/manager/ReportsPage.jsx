@@ -1,4 +1,5 @@
 import { useEffect, useRef, useState } from "react";
+import { personelHata } from "../../lib/errorText.js";
 import { Link } from "react-router-dom";
 import { supabase } from "../../lib/supabase.js";
 import { useAuth } from "../../contexts/AuthContext.jsx";
@@ -21,7 +22,7 @@ const fmtTL = (n) => "₺" + Number(n || 0).toLocaleString("tr-TR", { maximumFra
 
 const DEMO = typeof window !== "undefined" && window.location.search.includes("demo=1");
 const demoData = () => ({
-  today: 18450, yesterday: 14200, activeOrders: 4, completed: 47, avgTicket: 392, kitchenToday: 3210,
+  today: 18450, yesterday: 14200, yesterdayFull: 21300, points: 640, activeOrders: 4, completed: 47, avgTicket: 392, kitchenToday: 3210,
   topProducts: [
     { name: "Flat White", qty: 21, rev: 3150 }, { name: "Croissant", qty: 17, rev: 2380 },
     { name: "Cold Brew", qty: 12, rev: 2160 }, { name: "NIP Tost", qty: 9, rev: 2025 },
@@ -40,8 +41,14 @@ export default function ReportsPage() {
   const storeIds = staffUser?.store_ids || [];
   const [stores, setStores] = useState([]);
   const [selectedStore, setSelectedStore] = useState(null);
-  const [data, setData] = useState({ today: 0, yesterday: 0, activeOrders: 0, completed: 0, avgTicket: 0, kitchenToday: 0, topProducts: [], hourly: [], weekTotal: 0, daily: [] });
+  const [data, setData] = useState({ today: 0, yesterday: 0, yesterdayFull: 0, points: 0, activeOrders: 0, completed: 0, avgTicket: 0, kitchenToday: 0, topProducts: [], hourly: [], weekTotal: 0, daily: [] });
   const [loading, setLoading] = useState(true);
+  // Sorgu hatasi "₺0" diye gosterilmez. ilk: hic veri yok; sonra: eski veri ekranda.
+  const [hata, setHata] = useState(null); // { metin, ilk }
+  // Bu magaza icin en az bir basarili okuma oldu mu. State degil ref: 60 sn'lik
+  // zamanlayici loadData'nin ESKI kopyasini cagirir, state'i goremez.
+  const okundu = useRef(false);
+  const istekNo = useRef(0); // magaza degisirken gec gelen eski yanit yazmasin
   const [updatedAt, setUpdatedAt] = useState(null);
   const timer = useRef(null);
 
@@ -66,6 +73,8 @@ export default function ReportsPage() {
   // Load on store change + quiet auto-refresh every 60s so the number is always live.
   useEffect(() => {
     if (DEMO || !selectedStore || mutfakBakisi) return;
+    okundu.current = false;
+    setHata(null);
     loadData();
     timer.current = setInterval(() => loadData(true), 60_000);
     return () => clearInterval(timer.current);
@@ -84,21 +93,37 @@ export default function ReportsPage() {
 
   async function loadData(silent) {
     if (!silent) setLoading(true);
+    const no = ++istekNo.current;
     const now = new Date();
     // Isletme gunu 03:00'te biter — gece satislari onceki gune yazilir.
     const dayStart = (offset) => businessDayStart(now, offset);
     const todayStart = dayStart(0);
     // 14 gunluk pencereyi TEK sorguda cekiyoruz: gunun ozeti de, gunluk grafik de
     // ayni veriden hesaplaniyor — ucuncu bir sorgu ve tutarsizlik riski yok.
-    const { data: rows } = await supabase
+    const { data: rows, error } = await supabase
       .from("orders")
-      .select("id,total,status,created_at,order_items(quantity,final_price,product_price,is_treat,product_id,products(name,kitchen_consignment))")
+      .select("id,total,points_used,status,created_at,order_items(quantity,final_price,product_price,is_treat,product_id,products(name,kitchen_consignment))")
       .eq("origin_store_id", selectedStore)
       .gte("created_at", dayStart(13).toISOString());
+    if (no !== istekNo.current) return;
+    if (error) {
+      // Daha once okunduysa eski rakamlar kalir; hic okunmadiysa rakam
+      // gosterilmez (ilk okuma da, ardindan gelen tazeleme de basarisiz olabilir).
+      setHata({ metin: personelHata(error), ilk: !okundu.current });
+      setLoading(false);
+      return;
+    }
+    okundu.current = true;
+    setHata(null);
 
     const paid = ["paid", "completed", "served", "closed"];
+    const acikDurum = ["open", "sent", "preparing", "ready"];
     const all = rows || [];
     const isPaid = (o) => paid.includes(o.status);
+    // CIRO = TAHSIL EDILEN (sahip karari 11.11.2026): puanla odenen kisim
+    // kasaya girmedi, dusulur ve ayri satirda gosterilir. "Bugün" ekrani
+    // (TodayPage) ile AYNI kural; iki ekran ayni rakami verir.
+    const net = (o) => Number(o.total || 0) - Number(o.points_used || 0);
     const dayKey = businessDayKey; // isletme gunu anahtari (03:00 siniri)
     // NIP Kitchen envanteri: ciroya girer ama bize kalmaz, ay sonu mutfaga odenir.
     // IKRAMLI konsinye kalem hesaba 0 yazilir ama mutfaga yine gercek degeri
@@ -112,12 +137,22 @@ export default function ReportsPage() {
     const todayOrders = all.filter(o => dayKey(o.created_at) === todayKey);
     const todayPaid = todayOrders.filter(isPaid);
 
-    const todayTotal = todayPaid.reduce((s, o) => s + Number(o.total || 0), 0);
-    const yesterdayTotal = all.filter(o => dayKey(o.created_at) === yesterdayKey && isPaid(o))
-      .reduce((s, o) => s + Number(o.total || 0), 0);
+    const todayTotal = todayPaid.reduce((s, o) => s + net(o), 0);
+    const todayPoints = todayPaid.reduce((s, o) => s + Number(o.points_used || 0), 0);
+    // Kiyas "dun BU SAATTE": gunun ortasinda dunun TAMAMIYLA kiyaslamak her
+    // gun ogleden sonraya kadar "dusus" gosteriyordu.
+    const dunKesim = dayStart(1).getTime() + (now.getTime() - todayStart.getTime());
+    const dunFisler = all.filter(o => dayKey(o.created_at) === yesterdayKey && isPaid(o));
+    const yesterdayFull = dunFisler.reduce((s, o) => s + net(o), 0);
+    const yesterdayTotal = dunFisler.filter(o => new Date(o.created_at).getTime() < dunKesim)
+      .reduce((s, o) => s + net(o), 0);
     const weekTotal = all.filter(o => isPaid(o) && new Date(o.created_at) >= dayStart(6))
-      .reduce((s, o) => s + Number(o.total || 0), 0);
-    const active = todayOrders.filter(o => !isPaid(o)).length;
+      .reduce((s, o) => s + net(o), 0);
+    // Aktif = hala ACIK hesap. Eskiden "odenmemis her sey" sayiliyordu;
+    // iptal edilen hesap da aktif gorunuyordu.
+    const active = todayOrders.filter(o => acikDurum.includes(o.status)).length;
+    // Ortalama fis para alinan fislerden: ₺0 kapanan ikram hesabi ortalamayi dusurmesin.
+    const paraliFis = todayPaid.filter(o => net(o) > 0.005).length;
     const kitchenToday = todayPaid.reduce((s, o) => s + kitchenOf(o), 0);
 
     // Top products: quantity AND revenue (final_price = discounts included).
@@ -134,7 +169,7 @@ export default function ReportsPage() {
     const hourly = BUSINESS_HOURS.map(h => ({ hour: h, total: 0 }));
     todayPaid.forEach(o => {
       const slot = hourly.find(x => x.hour === new Date(o.created_at).getHours());
-      if (slot) slot.total += Number(o.total || 0);
+      if (slot) slot.total += net(o);
     });
 
     // Gunluk kazanc: satis olmayan gunler de bosluk olarak durmali, bu yuzden
@@ -147,18 +182,20 @@ export default function ReportsPage() {
     all.filter(isPaid).forEach(o => {
       const slot = byKey[dayKey(o.created_at)];
       if (!slot) return;
-      slot.total += Number(o.total || 0);
+      slot.total += net(o);
       slot.kitchen += kitchenOf(o);
       slot.orders += 1;
     });
 
     setData({
-      today: todayTotal, yesterday: yesterdayTotal, activeOrders: active,
-      completed: todayPaid.length, avgTicket: todayPaid.length ? todayTotal / todayPaid.length : 0,
+      today: todayTotal, yesterday: yesterdayTotal, yesterdayFull, points: todayPoints, activeOrders: active,
+      completed: todayPaid.length, avgTicket: paraliFis ? todayTotal / paraliFis : 0,
       kitchenToday, topProducts, hourly, weekTotal, daily,
     });
     setUpdatedAt(new Date());
-    if (!silent) setLoading(false);
+    // Sessiz tazeleme de kapatir: araya giren tazeleme ilk okumanin yanitini
+    // gecersiz kilarsa ekran "Yükleniyor"da kalmasin.
+    setLoading(false);
   }
 
   const diff = data.yesterday > 0 ? ((data.today - data.yesterday) / data.yesterday * 100) : null;
@@ -216,34 +253,64 @@ export default function ReportsPage() {
         </div>
       ) : loading ? (
         <div style={{ padding: 60, textAlign: "center", color: C.muted }}>Yükleniyor…</div>
+      ) : hata?.ilk ? (
+        <div role="alert" style={{ ...card, marginTop: 14, borderColor: C.down }}>
+          <div style={{ fontSize: 15, fontWeight: 700 }}>Gün özeti okunamadı.</div>
+          <div style={{ fontSize: 13, color: C.muted, marginTop: 4, lineHeight: 1.5 }}>{hata.metin}</div>
+          <button onClick={() => loadData()} style={{
+            marginTop: 12, minHeight: 44, padding: "0 16px", background: C.ink, color: "#000", border: "none",
+            borderRadius: 10, fontSize: 14, fontWeight: 800, cursor: "pointer", fontFamily: "inherit",
+          }}>Tekrar dene</button>
+        </div>
       ) : (
         <>
+          {hata && (
+            <div role="alert" style={{ ...card, marginTop: 14, padding: "10px 14px", borderColor: C.down, fontSize: 13, display: "flex", alignItems: "center", gap: 10 }}>
+              <span style={{ flex: 1, minWidth: 0 }}>
+                Bilgi yenilenemedi. Ekrandaki rakamlar{updatedAt ? " " + updatedAt.toLocaleTimeString("tr-TR", { hour: "2-digit", minute: "2-digit" }) + " itibarıyla." : " eski olabilir."}
+              </span>
+              <button onClick={() => loadData(true)} style={{
+                minHeight: 40, padding: "0 12px", flexShrink: 0, background: "transparent", color: C.ink,
+                border: `1px solid ${C.cardLine}`, borderRadius: 9, fontSize: 12.5, fontWeight: 700, cursor: "pointer", fontFamily: "inherit",
+              }}>Yenile</button>
+            </div>
+          )}
           {/* Hero: the one number that matters (business day: 03:00–03:00) */}
           <div style={{ ...card, marginTop: 14, padding: "22px 20px", display: "flex", justifyContent: "space-between", alignItems: "flex-end", flexWrap: "wrap", gap: 12 }}>
             <div>
-              <div style={label}>Bugün ciro</div>
+              <div style={label}>Bugün ciro · tahsil edilen</div>
               <div style={{ fontSize: 58, fontWeight: 900, fontFamily: hv, lineHeight: 1, marginTop: 6, color: C.ink }}>
                 {fmtTL(data.today)}
               </div>
+              {/* Puanla odenen kasaya girmedi: ciroda yok, ayri gorunur. */}
+              {data.points > 0.5 && (
+                <div style={{ fontSize: 12.5, color: C.muted, marginTop: 8 }}>
+                  Puanla ödenen <span style={{ color: C.ink, fontWeight: 700 }}>{fmtTL(data.points)}</span> ayrı; ciroda yok.
+                </div>
+              )}
             </div>
-            <div style={{ textAlign: "right" }}>
+            {/* Telefonda bu blok alt satira iner; sola hizali olunca rozet ile
+                altindaki satir ayni hizada kalir. */}
+            <div style={{ textAlign: "left" }}>
               {diff !== null && (
                 <div style={{
                   display: "inline-block", padding: "6px 12px", borderRadius: 999, fontSize: 14, fontWeight: 700,
                   background: diff >= 0 ? "rgba(123,196,127,0.12)" : "rgba(224,102,102,0.12)",
                   color: diff >= 0 ? C.up : C.down,
                 }}>
-                  {diff >= 0 ? "▲" : "▼"} %{Math.abs(diff).toFixed(0)} düne göre
+                  {diff >= 0 ? "▲" : "▼"} %{Math.abs(diff).toFixed(0)} dün bu saate göre
                 </div>
               )}
-              <div style={{ fontSize: 12, color: C.faint, marginTop: 6 }}>Dün {fmtTL(data.yesterday)}</div>
+              <div style={{ fontSize: 12, color: C.faint, marginTop: 6 }}>
+                Dün bu saatte {fmtTL(data.yesterday)}{data.yesterdayFull > 0 ? ` · gün sonu ${fmtTL(data.yesterdayFull)}` : ""}
+              </div>
             </div>
           </div>
 
           {/* Stat row — kitchen consignment split appears only when it exists */}
           <div style={{ display: "grid", gridTemplateColumns: "repeat(auto-fit, minmax(140px, 1fr))", gap: 8, margin: "10px 0 14px" }}>
             {[
-              ["Aktif sipariş", data.activeOrders, data.activeOrders > 0 ? C.accent : C.ink],
+              ["Açık hesap", data.activeOrders, data.activeOrders > 0 ? C.accent : C.ink],
               ["Kapanan fiş", data.completed, C.ink],
               ["Ortalama fiş", fmtTL(data.avgTicket), C.ink],
               ["Son 7 gün", fmtTL(data.weekTotal), C.ink],

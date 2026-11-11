@@ -1,6 +1,7 @@
 import { useEffect, useMemo, useState } from "react";
 import { supabase } from "../../lib/supabase.js";
 import Ikon from "../../components/Ikon.jsx";
+import { personelHata } from "../../lib/errorText.js";
 
 const cv = "-apple-system,BlinkMacSystemFont,'Segoe UI',Roboto,sans-serif";
 const hv = "'Bebas Neue','Barlow Condensed','Coolvetica Condensed',sans-serif";
@@ -24,28 +25,49 @@ const DONEMLER = [
   { key: "hepsi", ad: "Tümü",     from: () => new Date(2020, 0, 1) },
 ];
 
+// IKRAMLAR (20261111_ikram_kapat.sql, sahip karari 11.11.2026): ayni sayfanin
+// ikinci gorunumu. Kaynak nip_ikram_raporu: guncel ikram kalemleri; her biri
+// IKRAM EDENE yazilir (kalemdeki treated_by). Isaretleyen ve hesabi kapatan
+// ikram_izi'nden gelir — personel bunlari degistiremez.
+//
 // Kim ne kadar indirim yapti — YALNIZ SAHIP. Kaynak nip_indirim_raporu:
 // guncel kalemlerden hesaplanir (indirim x adet), her kalem son indirimi
 // veren personele yazilir (discount_audit). Rota adminOnly; RPC de icinde
 // is_admin() kosar, yani menuden bulan yonetici bile veriyi alamaz.
 export default function DiscountsPage() {
   const [donem, setDonem] = useState("hafta");
-  const [satirlar, setSatirlar] = useState(null);
-  const [hata, setHata] = useState(null);
+  const [gorunum, setGorunum] = useState("indirim"); // "indirim" | "ikram"
+  const [indirimler, setIndirimler] = useState(null);
+  const [ikramlar, setIkramlar] = useState(null);
+  const [indirimHata, setIndirimHata] = useState(null);
+  const [ikramHata, setIkramHata] = useState(null);
   const [acikPersonel, setAcikPersonel] = useState(null);
 
   useEffect(() => {
     let iptal = false;
-    setSatirlar(null); setHata(null);
+    setIndirimler(null); setIkramlar(null); setIndirimHata(null); setIkramHata(null);
     const d = DONEMLER.find(x => x.key === donem) || DONEMLER[0];
-    supabase.rpc("nip_indirim_raporu", { p_from: d.from().toISOString(), p_to: new Date(Date.now() + 86400000).toISOString() })
+    const aralik = { p_from: d.from().toISOString(), p_to: new Date(Date.now() + 86400000).toISOString() };
+    supabase.rpc("nip_indirim_raporu", aralik)
       .then(({ data, error }) => {
         if (iptal) return;
-        if (error) { setHata(error.message); setSatirlar([]); return; }
-        setSatirlar(data || []);
+        if (error) { setIndirimHata(personelHata(error)); setIndirimler([]); return; }
+        setIndirimler(data || []);
+      });
+    supabase.rpc("nip_ikram_raporu", aralik)
+      .then(({ data, error }) => {
+        if (iptal) return;
+        if (error) { setIkramHata(personelHata(error)); setIkramlar([]); return; }
+        // Ortak liste bicimi: ikramda "kim" = ikram eden, tutar = liste degeri.
+        setIkramlar((data || []).map(r => ({ ...r, personel_id: r.veren_id, personel: r.veren, tutar: r.deger })));
       });
     return () => { iptal = true; };
   }, [donem]);
+
+  const ikram = gorunum === "ikram";
+  const satirlar = ikram ? ikramlar : indirimler;
+  const hata = ikram ? ikramHata : indirimHata;
+  const toplamOf = (liste) => (liste || []).reduce((s, r) => s + (Number(r.tutar) || 0), 0);
 
   const ozet = useMemo(() => {
     const m = {};
@@ -68,10 +90,27 @@ export default function DiscountsPage() {
 
   return (
     <div style={{ fontFamily: cv, color: C.ink, maxWidth: 760, margin: "0 auto", paddingBottom: 40 }}>
-      <div style={{ fontSize: 24, fontWeight: 800, marginBottom: 4 }}>İndirimler</div>
+      <div style={{ fontSize: 24, fontWeight: 800, marginBottom: 4 }}>İndirim ve ikram</div>
       <div style={{ fontSize: 13, color: C.muted, marginBottom: 14, lineHeight: 1.6, maxWidth: "60ch" }}>
-        Kasada kalem başına verilen indirimler, veren personele göre. Yalnız sahip görür;
-        personel kendi verdiği indirimi kalemde görür ama kimin ne kadar verdiğini göremez.
+        {ikram
+          ? "İkram edilen ürünler, ikram eden kişiye göre. Tutar ürünün liste değeridir; ciroya yazılmaz. Yalnız sahip görür."
+          : "Kasada kalem başına verilen indirimler, veren personele göre. Yalnız sahip görür; personel kendi verdiği indirimi kalemde görür ama kimin ne kadar verdiğini göremez."}
+      </div>
+
+      {/* Gorunum: indirim | ikram. Toplam dugmenin ustunde durur: sahip diger
+          gorunumde ne oldugunu sayfayi degistirmeden gorur. */}
+      <div role="tablist" aria-label="Görünüm" style={{ display: "flex", gap: 8, marginBottom: 12 }}>
+        {[["indirim", "İndirimler", indirimler], ["ikram", "İkramlar", ikramlar]].map(([k, ad, liste]) => (
+          <button key={k} role="tab" aria-selected={gorunum === k} onClick={() => { setGorunum(k); setAcikPersonel(null); }}
+            style={{ flex: 1, minHeight: 52, padding: "8px 12px", borderRadius: 12, cursor: "pointer", fontFamily: cv, textAlign: "left",
+                     background: gorunum === k ? C.card : "transparent", color: gorunum === k ? C.ink : C.muted,
+                     border: `1px solid ${gorunum === k ? C.accent : C.line}` }}>
+            <div style={{ fontSize: 13, fontWeight: 800 }}>{ad}</div>
+            <div style={{ fontSize: 12, marginTop: 2, fontVariantNumeric: "tabular-nums" }}>
+              {liste === null ? "…" : `${liste.length} kalem · ${tl(toplamOf(liste))}`}
+            </div>
+          </button>
+        ))}
       </div>
 
       <div style={{ display: "flex", gap: 7, flexWrap: "wrap", marginBottom: 12 }}>
@@ -89,10 +128,10 @@ export default function DiscountsPage() {
         <>
           <div style={{ ...kart, marginBottom: 12 }}>
             <div style={{ display: "flex", alignItems: "baseline", justifyContent: "space-between", gap: 10, marginBottom: 10 }}>
-              <div style={etiket}>Personele göre</div>
+              <div style={etiket}>{ikram ? "İkram edene göre" : "Personele göre"}</div>
               <div style={{ fontFamily: hv, fontSize: 22, color: toplam > 0 ? C.down : C.muted, fontVariantNumeric: "tabular-nums" }}>−{tl(toplam)}</div>
             </div>
-            {ozet.length === 0 && <div style={{ color: C.muted, fontSize: 13 }}>Bu dönemde indirim yok.</div>}
+            {ozet.length === 0 && !hata && <div style={{ color: C.muted, fontSize: 13 }}>Bu dönemde {ikram ? "ikram" : "indirim"} yok.</div>}
             {ozet.map((p, i) => (
               <div key={p.id} onClick={() => setAcikPersonel(acikPersonel === p.id ? null : p.id)} style={{
                 display: "flex", alignItems: "center", gap: 10, padding: "9px 0", cursor: "pointer",
@@ -109,7 +148,9 @@ export default function DiscountsPage() {
           </div>
 
           <div style={{ ...etiket, marginBottom: 8 }}>
-            {acikPersonel ? "Seçili personelin indirimleri" : "Tüm indirimler"} · {gosterilen.length}
+            {ikram
+              ? (acikPersonel ? "Seçili kişinin ikramları" : "Tüm ikramlar")
+              : (acikPersonel ? "Seçili personelin indirimleri" : "Tüm indirimler")} · {gosterilen.length}
           </div>
           <div style={{ ...kart, padding: 0, overflow: "hidden" }}>
             {gosterilen.length === 0 && <div style={{ padding: 22, textAlign: "center", color: C.muted, fontSize: 13 }}>Kayıt yok.</div>}
@@ -124,9 +165,18 @@ export default function DiscountsPage() {
                 <div style={{ fontSize: 12, color: C.faint, marginTop: 3, display: "flex", gap: 8, flexWrap: "wrap" }}>
                   <span style={{ color: C.muted, fontWeight: 600 }}>{r.personel}</span>
                   <span>{new Date(r.tarih).toLocaleString("tr-TR", { day: "numeric", month: "short", hour: "2-digit", minute: "2-digit" })}</span>
-                  <span>{tl(r.indirim)}/adet</span>
-                  <span>{DURUM[r.durum] || "—"}</span>
-                  {r.neden && <span style={{ color: C.ink }}>“{r.neden}”</span>}
+                  {ikram ? (<>
+                    <span>{r.hesap}</span>
+                    <span>{DURUM[r.durum] || "—"}</span>
+                    {/* Isaretleyen ikram edenden farkliysa yazilir: "sahip adina
+                        garson isaretledi" durumu gorunsun. */}
+                    {r.isaretleyen && r.isaretleyen !== r.veren && <span>işaretleyen: {r.isaretleyen}</span>}
+                    {r.tam_ikram && <span style={{ color: C.ink }}>hesabın tamamı ikram{r.kapatan ? " · kapatan: " + r.kapatan : ""}</span>}
+                  </>) : (<>
+                    <span>{tl(r.indirim)}/adet</span>
+                    <span>{DURUM[r.durum] || "—"}</span>
+                    {r.neden && <span style={{ color: C.ink }}>“{r.neden}”</span>}
+                  </>)}
                 </div>
               </div>
             ))}

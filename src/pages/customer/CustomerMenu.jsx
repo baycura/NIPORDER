@@ -190,7 +190,7 @@ const T = {
     cancel: "İptal",
     add_to_cart: "Sepete Ekle",
     my_cart: "Sepetim",
-    your_name: "ADIN (garsonlar seni tanısın)",
+    your_name: "ADIN (sipariş hazır olunca bu adla sesleniriz)",
     shared_name: "ADIN (ortak masa — sipariş adınla hazırlanır)",
     name_placeholder: "Örn: Efekan",
     order_note_label: "SİPARİŞ NOTU (mutfak görecek)",
@@ -198,8 +198,7 @@ const T = {
     total: "TOPLAM",
     submit_order: "Siparişi Gönder",
     submitting: "Gönderiliyor...",
-    waiter_will_bring: "Garson siparişini masana getirecek",
-    notif_promise: "Sipariş hazır olunca bildirim göndereceğiz",
+    pickup_promise: "Hazır olunca haber vereceğiz; siparişini kasadan alırsın",
     takeaway: "Götür",
     takeaway_all: "Hepsini götür",
     takeaway_hint: "Paket bardakta hazırlanır",
@@ -279,7 +278,7 @@ const T = {
     cancel: "Cancel",
     add_to_cart: "Add to Cart",
     my_cart: "My Cart",
-    your_name: "YOUR NAME (so the staff can find you)",
+    your_name: "YOUR NAME (we call it when your order is ready)",
     shared_name: "YOUR NAME (shared table — order is prepared under your name)",
     name_placeholder: "e.g. John",
     order_note_label: "ORDER NOTE (kitchen will see)",
@@ -287,8 +286,7 @@ const T = {
     total: "TOTAL",
     submit_order: "Place Order",
     submitting: "Sending...",
-    waiter_will_bring: "Server will bring it to your table",
-    notif_promise: "We'll notify you when your order is ready",
+    pickup_promise: "We'll let you know when it's ready; pick it up at the counter",
     takeaway: "To go",
     takeaway_all: "All to go",
     takeaway_hint: "Served in a takeaway cup",
@@ -368,7 +366,7 @@ const T = {
     cancel: "Отмена",
     add_to_cart: "В корзину",
     my_cart: "Моя корзина",
-    your_name: "ВАШЕ ИМЯ (чтобы официант вас нашёл)",
+    your_name: "ВАШЕ ИМЯ (назовём его, когда заказ будет готов)",
     shared_name: "ВАШЕ ИМЯ (общий стол — заказ готовится на ваше имя)",
     name_placeholder: "напр.: Иван",
     order_note_label: "ПРИМЕЧАНИЕ К ЗАКАЗУ (увидит кухня)",
@@ -376,8 +374,7 @@ const T = {
     total: "ИТОГО",
     submit_order: "Отправить заказ",
     submitting: "Отправляем...",
-    waiter_will_bring: "Официант принесёт заказ к вашему столу",
-    notif_promise: "Мы сообщим, когда заказ будет готов",
+    pickup_promise: "Сообщим, когда заказ будет готов; заберите его на кассе",
     takeaway: "С собой",
     takeaway_all: "Всё с собой",
     takeaway_hint: "Подаётся в стакане с собой",
@@ -3202,7 +3199,10 @@ export default function CustomerMenu() {
               );
             })()}
             <div style={{textAlign:"center",fontSize:11,color:"#666666",marginTop:10}}>
-              {table && !table.shared ? t.waiter_will_bring : t.notif_promise}
+              {/* Sahip karari (11.11.2026): musteri siparisini kasadan alir. Sepet
+                  eskiden normal masada "garson masana getirecek" diyordu; hazir
+                  ekrani ve bildirim "kasadan alabilirsin" dedigi icin soz tutmuyordu. */}
+              {t.pickup_promise}
             </div>
           </div>
         </div>

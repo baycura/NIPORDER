@@ -34,6 +34,7 @@ const ZEMIN = "#0A0A0A", PANEL = "#161616", CIZGI = "#2A2A2A", METIN = "#F0EDE8"
 export default function PartiKasa({
   order, items = [], products = [], categories = [], hhPrices = {},
   onEkle, onAdet, onOdeme, onTahsil, tahsilBusy = false, onYeniHesap, kapali = false,
+  ikramKapanir = false, onIkramKapat,
   sonEklenen, sonKalem, onSonAdet, onGeriAl,
   partiAdet = 0, tumMenu = false, onTumMenu,
   onListe, staffUser, where, uyeAdi,
@@ -328,6 +329,15 @@ export default function PartiKasa({
             dokunus; nakit yaninda; bolme/indirim/borc/puan "Diğer" ile
             odeme ekraninda. Tahsilatin kendisi sayfadaki hizliTahsil —
             PaymentPage ile ayni nip_odeme_al cagrisi. */}
+        {/* ₺0 HESAP (urunlerin hepsi ikram): tahsil edilecek tutar yok. Kart /
+            Nakit yerine tek dugme; pencere ikram edeni gosterir, eksikse sorar. */}
+        {ikramKapanir && !kapali ? (
+          <button onClick={onIkramKapat}
+            style={{ height: 58, flexShrink: 0, borderRadius: 13, border: "none", fontSize: 16, fontWeight: 800,
+                     fontFamily: "inherit", cursor: "pointer", background: "#fff", color: "#000" }}>
+            İkram olarak kapat
+          </button>
+        ) : (<>
         <button onClick={() => tahsilBas("card")} disabled={!tahsilEdilebilir || tahsilBusy}
           style={{ height: 58, flexShrink: 0, borderRadius: 13, border: "none", fontSize: 16, fontWeight: 800,
                    fontFamily: "inherit", cursor: tahsilEdilebilir && !tahsilBusy ? "pointer" : "not-allowed",
@@ -356,6 +366,7 @@ export default function PartiKasa({
             </button>
           )}
         </div>
+        </>)}
       </div>
     </div>
   );
