@@ -1,4 +1,5 @@
 import { useEffect, useRef, useState } from "react";
+import { trKucuk } from "../../lib/malzemeGrup.js";
 import { uyar } from "../../lib/uyar.js";
 import FormPencere, { altlikStil } from "../../components/FormPencere.jsx";
 import { supabase } from "../../lib/supabase.js";
@@ -23,6 +24,7 @@ export default function MenuMgmtPage() {
   const [talepler, setTalepler] = useState({}); // urun_id -> kac kisi "haber ver" dedi
   const [loading, setLoading] = useState(true);
   const [selectedCat, setSelectedCat] = useState(null);
+  const [ara, setAra] = useState("");
   const [catModal, setCatModal] = useState(null);
   const [prodModal, setProdModal] = useState(null);
   const [catForm, setCatForm] = useState({});
@@ -335,7 +337,14 @@ export default function MenuMgmtPage() {
 
   if (loading) return (<div style={{color:"#888",fontFamily:cv,padding:20}}>Yükleniyor…</div>);
 
-  const visibleProducts = products.filter(p => p.category_id === selectedCat).sort((a,b) => ((a.sort_order||0) - (b.sort_order||0)) || (a.name||"").localeCompare(b.name||""));
+  // ARAMA: yazilinca kategori secimi devre disi kalir, TUM menude aranir
+  // (musteri menusundeki aramayla ayni kural). Eskiden urunu bulmak icin
+  // kategorileri tek tek gezmek gerekiyordu.
+  const aramaQ = trKucuk(ara.trim());
+  const visibleProducts = (aramaQ
+    ? products.filter(p => trKucuk(p.name).includes(aramaQ) || trKucuk(p.name_en).includes(aramaQ))
+    : products.filter(p => p.category_id === selectedCat)
+  ).sort((a,b) => ((a.sort_order||0) - (b.sort_order||0)) || (a.name||"").localeCompare(b.name||""));
   // Alt kategoriler ust kategorisinin hemen ardinda gorunsun
   const orderedCats = categories
     .map(c => {
@@ -408,7 +417,18 @@ export default function MenuMgmtPage() {
           degistir, tukendi isaretle) tek dokunusa indi. */}
       <div style={{display:"flex",gap:8,marginBottom:14,flexWrap:"wrap"}}>
         <button onClick={openNewProd} style={{padding:"10px 16px",background:"#FFFFFF",color:"#000",border:"none",borderRadius:10,fontSize:13,fontWeight:800,cursor:"pointer"}}>+ Yeni Ürün</button>
-        {visibleProducts.length > 1 && (
+        <div style={{flex:"1 1 160px",minWidth:0,display:"flex",alignItems:"center",gap:8,minHeight:44,padding:"0 4px 0 12px",background:"#111",border:"1px solid #2A2A2A",borderRadius:10}}>
+          <Ikon ad="ara" boy={15} style={{color:"#8A8580",flexShrink:0}}/>
+          <input value={ara} onChange={e => { setAra(e.target.value); setSirala(false); }} placeholder="Tüm menüde ürün ara" aria-label="Ürün ara"
+            style={{flex:1,minWidth:0,background:"transparent",border:"none",outline:"none",color:"#F0EDE8",fontSize:14,fontFamily:"inherit",padding:0}}/>
+          {ara && (
+            <button onClick={() => setAra("")} aria-label="Aramayı temizle"
+              style={{width:40,height:40,flexShrink:0,background:"none",border:"none",color:"#8A8580",cursor:"pointer",display:"flex",alignItems:"center",justifyContent:"center"}}>
+              <Ikon ad="kapat" boy={14}/>
+            </button>
+          )}
+        </div>
+        {visibleProducts.length > 1 && !aramaQ && (
           <button onClick={()=>setSirala(v=>!v)} style={{padding:"10px 16px",background:sirala?"#FFFFFF":"transparent",color:sirala?"#000":"#8A8580",border:"1px solid "+(sirala?"#FFFFFF":"#2A2A2A"),borderRadius:10,fontSize:13,fontWeight:800,cursor:"pointer"}}>
             {sirala ? "Sıralamayı bitir" : "Sırala"}
           </button>
@@ -420,12 +440,15 @@ export default function MenuMgmtPage() {
         </div>
       )}
 
-      {visibleProducts.length === 0 && <div style={{textAlign:"center",padding:30,color:"#888888",fontSize:12}}>Bu kategoride ürün yok</div>}
+      {aramaQ && visibleProducts.length > 0 && <div style={{fontSize:12,color:"#8A8580",marginBottom:10}}>Tüm menüde {visibleProducts.length} sonuç</div>}
+      {visibleProducts.length === 0 && <div style={{textAlign:"center",padding:30,color:"#888888",fontSize:12}}>{aramaQ ? "Aramaya uyan ürün yok" : "Bu kategoride ürün yok"}</div>}
 
       {visibleProducts.map((p, idx) => {
         // Rozet enflasyonu yerine tek silik satir: gunluk bakista onemli olan
         // "Tukendi" ve kac kisinin sordugu; gerisi bilgi notu.
         const notlar = [
+          // Aramada urun baska kategoriden gelebilir: hangisinden oldugu yazilir.
+          aramaQ && (categories.find(c => c.id === p.category_id)?.name),
           p.show_in_party_menu && "Parti",
           p.has_options && "Seçenekli",
           p.kitchen_consignment && "Mutfak",

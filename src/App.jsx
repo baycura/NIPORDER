@@ -27,7 +27,6 @@ import CashCountPage from "./pages/staff/CashCountPage.jsx";
 import CashCountsPage from "./pages/manager/CashCountsPage.jsx";
 import SettlementPage from "./pages/manager/SettlementPage.jsx";
 import MembersPage from "./pages/manager/MembersPage.jsx";
-import MerchMgmtPage from "./pages/manager/MerchMgmtPage.jsx";
 import SettingsPage from "./pages/manager/SettingsPage.jsx";
 import MenuMgmtPage from "./pages/manager/MenuMgmtPage.jsx";
 import PartyMenuPage from "./pages/manager/PartyMenuPage.jsx";
@@ -52,8 +51,10 @@ import MutfakRaporPage from "./pages/MutfakRaporPage.jsx";
 function PrivateRoute({ children, managerOnly = false, adminOnly = false, allowViewer = false, deny = [] }) {
   const { session, staffUser, isManager, isAdmin, isViewer, loading } = useAuth();
   if (loading) return (
-    <div style={{display:"flex",alignItems:"center",justifyContent:"center",height:"100vh",background:"#fff"}}>
-      <img src="/icons/logo-mark.png" alt="" className="nip-splash-mark" style={{width:110,height:"auto"}}/>
+    // Panel koyu: acilis ekrani da koyu. Eskiden beyaz ekran koyu panele
+    // gecmeden once parliyordu (gece, loş mekanda goz aliyordu).
+    <div style={{display:"flex",alignItems:"center",justifyContent:"center",height:"100vh",background:"#0C0C0C"}}>
+      <img src="/icons/logo-mark-light.png" alt="" className="nip-splash-mark" style={{width:110,height:"auto"}}/>
     </div>
   );
   if (!session || !staffUser) return (<Navigate to="/login" replace />);
@@ -106,7 +107,8 @@ function AppRoutes() {
         <Route path="costs"            element={<PrivateRoute managerOnly><CostsPage /></PrivateRoute>} />
           <Route path="settlement"       element={<PrivateRoute adminOnly allowViewer><SettlementPage /></PrivateRoute>} />
         <Route path="members"          element={<PrivateRoute managerOnly><MembersPage /></PrivateRoute>} />
-        <Route path="merch-mgmt"       element={<PrivateRoute managerOnly><MerchMgmtPage /></PrivateRoute>} />
+        {/* Merch sayfasi menuden kaldirilmisti ama adresi aciktti; raf urunlerine yonlenir. */}
+        <Route path="merch-mgmt"       element={<Navigate to="/retail" replace />} />
         <Route path="content"          element={<PrivateRoute managerOnly><ContentPage /></PrivateRoute>} />
         <Route path="polls"            element={<PrivateRoute managerOnly><PollsPage /></PrivateRoute>} />
         <Route path="rides"            element={<PrivateRoute managerOnly><RidesPage /></PrivateRoute>} />
