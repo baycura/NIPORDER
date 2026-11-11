@@ -1,5 +1,7 @@
 import { useEffect, useMemo, useState } from "react";
 import { supabase } from "../../lib/supabase.js";
+import { personelHata } from "../../lib/errorText.js";
+import { Okunamadi } from "../../components/Durum.jsx";
 import { useAuth } from "../../contexts/AuthContext.jsx";
 import Ikon from "../../components/Ikon.jsx";
 import { fmtTL, farkRengi } from "../../lib/cashCount.js";
@@ -35,19 +37,26 @@ export default function CashCountsPage() {
     });
   }, [staffUser?.id]);
 
+  const [hata, setHata] = useState(null);
+  const [tik, setTik] = useState(0); // "Tekrar dene"
   useEffect(() => {
     if (!storeId) return;
     let iptal = false;
-    setKayitlar(null);
+    setKayitlar(null); setHata(null);
     supabase.from("cash_counts")
       .select("*")
       .eq("store_id", storeId)
       .order("business_day", { ascending: false })
       .order("created_at", { ascending: true })
       .limit(200)
-      .then(({ data }) => { if (!iptal) setKayitlar(data || []); });
+      .then(({ data, error }) => {
+        if (iptal) return;
+        // Okunamadiysa "henüz kasa sayımı yapılmamış" denmez.
+        if (error) { setHata(personelHata(error)); setKayitlar([]); return; }
+        setKayitlar(data || []);
+      });
     return () => { iptal = true; };
-  }, [storeId]);
+  }, [storeId, tik]);
 
   // Gune gore grupla: her gun bir zincir (devir sayimlari + kapanis + duzeltmeler).
   const gunler = useMemo(() => {
@@ -113,7 +122,9 @@ export default function CashCountsPage() {
 
       {kayitlar === null && <div style={{ ...kart, color: C.muted, fontSize: 13 }}>Yükleniyor…</div>}
 
-      {kayitlar && kayitlar.length === 0 && (
+      {hata && <Okunamadi baslik="Kasa sayımları okunamadı." hata={hata} onTekrar={() => setTik(n => n + 1)} stil={{ marginBottom: 10 }}/>}
+
+      {kayitlar && kayitlar.length === 0 && !hata && (
         <div style={{ ...kart, color: C.muted, fontSize: 13, lineHeight: 1.7 }}>
           Henüz kasa sayımı yapılmamış. Kapanışta personel "Kasa Sayımı"ndan girer;
           buraya gün gün fark, düzeltme zinciri ve atlanmış geceler düşer.

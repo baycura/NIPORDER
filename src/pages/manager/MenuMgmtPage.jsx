@@ -1,4 +1,5 @@
 import { useEffect, useRef, useState } from "react";
+import FormPencere, { altlikStil } from "../../components/FormPencere.jsx";
 import { supabase } from "../../lib/supabase.js";
 import { gorselYukle } from "../../lib/gorsel.js";
 import { useAuth } from "../../contexts/AuthContext.jsx";
@@ -866,7 +867,9 @@ export default function MenuMgmtPage() {
             )}
           </div>
 
-          <div style={{display:"flex",gap:8,marginTop:10}}>
+          {/* Dugme satiri altta sabit: 25 alanli formda Kaydet'e ulasmak icin
+              en dibe kaydirmak gerekmiyor. */}
+          <div style={{display:"flex",gap:8,...altlikStil}}>
             <button onClick={()=>setProdModal(null)} style={cancelBtn}>İptal</button>
             <button onClick={saveProd} disabled={busy} style={{...saveBtn,opacity:busy?0.6:1}}>{busy?"...":"Kaydet"}</button>
           </div>
@@ -904,11 +907,6 @@ function Field({label, children}) {
   </div>);
 }
 
-function Modal({title, children, onClose}) {
-  return (<div onClick={onClose} style={{position:"fixed",inset:0,background:"rgba(0,0,0,0.75)",display:"flex",alignItems:"flex-end",justifyContent:"center",zIndex:100}}>
-    <div onClick={e => e.stopPropagation()} style={{background:"#161616",border:"1px solid #2A2A2A",borderRadius:"16px 16px 0 0",padding:20,width:"100%",maxWidth:520,maxHeight:"92vh",overflowY:"auto"}}>
-      <div style={{fontSize:18,fontWeight:800,color:"#F0EDE8",marginBottom:16}}>{title}</div>
-      {children}
-    </div>
-  </div>);
-}
+// Ortak form penceresi (components/FormPencere.jsx): karartma kapatmaz,
+// baslik ve kapat dugmesi ustte sabit.
+function Modal(props) { return <FormPencere {...props} en={520} boy="92vh" />; }

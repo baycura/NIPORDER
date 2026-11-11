@@ -23,6 +23,7 @@ export default function TodayPage() {
   const [veri, setVeri] = useState(null);
   const [hata, setHata] = useState(null);
   const [tik, setTik] = useState(0); // "Tekrar dene"
+  const [secSaat, setSecSaat] = useState(null); // grafikte dokunulan saat
   // Musteri aliskanligi (20261013_aliskanlik_ozet.sql): son 4 hafta, isimsiz.
   const [aliskanlik, setAliskanlik] = useState(null);
   useEffect(() => {
@@ -54,9 +55,10 @@ export default function TodayPage() {
           .in("origin_store_id", storeIds).in("status", ["open", "sent", "preparing", "ready"]),
         supabase.from("shifts").select("staff_id,checked_in_at")
           .eq("date", businessDayKey(new Date())).eq("status", "active"),
-        supabase.from("orders").select("total,points_used")
+        // Dunun TAMAMI okunur: "dun bu saatte" ve "dun gun sonu" ayni veriden.
+        supabase.from("orders").select("total,points_used,created_at")
           .in("origin_store_id", storeIds).eq("status", "paid")
-          .gte("created_at", dunBas.toISOString()).lt("created_at", dunKesim.toISOString()),
+          .gte("created_at", dunBas.toISOString()).lt("created_at", start),
       ]);
 
       // Ciro ya da acik hesap okunamadiysa eski bilgi ekranda kalir; sifir
@@ -78,7 +80,9 @@ export default function TodayPage() {
       }
 
       const ciro = (paid || []).reduce((t, o) => t + Number(o.total || 0) - Number(o.points_used || 0), 0);
-      const dunCiro = (dun || []).reduce((t, o) => t + Number(o.total || 0) - Number(o.points_used || 0), 0);
+      const net = (o) => Number(o.total || 0) - Number(o.points_used || 0);
+      const dunCiro = (dun || []).filter(o => new Date(o.created_at).getTime() < dunKesim.getTime()).reduce((t, o) => t + net(o), 0);
+      const dunKapanis = (dun || []).reduce((t, o) => t + net(o), 0);
       const puan = (paid || []).reduce((t, o) => t + Number(o.points_used || 0), 0);
 
       const saatlik = Object.fromEntries(BUSINESS_HOURS.map(h => [h, 0]));
@@ -99,7 +103,7 @@ export default function TodayPage() {
 
       if (!iptal) {
         setVeri({
-          ciro, dunCiro, puan,
+          ciro, dunCiro, dunKapanis, puan,
           okundu: new Date(),
           saatlik,
           siparisSayisi: (paid || []).length,
@@ -172,7 +176,7 @@ export default function TodayPage() {
       )}
 
       <Kart baslik="Ciro (tahsil edilen)" tikla={isAdmin ? () => navigate("/reports") : undefined} cocuk={<>
-        <div style={{ fontSize: 30, fontWeight: 800 }}>₺{Math.round(veri.ciro).toLocaleString("tr-TR")}</div>
+        <div style={{ fontSize: 44, fontWeight: 800, lineHeight: 1.05, letterSpacing: "-1px", fontVariantNumeric: "tabular-nums" }}>₺{Math.round(veri.ciro).toLocaleString("tr-TR")}</div>
         {/* Puanla odenen kasaya girmedi: ciroda yok, ayri gorunur. */}
         {veri.puan > 0.5 && (
           <div style={{ fontSize: 11.5, color: "#B5B0AA", marginTop: 3 }}>
@@ -180,29 +184,41 @@ export default function TodayPage() {
           </div>
         )}
         {/* Tek basina bir rakam bir sey soylemiyor; ayni saatteki dun soyluyor. */}
-        {veri.dunCiro > 0 && (() => {
+        {(veri.dunCiro > 0 || veri.dunKapanis > 0) && (() => {
           const fark = veri.ciro - veri.dunCiro;
-          const yuzde = Math.round((fark / veri.dunCiro) * 100);
+          const yuzde = veri.dunCiro > 0 ? Math.round((fark / veri.dunCiro) * 100) : null;
           return (
-            <div style={{ fontSize: 11, color: "#8A8580", marginTop: 4 }}>
+            <div style={{ fontSize: 12, color: "#8A8580", marginTop: 6, lineHeight: 1.5, fontVariantNumeric: "tabular-nums" }}>
               Dün bu saatte <span style={{ color: "#F0EDE8", fontWeight: 700 }}>₺{Math.round(veri.dunCiro).toLocaleString("tr-TR")}</span>
-              {" · "}
-              <span style={{ color: "#F0EDE8", fontWeight: 700 }}>
-                {fark >= 0 ? "▲" : "▼"} %{Math.abs(yuzde)}
-              </span>
+              {yuzde !== null && <>
+                {" · "}
+                <span style={{ color: "#F0EDE8", fontWeight: 700 }}>
+                  {fark >= 0 ? "▲" : "▼"} %{Math.abs(yuzde)}
+                </span>
+              </>}
+              {/* Dunun kapanisi: gunun nereye varabilecegini gosterir. */}
+              {veri.dunKapanis > 0 && <>{" · "}gün sonu <span style={{ color: "#F0EDE8", fontWeight: 700 }}>₺{Math.round(veri.dunKapanis).toLocaleString("tr-TR")}</span></>}
             </div>
           );
         })()}
         <div style={{ display: "flex", alignItems: "flex-end", gap: 3, height: 46, marginTop: 8 }}>
+          {/* Cubuga dokununca saatin tutari alttaki satira yazilir (telefonda
+              "uzerine gelince" yok). Sutunun tamami dokunma alani. */}
           {BUSINESS_HOURS.map(h => (
-            <div key={h} title={`${String(h).padStart(2, "0")}:00 — ₺${Math.round(veri.saatlik[h])}`}
-                 style={{ flex: 1, borderRadius: "3px 3px 0 0", minHeight: 2,
+            <button key={h} type="button" onClick={(e) => { e.stopPropagation(); setSecSaat(secSaat === h ? null : h); }}
+                 aria-label={`${String(h).padStart(2, "0")}:00 — ₺${Math.round(veri.saatlik[h]).toLocaleString("tr-TR")}`} aria-pressed={secSaat === h}
+                 style={{ flex: 1, minWidth: 0, minHeight: 0, height: "100%", padding: 0, background: "none", border: "none", cursor: "pointer",
+                          display: "flex", flexDirection: "column", justifyContent: "flex-end" }}>
+              <span style={{ display: "block", borderRadius: "3px 3px 0 0", minHeight: 2,
                           height: `${Math.round(100 * veri.saatlik[h] / maxSaat)}%`,
-                          background: String(h) === String(enYogun?.[0]) && veri.saatlik[h] > 0 ? "#FFFFFF" : "#2E2E2E" }} />
+                          background: secSaat === h ? "#FFFFFF" : (secSaat === null && String(h) === String(enYogun?.[0]) && veri.saatlik[h] > 0) ? "#FFFFFF" : "#2E2E2E" }} />
+            </button>
           ))}
         </div>
-        <div style={{ fontSize: 11, color: "#8A8580", marginTop: 5 }}>
-          {veri.siparisSayisi} sipariş{Number(enYogun?.[1]) > 0 ? ` · en yoğun saat ${String(enYogun[0]).padStart(2, "0")}:00` : ""}
+        <div role="status" style={{ fontSize: 11, color: "#8A8580", marginTop: 5, fontVariantNumeric: "tabular-nums" }}>
+          {secSaat !== null
+            ? <><span style={{ color: "#F0EDE8", fontWeight: 700 }}>{String(secSaat).padStart(2, "0")}:00</span> · ₺{Math.round(veri.saatlik[secSaat]).toLocaleString("tr-TR")}</>
+            : <>{veri.siparisSayisi} sipariş{Number(enYogun?.[1]) > 0 ? ` · en yoğun saat ${String(enYogun[0]).padStart(2, "0")}:00` : ""} · saate dokun</>}
         </div>
       </>} />
 

@@ -1,4 +1,5 @@
 import { useEffect, useState } from "react";
+import FormPencere, { altlikStil } from "../../components/FormPencere.jsx";
 import { parseUblInvoice } from "../../lib/ublInvoice.js";
 import { supabase, hataMetni } from "../../lib/supabase.js";
 import { useAuth } from "../../contexts/AuthContext.jsx";
@@ -683,7 +684,7 @@ export default function InvoicesPage() {
             <div style={{fontSize:18,color:"#F0EDE8",fontWeight:800}}>₺{Math.round(linesTotal).toLocaleString("tr-TR")}</div>
           </div>
 
-          <div style={{display:"flex",gap:8}}>
+          <div style={{display:"flex",gap:8,...altlikStil}}>
             <button onClick={()=>setModal(null)} style={cancelBtn}>İptal</button>
             <button onClick={saveInvoice} disabled={busy} style={{...saveBtn,opacity:busy?0.6:1}}>{busy?"Kaydediliyor…":"Faturayı Kaydet"}</button>
           </div>
@@ -704,11 +705,6 @@ function Field({label, children}) {
   </div>);
 }
 
-function Modal({title, children, onClose}) {
-  return (<div onClick={onClose} style={{position:"fixed",inset:0,background:"rgba(0,0,0,0.75)",display:"flex",alignItems:"flex-end",justifyContent:"center",zIndex:100}}>
-    <div onClick={e => e.stopPropagation()} style={{background:"#161616",border:"1px solid #2A2A2A",borderRadius:"16px 16px 0 0",padding:20,width:"100%",maxWidth:560,maxHeight:"95vh",overflowY:"auto"}}>
-      <div style={{fontSize:18,fontWeight:800,color:"#F0EDE8",marginBottom:16}}>{title}</div>
-      {children}
-    </div>
-  </div>);
-}
+// Ortak form penceresi (components/FormPencere.jsx): karartma kapatmaz,
+// baslik ve kapat dugmesi ustte sabit.
+function Modal(props) { return <FormPencere {...props} en={560} boy="95vh" />; }

@@ -1,4 +1,5 @@
 import { useEffect, useMemo, useState } from "react";
+import FormPencere, { altlikStil } from "../../components/FormPencere.jsx";
 import { useNavigate } from "react-router-dom";
 import { supabase } from "../../lib/supabase.js";
 import { useAuth } from "../../contexts/AuthContext.jsx";
@@ -499,7 +500,7 @@ export default function StockMgmtPage() {
               </div>
             </div>
           )}
-          <div style={{display:"flex",gap:8,marginTop:10}}>
+          <div style={{display:"flex",gap:8,...altlikStil}}>
             <button onClick={() => setModal(null)} style={cancelBtn}>İptal</button>
             <button onClick={() => save()} disabled={busy || !!karar} style={{...saveBtn,opacity:(busy || karar)?0.6:1}}>{busy?"...":"Kaydet"}</button>
           </div>
@@ -534,11 +535,6 @@ function Field({label, children}) {
   </div>);
 }
 
-function Modal({title, children, onClose}) {
-  return (<div onClick={onClose} style={{position:"fixed",inset:0,background:"rgba(0,0,0,0.75)",display:"flex",alignItems:"flex-end",justifyContent:"center",zIndex:100}}>
-    <div onClick={e => e.stopPropagation()} style={{background:"#161616",border:"1px solid #2A2A2A",borderRadius:"16px 16px 0 0",padding:20,width:"100%",maxWidth:500,maxHeight:"90vh",overflowY:"auto"}}>
-      <div style={{fontSize:18,fontWeight:800,color:"#F0EDE8",marginBottom:16}}>{title}</div>
-      {children}
-    </div>
-  </div>);
-}
+// Ortak form penceresi (components/FormPencere.jsx): karartma kapatmaz,
+// baslik ve kapat dugmesi ustte sabit.
+function Modal(props) { return <FormPencere {...props} />; }
