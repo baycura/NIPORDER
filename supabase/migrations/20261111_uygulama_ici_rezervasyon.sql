@@ -30,15 +30,19 @@ language plpgsql
 immutable
 set search_path to 'public'
 as $$
-declare s text := btrim(coalesce(p, '')); d text; arti boolean;
+declare s text := btrim(coalesce(p, '')); d text; arti boolean; sifir boolean;
 begin
   arti := s like '+%' or s like '00%';
   d := regexp_replace(s, '\D', '', 'g');
   if s like '00%' then d := substr(d, 3); end if;
   if d = '' then return null; end if;
   if not arti then
+    -- Ulke kodu yazilmamis: yalniz Turkiye numarasi kabul edilir. Cep 10 hane
+    -- (5xx); sabit hat ancak basinda 0 ile (0252…). Baska 10 haneli numara
+    -- (ABD, Italya…) +90 sayilmaz: musteri ulke koduyla yazmasi icin uyarilir.
+    sifir := d like '0%';
     d := regexp_replace(d, '^0+', '');
-    if d ~ '^5[0-9]{9}$' or d ~ '^[2-4][0-9]{9}$' then d := '90' || d;   -- TR: 10 hane
+    if d ~ '^5[0-9]{9}$' or (sifir and d ~ '^[2-4][0-9]{9}$') then d := '90' || d;
     elsif d !~ '^90[1-9][0-9]{9}$' then return null;
     end if;
   end if;
@@ -49,6 +53,8 @@ begin
   if d like '90%' then
     if d ~ '^90[1-9][0-9]{9}$' then return '+' || d; else return null; end if;
   end if;
+  -- yabanci ulke kodundan sonra yazilan alan 0'i ("+44 07911…"). Italya (39) haric: orada 0 numaranin parcasi.
+  d := regexp_replace(d, '^(44|49|33|31|32|41|43|46|47|48|61|380)0', '\1');
   if d ~ '^[1-9][0-9]{7,14}$' then return '+' || d; end if;
   return null;
 end $$;
@@ -87,13 +93,25 @@ begin
   end if;
 end $p$;
 
--- Dakikalik sayac: hiz siniri (satir silinmez; dakikada bir satir)
+-- Dakikalik sayac: hiz siniri. Ilk surum tek satirlik toplam sayacti
+-- (nip_rez_sayac): tek bir kisi dakikada 30 istekle herkesi kilitleyebiliyor,
+-- satir kilidi de ag cagrisi boyunca tutuluyordu (inceleme bulgusu). Sayac
+-- artik istek sahibine gore tutulur; toplam yalniz yuksek bir sigortadir ve
+-- kilitsiz okunur. Anahtar IP adresinin kisa ozetidir (adres saklanmaz).
 create table if not exists public.nip_rez_sayac (
   dakika timestamptz primary key,
   n      integer not null default 0
 );
 alter table public.nip_rez_sayac enable row level security;
 revoke all on public.nip_rez_sayac from anon, authenticated, public;
+create table if not exists public.nip_rez_sayac_ip (
+  dakika  timestamptz not null,
+  anahtar text        not null,
+  n       integer     not null default 0,
+  primary key (dakika, anahtar)
+);
+alter table public.nip_rez_sayac_ip enable row level security;
+revoke all on public.nip_rez_sayac_ip from anon, authenticated, public;
 
 -- 3) RESERVE cagrisi (yalniz bu dosyadaki fonksiyonlar kullanir)
 create or replace function public.nip_rez_reserve_cagir(p_fn text, p_arg json)
@@ -140,7 +158,9 @@ revoke all on function public.nip_rez_reserve_cagir(text, json) from public, ano
 -- Not: anon rolunun sorgu suresi siniri 3 sn; RESERVE cagrisi icin fonksiyona
 -- 10 sn tanindi (PostgREST fonksiyon ayarini cagri oncesi uygular).
 -- 4) Menu: rezervasyon iste. Misafir de cagirir (acik etkinlik); uye girisi
---    varsa e-posta ve RESERVE profili SUNUCUDA bulunur, istemciden alinmaz.
+--    varsa e-posta SUNUCUDA, giris sisteminin dogruladigi adresten alinir
+--    (auth.users); istemciden ya da customers.email'den alinmaz. RESERVE
+--    profili ancak bu adresle eslesirse baglanir.
 --    Donen: { ok:true, kod, durum, etkinlik, tarih, saat, kisi, eposta, zaten }
 --        ya { ok:false, hata }  (hata: ad | telefon | etkinlik_yok | gecti |
 --           uye_gerekli | guven_dusuk | seviye_yetersiz | dolu | kural | zaten |
@@ -168,6 +188,11 @@ declare
   v_n int;
   v_yanit json;
   v_id uuid;
+  v_eposta text;     -- oturumun DOGRULANMIS e-postasi (auth.users); customers.email DEGIL
+  v_h json;
+  v_ip text;
+  v_anahtar text;
+  v_top int;
 begin
   if length(v_ad) < 2 or length(v_ad) > 80 then return json_build_object('ok', false, 'hata', 'ad'); end if;
   if v_tel is null then return json_build_object('ok', false, 'hata', 'telefon'); end if;
@@ -177,13 +202,31 @@ begin
 
   if v_uid is not null then
     select * into c from public.customers where auth_user_id = v_uid order by created_at limit 1;
+    -- Kimlik: uyenin kendisinin degistirebildigi customers.email degil, giris
+    -- sisteminin dogruladigi adres. (Inceleme bulgusu: uye customers.email'i
+    -- baska bir uyenin adresine cevirip onun rezervasyon profiline baglanabiliyordu.)
+    select nullif(lower(btrim(u.email)), '') into v_eposta
+      from auth.users u where u.id = v_uid and u.email_confirmed_at is not null;
   end if;
+  if c.id is null then v_eposta := null; end if;
 
-  -- Hiz siniri: dakikada toplam 30 istek; ayni kisi 10 dakikada 5 talep
-  insert into public.nip_rez_sayac (dakika, n) values (date_trunc('minute', now()), 1)
-    on conflict (dakika) do update set n = public.nip_rez_sayac.n + 1
+  -- Hiz siniri: istek sahibi basina dakikada 12; toplam 120 (sigorta, kilitsiz
+  -- okunur); ayni kisi 10 dakikada 5 talep.
+  begin
+    v_h := nullif(current_setting('request.headers', true), '')::json;
+  exception when others then v_h := null; end;
+  v_ip := coalesce(nullif(btrim(v_h->>'cf-connecting-ip'), ''),
+                   nullif(btrim(split_part(coalesce(v_h->>'x-forwarded-for', ''), ',', 1)), ''),
+                   nullif(btrim(v_h->>'x-real-ip'), ''));
+  v_anahtar := case when v_ip is not null then 'ip:' || left(md5(v_ip), 16)
+                    when v_cihaz is not null then 'c:' || left(md5(v_cihaz), 16)
+                    else '?' end;
+  insert into public.nip_rez_sayac_ip (dakika, anahtar, n) values (date_trunc('minute', now()), v_anahtar, 1)
+    on conflict (dakika, anahtar) do update set n = public.nip_rez_sayac_ip.n + 1
     returning n into v_n;
-  if v_n > 30 then return json_build_object('ok', false, 'hata', 'cok_hizli'); end if;
+  if v_n > 12 then return json_build_object('ok', false, 'hata', 'cok_hizli'); end if;
+  select coalesce(sum(s.n), 0) into v_top from public.nip_rez_sayac_ip s where s.dakika = date_trunc('minute', now());
+  if v_top > 120 then return json_build_object('ok', false, 'hata', 'cok_hizli'); end if;
   select count(*) into v_n from public.nip_rez_talepleri t
    where t.created_at > now() - interval '10 minutes'
      and (t.telefon = v_tel or (v_cihaz is not null and t.cihaz = v_cihaz) or (c.id is not null and t.customer_id = c.id));
@@ -191,7 +234,7 @@ begin
 
   v_yanit := public.nip_rez_reserve_cagir('nip_order_rezervasyon', json_build_object('p', json_build_object(
     'event_id', v_event, 'ad', v_ad, 'telefon', v_tel, 'kisi', v_kisi, 'not', v_not, 'kural', v_kural,
-    'uye', c.id is not null, 'profil_id', c.reserve_profile_id, 'eposta', c.email, 'deneme', v_deneme)));
+    'uye', c.id is not null, 'profil_id', c.reserve_profile_id, 'eposta', v_eposta, 'deneme', v_deneme)));
   if v_yanit is null then return json_build_object('ok', false, 'hata', 'baglanti'); end if;
   if coalesce(v_yanit->>'ok', '') <> 'true' then
     return json_build_object('ok', false, 'hata', coalesce(v_yanit->>'kod', 'baglanti'));
@@ -199,25 +242,25 @@ begin
 
   v_id := (v_yanit->>'id')::uuid;
   insert into public.nip_rez_talepleri (rez_id, qr_id, customer_id, cihaz, ad, telefon, eposta, dil, event_id, etkinlik, tarih, saat, kisi, durum, durum_at)
-  values (v_id, v_yanit->>'qr_id', c.id, v_cihaz, v_ad, v_tel, nullif(lower(btrim(coalesce(c.email, ''))), ''), v_dil, v_event,
+  values (v_id, v_yanit->>'qr_id', c.id, v_cihaz, v_ad, v_tel, v_eposta, v_dil, v_event,
           v_yanit->>'event_name', (v_yanit->>'event_date')::date, nullif(v_yanit->>'event_time', ''),
           coalesce((v_yanit->>'kisi')::int, v_kisi), coalesce(v_yanit->>'status', 'pending'), now())
   on conflict (rez_id) do update
-     set customer_id = coalesce(excluded.customer_id, public.nip_rez_talepleri.customer_id),
-         eposta = coalesce(excluded.eposta, public.nip_rez_talepleri.eposta),
+     set customer_id = coalesce(public.nip_rez_talepleri.customer_id, excluded.customer_id),
+         eposta = coalesce(public.nip_rez_talepleri.eposta, excluded.eposta),
          dil = excluded.dil, durum = excluded.durum, durum_at = now();
 
   return json_build_object('ok', true, 'zaten', coalesce(v_yanit->>'zaten', '') = 'true',
     'kod', v_yanit->>'qr_id', 'durum', coalesce(v_yanit->>'status', 'pending'),
     'etkinlik', v_yanit->>'event_name', 'tarih', v_yanit->>'event_date', 'saat', nullif(v_yanit->>'event_time', ''),
-    'kisi', coalesce((v_yanit->>'kisi')::int, v_kisi), 'eposta', c.email is not null and btrim(c.email) <> '');
+    'kisi', coalesce((v_yanit->>'kisi')::int, v_kisi), 'eposta', v_eposta is not null);
 end $$;
 revoke all on function public.nip_rezervasyon_iste(json) from public;
 grant execute on function public.nip_rezervasyon_iste(json) to anon, authenticated;
 
 -- 5) Menu: rezervasyonlarim. Uye kendi taleplerini, misafir elindeki kodlarin
 --    taleplerini gorur (kod = bilet; ad ve telefon DONMEZ). Bekleyen / onayli
---    olanlarin durumu RESERVE'den tazelenir.
+--    olanlarin durumu RESERVE'den tazelenir. Talep hesaba yalniz istek aninda baglanir.
 create or replace function public.nip_rezervasyonlarim(p_kodlar text[] default null)
 returns json
 language plpgsql
@@ -241,13 +284,9 @@ begin
     select * into c from public.customers where auth_user_id = v_uid order by created_at limit 1;
   end if;
 
-  -- Misafirken acilan talep, giris yapinca hesaba baglanir (onay e-postasi da gelsin)
-  if c.id is not null and array_length(v_kodlar, 1) > 0 then
-    update public.nip_rez_talepleri t
-       set customer_id = c.id,
-           eposta = coalesce(t.eposta, nullif(lower(btrim(coalesce(c.email, ''))), ''))
-     where t.customer_id is null and t.qr_id = any(v_kodlar);
-  end if;
+  -- Kodla "sahiplenme" YOK (inceleme bulgusu): kodu bilen bir uye misafirin
+  -- talebini hesabina baglayip onay e-postasini kendine cekebiliyordu. Uyenin
+  -- talebi istek aninda baglanir; misafir, telefonundaki kodla gormeye devam eder.
 
   select array_agg(t.rez_id) into v_ids from public.nip_rez_talepleri t
    where ((c.id is not null and t.customer_id = c.id) or t.qr_id = any(v_kodlar))
@@ -357,3 +396,32 @@ begin
 exception when others then return 0;
 end $$;
 revoke all on function public.nip_reserve_onay_gonder(uuid[]) from public, anon, authenticated;
+
+-- 7) Musteri kaydinda e-posta korumasi (inceleme bulgusu). Uye, kendi
+--    customers satirinda e-postayi baska bir uyenin adresine cevirebiliyordu
+--    (buyuk harf / bosluk ile benzersizlik denetimini de asarak); uye senkronu
+--    o satiri adres sahibinin rezervasyon profiline baglardi. Personel disinda
+--    e-posta artik oturumun adresidir ve sonradan degismez. Uygulama bu alani
+--    zaten yalniz oturum adresiyle yazar; canlida farkli kayit yok.
+create or replace function public.customers_guard_identity_cols()
+returns trigger
+language plpgsql
+set search_path to 'public'
+as $$
+begin
+  if current_user not in ('authenticated', 'anon') then return new; end if;
+  if public.is_staff() then return new; end if;
+
+  if tg_op = 'INSERT' then
+    new.reserve_profile_id := null;
+    new.member_code        := null;
+    if auth.uid() is not null then
+      new.email := nullif(lower(btrim(coalesce(auth.jwt() ->> 'email', ''))), '');
+    end if;
+  else
+    new.reserve_profile_id := old.reserve_profile_id;
+    new.member_code        := old.member_code;
+    new.email              := old.email;
+  end if;
+  return new;
+end $$;

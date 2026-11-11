@@ -751,7 +751,10 @@ export default function CustomerMenu() {
       } catch (e) { /* hataKodu = baglanti */ }
       if (!sonuc) {
         setRezForm(f => f ? ({ ...f, busy: false, hata: hataKodu }) : f);
-        if (hataKodu !== "uye_gerekli") bildir(rezHataMetni(hataKodu));
+        // Misafire "uye girisi yap" kapisi cizilir (bildirim yok). Giris yapmis
+        // uyede kapi cizilmez: sebep soylenir (profili onayli degil ya da seviye yetmiyor).
+        const girisKapisi = !customer && (hataKodu === "uye_gerekli" || hataKodu === "seviye_yetersiz");
+        if (!girisKapisi) bildir(rezHataMetni(hataKodu === "uye_gerekli" ? "guven_dusuk" : hataKodu));
         return;
       }
       rezKodEkle(sonuc.kod);
@@ -2682,7 +2685,7 @@ export default function CustomerMenu() {
                   <div role="status" style={{fontSize:14,fontWeight:700,textAlign:"center",padding:"18px 12px",background:"#f5f5f5",borderRadius:12}}>
                     {L("Bu etkinliğin kapasitesi doldu.","This event is full.","На это событие мест больше нет.")}
                   </div>
-                ) : (!rezervasyonYerel && !customer && (rezForm.hata === "uye_gerekli" || rezForm.ev.access_type === "members_only")) ? (
+                ) : (!rezervasyonYerel && !customer && (rezForm.hata === "uye_gerekli" || rezForm.hata === "seviye_yetersiz" || rezForm.ev.access_type === "members_only")) ? (
                   <>
                     <div role="status" style={{fontSize:14,lineHeight:1.5,padding:"14px 14px",background:"#f5f5f5",borderRadius:12,marginBottom:12}}>
                       <b>{L("Bu etkinlik üyelere özel.","This event is for members.","Это событие только для участников.")}</b><br/>
@@ -2695,8 +2698,11 @@ export default function CustomerMenu() {
                     <label style={{display:"block",fontSize:12,fontWeight:700,color:"#666666",marginBottom:4}} htmlFor="rez-ad">{L("Ad Soyad","Full name","Имя и фамилия")}</label>
                     <input id="rez-ad" value={rezForm.name} onChange={e=>setRezForm(f=>({...f,name:e.target.value}))} autoComplete="name" maxLength={80} style={rezInputS}/>
                     <label style={{display:"block",fontSize:12,fontWeight:700,color:"#666666",marginBottom:4}} htmlFor="rez-tel">{L("Telefon","Phone","Телефон")}</label>
-                    <input id="rez-tel" value={rezForm.phone} onChange={e=>setRezForm(f=>({...f,phone:e.target.value,hata:f.hata==="telefon"?null:f.hata}))} placeholder="05xx xxx xx xx" type="tel" inputMode="tel" autoComplete="tel" maxLength={24}
-                      style={{...rezInputS, borderColor: rezForm.hata === "telefon" ? "#C0392B" : "#eee"}}/>
+                    <input id="rez-tel" value={rezForm.phone} onChange={e=>setRezForm(f=>({...f,phone:e.target.value,hata:f.hata==="telefon"?null:f.hata}))} placeholder={L("05xx xxx xx xx","+44 7911 123456","+7 912 345 67 89")} type="tel" inputMode="tel" autoComplete="tel" maxLength={24}
+                      style={{...rezInputS, borderColor: rezForm.hata === "telefon" ? "#C0392B" : "#eee", marginBottom: 4}}/>
+                    <div style={{fontSize:11.5,color:"#666666",lineHeight:1.4,marginBottom:10}}>
+                      {L("Yurt dışı numarayı ülke koduyla yaz (+44…).","Not a Turkish number? Start with your country code (+44…).","Не турецкий номер? Начните с кода страны (+7…).")}
+                    </div>
                     <div style={{display:"flex",alignItems:"center",gap:10,marginBottom:10}}>
                       <span style={{fontSize:13,fontWeight:700,flex:1}}>{L("Kişi sayısı (sen dahil)","Guests (including you)","Гостей (включая вас)")}</span>
                       <button onClick={()=>setRezForm(f=>({...f,guest_count:Math.max(1,(Number(f.guest_count)||1)-1)}))} style={{...rezStepS,width:44,height:44}} aria-label={L("Azalt","Decrease","Уменьшить")}>−</button>
