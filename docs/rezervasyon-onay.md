@@ -47,6 +47,57 @@ depo `baycura/NOTINPARIS`) ve **Order** (bu depo). Order paneli RESERVE'e
 E-posta anahtarı: Supabase (Order) → Edge Functions → Secrets → `BREVO_API_KEY`.
 Aynı anahtar konsinye raporlarını da gönderir (`docs/konsinye.md`).
 
+## Rezervasyon menünün içinde (11.11.2026)
+
+Sahip: "Menü kısmından girip etkinlikleri seçtiğimizde rezervasyon butonuna
+basarsan web sitesine yönlendiriyor, bu çok saçma."
+
+Müşteri artık menüden çıkmaz. Etkinlik sekmesinde etkinliğe dokunur; form aynı
+ekranda açılır (ad, telefon, kişi sayısı, not, varsa etkinlik kuralları ve onay
+kutusu). Siteye giden düğme ve tek girişli geçiş (`openReservation`) kaldırıldı.
+Rezervasyon sitesi çalışmaya devam eder; iki yoldan gelen talep aynı yere düşer.
+
+**Akış**
+
+1. Menü → `nip_rezervasyon_iste(json)` (Order). Misafir de çağırır. Ad ve
+   telefon denetlenir, telefon tek biçime çevrilir (`nip_tel_duzelt`), hız
+   sınırı uygulanır (dakikada toplam 30 istek; aynı kişi 10 dakikada 5 talep).
+2. Order, rezervasyon sistemindeki `nip_order_rezervasyon` fonksiyonunu senkron
+   sırrıyla çağırır (Vault; sır tarayıcıya gitmez). Sitedeki kurallar orada
+   uygulanır: üyelere özel etkinlik, güven puanı, seviye, kapasite, kuralların
+   kabulü. Aynı kişi aynı etkinliğe iki kez yazılmaz. Talep "bekliyor" olur.
+3. Üye girişi varsa e-posta ve rezervasyon profili **sunucuda** bulunur
+   (`customers.email`, `customers.reserve_profile_id`); istemciden alınmaz.
+   Profili bağlı üyenin talebi sitede de "Biletlerim"de görünür.
+4. Talebin izi `nip_rez_talepleri` tablosuna yazılır (müşteri, e-posta, dil).
+5. Sahibin tarafı değişmez: talep Rezervasyon sayfasında "Bekleyen" olarak
+   görünür, Telegram bildirimi eskisi gibi gelir.
+6. Onaylanınca e-posta izdeki adrese, müşterinin menüde seçtiği dilde gider ve
+   düğmesi siteye değil menüye bağlanır (`order.notinparis.me/menu?rez=KOD`,
+   `kaynak = 'uygulama'`). E-postası olmayan misafire personel WhatsApp'tan yazar.
+7. Menü → `nip_rezervasyonlarim(kodlar)`: müşteri "Rezervasyonlarım" altında
+   talebinin durumunu ve kapıda göstereceği kodu görür. Üye kendi taleplerini,
+   misafir telefonunda saklanan kodların taleplerini görür (kod = bilet; ad ve
+   telefon dönmez). Onay bekleyen talep varken 30 saniyede bir tazelenir.
+
+**Hata kodları** (`{ ok:false, hata }`): `ad`, `telefon`, `etkinlik_yok`,
+`gecti`, `uye_gerekli`, `guven_dusuk`, `seviye_yetersiz`, `dolu`, `kural`,
+`zaten`, `cok_hizli`, `baglanti`. Menü her biri için üç dilde açık bir cümle
+gösterir.
+
+**Deneme** (iz bırakmadan): `nip_rezervasyon_iste` yalnız doğrudan veritabanı
+oturumundan `'deneme': true` kabul eder; bütün denetimler çalışır, rezervasyon
+sistemine kayıt yazılmaz, kod `DNM-` ile başlar. Tarayıcıdan gelen istek bunu
+açamaz.
+
+**KVKK:** yeni veri türü ya da amaç yok. Ad ve telefon ile "etkinlik
+kayıtlarının yönetilmesi" amacı 2026-10-11 sürümünde yazılı; sürüm değişmedi.
+Formun altında aydınlatma metnine bağlantı vardır.
+
+Dosyalar: `supabase/migrations/20261111_uygulama_ici_rezervasyon.sql` (Order),
+`supabase/reserve_migrations/20261111_order_rezervasyon.sql` (rezervasyon
+sistemi), `src/pages/customer/CustomerMenu.jsx`, `supabase/functions/rez-bildirim`.
+
 ## Koruma (inceleme bulgusu, kapatıldı)
 
 RESERVE'de `own_profile` ve `res_own` politikaları satırın bütün kolonlarını
