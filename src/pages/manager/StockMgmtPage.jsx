@@ -57,7 +57,7 @@ export default function StockMgmtPage() {
   // Yeni hammadde acik raftan aciliyorsa o rafi hazir getir (Cin rafindayken
   // "+ Yeni Hammadde" -> grup Cin)
   const openNew = () => { setKarar(null); setUzerineYaz(true); setModal({mode:"new"}); setForm({name:"", unit:"ml", grup: grupFiltre && grupFiltre !== GRUPSUZ ? grupFiltre : "", stock_qty:0, cost_per_unit:0, waste_pct:0, pack_qty:1, unit_volume_ml:"", waste_per_pack:0, is_consumable:false}); };
-  const openEdit = (i) => { setKarar(null); setUzerineYaz(false); setModal({mode:"edit", data:i}); setForm({name:i.name, unit:i.unit, grup:i.grup||"", stock_qty:Number(i.stock_qty)||0, cost_per_unit:Number(i.cost_per_unit)||0, waste_pct:Number(i.waste_pct)||0, pack_qty:Number(i.pack_qty)||1, unit_volume_ml:i.unit_volume_ml??"", waste_per_pack:Number(i.waste_per_pack)||0, is_consumable:!!i.is_consumable}); };
+  const openEdit = (i) => { setKarar(null); setSilKurulu(false); setUzerineYaz(false); setModal({mode:"edit", data:i}); setForm({name:i.name, unit:i.unit, grup:i.grup||"", stock_qty:Number(i.stock_qty)||0, cost_per_unit:Number(i.cost_per_unit)||0, waste_pct:Number(i.waste_pct)||0, pack_qty:Number(i.pack_qty)||1, unit_volume_ml:i.unit_volume_ml??"", waste_per_pack:Number(i.waste_per_pack)||0, is_consumable:!!i.is_consumable}); };
 
   // Satirdan ya da modalin icinden acilir; kaydedince listeyi tazeler.
   // storeId kalemin kendi magazasi: iki magazali yoneticide liste iki magazadan
@@ -162,10 +162,14 @@ export default function StockMgmtPage() {
     setModal(null); setBusy(false); load(true);
   };
 
+  // SILME duzenleme penceresinin icinde ve iki adimli (tarayici onay kutusu yok).
+  const [silKurulu, setSilKurulu] = useState(false);
   const del = async (i) => {
-    if (!confirm('"' + i.name + '" silinsin mi?')) return;
+    if (!silKurulu) { setSilKurulu(true); return; }
+    setSilKurulu(false);
     const { error } = await supabase.from("ingredients").delete().eq("id", i.id);
     if (error) { uyar("Silinemedi: " + error.message); return; }
+    setModal(null);
     load(true);
   };
 
@@ -197,8 +201,13 @@ export default function StockMgmtPage() {
         const sise = siseKarsiligi(i);
         return (
           <div key={i.id} style={{background:"#1A1A1A",border:"1px solid "+(isLow?"#2A2A2A":"#2A2A2A"),borderRadius:10,padding:12,marginBottom:8}}>
-            <div style={{display:"flex",justifyContent:"space-between",alignItems:"flex-start",gap:10}}>
-              <div style={{flex:1,minWidth:0}}>
+            <div style={{display:"flex",justifyContent:"space-between",alignItems:"center",gap:10}}>
+              {/* SATIR = DUZENLE (Menü Yönetimi ile ayni kural). Eskiden 10 px'lik
+                  "Düzenle" ve "Sil" dugmeleri ust usteydi; parmakla Sil'e basmak
+                  kolaydi. Silme duzenleme penceresine tasindi. */}
+              <div role="button" tabIndex={0} aria-label={"Düzenle: " + i.name} onClick={() => openEdit(i)}
+                onKeyDown={e => { if (e.key === "Enter" || e.key === " ") { e.preventDefault(); openEdit(i); } }}
+                style={{flex:1,minWidth:0,minHeight:44,cursor:"pointer",display:"flex",flexDirection:"column",justifyContent:"center"}}>
                 <div style={{display:"flex",alignItems:"center",gap:6,flexWrap:"wrap"}}>
                   <div style={{fontSize:14,fontWeight:700,color:"#F0EDE8"}}>{i.name}</div>
                   {isLow && <span style={{fontSize:9,padding:"2px 6px",background:"#2A2A2A",color:"#C87A6A",borderRadius:6,fontWeight:700}}>Azalan</span>}
@@ -223,10 +232,7 @@ export default function StockMgmtPage() {
                   style={{padding:"10px 12px",minHeight:44,background:"transparent",color:"#FFFFFF",border:"1px solid #FFFFFF",borderRadius:9,fontSize:12,fontWeight:800,cursor:"pointer",whiteSpace:"nowrap",display:"flex",alignItems:"center",gap:5}}>
                   <Ikon ad="ekle" boy={13}/> Stok
                 </button>
-                <div style={{display:"flex",flexDirection:"column",gap:4}}>
-                  <button onClick={() => openEdit(i)} style={{padding:"5px 9px",background:"#222",color:"#aaa",border:"1px solid #333",borderRadius:6,fontSize:10,cursor:"pointer"}}>Düzenle</button>
-                  <button onClick={() => del(i)} style={{padding:"5px 9px",background:"transparent",color:"#C87A6A",border:"1px solid #2A2A2A",borderRadius:6,fontSize:10,cursor:"pointer"}}>Sil</button>
-                </div>
+                <Ikon ad="oksag" boy={14} style={{color:"#666",flexShrink:0}}/>
               </div>
             </div>
           </div>
@@ -500,6 +506,13 @@ export default function StockMgmtPage() {
                 </button>
               </div>
             </div>
+          )}
+          {modal.mode === "edit" && (
+            <button onClick={() => del(modal.data)} disabled={busy}
+              style={{width:"100%",minHeight:44,marginTop:14,background:silKurulu?"#C87A6A":"transparent",color:silKurulu?"#0C0C0C":"#C87A6A",
+                      border:"1px solid "+(silKurulu?"#C87A6A":"#2A2A2A"),borderRadius:10,fontSize:13,fontWeight:800,cursor:"pointer",fontFamily:"inherit"}}>
+              {silKurulu ? `Onayla: "${modal.data.name}" silinsin` : "Bu malzemeyi sil"}
+            </button>
           )}
           <div style={{display:"flex",gap:8,...altlikStil}}>
             <button onClick={() => setModal(null)} style={cancelBtn}>İptal</button>
