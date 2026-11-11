@@ -10,7 +10,9 @@
 --
 --   nip_order_rezervasyon(p_sir, p json) -> json
 --     p: event_id, ad, telefon, kisi, not, kural (kurallar kabul edildi),
---        uye (Order'da giris yapmis uye), profil_id, eposta, deneme
+--        uye (Order'da giris yapmis uye), profil_id, eposta (Order'in
+--        DOGRULADIGI oturum adresi; profil yalniz bununla eslesirse baglanir),
+--        deneme
 --     Sitedeki kurallarin aynisi: uyelere ozel etkinlik, guven puani, seviye,
 --     kapasite, kurallarin kabulu. Ayni kisi ayni etkinlige iki kez yazilmaz.
 --     Donen: { ok, id, qr_id, status, ... } ya da { ok:false, kod }.
@@ -84,15 +86,20 @@ begin
     return json_build_object('ok', false, 'kod', 'gecti');
   end if;
 
-  -- Uye baglantisi: once Order'in bildigi profil, yoksa ayni e-posta.
-  -- Yalniz ONAYLI profil baglanir; digerleri sitedeki gibi misafir sayilir.
-  begin
-    if nullif(p->>'profil_id', '') is not null then
-      select * into pr from public.profiles where id = (p->>'profil_id')::uuid;
+  -- Uye baglantisi: profil YALNIZ Order'in gonderdigi dogrulanmis e-postayla
+  -- eslesirse baglanir. profil_id tek basina yetmez (inceleme bulgusu: Order'daki
+  -- musteri kaydi baska bir uyenin profiline baglanmis olabilir). E-posta yoksa
+  -- kimse baglanmaz. Yalniz ONAYLI profil baglanir; digerleri misafir sayilir.
+  if v_eposta is not null then
+    begin
+      if nullif(p->>'profil_id', '') is not null then
+        select * into pr from public.profiles
+         where id = (p->>'profil_id')::uuid and lower(btrim(email)) = v_eposta;
+      end if;
+    exception when others then pr := null; end;
+    if pr.id is null then
+      select * into pr from public.profiles where lower(btrim(email)) = v_eposta order by created_at limit 1;
     end if;
-  exception when others then pr := null; end;
-  if pr.id is null and v_eposta is not null then
-    select * into pr from public.profiles where lower(btrim(email)) = v_eposta order by created_at limit 1;
   end if;
   if pr.id is not null and pr.status = 'approved' then
     v_pid := pr.id;

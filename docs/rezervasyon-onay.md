@@ -61,14 +61,17 @@ Rezervasyon sitesi çalışmaya devam eder; iki yoldan gelen talep aynı yere d�
 
 1. Menü → `nip_rezervasyon_iste(json)` (Order). Misafir de çağırır. Ad ve
    telefon denetlenir, telefon tek biçime çevrilir (`nip_tel_duzelt`), hız
-   sınırı uygulanır (dakikada toplam 30 istek; aynı kişi 10 dakikada 5 talep).
+   sınırı uygulanır (istek sahibi başına dakikada 12; toplam 120; aynı kişi
+   10 dakikada 5 talep). Ülke kodu yazılmayan numara yalnız Türkiye numarası
+   ise kabul edilir; yurt dışı numara ülke koduyla yazılır.
 2. Order, rezervasyon sistemindeki `nip_order_rezervasyon` fonksiyonunu senkron
    sırrıyla çağırır (Vault; sır tarayıcıya gitmez). Sitedeki kurallar orada
    uygulanır: üyelere özel etkinlik, güven puanı, seviye, kapasite, kuralların
    kabulü. Aynı kişi aynı etkinliğe iki kez yazılmaz. Talep "bekliyor" olur.
-3. Üye girişi varsa e-posta ve rezervasyon profili **sunucuda** bulunur
-   (`customers.email`, `customers.reserve_profile_id`); istemciden alınmaz.
-   Profili bağlı üyenin talebi sitede de "Biletlerim"de görünür.
+3. Üye girişi varsa e-posta **sunucuda**, giriş sisteminin doğruladığı adresten
+   alınır (`auth.users`); istemciden ya da `customers.email` alanından alınmaz.
+   Rezervasyon profili yalnız bu adresle eşleşirse bağlanır. Profili bağlı
+   üyenin talebi sitede de "Biletlerim"de görünür.
 4. Talebin izi `nip_rez_talepleri` tablosuna yazılır (müşteri, e-posta, dil).
 5. Sahibin tarafı değişmez: talep Rezervasyon sayfasında "Bekleyen" olarak
    görünür, Telegram bildirimi eskisi gibi gelir.
@@ -79,6 +82,8 @@ Rezervasyon sitesi çalışmaya devam eder; iki yoldan gelen talep aynı yere d�
    talebinin durumunu ve kapıda göstereceği kodu görür. Üye kendi taleplerini,
    misafir telefonunda saklanan kodların taleplerini görür (kod = bilet; ad ve
    telefon dönmez). Onay bekleyen talep varken 30 saniyede bir tazelenir.
+   Talep hesaba yalnız istek anında bağlanır; kodu bilen başka bir üye talebi
+   kendi hesabına bağlayamaz.
 
 **Hata kodları** (`{ ok:false, hata }`): `ad`, `telefon`, `etkinlik_yok`,
 `gecti`, `uye_gerekli`, `guven_dusuk`, `seviye_yetersiz`, `dolu`, `kural`,
@@ -89,6 +94,13 @@ gösterir.
 oturumundan `'deneme': true` kabul eder; bütün denetimler çalışır, rezervasyon
 sistemine kayıt yazılmaz, kod `DNM-` ile başlar. Tarayıcıdan gelen istek bunu
 açamaz.
+
+**İnceleme bulguları (kapatıldı, 11.11.2026):** üye, müşteri kaydındaki
+e-postayı başka bir üyenin adresine çevirip onun rezervasyon profiline
+bağlanabiliyordu (kimlik artık doğrulanmış oturum adresi; müşteri kaydında
+e-posta personel dışında değişmez). Tek toplam sayaç bir kişinin herkesi
+kilitlemesine izin veriyordu (sayaç artık istek sahibine göre). Kodu bilen üye
+misafirin talebini sahiplenebiliyordu (kaldırıldı).
 
 **KVKK:** yeni veri türü ya da amaç yok. Ad ve telefon ile "etkinlik
 kayıtlarının yönetilmesi" amacı 2026-10-11 sürümünde yazılı; sürüm değişmedi.
