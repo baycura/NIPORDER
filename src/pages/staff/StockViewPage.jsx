@@ -2,7 +2,8 @@ import { useState, useEffect, useMemo } from "react";
 import { supabase } from "../../lib/supabase.js";
 import { useAuth } from "../../contexts/AuthContext.jsx";
 import Ikon from "../../components/Ikon.jsx";
-import StokEkleSheet from "../../components/StokEkleSheet.jsx";
+import StokEkleSheet, { stokGeriAl } from "../../components/StokEkleSheet.jsx";
+import { personelHata } from "../../lib/errorText.js";
 import { raflaraAyir, siseKarsiligi, kapAdi, trKucuk } from "../../lib/malzemeGrup.js";
 import { ozellik } from "../../lib/profil.js";
 
@@ -33,15 +34,34 @@ export default function StockViewPage() {
   const [entry, setEntry] = useState(null);
   const [search, setSearch] = useState("");
   const [sonGiris, setSonGiris] = useState(null);
+  // "Geri al": yanlis girilen stok ayni ekrandan duzeltilir. Yonetici
+  // ekranlarinda vardi, personelde yoktu; yanlis giris yoneticiyi bekliyordu.
+  const [geriBusy, setGeriBusy] = useState(false);
+  const [geriHata, setGeriHata] = useState(null);
+  // Yalniz eksikler: siparis listesi cikarirken 146 satiri gezmemek icin.
+  const [yalnizEksik, setYalnizEksik] = useState(false);
+  const [yukHata, setYukHata] = useState(null);
   // Telefonda StaffLayout'un yapiskan ust seridi var; raf basligi onun
   // arkasinda kaliyordu (StockCountPage ile ayni kalip).
   const isMobile = typeof window !== "undefined" ? window.innerWidth < 900 : true;
 
   const load = async () => {
     const storeIds = staffUser?.store_ids?.length ? staffUser.store_ids : ["00000000-0000-0000-0000-000000000000"];
-    const { data } = await supabase.from("ingredients").select("*").in("store_id", storeIds).order("name");
+    const { data, error } = await supabase.from("ingredients").select("*").in("store_id", storeIds).order("name");
+    // Okunamadiysa eski liste kalir; "henüz hammadde girilmemiş" denmez.
+    if (error) { setYukHata(personelHata(error)); setLoading(false); return; }
+    setYukHata(null);
     setItems(data || []);
     setLoading(false);
+  };
+  const geriAl = async () => {
+    if (geriBusy || !sonGiris) return;
+    setGeriBusy(true); setGeriHata(null);
+    const { error } = await stokGeriAl(sonGiris);
+    setGeriBusy(false);
+    if (error) { setGeriHata("Geri alınamadı: " + personelHata(error)); return; }
+    setSonGiris(null);
+    load();
   };
   useEffect(() => { load(); }, [staffUser?.id]);
 
@@ -54,27 +74,53 @@ export default function StockViewPage() {
   // Arama hem malzeme hem raf adinda.
   const q = trKucuk(search.trim());
   const raflar = useMemo(() => raflaraAyir(
-    items.filter(i => !q || trKucuk(i.name).includes(q) || trKucuk(i.grup).includes(q)),
+    items.filter(i => (!yalnizEksik || alertLevel(i) !== "ok")
+      && (!q || trKucuk(i.name).includes(q) || trKucuk(i.grup).includes(q))),
     (g, i) => { if (alertLevel(i) !== "ok") g.uyari = (g.uyari || 0) + 1; }
-  ), [items, q]);
+  ), [items, q, yalnizEksik]);
   const filtered = raflar.flatMap(g => g.items);
 
   return (
     <div>
       <h1 style={{ color: "#F0EDE8", fontFamily: cv, fontSize: 28, letterSpacing: "-0.5px", margin: "0 0 16px" }}>Stok</h1>
       {sonGiris && (
-        <div onClick={() => setSonGiris(null)} style={{ background: "#161616", border: "1px solid #FFFFFF", borderRadius: 10, padding: "10px 16px", marginBottom: 16, display: "flex", gap: 10, alignItems: "center", cursor: "pointer" }}>
+        <div role="status" style={{ background: "#161616", border: "1px solid #FFFFFF", borderRadius: 10, padding: "6px 6px 6px 14px", marginBottom: 16, display: "flex", gap: 8, alignItems: "center" }}>
           <Ikon ad="onayli" boy={15} style={{ color: "#FFFFFF", flexShrink: 0 }} />
           <span style={{ color: "#F0EDE8", fontFamily: cvc, fontSize: 12, flex: 1, minWidth: 0 }}>
             {sonGiris.kalem} · {Number(sonGiris.onceki)} → <b>{Number(sonGiris.sonraki)}</b> {sonGiris.birim} kaydedildi
+            {geriHata && <span role="alert" style={{ display: "block", color: "#C87A6A", marginTop: 3 }}>{geriHata}</span>}
           </span>
-          <Ikon ad="kapat" boy={12} style={{ color: "#666", flexShrink: 0 }} />
+          <button onClick={geriAl} disabled={geriBusy}
+            style={{ minHeight: 44, padding: "0 12px", flexShrink: 0, background: "transparent", color: "#F0EDE8", border: "1px solid #3A3A3A", borderRadius: 9, fontFamily: cvc, fontSize: 12, fontWeight: 700, cursor: "pointer", opacity: geriBusy ? 0.6 : 1 }}>
+            {geriBusy ? "Geri alınıyor…" : "Geri al"}
+          </button>
+          <button onClick={() => { setSonGiris(null); setGeriHata(null); }} aria-label="Kapat"
+            style={{ width: 44, height: 44, flexShrink: 0, background: "none", border: "none", color: "#8A8A86", cursor: "pointer", display: "flex", alignItems: "center", justifyContent: "center" }}>
+            <Ikon ad="kapat" boy={13} />
+          </button>
         </div>
       )}
-      {alerts.length > 0 && (
-        <div style={{ background: "rgba(224,90,90,0.12)", border: "1px solid #2A2A2A", borderRadius: 10, padding: "10px 16px", marginBottom: 16, display: "flex", gap: 10, alignItems: "center" }}>
-          <Ikon ad="uyari" boy={15} style={{ color: "#C87A6A" }}/><span style={{ color: "#C87A6A", fontFamily: cvc, fontSize: 12 }}>{alerts.length} malzeme kritik</span>
+      {yukHata && (
+        <div role="alert" style={{ background: "#161616", border: "1px solid #C87A6A", borderRadius: 10, padding: "8px 8px 8px 14px", marginBottom: 16, display: "flex", gap: 10, alignItems: "center" }}>
+          <span style={{ color: "#F0EDE8", fontFamily: cvc, fontSize: 12, flex: 1, minWidth: 0 }}>Stok okunamadı. {yukHata}</span>
+          <button onClick={() => { setLoading(true); load(); }}
+            style={{ minHeight: 44, padding: "0 12px", flexShrink: 0, background: "#FFFFFF", color: "#000", border: "none", borderRadius: 9, fontFamily: cvc, fontSize: 12, fontWeight: 700, cursor: "pointer" }}>
+            Tekrar dene
+          </button>
         </div>
+      )}
+      {/* Kritik seridi ayni zamanda suzgec: dokununca yalniz eksikler kalir. */}
+      {alerts.length > 0 && (
+        <button onClick={() => setYalnizEksik(v => !v)} aria-pressed={yalnizEksik}
+          style={{ width: "100%", minHeight: 44, background: yalnizEksik ? "#C87A6A" : "rgba(224,90,90,0.12)", border: "1px solid " + (yalnizEksik ? "#C87A6A" : "#2A2A2A"), borderRadius: 10, padding: "8px 14px", marginBottom: 16, display: "flex", gap: 10, alignItems: "center", cursor: "pointer", textAlign: "left" }}>
+          <Ikon ad="uyari" boy={15} style={{ color: yalnizEksik ? "#0C0C0C" : "#C87A6A", flexShrink: 0 }}/>
+          <span style={{ color: yalnizEksik ? "#0C0C0C" : "#C87A6A", fontFamily: cvc, fontSize: 12, flex: 1 }}>
+            {alerts.length} malzeme kritik
+          </span>
+          <span style={{ color: yalnizEksik ? "#0C0C0C" : "#F0EDE8", fontFamily: cvc, fontSize: 12, fontWeight: 700 }}>
+            {yalnizEksik ? "Tümünü göster" : "Yalnız bunları göster"}
+          </span>
+        </button>
       )}
       {/* boxSizing olmadan %100 + yanlardaki 28px dolgu tasiyordu */}
       <input value={search} onChange={e => setSearch(e.target.value)} placeholder="Malzeme ya da raf ara..."
@@ -82,7 +128,7 @@ export default function StockViewPage() {
       {loading && <div style={{ color: "#888", fontFamily: cvc, fontSize: 12, textAlign: "center", padding: 40 }}>Yükleniyor…</div>}
       {!loading && filtered.length === 0 && (
         <div style={{ color: "#888888", fontFamily: cvc, fontSize: 12, textAlign: "center", padding: 40 }}>
-          {items.length === 0 ? "Henüz hammadde girilmemiş." : "Aramaya uyan malzeme yok."}
+          {yukHata ? "" : items.length === 0 ? "Henüz hammadde girilmemiş." : yalnizEksik && !q ? "Eksik malzeme yok." : "Aramaya uyan malzeme yok."}
         </div>
       )}
       {/* Raf raf: barmen buz ve pipet ararken mop ile tuvalet kagidini

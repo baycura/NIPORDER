@@ -967,6 +967,16 @@ export default function OrderDetailPage() {
               </span>
             </div>
           )}
+          {/* KURULU DURUM: ilk dokunustan sonra ne olacagi yaziyla da soylenir
+              (yontem + tutar). Renk degisimi tek basina yeterli degildi; ekran
+              okuyucu da duyar. Dokunusu yutmaz. */}
+          {hizliKurulu && !ikramKapanir && (
+            <div role="status" style={{maxWidth:sayfaEni,margin:"0 auto 6px",display:"flex",justifyContent:"center"}}>
+              <span style={{fontSize:12.5,fontWeight:800,color:"#0C0C0C",background:"#C87A6A",borderRadius:20,padding:"5px 12px",fontVariantNumeric:"tabular-nums",boxShadow:"0 4px 16px rgba(0,0,0,0.5)"}}>
+                {hizliKurulu === "card" ? "Kart" : "Nakit"} · {tl(hizliTutar)} — onaylamak için yeniden dokun
+              </span>
+            </div>
+          )}
           <div style={{display:"flex",gap:8,maxWidth:sayfaEni,margin:"0 auto",pointerEvents:"auto"}}>
             <button onClick={() => setEkleAcik(true)}
               style={{flex:items.length > 0 ? 1.4 : 3,minWidth:0,padding:"14px 8px",minHeight:50,borderRadius:12,fontSize:14,fontWeight:800,cursor:"pointer",

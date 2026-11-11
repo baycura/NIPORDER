@@ -5,6 +5,7 @@ import { useAuth } from "../../contexts/AuthContext.jsx";
 import Ikon from "../../components/Ikon.jsx";
 import SayiGirisi from "../../components/SayiGirisi.jsx";
 import { sonListe } from "../../components/Bildirim.jsx";
+import { personelHata } from "../../lib/errorText.js";
 import { KUPURLER, BOZUKLAR, kupurToplam, fmtTL, NOT_ESIGI, farkRengi, TASLAK_KEY, denomsTemizle,
   toplamDenoms } from "../../lib/cashCount.js";
 import { GIDER_KATEGORILERI } from "../../lib/gider.js";
@@ -127,6 +128,8 @@ export default function CashCountPage() {
         setToplamElle(t.toplamElle || "");
         setCekilen(t.cekilen || "");
         setNot(t.not || "");
+        // POS gun sonu da taslakta: ekran kapaninca Z raporu rakami yeniden yazilmasin.
+        if (t.pos != null && t.pos !== "") setPos(String(t.pos));
         if (t.sayan) setSayan(t.sayan);
       }
     } catch (e) { /* bozuk taslak sayimi engellemesin */ }
@@ -136,9 +139,9 @@ export default function CashCountPage() {
     if (!storeId || !gun) return;
     try {
       localStorage.setItem(TASLAK_KEY(storeId, gun),
-        JSON.stringify({ adetler, kip, toplamElle, cekilen, not, sayan }));
+        JSON.stringify({ adetler, kip, toplamElle, cekilen, not, sayan, pos }));
     } catch (e) { /* kota dolu olabilir, sayimi engelleme */ }
-  }, [adetler, kip, toplamElle, cekilen, not, sayan, storeId, gun]);
+  }, [adetler, kip, toplamElle, cekilen, not, sayan, pos, storeId, gun]);
 
   const sayilan = useMemo(
     () => kip === "toplam" ? (Number(toplamElle) || 0) : kupurToplam(adetler),
@@ -164,24 +167,26 @@ export default function CashCountPage() {
                           && Number(ozet.nakit_gider || 0) === 0
                           && Number(ozet.acilis || 0) === 0;
 
+  // DUGME NEDEN BASILMIYOR: kaydet'in denetimleriyle AYNI sirada tek cumle.
+  // Eskiden dugme etkin gorunuyor, basinca tarayicinin uyari kutusu cikiyordu
+  // (dokuz ayri kutu); mühür dugmesi soluk gorunup yine de tiklaniyordu.
+  const engelBul = (bosOnay) => {
+    if (!storeId) return "Önce mağaza seç";
+    if (!sayan.trim() || sayan.trim().length < 2) return "Sayan kişinin adını yaz";
+    if (!bosOnay && !sayimGirildi) return kip === "toplam" ? "Çekmecedeki toplam nakdi yaz (boşsa 0)" : "Kupür adetlerini gir";
+    if (acikVar && not.trim().length < 3) return `Önce ${ozet.acik_bugun_adet} açık hesabı kapat — ya da açıklama yaz`;
+    if (!bosOnay && notGerekli && not.trim().length < 3) return fmtTL(Math.abs(fark)) + " fark var — kısa bir açıklama yaz";
+    return null;
+  };
+  const engel = engelBul(false);
+  const engelBos = engelBul(true);
+  const [hata, setHata] = useState(null);       // sunucu hatasi (sayim)
+  const [giderHata, setGiderHata] = useState(null);
+
   const kaydet = async (bosOnay = false) => {
     if (busy) return;
-    if (!storeId) { alert("Önce mağaza seç"); return; }
-    if (!sayan.trim() || sayan.trim().length < 2) { alert("Sayan kişinin adını yaz"); return; }
-    if (!bosOnay && !sayimGirildi) {
-      alert(kip === "toplam"
-        ? "Çekmecedeki toplam nakdi yaz. Çekmece boşsa 0 yaz."
-        : "Kupür adetlerini gir. Çekmece boşsa \"Toplamı yaz\" kutusuna 0 yaz.");
-      return;
-    }
-    if (acikVar && not.trim().length < 3) {
-      alert(ozet.acik_bugun_adet + " hesap hâlâ açık — kapanıştan sonra sayılır.\nÖnce hesapları kapat; kapatamıyorsan (borçlu gitti vs.) sebebini açıklamaya yaz.");
-      return;
-    }
-    if (!bosOnay && notGerekli && not.trim().length < 3) {
-      alert("₺" + Math.round(Math.abs(fark)) + " fark var — kısa bir açıklama yaz");
-      return;
-    }
+    if (engelBul(bosOnay)) return;               // dugme zaten kapali; emniyet
+    setHata(null);
     setBusy(true);
     const { data, error } = await supabase.from("cash_counts").insert({
       store_id: storeId,
@@ -195,7 +200,7 @@ export default function CashCountPage() {
       note: not.trim() || null,
     }).select("counted_total,expected_cash,difference,business_day,tur,pos_gunsonu,kart_satis,yeniden_baslangic").single();
     setBusy(false);
-    if (error) { alert("Kaydedilemedi: " + error.message); return; }
+    if (error) { setHata("Kaydedilemedi: " + personelHata(error)); return; }
     try { localStorage.removeItem(TASLAK_KEY(storeId, gun)); } catch (e) { /* onemsiz */ }
     setBitti(data);
   };
@@ -203,9 +208,9 @@ export default function CashCountPage() {
   const giderKaydet = async () => {
     if (giderBusy) return;
     const tutar = Number(String(gider.tutar).replace(",", "."));
-    if (!tutar || tutar <= 0) { alert("Gider tutarını yaz"); return; }
-    if (gider.aciklama.trim().length < 2) { alert("Ne aldığını yaz (örn. Süt 12 lt)"); return; }
-    setGiderBusy(true);
+    if (!tutar || tutar <= 0) { setGiderHata("Gider tutarını yaz."); return; }
+    if (gider.aciklama.trim().length < 2) { setGiderHata("Ne aldığını yaz (örn. Süt 12 lt)."); return; }
+    setGiderBusy(true); setGiderHata(null);
     const { error } = await supabase.from("expenses").insert({
       store_id: storeId, staff_id: staffUser.id, category: gider.kategori,
       description: gider.aciklama.trim(), amount: tutar, payment_method: "kasa",
@@ -213,7 +218,7 @@ export default function CashCountPage() {
       ...(gun ? { expense_date: gun } : {}),
     });
     setGiderBusy(false);
-    if (error) { alert("Gider kaydedilemedi: " + error.message); return; }
+    if (error) { setGiderHata("Gider kaydedilemedi: " + personelHata(error)); return; }
     setGiderAcik(false);
     setGider(g => ({ tutar: "", aciklama: "", kategori: g.kategori }));
     setGiderBilgi(fmtTL(tutar) + " gider eklendi." + (yeniden ? "" : " Beklenen tutar güncellendi."));
@@ -261,8 +266,9 @@ export default function CashCountPage() {
               }}>{c.label}</button>
             ))}
           </div>
+          {giderHata && <div role="alert" style={{ color: C.down, fontSize: 13, lineHeight: 1.5, marginBottom: 10 }}>{giderHata}</div>}
           <div style={{ display: "flex", gap: 8 }}>
-            <button onClick={() => setGiderAcik(false)} style={{
+            <button onClick={() => { setGiderAcik(false); setGiderHata(null); }} style={{
               flex: 1, minHeight: 44, background: "transparent", color: C.muted,
               border: `1px solid ${C.line}`, borderRadius: 10, fontSize: 13, fontWeight: 700,
               cursor: "pointer", fontFamily: cv,
@@ -394,11 +400,13 @@ export default function CashCountPage() {
             </div>
             <input value={sayan} onChange={e => setSayan(e.target.value)}
                    placeholder="Sayan kişi" style={{ ...inputS, marginBottom: 10 }} />
-            <button onClick={() => kaydet(true)} disabled={busy} style={{
-              width: "100%", minHeight: 48, background: C.accent, color: "#000", border: "none",
-              borderRadius: 12, fontSize: 15, fontWeight: 800, cursor: "pointer", fontFamily: cv,
-              opacity: busy ? 0.6 : 1,
-            }}>Kasa boş — onayla</button>
+            {hata && <div role="alert" style={{ color: C.down, fontSize: 13, lineHeight: 1.5, marginBottom: 10 }}>{hata}</div>}
+            <button onClick={() => kaydet(true)} disabled={busy || !!engelBos} style={{
+              width: "100%", minHeight: 48, border: "none",
+              borderRadius: 12, fontSize: 15, fontWeight: 800, fontFamily: cv,
+              cursor: engelBos ? "default" : "pointer", opacity: busy ? 0.6 : 1,
+              background: engelBos ? "#242424" : C.accent, color: engelBos ? C.faint : "#000",
+            }}>{busy ? "Kaydediliyor…" : engelBos || "Kasa boş — onayla"}</button>
           </div>
         ) : (<>
           {/* Yeni baslangic: onceki gece(ler) sayilmadi, acilis bilinmiyor.
@@ -658,15 +666,15 @@ export default function CashCountPage() {
                       style={{ ...inputS, resize: "vertical", minHeight: 60 }} />
           </div>
 
-          <button onClick={() => kaydet(false)} disabled={busy} style={{
-            width: "100%", minHeight: 52, border: "none", borderRadius: 12, fontSize: 16,
-            fontWeight: 800, cursor: "pointer", fontFamily: cv, opacity: busy ? 0.6 : 1,
-            background: acikVar && not.trim().length < 3 ? "#242424" : C.accent,
-            color: acikVar && not.trim().length < 3 ? C.faint : "#000",
+          {hata && <div role="alert" style={{ color: C.down, fontSize: 13, lineHeight: 1.5, marginBottom: 10 }}>{hata}</div>}
+          <button onClick={() => kaydet(false)} disabled={busy || !!engel} style={{
+            width: "100%", minHeight: 52, border: "none", borderRadius: 12, fontSize: engel ? 14 : 16,
+            fontWeight: 800, fontFamily: cv, opacity: busy ? 0.6 : 1,
+            cursor: engel ? "default" : "pointer",
+            background: engel ? "#242424" : C.accent,
+            color: engel ? C.faint : "#000",
           }}>{busy ? "Kaydediliyor…"
-              : acikVar && not.trim().length < 3
-                ? `Önce ${ozet.acik_bugun_adet} açık hesabı kapat — ya da açıklama yaz`
-                : kapanis ? "Kasayı kapat — sayımı mühürle" : "Devri mühürle"}</button>
+              : engel || (kapanis ? "Kasayı kapat — sayımı mühürle" : "Devri mühürle")}</button>
 
           <div style={{ fontSize: 12, color: C.faint, marginTop: 10, lineHeight: 1.6, textAlign: "center" }}>
             {kapanis
