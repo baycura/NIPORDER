@@ -3,7 +3,7 @@ import { baslikStil } from "../../theme/panel.js";
 import { useSearchParams } from "react-router-dom";
 import { supabase } from "../../lib/supabase.js";
 import { ayGecerli, ayKaydir, guncelAy, hakedisRaporu, mutfakRaporUrl, panoyaKopyala } from "../../lib/hakedis.js";
-import HakedisOzeti, { PaylasSatiri, C, cv, hv, kart } from "../../components/HakedisOzeti.jsx";
+import HakedisOzeti, { PaylasSatiri, C, cv, kart } from "../../components/HakedisOzeti.jsx";
 import Ikon from "../../components/Ikon.jsx";
 
 // Mutfaga Odenecek — NIP sahibinin hakedis ekrani.
