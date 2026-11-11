@@ -4,6 +4,7 @@ import { supabase } from "../../lib/supabase.js";
 import { useAuth } from "../../contexts/AuthContext.jsx";
 import { businessDayStart, businessDayKey, BUSINESS_HOURS } from "../../lib/businessDay.js";
 import Ikon from "../../components/Ikon.jsx";
+import { personelHata } from "../../lib/errorText.js";
 
 const cv = "-apple-system,BlinkMacSystemFont,'Segoe UI',Roboto,sans-serif";
 const BAYAT_SAAT = 12;
@@ -12,11 +13,16 @@ const BAYAT_SAAT = 12;
 // gun icinde canli hali — ciro, acik hesap, vardiya, unutulmus hesap, cok satan.
 // Ciro TAHSILAT'tir: puanla odenen kisim (points_used) dusulur; yoksa cuzdan
 // kullanan uyelerin siparisleri kasada olmayan parayi ciro gibi gosterirdi.
+// Sahip karari (11.11.2026): puanla odenen AYRI satirda gorunur; Gun Ozeti
+// (ReportsPage) ayni kurali kullanir, iki ekran ayni rakami verir.
+// Sorgu hatasi "₺0" diye gosterilmez: sahip bos gun sanmasin.
 export default function TodayPage() {
   const { staffUser, isAdmin } = useAuth();
   const navigate = useNavigate();
   const [loading, setLoading] = useState(true);
   const [veri, setVeri] = useState(null);
+  const [hata, setHata] = useState(null);
+  const [tik, setTik] = useState(0); // "Tekrar dene"
   // Musteri aliskanligi (20261013_aliskanlik_ozet.sql): son 4 hafta, isimsiz.
   const [aliskanlik, setAliskanlik] = useState(null);
   useEffect(() => {
@@ -39,7 +45,7 @@ export default function TodayPage() {
       const dunKesim = new Date(dunBas.getTime() + gecenMs);
       const storeIds = staffUser?.store_ids?.length ? staffUser.store_ids : ["00000000-0000-0000-0000-000000000000"];
 
-      const [{ data: paid }, { data: acik }, { data: vardiyalar }, { data: dun }] = await Promise.all([
+      const [{ data: paid, error: paidHata }, { data: acik, error: acikHata }, { data: vardiyalar }, { data: dun }] = await Promise.all([
         supabase.from("orders")
           .select("id,total,points_used,created_at,order_items(quantity,product_name)")
           .in("origin_store_id", storeIds).eq("status", "paid").gte("created_at", start),
@@ -52,6 +58,13 @@ export default function TodayPage() {
           .in("origin_store_id", storeIds).eq("status", "paid")
           .gte("created_at", dunBas.toISOString()).lt("created_at", dunKesim.toISOString()),
       ]);
+
+      // Ciro ya da acik hesap okunamadiysa eski bilgi ekranda kalir; sifir
+      // yazilmaz. Yazi sahibe ne oldugunu soyler.
+      if (paidHata || acikHata) {
+        if (!iptal) { setHata(personelHata(paidHata || acikHata)); setLoading(false); }
+        return;
+      }
 
       // Vardiyadakilerin adlari (FK iliskisine guvenmeden iki adim)
       let vardiyaAd = [];
@@ -66,6 +79,7 @@ export default function TodayPage() {
 
       const ciro = (paid || []).reduce((t, o) => t + Number(o.total || 0) - Number(o.points_used || 0), 0);
       const dunCiro = (dun || []).reduce((t, o) => t + Number(o.total || 0) - Number(o.points_used || 0), 0);
+      const puan = (paid || []).reduce((t, o) => t + Number(o.points_used || 0), 0);
 
       const saatlik = Object.fromEntries(BUSINESS_HOURS.map(h => [h, 0]));
       (paid || []).forEach(o => {
@@ -85,22 +99,39 @@ export default function TodayPage() {
 
       if (!iptal) {
         setVeri({
-          ciro, dunCiro,
+          ciro, dunCiro, puan,
+          okundu: new Date(),
           saatlik,
           siparisSayisi: (paid || []).length,
           acikSayi: (acik || []).length,
           acikTutar: (acik || []).reduce((t, o) => t + Number(o.total || 0), 0),
           vardiyaAd, cokSatan, unutulmus,
         });
+        setHata(null);
         setLoading(false);
       }
     };
     yukle();
     const iv = setInterval(yukle, 60000); // dakikada bir tazelenir; realtime sart degil
     return () => { iptal = true; clearInterval(iv); };
-  }, [staffUser?.store_ids]);
+  }, [staffUser?.store_ids, tik]);
 
   if (loading) return (<div style={{ color: "#888", fontFamily: cv, padding: 20 }}>Yükleniyor...</div>);
+  // Ilk okuma basarisiz: rakam yok, sifir da gosterilmez.
+  if (!veri) return (
+    <div style={{ fontFamily: cv, color: "#F0EDE8", maxWidth: 560, margin: "0 auto" }}>
+      <div style={{ fontSize: 22, fontWeight: 800, marginBottom: 10 }}>Bugün</div>
+      <div role="alert" style={{ background: "#161616", border: "1px solid #C87A6A", borderRadius: 14, padding: 16 }}>
+        <div style={{ fontSize: 14, fontWeight: 700, marginBottom: 4 }}>Bugünün bilgisi okunamadı.</div>
+        <div style={{ fontSize: 13, color: "#B5B0AA", lineHeight: 1.5 }}>{hata || "Bağlantıyı kontrol et."}</div>
+        <button onClick={() => { setLoading(true); setTik(t => t + 1); }}
+          style={{ marginTop: 12, minHeight: 44, padding: "0 16px", background: "#FFFFFF", color: "#000", border: "none",
+                   borderRadius: 10, fontSize: 14, fontWeight: 800, cursor: "pointer", fontFamily: "inherit" }}>
+          Tekrar dene
+        </button>
+      </div>
+    </div>
+  );
 
   const maxSaat = Math.max(1, ...Object.values(veri.saatlik));
   const enYogun = Object.entries(veri.saatlik).sort((a, b) => b[1] - a[1])[0];
@@ -123,8 +154,31 @@ export default function TodayPage() {
         <div style={{ fontSize: 11, color: "#8A8580" }}>{gun} · gün 03:00'te biter</div>
       </div>
 
+      {/* Tazeleme basarisiz: eski rakam kalir, saatiyle birlikte soylenir. */}
+      {hata && (
+        <div role="alert" style={{ background: "#161616", border: "1px solid #C87A6A", borderRadius: 13, padding: "10px 14px",
+                                    fontSize: 13, color: "#F0EDE8", display: "flex", alignItems: "center", gap: 8 }}>
+          <Ikon ad="uyari" boy={14} style={{ color: "#C87A6A", flexShrink: 0 }}/>
+          <span style={{ flex: 1, minWidth: 0 }}>
+            Bilgi yenilenemedi. Ekrandaki rakamlar{" "}
+            {veri.okundu.toLocaleTimeString("tr-TR", { hour: "2-digit", minute: "2-digit" })} itibarıyla.
+          </span>
+          <button onClick={() => setTik(t => t + 1)}
+            style={{ minHeight: 40, padding: "0 12px", flexShrink: 0, background: "transparent", color: "#F0EDE8",
+                     border: "1px solid #3A3A3A", borderRadius: 9, fontSize: 12.5, fontWeight: 700, cursor: "pointer", fontFamily: "inherit" }}>
+            Yenile
+          </button>
+        </div>
+      )}
+
       <Kart baslik="Ciro (tahsil edilen)" tikla={isAdmin ? () => navigate("/reports") : undefined} cocuk={<>
         <div style={{ fontSize: 30, fontWeight: 800 }}>₺{Math.round(veri.ciro).toLocaleString("tr-TR")}</div>
+        {/* Puanla odenen kasaya girmedi: ciroda yok, ayri gorunur. */}
+        {veri.puan > 0.5 && (
+          <div style={{ fontSize: 11.5, color: "#B5B0AA", marginTop: 3 }}>
+            Puanla ödenen <span style={{ color: "#F0EDE8", fontWeight: 700 }}>₺{Math.round(veri.puan).toLocaleString("tr-TR")}</span> ayrı; ciroda yok.
+          </div>
+        )}
         {/* Tek basina bir rakam bir sey soylemiyor; ayni saatteki dun soyluyor. */}
         {veri.dunCiro > 0 && (() => {
           const fark = veri.ciro - veri.dunCiro;
