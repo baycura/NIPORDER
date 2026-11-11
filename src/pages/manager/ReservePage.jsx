@@ -311,14 +311,15 @@ function Rezervasyonlar({ uyar }) {
   // cron'u beklemeden). E-posta birkac saniyede gider; durum iki kez okunur.
   // Gitmediyse (kurulum eksik, adres yok, saglayici hatasi) bir kez uyarir ve
   // "Onayli" suzgecine gecer: "WhatsApp'tan haber ver" dugmesi orada.
-  const musteriyeBildir = (r) => {
+  const musteriyeBildir = (r, epostaVar) => {
     if (rezervasyonYerel) return;
     let uyarildi = false;
     const bak = async () => {
       if (!canli.current) return;
       await yukle();
-      // Misafire zaten "e-postasi yok" dendi; ikinci uyari yalniz uyede
-      if (!r?.id || !r.profile_id || uyarildi || !canli.current) return;
+      // E-postasi olmayana zaten "WhatsApp'tan haber ver" dendi; ikinci uyari
+      // yalniz e-posta bekleyen kayitta (site uyesi ya da menuden talep eden uye)
+      if (!r?.id || !epostaVar || uyarildi || !canli.current) return;
       const { data: b } = await supabase.from("nip_reserve_onay_bildirim").select("durum,hata").eq("rez_id", r.id).maybeSingle();
       if (!canli.current || !b || b.durum === "gonderildi" || b.durum === "bekliyor") return;
       uyarildi = true;
@@ -354,10 +355,17 @@ function Rezervasyonlar({ uyar }) {
           if (u2.error) throw u2.error;
         }
       }
-      uyar(rezervasyonYerel ? "Onaylandı ✓" : r.profile_id ? "Onaylandı ✓ E-posta sıraya alındı" : "Onaylandı ✓ Misafirin e-postası yok: WhatsApp'tan haber ver");
+      // E-posta adresi: site uyesinde profilden; menuden (uygulamadan) talep eden
+      // uyede Order'daki izden gelir. Ikisi de yoksa misafirdir.
+      let epostaVar = !!r.profile_id;
+      if (!rezervasyonYerel && !epostaVar) {
+        const { data: iz } = await supabase.from("nip_rez_talepleri").select("eposta").eq("rez_id", r.id).maybeSingle();
+        epostaVar = !!iz?.eposta;
+      }
+      uyar(rezervasyonYerel ? "Onaylandı ✓" : epostaVar ? "Onaylandı ✓ E-posta sıraya alındı" : "Onaylandı ✓ Misafirin e-postası yok: WhatsApp'tan haber ver");
       // Misafirde e-posta yok: "WhatsApp'tan haber ver" dugmesi Onayli suzgecinde
-      if (!rezervasyonYerel && !r.profile_id) setDurum("approved");
-      yukle(); musteriyeBildir(r);
+      if (!rezervasyonYerel && !epostaVar) setDurum("approved");
+      yukle(); musteriyeBildir(r, epostaVar);
     } catch (e) { uyar("Onaylanamadı: " + e.message, true); } finally { setBusy(false); }
   };
 
