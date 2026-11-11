@@ -2,6 +2,7 @@ import { useEffect, useState } from "react";
 import { supabase } from "../lib/supabase.js";
 import Ikon from "./Ikon.jsx";
 import { Pencere } from "./BorcTahsil.jsx";
+import { personelHata } from "../lib/errorText.js";
 
 // HESABI IPTAL ETMEDEN DUZELT (20261013_hesap_duzeltme.sql).
 // Olcum: hesaplarin %10,6'si iptal ediliyordu ve nedeni yazilmiyordu; mutfaga
@@ -290,6 +291,152 @@ export function MasaPenceresi({ order, onKapat, onBitti }) {
         </button>
       </div>
       {hata && <div role="alert" style={{ color: C.down, fontSize: 13, marginTop: 10, lineHeight: 1.5 }}>{hata}</div>}
+    </Pencere>
+  );
+}
+
+// ---------------------------------------------------------------------------
+// IKRAM OLARAK KAPAT (20261111_ikram_kapat.sql)
+// Kalemlerinin tamami ikram edilen hesabin toplami ₺0 olur. Kasa ₺0 tahsil
+// etmedigi icin hesap acik kaliyor, personel hesabi iptal ediyordu; ikramin
+// izi kayboluyordu. Sahip karari (11.11.2026): hesap para yazilmadan kapanir,
+// ama ikrami KIMIN verdigi bos kalmaz.
+//
+// Pencere kalemleri sunucudan TAZE okur: ekrandaki liste eski olabilir (baska
+// cihaz urun eklemis olabilir). Kapatma isi tek sunucu fonksiyonu
+// (nip_ikram_kapat): verensiz kaleme veren yazar, hesabi kapatir, kimin
+// kapattigini kaydeder.
+// order: { id }, ad: ekranda gorunen hesap adi, staffUser: islemi yapan
+// onBitti({ deger, verenler, urun })
+export function IkramKapatPenceresi({ order, ad, staffUser, onKapat, onBitti }) {
+  const [kalemler, setKalemler] = useState(null); // null = okunuyor
+  const [personel, setPersonel] = useState([]);
+  const [veren, setVeren] = useState(null);
+  const [busy, setBusy] = useState(false);
+  const [hata, setHata] = useState(null);
+  const [okunamadi, setOkunamadi] = useState(false);
+
+  useEffect(() => {
+    let iptal = false;
+    Promise.all([
+      supabase.from("order_items")
+        .select("id, product_name, variant_name, quantity, odenen_adet, product_price, final_price, is_treat, treated_by")
+        .eq("order_id", order.id).order("created_at"),
+      supabase.from("staff").select("id, name, role").eq("is_active", true),
+    ]).then(([k, p]) => {
+      if (iptal) return;
+      if (k.error) { setHata(personelHata(k.error)); setOkunamadi(true); setKalemler([]); return; }
+      setKalemler(k.data || []);
+      setPersonel(p.data || []);
+    });
+    return () => { iptal = true; };
+  }, [order.id]);
+
+  const kalanAdet = (k) => Math.max(0, Number(k.quantity || 0) - Number(k.odenen_adet || 0));
+  const acik = (kalemler || []).filter(k => kalanAdet(k) > 0);
+  const kalan = acik.reduce((t, k) => t + Number(k.final_price || 0) * kalanAdet(k), 0);
+  const eksik = acik.filter(k => !k.is_treat || !k.treated_by);
+  const deger = acik.reduce((t, k) => t + Number(k.product_price || 0) * Number(k.quantity || 0), 0);
+  const adet = acik.reduce((t, k) => t + Number(k.quantity || 0), 0);
+
+  // Veren: islemi yapan ya da sahip (sunucu da yalniz bunlari kabul eder).
+  const verenler = [];
+  if (staffUser?.id) verenler.push({ id: staffUser.id, ad: staffUser.name || "Ben", ben: true });
+  personel.filter(s => s.role === "admin" && s.id !== staffUser?.id)
+    .forEach(s => verenler.push({ id: s.id, ad: s.name, ben: false }));
+  const adBul = (id) => verenler.find(v => v.id === id)?.ad || personel.find(s => s.id === id)?.name || "";
+  // Tek aday varsa secili gelir: sorulacak bir sey yok.
+  const tekAday = verenler.length === 1 ? verenler[0].id : null;
+  const secili = veren || tekAday;
+
+  const hazir = kalemler !== null;
+  const tutarVar = kalan > 0.005;
+  const bos = hazir && acik.length === 0;
+  const verenGerek = eksik.length > 0;
+  const tamam = hazir && !tutarVar && !bos && (!verenGerek || !!secili);
+
+  const kapat = async () => {
+    if (busy || !tamam) return;
+    setBusy(true); setHata(null);
+    const { data, error } = await supabase.rpc("nip_ikram_kapat", {
+      p_order_id: order.id, p_veren: verenGerek ? secili : null,
+    });
+    setBusy(false);
+    if (error) { setHata(hataYaz({ message: personelHata(error) })); return; }
+    onBitti?.((Array.isArray(data) ? data[0] : data) || {});
+  };
+
+  const satir = { display: "flex", alignItems: "baseline", gap: 10, padding: "9px 0", fontSize: 14 };
+  return (
+    <Pencere baslik="İkram olarak kapat" alt={`${ad || "Hesap"} · para alınmaz`} onKapat={onKapat} z={130}>
+      {!hazir && <div style={{ fontSize: 13, color: C.muted }}>Hesap okunuyor…</div>}
+
+      {hazir && tutarVar && (
+        <div role="alert" style={{ fontSize: 14, color: C.ink, lineHeight: 1.6 }}>
+          Hesapta tahsil edilecek <b>{tl(kalan)}</b> var. Önce tahsil et ya da ürünleri ikram işaretle.
+        </div>
+      )}
+      {hazir && !tutarVar && bos && !okunamadi && (
+        <div style={{ fontSize: 14, color: C.ink, lineHeight: 1.6 }}>
+          Hesapta kapatılacak ürün yok. Boş hesabı iptal et.
+        </div>
+      )}
+
+      {hazir && !tutarVar && !bos && (
+        <>
+          <div style={{ fontSize: 13, color: C.muted, lineHeight: 1.6, marginBottom: 10 }}>
+            Para alınmaz, ciroya yazılmaz. {adet} ürün ikram olarak kaydedilir;
+            değeri <b style={{ color: C.ink }}>{tl(deger)}</b>.
+          </div>
+          <div style={{ borderTop: `1px solid ${C.line}`, borderBottom: `1px solid ${C.line}`, marginBottom: 14 }}>
+            {acik.map((k, i) => {
+              const verenAd = k.is_treat && k.treated_by ? adBul(k.treated_by) : (secili ? adBul(secili) : "");
+              return (
+                <div key={k.id} style={{ ...satir, borderTop: i === 0 ? "none" : `1px solid ${C.line}` }}>
+                  <div style={{ flex: 1, minWidth: 0 }}>
+                    <div style={{ fontWeight: 700, overflow: "hidden", textOverflow: "ellipsis", whiteSpace: "nowrap" }}>
+                      {k.product_name}{k.variant_name ? " · " + k.variant_name : ""}{Number(k.quantity) > 1 ? " × " + k.quantity : ""}
+                    </div>
+                    <div style={{ fontSize: 12, marginTop: 2, color: verenAd ? C.muted : C.down, fontWeight: verenAd ? 500 : 700 }}>
+                      {verenAd ? "İkram eden: " + verenAd : "İkram eden seçilmedi"}
+                    </div>
+                  </div>
+                  <div style={{ flexShrink: 0, color: C.muted, fontVariantNumeric: "tabular-nums" }}>
+                    {tl(Number(k.product_price || 0) * Number(k.quantity || 0))}
+                  </div>
+                </div>
+              );
+            })}
+          </div>
+
+          {verenGerek && (
+            <div>
+              <div style={{ fontSize: 12, color: C.muted, fontWeight: 700, marginBottom: 8 }}>
+                İkramı kim veriyor?{eksik.length < acik.length ? ` (${eksik.length} ürün için)` : ""}
+              </div>
+              <div style={{ display: "flex", flexWrap: "wrap", gap: 7 }}>
+                {verenler.map(v => (
+                  <button key={v.id} onClick={() => setVeren(v.id)} aria-pressed={secili === v.id}
+                    style={{ ...cip(secili === v.id), minHeight: 44 }}>
+                    {v.ad}{v.ben ? " (ben)" : ""}
+                  </button>
+                ))}
+              </div>
+            </div>
+          )}
+        </>
+      )}
+
+      {hata && <div role="alert" style={{ color: C.down, fontSize: 13, marginTop: 10, lineHeight: 1.5 }}>{hata}</div>}
+      <AnaDugme onClick={kapat} busy={busy} pasif={!tamam}>
+        {busy ? "Kapatılıyor…"
+          : !hazir ? "Hesap okunuyor…"
+          : okunamadi ? "Hesap okunamadı"
+          : tutarVar ? "Önce tahsil et"
+          : bos ? "Kapatılacak ürün yok"
+          : !tamam ? "Önce ikram edeni seç"
+          : "İkram olarak kapat"}
+      </AnaDugme>
     </Pencere>
   );
 }

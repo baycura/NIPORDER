@@ -13,7 +13,7 @@ import { businessDayStart } from "../../lib/businessDay.js";
 import { useMasaustu, useGenisEkran, useDokunmatik } from "../../lib/ekran.js";
 import { misafirHesapAc } from "../../lib/misafirHesap.js";
 import Bildirim, { sonListe } from "../../components/Bildirim.jsx";
-import { IptalPenceresi, KaldirPenceresi, TasiPenceresi, MasaPenceresi } from "../../components/HesapDuzelt.jsx";
+import { IptalPenceresi, KaldirPenceresi, TasiPenceresi, MasaPenceresi, IkramKapatPenceresi } from "../../components/HesapDuzelt.jsx";
 import { tl } from "../../lib/para.js";
 import { HESAP_DURUM, KALEM_DURUM, buyuk } from "../../lib/durum.js";
 import { personelHata } from "../../lib/errorText.js";
@@ -37,6 +37,7 @@ export default function OrderDetailPage() {
   // Hesabi iptal etmeden duzelt (20261013_hesap_duzeltme.sql): iptal nedeni,
   // mutfaga gitmis urunu kaldirma, baska hesaba tasima, masa degistirme.
   const [iptalAcik, setIptalAcik] = useState(false);
+  const [ikramKapatAcik, setIkramKapatAcik] = useState(false);
   const [kaldirKalem, setKaldirKalem] = useState(null);
   const [tasiKalem, setTasiKalem] = useState(null);
   const [masaAcik, setMasaAcik] = useState(false);
@@ -602,10 +603,25 @@ export default function OrderDetailPage() {
   const hizliTutar = odenmisVar
     ? Math.round(items.reduce((t, i) => t + Number(i.final_price || 0) * Math.max(0, Number(i.quantity || 0) - Number(i.odenen_adet || 0)), 0) * 100) / 100
     : Number(order?.total || 0);
+  // ₺0 HESAP: urun var ama tahsil edilecek tutar yok (hepsi ikram). Kart /
+  // Nakit yerine "İkram olarak kapat" gorunur (sahip karari 11.11.2026).
+  const ikramKapanir = items.length > 0 && !(hizliTutar > 0);
+  const ikramBitti = async (sonuc) => {
+    setIkramKapatAcik(false);
+    if (partiKasaAcik) {
+      if (!(await yeniHesap())) navigate("/tables");
+      return;
+    }
+    const ad = order?.table_id ? (tables[order.table_id] || "Masa") : (order?.customer_name || "Hesap");
+    navigate(sonListe(), { state: { bildirim: `${ad}: ikram olarak kapatıldı`
+      + (Number(sonuc?.deger) > 0 ? ` · ${tl(sonuc.deger)}` : "")
+      + (sonuc?.verenler ? ` · ${sonuc.verenler}` : "") } });
+  };
   const hizliTahsil = async (yontem) => {
     if (tahsilBusy) return;
     const tutar = hizliTutar;
-    if (!(tutar > 0)) { alert("Hesapta tahsil edilecek tutar yok"); return; }
+    // Tahsil edilecek tutar yok: urunler ikramsa hesap ikram olarak kapanir.
+    if (!(tutar > 0)) { if (items.length > 0) setIkramKapatAcik(true); return; }
     setTahsilBusy(true);
     const { data, error } = await supabase.rpc("nip_odeme_al", {
       p_order_id: orderId,
@@ -763,6 +779,7 @@ export default function OrderDetailPage() {
           order={order} items={items} products={products} categories={categories} hhPrices={indirimAcik() ? hhPrices : {}} hhNot={hhSadeceUye && !order?.customer_id && Object.keys(hhPrices).length ? "Happy hour saati: indirim yalnız üyeye. Önce üyeyi bağla." : ""}
           onEkle={urunEkle} onAdet={changeQty} onOdeme={goToPayment} kapali={kapali}
           onTahsil={hizliTahsil} tahsilBusy={tahsilBusy} onYeniHesap={yeniHesap}
+          ikramKapanir={ikramKapanir} onIkramKapat={() => setIkramKapatAcik(true)}
           sonEklenen={sonEklenen} sonKalem={sonKalem} onSonAdet={sonAdet} onGeriAl={sonEklenenGeriAl}
           partiAdet={partiAdet} tumMenu={tumMenu} onTumMenu={setTumMenu}
           onListe={() => izgaraSec("kapali")}
@@ -944,7 +961,16 @@ export default function OrderDetailPage() {
                       boxShadow:"0 4px 16px rgba(0,0,0,0.5)",display:"inline-flex",alignItems:"center",justifyContent:"center",gap:5,fontFamily:"inherit",whiteSpace:"nowrap"}}>
               <Ikon ad="ekle" boy={16}/>{items.length > 0 ? "Ürün" : "Ürün Ekle"}
             </button>
-            {items.length > 0 ? (<>
+            {ikramKapanir ? (
+              /* Urunlerin hepsi ikram: tahsil edilecek tutar yok. Tek dugme;
+                 pencere ikram edeni gosterir, eksikse sorar. */
+              <button onClick={() => setIkramKapatAcik(true)}
+                style={{flex:5,minWidth:0,padding:"14px 8px",minHeight:50,border:"none",borderRadius:12,fontSize:13.5,fontWeight:800,cursor:"pointer",
+                        background:"#FFFFFF",color:"#000",boxShadow:"0 4px 16px rgba(0,0,0,0.5)",
+                        display:"inline-flex",alignItems:"center",justifyContent:"center",gap:6,fontFamily:"inherit",whiteSpace:"nowrap",overflow:"hidden",textOverflow:"ellipsis"}}>
+                <Ikon ad="hediye" boy={15}/>İkram olarak kapat
+              </button>
+            ) : items.length > 0 ? (<>
               {/* Kart (ana) · Nakit · Diger. Bolme, uye, puan, borc ve indirim
                   "Diger"de: bugunku Kasa ekrani. */}
               <button onClick={() => hizliBas("card")} disabled={tahsilBusy || !(hizliTutar > 0)}
@@ -1031,6 +1057,12 @@ export default function OrderDetailPage() {
       {/* Liste gorunumunde sabit alt cubugun USTUNDE: "X silindi" yazisi Kart/Nakit
           dugmesindeki tutari ortmesin. Parti izgarasinda varsayilan yer. */}
       {duzBilgi && <Bildirim key={duzBilgi.id} metin={duzBilgi.metin} alt={partiKasaAcik ? 96 : cubukAlt + 62}/>}
+      {ikramKapatAcik && !kapali && (
+        <IkramKapatPenceresi order={order} staffUser={staffUser}
+          ad={order.table_id ? (tables[order.table_id] || "Masa") : (order.customer_name || "Hesap")}
+          onKapat={() => { setIkramKapatAcik(false); loadOrderOnly(); }}
+          onBitti={ikramBitti}/>
+      )}
       {iptalAcik && (
         <IptalPenceresi order={order} ad={order.table_id ? (tables[order.table_id] || "Masa") : (order.customer_name || "Hesap")}
           kalemSayisi={items.length}

@@ -198,8 +198,7 @@ const T = {
     total: "TOPLAM",
     submit_order: "Siparişi Gönder",
     submitting: "Gönderiliyor...",
-    waiter_will_bring: "Garson siparişini masana getirecek",
-    notif_promise: "Sipariş hazır olunca bildirim göndereceğiz",
+    pickup_promise: "Hazır olunca haber vereceğiz; siparişini kasadan alırsın",
     takeaway: "Götür",
     takeaway_all: "Hepsini götür",
     takeaway_hint: "Paket bardakta hazırlanır",
@@ -287,8 +286,7 @@ const T = {
     total: "TOTAL",
     submit_order: "Place Order",
     submitting: "Sending...",
-    waiter_will_bring: "Server will bring it to your table",
-    notif_promise: "We'll notify you when your order is ready",
+    pickup_promise: "We'll let you know when it's ready; pick it up at the counter",
     takeaway: "To go",
     takeaway_all: "All to go",
     takeaway_hint: "Served in a takeaway cup",
@@ -376,8 +374,7 @@ const T = {
     total: "ИТОГО",
     submit_order: "Отправить заказ",
     submitting: "Отправляем...",
-    waiter_will_bring: "Официант принесёт заказ к вашему столу",
-    notif_promise: "Мы сообщим, когда заказ будет готов",
+    pickup_promise: "Сообщим, когда заказ будет готов; заберите его на кассе",
     takeaway: "С собой",
     takeaway_all: "Всё с собой",
     takeaway_hint: "Подаётся в стакане с собой",
@@ -3202,7 +3199,10 @@ export default function CustomerMenu() {
               );
             })()}
             <div style={{textAlign:"center",fontSize:11,color:"#666666",marginTop:10}}>
-              {table && !table.shared ? t.waiter_will_bring : t.notif_promise}
+              {/* Sahip karari (11.11.2026): musteri siparisini kasadan alir. Sepet
+                  eskiden normal masada "garson masana getirecek" diyordu; hazir
+                  ekrani ve bildirim "kasadan alabilirsin" dedigi icin soz tutmuyordu. */}
+              {t.pickup_promise}
             </div>
           </div>
         </div>

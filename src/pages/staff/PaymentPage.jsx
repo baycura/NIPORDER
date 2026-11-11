@@ -9,7 +9,7 @@ import { BorclularPaneli } from "../../components/BorcTahsil.jsx";
 import { tl } from "../../lib/para.js";
 import { telefonNormalize } from "../../lib/telefon.js";
 import KasaSayKarti from "../../components/KasaSayKarti.jsx";
-import { IptalPenceresi } from "../../components/HesapDuzelt.jsx";
+import { IptalPenceresi, IkramKapatPenceresi } from "../../components/HesapDuzelt.jsx";
 import Bildirim from "../../components/Bildirim.jsx";
 import { useCanliYenile } from "../../lib/canliYenile.js";
 
@@ -130,10 +130,13 @@ export default function PaymentPage() {
       ]);
       if (no !== yuklemeNo.current) return;
       const m = {};
-      for (const id of ids) m[id] = { kalan: 0, odemeSayisi: 0 };
+      for (const id of ids) m[id] = { kalan: 0, odemeSayisi: 0, acikKalem: 0 };
       for (const i of its || []) {
         const kalanAdet = Math.max(0, Number(i.quantity || 0) - Number(i.odenen_adet || 0));
-        if (m[i.order_id]) m[i.order_id].kalan += Number(i.final_price || 0) * kalanAdet;
+        if (m[i.order_id]) {
+          m[i.order_id].kalan += Number(i.final_price || 0) * kalanAdet;
+          if (kalanAdet > 0) m[i.order_id].acikKalem += 1;
+        }
       }
       for (const p of pays || []) if (m[p.order_id]) m[p.order_id].odemeSayisi += 1;
       setBolum(m);
@@ -147,6 +150,8 @@ export default function PaymentPage() {
   // diye iptal ediyoruz. Silmiyoruz — kalemler ve saat kaydi duruyor.
   // Iptal nedeni zorunlu (20261013_hesap_duzeltme.sql): neden penceresi acilir.
   const [iptalHesap, setIptalHesap] = useState(null);
+  // ₺0 hesap (urunlerin hepsi ikram): "Tahsil Et" yerine "İkram kapat".
+  const [ikramHesap, setIkramHesap] = useState(null);
   const cancelOrder = (o) => setIptalHesap(o);
 
   // {points, name, borc} — modal acilinca cekilir. Borcu olan kisi puan
@@ -457,6 +462,21 @@ export default function PaymentPage() {
       )}
 
       {bildirim && <Bildirim metin={bildirim.metin} key={bildirim.id}/>}
+      {ikramHesap && (() => {
+        const o = ikramHesap;
+        const nerede = o.table_id ? (tables[o.table_id] || "Masa") : (o.customer_name || "Misafir");
+        return (
+          <IkramKapatPenceresi order={o} ad={nerede} staffUser={staffUser}
+            onKapat={() => { setIkramHesap(null); load(true); }}
+            onBitti={(sonuc) => {
+              setOrders(prev => prev.filter(x => x.id !== o.id));
+              setIkramHesap(null);
+              setBildirim({ metin: `${nerede}: ikram olarak kapatıldı`
+                + (Number(sonuc?.deger) > 0 ? ` · ${tl(sonuc.deger)}` : "")
+                + (sonuc?.verenler ? ` · ${sonuc.verenler}` : ""), id: Date.now() });
+            }}/>
+        );
+      })()}
       {iptalHesap && (() => {
         const o = iptalHesap;
         const nerede = o.table_id ? (tables[o.table_id] || "Masa") : (o.customer_name || "Misafir");
@@ -523,6 +543,9 @@ export default function PaymentPage() {
         // tutari ister. Kalan ve kac odeme alindigi yan yana.
         const b = BOL ? bolum[o.id] : null;
         const yarim = !!b && b.odemeSayisi > 0 && b.kalan > 0.005;
+        // Urun var ama tahsil edilecek tutar yok: hepsi ikram. Bolme kapaliysa
+        // (b yok) hesabin toplamina bakilir; pencere kalemleri kendi okur.
+        const ikramlik = b ? (b.acikKalem > 0 && !(b.kalan > 0.005)) : !(Number(o.total || 0) > 0);
         return (
           <div key={o.id} style={{background:"#1A1A1A",border:"1px solid "+(eski?"#FFFFFF":"#2A2A2A"),borderRadius:10,padding:14,marginBottom:8,display:"flex",alignItems:"center",gap:12}}>
             <div style={{flex:1,minWidth:0}}>
@@ -545,7 +568,9 @@ export default function PaymentPage() {
               )}
             </div>
             <div style={{display:"flex",flexDirection:"column",gap:5}}>
-              <button onClick={() => openPay(o)} style={{minHeight:44,padding:"10px 16px",background:"#FFFFFF",color:"#000",border:"none",borderRadius:8,fontSize:13,fontWeight:800,cursor:"pointer"}}>Tahsil Et</button>
+              {ikramlik
+                ? <button onClick={() => setIkramHesap(o)} style={{minHeight:44,padding:"10px 16px",background:"#FFFFFF",color:"#000",border:"none",borderRadius:8,fontSize:13,fontWeight:800,cursor:"pointer",fontFamily:"inherit"}}>İkram kapat</button>
+                : <button onClick={() => openPay(o)} style={{minHeight:44,padding:"10px 16px",background:"#FFFFFF",color:"#000",border:"none",borderRadius:8,fontSize:13,fontWeight:800,cursor:"pointer"}}>Tahsil Et</button>}
               {eski && <button onClick={() => cancelOrder(o)} style={{minHeight:40,padding:"6px 14px",background:"transparent",color:"#C87A6A",border:"1px solid #2A2A2A",borderRadius:8,fontSize:11,fontWeight:700,cursor:"pointer"}}>İptal</button>}
             </div>
           </div>

@@ -30,6 +30,9 @@
 - **Self-servis hedefi:** Garson çağırma butonu İSTENMİYOR. Müşteri siparişini
   menüden kendi verir, hazır olunca kendisi alır, (ileride) ödemeyi de kendisi
   yapar. Online ödeme için PSP (iyzico/PayTR vb.) anlaşması gerekecek — henüz yok.
+  **Sahip kararı (11.11.2026): müşteri siparişini kasadan alır.** Menü hiçbir
+  durumda "garson masana getirecek" demez; sepet, hazır ekranı ve bildirim aynı
+  sözü verir ("hazır olunca haber vereceğiz; kasadan alırsın").
 - **Üyelik sistemi (KURULDU):** Müşteri menüde Google ile giriş yapar →
   `customers` kaydına bağlanır. Üyeler sayfasından kişiye özel **ürün bazlı
   SABİT ₺ indirim** tanımlanır (`member_discounts`); üye menüde indirimli fiyatı
