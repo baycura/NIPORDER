@@ -84,7 +84,7 @@ export default function MenuMgmtPage() {
 
   const saveCat = async () => {
     if (busy) return;
-    if (!catForm.name?.trim()) { uyar("Kategori adi gerekli"); return; }
+    if (!catForm.name?.trim()) { uyar("Kategori adı gerekli"); return; }
     setBusy(true);
     const payload = {
       name: catForm.name.trim(), name_en: catForm.name_en?.trim() || null, name_ru: catForm.name_ru?.trim() || null, icon: catForm.icon || null,
@@ -114,7 +114,7 @@ export default function MenuMgmtPage() {
     // Gonderilmezse NULL kalir ve "new row violates row-level security policy" hatasi doner.
     if (catModal.mode === "new") {
       const storeId = staffUser?.store_ids?.[0];
-      if (!storeId) { uyar("Hesabina magaza atanmamis — yonetici ile gorus."); setBusy(false); return; }
+      if (!storeId) { uyar("Hesabına mağaza atanmamış — yönetici ile görüş."); setBusy(false); return; }
       payload.store_id = storeId;
     }
     const res = catModal.mode === "new"
@@ -127,7 +127,7 @@ export default function MenuMgmtPage() {
   // Donen deger: silindi mi. Pencere ancak silme gerceklestiyse kapanir.
   const delCat = async (c) => {
     const prodCount = products.filter(p => p.category_id === c.id).length;
-    if (prodCount > 0) { uyar("Bu kategoride " + prodCount + " urun var. Once urunleri sil/tasi."); return false; }
+    if (prodCount > 0) { uyar("Bu kategoride " + prodCount + " ürün var. Önce ürünleri sil ya da taşı."); return false; }
     if (!confirm('"' + c.name + '" silinsin mi?')) return false;
     const { error } = await supabase.from("categories").delete().eq("id", c.id);
     if (error) { uyar("Silinemedi: " + error.message); return false; }
@@ -137,7 +137,7 @@ export default function MenuMgmtPage() {
 
   // -------- PRODUCTS --------
   const openNewProd = () => {
-    if (!selectedCat) { uyar("Once kategori sec"); return; }
+    if (!selectedCat) { uyar("Önce kategori seç"); return; }
     setProdModal({mode:"new"});
     setProdForm({
       name:"", name_en:"", name_ru:"", brand:"", description:"", description_en:"", description_ru:"", price:'', cost_price:'', instant_discount_pct:'', hh_enabled:false, hh_price:'', hh_start:'', hh_end:'', hh_days:[0,1,2,3,4,5,6],
@@ -195,8 +195,8 @@ export default function MenuMgmtPage() {
     if (prodForm.has_options) {
       const groups = (prodForm.options_config && prodForm.options_config.groups) || [];
       for (const g of groups) {
-        if (!g.name?.trim()) { uyar("Secenek grubu adi bos olamaz"); return; }
-        if (!g.options || g.options.length === 0) { uyar(g.name + " grubunun hic secenegi yok"); return; }
+        if (!g.name?.trim()) { uyar("Seçenek grubu adı boş olamaz"); return; }
+        if (!g.options || g.options.length === 0) { uyar(g.name + " grubunun hiç seçeneği yok"); return; }
       }
     }
     setBusy(true);
@@ -514,7 +514,7 @@ export default function MenuMgmtPage() {
           <Field label="AD (Türkçe)"><input value={catForm.name||""} onChange={e=>setCatForm(f => ({...f,name:e.target.value}))} style={inputS}/></Field>
           <Field label="AD (İngilizce)"><input value={catForm.name_en||""} onChange={e=>setCatForm(f => ({...f,name_en:e.target.value}))} placeholder="İsteğe bağlı" style={inputS}/></Field>
           <Field label="AD (Rusça)"><input value={catForm.name_ru||""} onChange={e=>setCatForm(f => ({...f,name_ru:e.target.value}))} placeholder="İsteğe bağlı — müşteri RU seçince görünür" style={inputS}/></Field>
-          <Field label="IKON (emoji)"><input value={catForm.icon||""} onChange={e=>setCatForm(f => ({...f,icon:e.target.value}))} placeholder="👕" style={inputS}/></Field>
+          <Field label="İKON (emoji)"><input value={catForm.icon||""} onChange={e=>setCatForm(f => ({...f,icon:e.target.value}))} placeholder="👕" style={inputS}/></Field>
           {/* Urun basina 152 kayit yerine kategori basina bir varsayilan.
               Musteri menusundeki "~8 dk" rozeti boylece calisir hale gelir. */}
           <Field label="HAZIRLANMA SÜRESİ (dk — bu kategorinin varsayılanı)">
@@ -529,11 +529,11 @@ export default function MenuMgmtPage() {
           <Field label="SIRA (küçük = önce)"><SayiGirisi kip="tam" value={catForm.sort_order||0} onChange={v=>setCatForm(f => ({...f,sort_order:v}))} style={inputS}/></Field>
           <Field label="ÜST KATEGORİ">
             <select value={catForm.parent_id||""} onChange={e=>setCatForm(f => ({...f,parent_id:e.target.value||null}))} style={inputS}>
-              <option value="">— Yok (menude sekme olur) —</option>
+              <option value="">— Yok (menüde sekme olur) —</option>
               {categories.filter(c => !c.parent_id && c.id !== catModal.data?.id && !c.show_in_shop)
                 .map(c => <option key={c.id} value={c.id}>{c.name}</option>)}
             </select>
-            <div style={{fontSize:10,color:"#888888",marginTop:4}}>Secilirse ust kategorinin icinde alt secim olarak gorunur, ust menude yer kaplamaz.</div>
+            <div style={{fontSize:10,color:"#888888",marginTop:4}}>Seçilirse üst kategorinin içinde alt seçim olarak görünür, üst menüde yer kaplamaz.</div>
           </Field>
           <div style={{display:"flex",gap:8}}>
             <Field label="SİPARİŞ SAATİ — BAŞLANGIÇ"><input type="time" value={catForm.available_from||""} onChange={e=>setCatForm(f => ({...f,available_from:e.target.value}))} style={inputS}/></Field>
@@ -656,7 +656,7 @@ export default function MenuMgmtPage() {
           </Field>
           <Field label="AD (İngilizce)"><input value={prodForm.name_en||""} onChange={e=>setProdForm(f => ({...f,name_en:e.target.value}))} placeholder="İsteğe bağlı — müşteri EN seçince görünür" style={inputS}/></Field>
           <Field label="AD (Rusça)"><input value={prodForm.name_ru||""} onChange={e=>setProdForm(f => ({...f,name_ru:e.target.value}))} placeholder="İsteğe bağlı — müşteri RU seçince görünür" style={inputS}/></Field>
-          <Field label="MARKA (opsiyonel)"><input value={prodForm.brand||""} onChange={e=>setProdForm(f => ({...f,brand:e.target.value}))} placeholder="Orn: Rapha, Le Bon Bain..." style={inputS}/></Field>
+          <Field label="MARKA (opsiyonel)"><input value={prodForm.brand||""} onChange={e=>setProdForm(f => ({...f,brand:e.target.value}))} placeholder="Örn: Rapha, Le Bon Bain..." style={inputS}/></Field>
           <Field label="BARKOD (opsiyonel)">
             <div style={{display:"flex",gap:8}}>
               <input value={prodForm.barkod||""} onChange={e=>setProdForm(f => ({...f,barkod:e.target.value}))} inputMode="numeric" placeholder="Kutudaki 13 haneli numara — kasada ve stokta bu numarayla aranır" style={{...inputS,flex:1,minWidth:0}}/>
@@ -809,7 +809,7 @@ export default function MenuMgmtPage() {
                 {((prodForm.options_config && prodForm.options_config.groups) || []).map((g, gIdx) => (
                   <div key={gIdx} style={{background:"#161616",border:"1px solid #333",borderRadius:8,padding:10,marginBottom:8}}>
                     <div style={{display:"flex",gap:6,marginBottom:8}}>
-                      <input value={g.name||""} onChange={e=>updateGroup(gIdx,"name",e.target.value)} placeholder="Grup adi (ör: Beden, Renk)" style={{...inputS,flex:1,padding:"8px 10px",fontSize:13}}/>
+                      <input value={g.name||""} onChange={e=>updateGroup(gIdx,"name",e.target.value)} placeholder="Grup adı (ör: Beden, Renk)" style={{...inputS,flex:1,padding:"8px 10px",fontSize:13}}/>
                       <button onClick={()=>removeGroup(gIdx)} style={{padding:"8px 10px",background:"transparent",color:"#C87A6A",border:"1px solid #2A2A2A",borderRadius:6,fontSize:11,cursor:"pointer"}}>Sil</button>
                     </div>
                     <label style={{display:"flex",alignItems:"center",gap:6,marginBottom:8,cursor:"pointer"}}>
@@ -837,7 +837,7 @@ export default function MenuMgmtPage() {
               <input type="checkbox" checked={!!prodForm.sold_out_today} onChange={e=>setProdForm(f => ({...f,sold_out_today:e.target.checked}))}/>
               <span style={{fontSize:13,color:"#F0EDE8"}}>Bugün tükendi</span>
             </label>
-            {prodForm.sold_out_today && (<input value={prodForm.unavailable_reason||""} onChange={e=>setProdForm(f => ({...f,unavailable_reason:e.target.value}))} placeholder="Neden (musteri gorecek)" style={{...inputS,fontSize:13}}/>)}
+            {prodForm.sold_out_today && (<input value={prodForm.unavailable_reason||""} onChange={e=>setProdForm(f => ({...f,unavailable_reason:e.target.value}))} placeholder="Neden (müşteri görecek)" style={{...inputS,fontSize:13}}/>)}
           </div>
 
           <div style={{marginBottom:10}}>

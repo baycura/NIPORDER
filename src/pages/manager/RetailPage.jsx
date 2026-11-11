@@ -177,7 +177,7 @@ export default function RetailPage() {
   const geriAl = async () => {
     if (!sonGiris) return;
     const { error } = await stokGeriAl(sonGiris);
-    if (error) { uyar("Geri alinamadi: " + error.message); return; }
+    if (error) { uyar("Geri alınamadı: " + error.message); return; }
     setSonGiris(null); load(true);
   };
 

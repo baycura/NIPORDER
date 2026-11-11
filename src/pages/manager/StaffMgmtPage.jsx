@@ -9,11 +9,11 @@ import Ikon from "../../components/Ikon.jsx";
 const cv = "-apple-system,BlinkMacSystemFont,'Segoe UI',Roboto,sans-serif";
 
 const ROLES_BASE = [
-  { key: "manager",  label: "Yonetici (Operasyon)" },
+  { key: "manager",  label: "Yönetici (Operasyon)" },
   { key: "waiter",   label: "Garson/Kasiyer" },
   { key: "kitchen",  label: "Mutfak" },
-  { key: "parttime", label: "Part-time (Siparis+Kasa)" },
-  { key: "viewer",   label: "Gozlemci (sadece goruntuleme)" },
+  { key: "parttime", label: "Part-time (Sipariş+Kasa)" },
+  { key: "viewer",   label: "Gözlemci (sadece görüntüleme)" },
 ];
 
 const roleColor = { admin:"#FFFFFF", manager:"#FFFFFF", owner:"#FFFFFF", waiter:"#FFFFFF", kitchen:"#FFFFFF", cashier:"#8A8580", viewer:"#8A8580", parttime:"#8A8580" };
@@ -150,7 +150,7 @@ export default function StaffMgmtPage() {
                   <div style={{fontSize:11,color,letterSpacing:"1px",marginTop:2,fontWeight:600}}>{displayRole?.toLocaleUpperCase("tr-TR")}{s.role === "admin" && <Ikon ad="yildiz" boy={11} style={{color:"#FFFFFF",marginLeft:6}}/>}</div>
                   {s.email && <div style={{fontSize:11,color:"#888",marginTop:3}}>{s.email}</div>}
                   {s.phone && <div style={{fontSize:11,color:"#888"}}>{s.phone}</div>}
-                  {s.last_login && <div style={{fontSize:10,color:"#888888",marginTop:3}}>Son giris: {new Date(s.last_login).toLocaleDateString("tr-TR")}</div>}
+                  {s.last_login && <div style={{fontSize:10,color:"#888888",marginTop:3}}>Son giriş: {new Date(s.last_login).toLocaleDateString("tr-TR")}</div>}
                 </div>
                 <div style={{display:"flex",flexDirection:"column",gap:4,flexShrink:0}}>
                   <button onClick={() => openEdit(s)} style={{padding:"5px 9px",background:"#222",color:"#aaa",border:"1px solid #333",borderRadius:6,fontSize:10,cursor:"pointer",fontWeight:700}}>Düzenle</button>
@@ -171,7 +171,7 @@ export default function StaffMgmtPage() {
           {modal.mode==="new" && <Field label="ŞİFRE (en az 6 karakter)"><input type="text" value={form.password||""} onChange={e=>setForm(f => ({...f,password:e.target.value}))} placeholder="örn: garson2026" style={inputS}/></Field>}
           <Field label="TELEFON"><input value={form.phone||""} onChange={e=>setForm(f => ({...f,phone:e.target.value}))} style={inputS}/></Field>
 
-          <Field label="GORUNEN UNVAN (uygulamada gozukur)"><input value={form.display_role||""} onChange={e=>setForm(f => ({...f,display_role:e.target.value}))} placeholder="Yönetici" style={inputS}/></Field>
+          <Field label="GÖRÜNEN UNVAN (uygulamada gözükür)"><input value={form.display_role||""} onChange={e=>setForm(f => ({...f,display_role:e.target.value}))} placeholder="Yönetici" style={inputS}/></Field>
 
           <Field label="GERÇEK YETKİ">
             <div style={{display:"flex",gap:6,flexWrap:"wrap"}}>

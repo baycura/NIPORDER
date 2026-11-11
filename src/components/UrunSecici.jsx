@@ -98,7 +98,7 @@ export default function UrunSecici({
           yazilsin" ayari, listeden once bir bakista gorunsun. */}
       <div style={{display:"flex",gap:8,alignItems:"stretch",marginTop:10}}>
         <button onClick={() => onTakeaway && onTakeaway(!takeawayMode)}
-          title="Paket (take away) — eklenen icecekler gotur olarak yazilir"
+          title="Paket (take away) — eklenen içecekler götür olarak yazılır"
           style={{flexShrink:0,minWidth:44,padding:"0 12px",background:takeawayMode?"#FFFFFF":"#1A1A1A",color:takeawayMode?"#000":"#999",
                   border:"1px solid "+(takeawayMode?"#FFFFFF":"#333"),borderRadius:10,fontSize:12.5,fontWeight:800,cursor:"pointer",fontFamily:"inherit",
                   display:"inline-flex",alignItems:"center",gap:5,minHeight:44}}>

@@ -79,7 +79,7 @@ export default function StockMgmtPage() {
   const geriAl = async () => {
     if (!sonGiris) return;
     const { error } = await stokGeriAl(sonGiris);
-    if (error) { uyar("Geri alinamadi: " + error.message); return; }
+    if (error) { uyar("Geri alınamadı: " + error.message); return; }
     setSonGiris(null);
     load(true);
   };
@@ -96,7 +96,7 @@ export default function StockMgmtPage() {
   // o.adim: 0 hicbir sey sorulmadi, 1 paket sorusu cevaplandi, 2 kap sorusu cevaplandi.
   const save = async (o = {}) => {
     if (busy) return;
-    if (!form.name?.trim()) { uyar("Isim gerekli"); return; }
+    if (!form.name?.trim()) { uyar("İsim gerekli"); return; }
     const adim = Number(o.adim) || 0;
     let maliyet = o.maliyet != null ? Number(o.maliyet) : (Number(form.cost_per_unit) || 0);
 
@@ -211,7 +211,7 @@ export default function StockMgmtPage() {
                 <div style={{display:"flex",alignItems:"center",gap:6,flexWrap:"wrap"}}>
                   <div style={{fontSize:14,fontWeight:700,color:"#F0EDE8"}}>{i.name}</div>
                   {isLow && <span style={{fontSize:9,padding:"2px 6px",background:"#2A2A2A",color:"#C87A6A",borderRadius:6,fontWeight:700}}>Azalan</span>}
-                  {i.waste_pct > 0 && <span style={{fontSize:9,padding:"2px 6px",background:"#2A2A2A",color:"#F0EDE8",borderRadius:6,fontWeight:700}}>FIRE %{i.waste_pct}</span>}
+                  {i.waste_pct > 0 && <span style={{fontSize:9,padding:"2px 6px",background:"#2A2A2A",color:"#F0EDE8",borderRadius:6,fontWeight:700}}>FİRE %{i.waste_pct}</span>}
                   {i.is_consumable && <span style={{fontSize:9,padding:"2px 6px",background:"#2A2A2A",color:"#F0EDE8",borderRadius:6,fontWeight:700}}>Sarf</span>}
                   {/* Ambalaj rozeti yalniz hacimle tutulan malzemede: adetle
                       tutulan sise birada "24x330ml" bilgi degil gurultu. */}
@@ -222,7 +222,7 @@ export default function StockMgmtPage() {
                   {/* Bar sise sayar, sistem ml tutar: ikisini yan yana goster */}
                   {sise != null && <span style={{marginLeft:6,color:"#8A8580"}}>≈ {sise} {kapAdi(i)}</span>}
                   {i.cost_per_unit > 0 && <span style={{marginLeft:8}}>· ₺{i.cost_per_unit}/{i.unit}</span>}
-                  {value > 0 && <span style={{marginLeft:8,color:"#FFFFFF"}}>· deger ₺{Math.round(value)}</span>}
+                  {value > 0 && <span style={{marginLeft:8,color:"#FFFFFF"}}>· değer ₺{Math.round(value)}</span>}
                 </div>
               </div>
               <div style={{display:"flex",alignItems:"center",gap:6,flexShrink:0}}>
@@ -341,7 +341,7 @@ export default function StockMgmtPage() {
 
       {modal && (
         <Modal onClose={() => setModal(null)} title={modal.mode==="new"?"Yeni Hammadde":"Hammaddeyi Düzenle"}>
-          <Field label="AD"><input value={form.name||""} onChange={e=>setForm(f => ({...f,name:e.target.value}))} placeholder="orn: Bud Ficinin" style={inputS}/></Field>
+          <Field label="AD"><input value={form.name||""} onChange={e=>setForm(f => ({...f,name:e.target.value}))} placeholder="örn: Bud Fıçı" style={inputS}/></Field>
           {/* Raf: menudeki kategori gibi. Listede olmayan bir raf gerekiyorsa
               alttaki kutuya yazilir, yeni raf kendiliginden acilir. */}
           <Field label="RAF">
@@ -356,7 +356,7 @@ export default function StockMgmtPage() {
               placeholder="ya da yeni raf adı yaz (örn: Sake)" style={inputS}/>
           </Field>
 
-          <Field label="BIRIM">
+          <Field label="BİRİM">
             <div style={{display:"flex",gap:6,flexWrap:"wrap"}}>
               {UNITS.map(u => (
                 <button key={u} onClick={()=>setForm(f => ({...f,unit:u}))} style={{padding:"8px 14px",background:form.unit===u?"#FFFFFF":"#222",color:form.unit===u?"#000":"#888",border:"1px solid "+(form.unit===u?"#FFFFFF":"#333"),borderRadius:8,fontSize:12,fontWeight:700,cursor:"pointer"}}>{u}</button>
@@ -380,7 +380,7 @@ export default function StockMgmtPage() {
               </div>
             </Field>
           ) : (
-            <Field label={"STOK MIKTARI (" + form.unit + ")" + (modal.mode === "edit" ? " — ÜZERİNE YAZAR" : "")}>
+            <Field label={"STOK MİKTARI (" + form.unit + ")" + (modal.mode === "edit" ? " — ÜZERİNE YAZAR" : "")}>
               <SayiGirisi kip="ondalik" value={form.stock_qty||0} onChange={v=>setForm(f => ({...f,stock_qty:v}))} style={inputS}/>
               {modal.mode === "edit" && (
                 <div style={{fontSize:11,color:"#C87A6A",marginTop:6,lineHeight:1.5}}>
@@ -396,7 +396,7 @@ export default function StockMgmtPage() {
             {anlasilirYaz(form.cost_per_unit, form.unit) && (
               <div style={{fontSize:12,color:"#F0EDE8",marginTop:5,fontWeight:700}}>
                 = {anlasilirYaz(form.cost_per_unit, form.unit)}
-                <span style={{color:"#666",fontWeight:400}}> — aldigin fiyatla ayni mi?</span>
+                <span style={{color:"#666",fontWeight:400}}> — aldığın fiyatla aynı mı?</span>
               </div>
             )}
             {/* Paketli malzemede iki okuma da mumkun; rakam yazilirken gorunsun. */}
@@ -405,8 +405,8 @@ export default function StockMgmtPage() {
               if (!ik) return null;
               return (
                 <div style={{fontSize:11,color:ik.kesin?"#C87A6A":"#666",marginTop:5,lineHeight:1.5}}>
-                  {ik.paket}'li paket · girdigin rakam paket fiyatiysa birim maliyet <b style={{color:"#F0EDE8"}}>{birimYaz(ik.birim)}</b> olmali
-                  {ik.kesin && <> — eskisinin tam {ik.paket} kati, kaydederken sorulacak</>}
+                  {ik.paket}'li paket · girdiğin rakam paket fiyatıysa birim maliyet <b style={{color:"#F0EDE8"}}>{birimYaz(ik.birim)}</b> olmalı
+                  {ik.kesin && <> — eskisinin tam {ik.paket} katı, kaydederken sorulacak</>}
                 </div>
               );
             })()}
@@ -418,21 +418,21 @@ export default function StockMgmtPage() {
               return (
                 <div style={{fontSize:11,color:"#C87A6A",marginTop:5,lineHeight:1.6}}>
                   {ik.yon === "olcude-kap" ? (
-                    <>Bu rakam {ik.kap} {ik.unit}&apos;lik kabi <b>{kapYaz(ik.kapYazildigiGibi)}</b> yapiyor — kabin
-                    fiyatini yazdiysan hane <b style={{color:"#F0EDE8"}}>{birimYaz(ik.onerilen)}</b> olmali.{" "}
+                    <>Bu rakam {ik.kap} {ik.unit}&apos;lik kabı <b>{kapYaz(ik.kapYazildigiGibi)}</b> yapıyor — kabın
+                    fiyatını yazdıysan hane <b style={{color:"#F0EDE8"}}>{birimYaz(ik.onerilen)}</b> olmalı.{" "}
                     <button type="button" onClick={() => setForm(f => ({ ...f, cost_per_unit: String(ik.onerilen) }))}
                       style={{background:"transparent",border:"none",color:"#F0EDE8",textDecoration:"underline",cursor:"pointer",padding:0,font:"inherit"}}>
                       bunu kullan
                     </button></>
                   ) : (
-                    <>Bir {ik.unit} {birimYaz(ik.deger)} olamaz. Bu ml fiyatiysa kap <b style={{color:"#F0EDE8"}}>{kapYaz(ik.kapYazildigiGibi)}</b> eder —
-                    ya birimi <b>ml</b> yap ya haneye kap fiyatini yaz.</>
+                    <>Bir {ik.unit} {birimYaz(ik.deger)} olamaz. Bu ml fiyatıysa kap <b style={{color:"#F0EDE8"}}>{kapYaz(ik.kapYazildigiGibi)}</b> eder —
+                    ya birimi <b>ml</b> yap ya haneye kap fiyatını yaz.</>
                   )}
                 </div>
               );
             })()}
           </Field>
-          <Field label="FIRE ORANI (%)"><SayiGirisi kip="ondalik" min={0} max={100} value={form.waste_pct||0} onChange={v=>setForm(f => ({...f,waste_pct:v}))} placeholder="orn: 3 = %3 dokulme/fire" style={inputS}/></Field>
+          <Field label="FİRE ORANI (%)"><SayiGirisi kip="ondalik" min={0} max={100} value={form.waste_pct||0} onChange={v=>setForm(f => ({...f,waste_pct:v}))} placeholder="örn: 3 = %3 dökülme/fire" style={inputS}/></Field>
 
           {/* AMBALAJ yalniz hacimle tutulan malzemede sorulur. Adetle tutulan
               sise bira icin sise hacmi, koli ici ve ambalaj fire hesabi ne
@@ -442,7 +442,7 @@ export default function StockMgmtPage() {
           <div style={{background:"#0C0C0C",border:"1px solid #2A2A2A",borderRadius:10,padding:12,marginBottom:12}}>
             <div style={{fontSize:12,color:"#8A8580",letterSpacing:"0.2px",fontWeight:600,marginBottom:8,display:"flex",alignItems:"center",gap:6}}><Ikon ad="stok" boy={13}/>ŞİŞE / FIÇI HESABI</div>
             <Field label="BİR ŞİŞE / FIÇI HACMİ (ml)">
-              <SayiGirisi kip="ondalik" value={form.unit_volume_ml||""} onChange={v=>setForm(f => ({...f,unit_volume_ml:v}))} placeholder="70cl sise = 700 · 50L fici = 50000" style={inputS}/>
+              <SayiGirisi kip="ondalik" value={form.unit_volume_ml||""} onChange={v=>setForm(f => ({...f,unit_volume_ml:v}))} placeholder="70cl şişe = 700 · 50L fıçı = 50000" style={inputS}/>
               {/* Sik boylar tek dokunusla: cin/viski/votka 50-70-100 cl gelir. */}
               <div style={{display:"flex",gap:6,flexWrap:"wrap",marginTop:7}}>
                 {[["35cl",350],["50cl",500],["70cl",700],["75cl",750],["100cl",1000],["30L fıçı",30000],["50L fıçı",50000]].map(([lbl,val]) => {
@@ -459,11 +459,11 @@ export default function StockMgmtPage() {
                 20 L ve üstü fıçı sayılır, hep adetle girilir.
               </div>
             </Field>
-            <Field label="KOLI ICI ADET (koli gelmiyorsa 1)">
-              <SayiGirisi kip="tam" min={1} value={form.pack_qty||1} onChange={v=>setForm(f => ({...f,pack_qty:v}))} placeholder="orn: 24 sise/koli" style={inputS}/>
+            <Field label="KOLİ İÇİ ADET (koli gelmiyorsa 1)">
+              <SayiGirisi kip="tam" min={1} value={form.pack_qty||1} onChange={v=>setForm(f => ({...f,pack_qty:v}))} placeholder="örn: 24 şişe/koli" style={inputS}/>
             </Field>
-            <Field label={"AMBALAJ BASINA FIRE (" + form.unit + ")"}>
-              <SayiGirisi kip="ondalik" value={form.waste_per_pack||0} onChange={v=>setForm(f => ({...f,waste_per_pack:v}))} placeholder="Fici: 5 bardak fire = 5 x bardak ml" style={inputS}/>
+            <Field label={"AMBALAJ BAŞINA FİRE (" + form.unit + ")"}>
+              <SayiGirisi kip="ondalik" value={form.waste_per_pack||0} onChange={v=>setForm(f => ({...f,waste_per_pack:v}))} placeholder="Fıçı: 5 bardak fire = 5 x bardak ml" style={inputS}/>
             </Field>
             <div style={{display:"flex",gap:6,flexWrap:"wrap"}}>
               {[["5 x 500ml bardak",2500],["5 x 330ml bardak",1650],["Fire yok",0]].map(([lbl,val]) => (
@@ -473,7 +473,7 @@ export default function StockMgmtPage() {
             {Number(form.unit_volume_ml) > 0 && Number(form.pack_qty) > 0 && (
               <div style={{fontSize:11,color:"#888",marginTop:8,lineHeight:1.5}}>
                 1 koli = {form.pack_qty} x {form.unit_volume_ml} ml = <b style={{color:"#FFFFFF"}}>{(Number(form.pack_qty)*Number(form.unit_volume_ml)).toLocaleString("tr-TR")} ml</b>
-                {Number(form.waste_per_pack) > 0 && <> · ambalaj basi fire {form.waste_per_pack} {form.unit}</>}
+                {Number(form.waste_per_pack) > 0 && <> · ambalaj başı fire {form.waste_per_pack} {form.unit}</>}
               </div>
             )}
           </div>
@@ -486,7 +486,7 @@ export default function StockMgmtPage() {
 
           <label style={{display:"flex",alignItems:"center",gap:8,marginBottom:12,cursor:"pointer"}}>
             <input type="checkbox" checked={!!form.is_consumable} onChange={e=>setForm(f => ({...f,is_consumable:e.target.checked}))} style={{width:18,height:18,accentColor:"#FFFFFF"}}/>
-            <span style={{fontSize:13,color:"#F0EDE8"}}>Sarf malzeme (buz, pet bardak, pipet...) — recetelere tek dokunusla eklenir</span>
+            <span style={{fontSize:13,color:"#F0EDE8"}}>Sarf malzeme (buz, pet bardak, pipet...) — reçetelere tek dokunuşla eklenir</span>
           </label>
           {/* MALIYET KARARI: her dugme ne kaydedecegini yazar; "Vazgeç" forma doner. */}
           {karar && (

@@ -134,7 +134,7 @@ export default function SettingsPage() {
         <Field label={"TEK ÖLÇÜ (cl) — şu an: " + (Number(settings.house_pour_cl) || 4) + " cl"}>
           <SayiGirisi kip="ondalik" min={1} max={10} value={settings.house_pour_cl ?? 4} onChange={v=>setKey("house_pour_cl", Number(v))} style={inputS}/>
         </Field>
-        <div style={{fontSize:11,color:"#888",marginTop:6}}>NOT: Bu yalniz kisayol dugmelerini etkiler; recetede istedigin miktari her zaman elle yazabilirsin.</div>
+        <div style={{fontSize:11,color:"#888",marginTop:6}}>NOT: Bu yalnız kısayol düğmelerini etkiler; reçetede istediğin miktarı her zaman elle yazabilirsin.</div>
       </Section>
 
       {/* Euro kuru — profil modulu (eur) */}
@@ -178,7 +178,7 @@ export default function SettingsPage() {
             label="QR menüde TL fiyatın yanında yaklaşık € göster (yalnız EN/RU dilinde)"/>
           <Field label="YUVARLAMA ADIMI">
             <div style={{display:"flex",gap:6}}>
-              {[["0.5","0,50 € adimlarla (onerilen)"],["1","1 € adimlarla"]].map(([k,l]) => {
+              {[["0.5","0,50 € adımlarla (önerilen)"],["1","1 € adımlarla"]].map(([k,l]) => {
                 const secili = String(settings.eur_price_hint_step ?? "0.5") === k;
                 return (
                   <button key={k} type="button" onClick={()=>setKey("eur_price_hint_step", k)}

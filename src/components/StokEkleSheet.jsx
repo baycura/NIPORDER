@@ -302,7 +302,7 @@ export default function StokEkleSheet({ kalem, storeId, ipucu, onKapat, onBitti 
 // Yanlis rakam tek dokunusla yaziliyordu; onay seridindeki "Geri al" ayni
 // miktari ters yonde gonderir (defterde iki satir kalir, iz kaybolmaz).
 export async function stokGeriAl(giris) {
-  if (!giris?.id || !giris?.delta) return { error: { message: "geri alinacak kayit yok" } };
+  if (!giris?.id || !giris?.delta) return { error: { message: "Geri alınacak kayıt yok" } };
   const satir = giris.tur === "urun"
     ? { product_id: giris.id, variant: giris.beden || null, miktar: -giris.delta }
     : { ingredient_id: giris.id, miktar: -giris.delta };

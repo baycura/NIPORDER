@@ -241,7 +241,7 @@ export default function MembersPage() {
         <Modal onClose={() => setModal(null)} title={modal.mode==="new"?"Yeni müşteri":(modal.data?.name || "Müşteri")}>
           <Field label="AD SOYAD"><input value={form.name||""} onChange={e=>setForm(f => ({...f,name:e.target.value}))} style={inputS}/></Field>
           <div style={{display:"flex",gap:8}}>
-            <Field label="EMAIL"><input value={form.email||""} onChange={e=>setForm(f => ({...f,email:e.target.value}))} style={inputS}/></Field>
+            <Field label="E-POSTA"><input value={form.email||""} onChange={e=>setForm(f => ({...f,email:e.target.value}))} style={inputS}/></Field>
           </div>
           <Field label="TELEFON"><input value={form.phone||""} onChange={e=>setForm(f => ({...f,phone:e.target.value}))} style={inputS}/></Field>
           {modal.mode === "edit" && modal.data?.member_code && (

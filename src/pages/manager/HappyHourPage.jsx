@@ -158,7 +158,7 @@ export default function HappyHourPage() {
   // Secili urunlere yuzde indirim uygula (fiyatlari tek tek yazmaya gerek kalmasin)
   const applyBulkPct = () => {
     const pct = Number(bulkPct);
-    if (!pct || pct <= 0 || pct >= 100) { uyar("1-99 arasi bir yüzde gir"); return; }
+    if (!pct || pct <= 0 || pct >= 100) { uyar("1-99 arası bir yüzde gir"); return; }
     const po = { ...form.product_overrides };
     const ids = Object.keys(po);
     if (!ids.length) { uyar("Önce ürünleri işaretle"); return; }

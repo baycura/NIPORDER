@@ -115,7 +115,7 @@ export default function TablesMgmtPage() {
         {tables.map(t => (
           <div key={t.id} style={{background:"#1A1A1A",border:"1px solid #2A2A2A",borderRadius:10,padding:12}}>
             <div style={{fontSize:14,fontWeight:700,color:"#F0EDE8",marginBottom:4}}>{t.name}</div>
-            <div style={{fontSize:11,color:"#888",marginBottom:10}}>{t.capacity || 4} kisilik · sira {t.sort_order || 0}</div>
+            <div style={{fontSize:11,color:"#888",marginBottom:10}}>{t.capacity || 4} kişilik · sıra {t.sort_order || 0}</div>
             <div style={{display:"flex",gap:4}}>
               <button onClick={() => openEdit(t)} style={{flex:1,padding:"6px",background:"#222",color:"#aaa",border:"1px solid #333",borderRadius:6,fontSize:11,cursor:"pointer"}}>Düzenle</button>
               <button onClick={() => deleteTable(t)} style={{flex:1,padding:"6px",background:"transparent",color:"#C87A6A",border:"1px solid #2A2A2A",borderRadius:6,fontSize:11,cursor:"pointer"}}>Sil</button>

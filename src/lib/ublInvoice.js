@@ -52,11 +52,11 @@ const child = (node, localName) => childAll(node, localName)[0] || null;
  */
 export function parseUblInvoice(xmlText) {
   const doc = new DOMParser().parseFromString(xmlText, "application/xml");
-  if (pick(doc, "parsererror")) throw new Error("XML okunamadi — dosya bozuk olabilir");
+  if (pick(doc, "parsererror")) throw new Error("XML okunamadı — dosya bozuk olabilir");
 
   const root = doc.documentElement;
   if (!root || !/invoice/i.test(root.localName)) {
-    throw new Error("Bu dosya bir e-Fatura (UBL) XML'i degil");
+    throw new Error("Bu dosya bir e-Fatura (UBL) XML'i değil");
   }
 
   // Tedarikci: AccountingSupplierParty > Party > PartyName > Name

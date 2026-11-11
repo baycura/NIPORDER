@@ -1741,7 +1741,7 @@ export default function CustomerMenu() {
       });
       if (error) throw error;
       const orderId = data?.order_id;
-      if (!orderId) throw new Error("Siparis numarasi alinamadi");
+      if (!orderId) throw new Error("Sipariş numarası alınamadı");
       subscribePush(orderId);
       setOrderPaid(false); setPayToken(null);
       setSuccessOrderId(orderId);
