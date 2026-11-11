@@ -66,6 +66,19 @@
   satar. Bir ürünün `kitchen_destination_store_id = doner` ise, o ürünün NIP'te
   satılan cirosu **ay sonu mutfağa ödenir** (bkz. "Mutfağa Ödenecek" sayfası).
 
+## Para kuralları (sahip kararları, 2026-11-11)
+- **Ciro = tahsil edilen.** Puanla ödenen kısım (`orders.points_used`) kasaya
+  girmez; cirodan düşülür ve ayrı satırda gösterilir. "Bugün" ve "Gün Özeti"
+  aynı kuralı kullanır, iki ekran aynı rakamı verir. Kıyas "dün bu saatte".
+- **₺0 hesap ikram olarak kapanır.** Ürünlerinin tamamı ikram olan hesapta
+  Kart/Nakit yerine "İkram olarak kapat" görünür. Para yazılmaz, hesap `paid`
+  olur, toplam ₺0 kalır. **İkram eden zorunlu:** ikram işaretli kalemin
+  `treated_by` alanı boş olamaz (kısıt). Veren, işlemi yapan ya da sahiptir.
+  İz `ikram_izi` tablosunda: kim işaretledi, kim geri aldı, hesabı kim
+  kapattı (oturumdan okunur, personel değiştiremez). Sahip "İndirim ve ikram"
+  sayfasının İkramlar görünümünde görür. Göç: `20261111_ikram_kapat.sql`.
+- **Ödenmiş hesapta kalem düğmeleri** şimdiki gibi kalır (karar: değişmez).
+
 ## Partiler
 - **Çar / Cum / Cmt, 22:00 sonrası.**
 - **Giriş ücretsiz** — parti geliri tamamen bar/masa satışından.
