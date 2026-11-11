@@ -755,6 +755,7 @@ export default function CustomerMenu() {
         return;
       }
       rezKodEkle(sonuc.kod);
+      setUyari(null);   // onceki denemenin uyarisi sonuc ekraninin ustunde kalmasin
       setRezForm(f => f ? ({ ...f, busy: false, sonuc: sonuc.kod, bilgi: sonuc, hata: null }) : f);
       rezlerimOku();
       return;
@@ -769,6 +770,7 @@ export default function CustomerMenu() {
       customer_id: customer?.id || null,
     });
     if (error) { setRezForm(f => ({ ...f, busy: false })); bildir(L("Talep gönderilemedi: ", "Could not send: ", "Не удалось отправить: ") + errorText(error, lang)); return; }
+    setUyari(null);
     setRezForm(f => ({ ...f, busy: false, sonuc: kod }));
   };
 
@@ -2717,8 +2719,10 @@ export default function CustomerMenu() {
                     </button>
                     <div style={{fontSize:11.5,color:"#666666",lineHeight:1.5,marginTop:10,textAlign:"center"}}>
                       {L("Talebin onaya düşer; onaylanınca haber veririz. Adın ve telefonun yalnız bu rezervasyon için kullanılır.","Your request goes for approval; we will let you know once it is confirmed. Your name and phone are used only for this reservation.","Заявка уходит на подтверждение; сообщим, когда подтвердим. Имя и телефон используются только для этой брони.")}
-                      {kvkkDoc && <> <button type="button" onClick={() => setKvkkMetinOpen(true)} style={{background:"none",border:"none",padding:0,color:"#000",fontSize:11.5,fontWeight:700,textDecoration:"underline",cursor:"pointer",fontFamily:"inherit"}}>{t.kvkk_read}</button></>}
                     </div>
+                    {kvkkDoc && (
+                      <button type="button" onClick={() => setKvkkMetinOpen(true)} style={{display:"block",margin:"0 auto",minHeight:44,padding:"0 12px",background:"none",border:"none",color:"#000",fontSize:12,fontWeight:700,textDecoration:"underline",cursor:"pointer",fontFamily:"inherit"}}>{t.kvkk_read}</button>
+                    )}
                   </>
                 )}
               </>
