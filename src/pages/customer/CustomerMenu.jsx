@@ -1574,6 +1574,10 @@ export default function CustomerMenu() {
     if (mp != null) final = Math.min(final, mp);
     return final;
   };
+  // Bu urunun fiyati SU AN happy hour ile mi dustu (musteriye uygulanan halde).
+  const hhUygulandi = (p) => (uyeMi || !hhSadeceUye) && hhProductPrices[p.id] != null
+    && Number(hhProductPrices[p.id]) < Number(p.price);
+  const hhVar = Object.keys(hhProductPrices).some(id => hhProductPrices[id] != null);
   // Uye olmayanin gorecegi "uye olursan" fiyati: indirimler acikmis gibi hesap.
   const uyeOlursaFiyat = (p, options) => (!uyeMi && hhSadeceUye) ? calcPrice(p, options, true) : null;
 
@@ -2140,7 +2144,10 @@ export default function CustomerMenu() {
             </div>
           </div>
           <div style={{display:"flex",alignItems:"center",gap:8}}>
-            {hh && custTab === "menu" && <div style={{background:"#000000",color:"#FFFFFF",padding:"4px 10px",borderRadius:10,fontSize:12,fontWeight:600,letterSpacing:"0.2px"}}>{t.happy_hour} -%{hh.discount_pct}{hhSadeceUye && !uyeMi ? " · " + L("üyelere","members","участникам") : ""}</div>}
+            {/* Happy hour rozeti: su an indirimli fiyati olan urun varsa gorunur.
+                Eskiden `hh` kaydina bakiyordu; o sorgu kaldirildigi icin rozet
+                hic cikmiyordu ve musteri ustu cizili fiyatin nedenini gormuyordu. */}
+            {hhVar && custTab === "menu" && <div style={{background:"#000000",color:"#FFFFFF",padding:"4px 10px",borderRadius:10,fontSize:12,fontWeight:600,letterSpacing:"0.2px",whiteSpace:"nowrap"}}>{t.happy_hour}{hhSadeceUye && !uyeMi ? " · " + L("üyelere","members","участникам") : ""}</div>}
             {LangSwitcher()}
           </div>
         </div>
@@ -2642,6 +2649,8 @@ export default function CustomerMenu() {
                 <div style={{display:"flex",alignItems:"center",gap:10,marginTop:8,opacity:sol}}>
                   {dis && <span style={{fontSize:12,color:"#666666",textDecoration:"line-through"}}>{para(p.price)}</span>}
                   <span style={{fontSize:15,fontWeight:800,color:"#000"}}>{para(fp)}</span>
+                  {/* Ustu cizili fiyatin nedeni. */}
+                  {dis && hhUygulandi(p) && <span style={{fontSize:11,padding:"2px 6px",border:"1px solid #000",borderRadius:6,fontWeight:700,letterSpacing:"0.3px",whiteSpace:"nowrap"}}>{t.happy_hour}</span>}
                   {p.currency === "EUR" && p.price_eur != null && (
                     <span style={{fontSize:12,color:"#666666",fontWeight:600}}>· €{Number(p.price_eur)}</span>
                   )}
