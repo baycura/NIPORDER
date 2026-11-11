@@ -87,6 +87,9 @@ declare
 begin
   if tg_op = 'INSERT' then
     if not coalesce(new.is_treat, false) then return null; end if;
+    -- Kalem tasimasi (nip_kalem_tasi) ikramli satiri kopyalar; bu yeni ikram
+    -- degildir. Tasiyan kisi "isaretleyen" diye gorunmesin.
+    if current_setting('nip.tasima', true) = '1' then return null; end if;
     v_islem := 'ikram';
   else
     if coalesce(new.is_treat, false) = coalesce(old.is_treat, false)
@@ -149,15 +152,20 @@ declare
   v_adlar    text;
   v_sonuc    record;
 begin
-  select s.id, s.name, s.store_ids into v_staff
+  select s.id, s.name, s.role::text as role, s.store_ids into v_staff
     from public.staff s
    where s.auth_id = (select auth.uid()) and s.is_active
    limit 1;
   if v_staff.id is null then
     raise exception 'ikram: yetkisiz';
   end if;
+  -- Hesap duzeltme fonksiyonlariyla ayni kural (20261013_hesap_duzeltme.sql).
+  if v_staff.role in ('viewer', 'kitchen') then
+    raise exception 'ikram: % rolu hesap kapatamaz', v_staff.role;
+  end if;
 
-  -- Hesabi KILITLE: iki kasiyer ayni anda kapatamaz, araya urun de giremez.
+  -- Hesabi KILITLE: iki kasiyer ayni anda kapatamaz, araya urun de giremez
+  -- (yeni kalemin yabanci anahtar denetimi bu kilidi bekler).
   select * into o from public.orders where id = p_order_id for update;
   if not found then raise exception 'ikram: hesap bulunamadi'; end if;
   if o.status::text = 'paid' then
@@ -166,9 +174,16 @@ begin
   if o.status::text = 'cancelled' then
     raise exception 'ikram: iptal edilmis hesap kapatilamaz';
   end if;
-  if not (o.origin_store_id = any(v_staff.store_ids)) then
+  -- Fonksiyon sahibin yetkisiyle calisir (satir guvenligi devrede degil):
+  -- magaza denetimi bos degere karsi da KAPALI olmali.
+  if not coalesce(o.origin_store_id = any(coalesce(v_staff.store_ids, '{}'::uuid[])), false) then
     raise exception 'ikram: bu magaza icin yetkin yok';
   end if;
+
+  -- Kalemleri de KILITLE: hesap kilidi order_items satirlarini kapsamaz.
+  -- Baska cihaz denetimle kapatma arasinda ikrami geri alirsa (fiyat geri
+  -- gelir) hesap tahsilatsiz kapanirdi.
+  perform 1 from public.order_items oi where oi.order_id = p_order_id for update;
 
   select count(*) into v_kalem
     from public.order_items oi
@@ -211,8 +226,19 @@ begin
 
   -- Toplam kalemlerden yeniden hesaplanir. Ekran toplami arkadan yazar; o yazi
   -- gecikirse hesap eski (dolu) toplamla kapanir ve ciroya para yazilirdi.
-  select coalesce(sum(oi.final_price * oi.quantity), 0) into v_toplam
+  -- Kalem secilerek ODENMIS adetler ODENDIGI tutardan sayilir (payment_items):
+  -- "3 bira, biri odendi, kalan ikram" hesabinda satirin fiyati 0 olur ama
+  -- alinan para cirodan dusmemeli.
+  select coalesce(sum(
+           oi.final_price * greatest(0, oi.quantity - coalesce(pi.adet, 0))
+           + coalesce(pi.tutar, 0)), 0)
+    into v_toplam
     from public.order_items oi
+    left join lateral (
+      select sum(x.adet) as adet, sum(x.tutar) as tutar
+        from public.payment_items x
+       where x.order_item_id = oi.id
+    ) pi on true
    where oi.order_id = p_order_id;
   update public.orders
      set subtotal = v_toplam, total = v_toplam
@@ -224,11 +250,16 @@ begin
     raise exception 'ikram: hesap kapanmadi (kalan TL %)', round(coalesce(v_sonuc.kalan, 0));
   end if;
 
-  select coalesce(sum(oi.product_price * oi.quantity), 0),
+  -- Ikram degeri: parayla odenmis adetler ikram degildir.
+  select coalesce(sum(coalesce(oi.product_price, 0)
+                      * greatest(0, oi.quantity - coalesce(pi.adet, 0))), 0),
          string_agg(distinct s.name, ', ')
     into v_deger, v_adlar
     from public.order_items oi
     left join public.staff s on s.id = oi.treated_by
+    left join lateral (
+      select sum(x.adet) as adet from public.payment_items x where x.order_item_id = oi.id
+    ) pi on true
    where oi.order_id = p_order_id and coalesce(oi.is_treat, false);
 
   insert into public.ikram_izi(store_id, order_id, islem, quantity, deger,
@@ -260,7 +291,9 @@ begin
   select oi.id, oi.order_id, coalesce(a.created_at, oi.created_at), oi.treated_by,
          coalesce(s.name, '—'), a.yapan_ad,
          (oi.product_name || coalesce(' · ' || nullif(oi.variant_name, ''), ''))::text,
-         oi.quantity, (coalesce(oi.product_price, 0) * oi.quantity)::numeric,
+         -- Parayla odenmis adet ikram degildir (kalem secilerek odeme).
+         greatest(0, oi.quantity - coalesce(pi.adet, 0))::integer,
+         (coalesce(oi.product_price, 0) * greatest(0, oi.quantity - coalesce(pi.adet, 0)))::numeric,
          o.status::text,
          coalesce(t.name, nullif(btrim(o.customer_name), ''), 'Hesap')::text,
          (o.status::text = 'paid' and coalesce(o.total, 0) <= 0.005),
@@ -281,6 +314,9 @@ begin
        where i.order_id = oi.order_id and i.islem = 'kapat'
        order by i.created_at desc limit 1
     ) k on true
+    left join lateral (
+      select sum(x.adet) as adet from public.payment_items x where x.order_item_id = oi.id
+    ) pi on true
    where coalesce(oi.is_treat, false)
      and oi.created_at >= p_from and oi.created_at < p_to
      and o.status::text <> 'cancelled'

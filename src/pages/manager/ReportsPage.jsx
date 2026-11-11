@@ -45,6 +45,10 @@ export default function ReportsPage() {
   const [loading, setLoading] = useState(true);
   // Sorgu hatasi "₺0" diye gosterilmez. ilk: hic veri yok; sonra: eski veri ekranda.
   const [hata, setHata] = useState(null); // { metin, ilk }
+  // Bu magaza icin en az bir basarili okuma oldu mu. State degil ref: 60 sn'lik
+  // zamanlayici loadData'nin ESKI kopyasini cagirir, state'i goremez.
+  const okundu = useRef(false);
+  const istekNo = useRef(0); // magaza degisirken gec gelen eski yanit yazmasin
   const [updatedAt, setUpdatedAt] = useState(null);
   const timer = useRef(null);
 
@@ -69,6 +73,8 @@ export default function ReportsPage() {
   // Load on store change + quiet auto-refresh every 60s so the number is always live.
   useEffect(() => {
     if (DEMO || !selectedStore || mutfakBakisi) return;
+    okundu.current = false;
+    setHata(null);
     loadData();
     timer.current = setInterval(() => loadData(true), 60_000);
     return () => clearInterval(timer.current);
@@ -87,6 +93,7 @@ export default function ReportsPage() {
 
   async function loadData(silent) {
     if (!silent) setLoading(true);
+    const no = ++istekNo.current;
     const now = new Date();
     // Isletme gunu 03:00'te biter — gece satislari onceki gune yazilir.
     const dayStart = (offset) => businessDayStart(now, offset);
@@ -98,12 +105,15 @@ export default function ReportsPage() {
       .select("id,total,points_used,status,created_at,order_items(quantity,final_price,product_price,is_treat,product_id,products(name,kitchen_consignment))")
       .eq("origin_store_id", selectedStore)
       .gte("created_at", dayStart(13).toISOString());
+    if (no !== istekNo.current) return;
     if (error) {
-      // Sessiz tazelemede eski rakamlar kalir; ilk okumada rakam gosterilmez.
-      setHata({ metin: personelHata(error), ilk: !silent });
-      if (!silent) setLoading(false);
+      // Daha once okunduysa eski rakamlar kalir; hic okunmadiysa rakam
+      // gosterilmez (ilk okuma da, ardindan gelen tazeleme de basarisiz olabilir).
+      setHata({ metin: personelHata(error), ilk: !okundu.current });
+      setLoading(false);
       return;
     }
+    okundu.current = true;
     setHata(null);
 
     const paid = ["paid", "completed", "served", "closed"];
@@ -183,7 +193,9 @@ export default function ReportsPage() {
       kitchenToday, topProducts, hourly, weekTotal, daily,
     });
     setUpdatedAt(new Date());
-    if (!silent) setLoading(false);
+    // Sessiz tazeleme de kapatir: araya giren tazeleme ilk okumanin yanitini
+    // gecersiz kilarsa ekran "Yükleniyor"da kalmasin.
+    setLoading(false);
   }
 
   const diff = data.yesterday > 0 ? ((data.today - data.yesterday) / data.yesterday * 100) : null;
@@ -277,7 +289,9 @@ export default function ReportsPage() {
                 </div>
               )}
             </div>
-            <div style={{ textAlign: "right" }}>
+            {/* Telefonda bu blok alt satira iner; sola hizali olunca rozet ile
+                altindaki satir ayni hizada kalir. */}
+            <div style={{ textAlign: "left" }}>
               {diff !== null && (
                 <div style={{
                   display: "inline-block", padding: "6px 12px", borderRadius: 999, fontSize: 14, fontWeight: 700,

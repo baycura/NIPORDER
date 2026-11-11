@@ -316,12 +316,14 @@ export function IkramKapatPenceresi({ order, ad, staffUser, onKapat, onBitti }) 
   const [hata, setHata] = useState(null);
   const [okunamadi, setOkunamadi] = useState(false);
 
+  const kalemSorgu = () => supabase.from("order_items")
+    .select("id, product_name, variant_name, quantity, odenen_adet, product_price, final_price, is_treat, treated_by")
+    .eq("order_id", order.id).order("created_at");
+
   useEffect(() => {
     let iptal = false;
     Promise.all([
-      supabase.from("order_items")
-        .select("id, product_name, variant_name, quantity, odenen_adet, product_price, final_price, is_treat, treated_by")
-        .eq("order_id", order.id).order("created_at"),
+      kalemSorgu(),
       supabase.from("staff").select("id, name, role").eq("is_active", true),
     ]).then(([k, p]) => {
       if (iptal) return;
@@ -336,8 +338,10 @@ export function IkramKapatPenceresi({ order, ad, staffUser, onKapat, onBitti }) 
   const acik = (kalemler || []).filter(k => kalanAdet(k) > 0);
   const kalan = acik.reduce((t, k) => t + Number(k.final_price || 0) * kalanAdet(k), 0);
   const eksik = acik.filter(k => !k.is_treat || !k.treated_by);
-  const deger = acik.reduce((t, k) => t + Number(k.product_price || 0) * Number(k.quantity || 0), 0);
-  const adet = acik.reduce((t, k) => t + Number(k.quantity || 0), 0);
+  // Deger ve adet ODENMEMIS adetlerden: parayla odenmis adet ikram degildir
+  // (sunucu da boyle sayar).
+  const deger = acik.reduce((t, k) => t + Number(k.product_price || 0) * kalanAdet(k), 0);
+  const adet = acik.reduce((t, k) => t + kalanAdet(k), 0);
 
   // Veren: islemi yapan ya da sahip (sunucu da yalniz bunlari kabul eder).
   const verenler = [];
@@ -361,8 +365,16 @@ export function IkramKapatPenceresi({ order, ad, staffUser, onKapat, onBitti }) 
     const { data, error } = await supabase.rpc("nip_ikram_kapat", {
       p_order_id: order.id, p_veren: verenGerek ? secili : null,
     });
+    if (error) {
+      // Sunucu reddetti: hesap degismis olabilir (urun eklendi, ikram geri
+      // alindi). Liste tazelenir; pencere eski kalemlerle acik kalmasin.
+      const taze = await kalemSorgu();
+      if (!taze.error) setKalemler(taze.data || []);
+      setBusy(false);
+      setHata(hataYaz({ message: personelHata(error) }));
+      return;
+    }
     setBusy(false);
-    if (error) { setHata(hataYaz({ message: personelHata(error) })); return; }
     onBitti?.((Array.isArray(data) ? data[0] : data) || {});
   };
 
@@ -395,14 +407,14 @@ export function IkramKapatPenceresi({ order, ad, staffUser, onKapat, onBitti }) 
                 <div key={k.id} style={{ ...satir, borderTop: i === 0 ? "none" : `1px solid ${C.line}` }}>
                   <div style={{ flex: 1, minWidth: 0 }}>
                     <div style={{ fontWeight: 700, overflow: "hidden", textOverflow: "ellipsis", whiteSpace: "nowrap" }}>
-                      {k.product_name}{k.variant_name ? " · " + k.variant_name : ""}{Number(k.quantity) > 1 ? " × " + k.quantity : ""}
+                      {k.product_name}{k.variant_name ? " · " + k.variant_name : ""}{kalanAdet(k) > 1 ? " × " + kalanAdet(k) : ""}
                     </div>
                     <div style={{ fontSize: 12, marginTop: 2, color: verenAd ? C.muted : C.down, fontWeight: verenAd ? 500 : 700 }}>
                       {verenAd ? "İkram eden: " + verenAd : "İkram eden seçilmedi"}
                     </div>
                   </div>
                   <div style={{ flexShrink: 0, color: C.muted, fontVariantNumeric: "tabular-nums" }}>
-                    {tl(Number(k.product_price || 0) * Number(k.quantity || 0))}
+                    {tl(Number(k.product_price || 0) * kalanAdet(k))}
                   </div>
                 </div>
               );

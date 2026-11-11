@@ -264,6 +264,16 @@ export default function OrderDetailPage() {
   };
   const toggleTreat = (it) => {
     if (it.is_treat) { applyTreat(it, null); return; } // geri alma tek dokunus
+    // Ikram SATIRIN TAMAMINI ₺0 yapar. Satirin bir adedi parayla odendiyse o
+    // adedin fiyati da silinir, alinan para cirodan duserdi. Odenmis satir
+    // ikram edilmez; kalan adet ayri satir olarak eklenip ikram edilir.
+    if (Number(it.odenen_adet) > 0) {
+      const odenen = Number(it.odenen_adet), kalan = Math.max(0, Number(it.quantity || 0) - odenen);
+      setDuzBilgi({ tur: "uyari", sure: 9000, id: Date.now(), metin: kalan > 0
+        ? `${it.product_name}: ${odenen} adedi ödendi, bu satır ikram edilmez. Kalan ${kalan} adet için: satırdan ${kalan} adet kaldır, ürünü yeniden ekle, yeni satırı ikram et.`
+        : `${it.product_name} ödendi. Ödenmiş ürün ikram edilmez.` });
+      return;
+    }
     setTreatModal(it);
   };
   const applyTreat = async (it, verenId) => {
@@ -605,7 +615,10 @@ export default function OrderDetailPage() {
     : Number(order?.total || 0);
   // ₺0 HESAP: urun var ama tahsil edilecek tutar yok (hepsi ikram). Kart /
   // Nakit yerine "İkram olarak kapat" gorunur (sahip karari 11.11.2026).
-  const ikramKapanir = items.length > 0 && !(hizliTutar > 0);
+  // Kalemlerden de bakilir: hesap satiri (order.total) kalemlerden gec gelirse
+  // tutarli hesapta bir an "ikram" dugmesi gorunmesin.
+  const kalemKalan = items.reduce((t, i) => t + Number(i.final_price || 0) * Math.max(0, Number(i.quantity || 0) - Number(i.odenen_adet || 0)), 0);
+  const ikramKapanir = items.length > 0 && !(hizliTutar > 0) && !(kalemKalan > 0.005);
   const ikramBitti = async (sonuc) => {
     setIkramKapatAcik(false);
     if (partiKasaAcik) {
@@ -1056,7 +1069,7 @@ export default function OrderDetailPage() {
 
       {/* Liste gorunumunde sabit alt cubugun USTUNDE: "X silindi" yazisi Kart/Nakit
           dugmesindeki tutari ortmesin. Parti izgarasinda varsayilan yer. */}
-      {duzBilgi && <Bildirim key={duzBilgi.id} metin={duzBilgi.metin} alt={partiKasaAcik ? 96 : cubukAlt + 62}/>}
+      {duzBilgi && <Bildirim key={duzBilgi.id} metin={duzBilgi.metin} tur={duzBilgi.tur} sure={duzBilgi.sure} alt={partiKasaAcik ? 96 : cubukAlt + 62}/>}
       {ikramKapatAcik && !kapali && (
         <IkramKapatPenceresi order={order} staffUser={staffUser}
           ad={order.table_id ? (tables[order.table_id] || "Masa") : (order.customer_name || "Hesap")}
