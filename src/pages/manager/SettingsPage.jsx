@@ -77,9 +77,11 @@ export default function SettingsPage() {
     // Postgres 42P10 verir ve kayit SESSIZCE duserdi. Hatalari da gosteriyoruz.
     const rows = Object.entries(settings).map(([key, value]) => ({ key, value, store_id: PARIS_STORE_ID }));
     const { error } = await supabase.from("app_settings").upsert(rows, { onConflict: "key,store_id" });
-    setBusy(false);
-    if (error) { alert("Ayarlar kaydedilemedi: " + (error.message || "bilinmeyen hata")); return; }
+    if (error) { setBusy(false); alert("Ayarlar kaydedilemedi: " + (error.message || "bilinmeyen hata")); return; }
+    // Dugme tazeleme bitene kadar mesgul kalir: arada "Ayarları Kaydet" yazip
+    // kayit olmamis gibi gorunuyordu.
     await load(true);
+    setBusy(false);
     setBildirim({ n: Date.now() });
     setSaved(true);
     setTimeout(() => setSaved(false), 2000);

@@ -157,11 +157,14 @@ export default function MembersPage() {
   // (en az 3 rakam; "0532 123", son 4 hane). Telefon eslesmesi yalniz arama
   // harf icermiyorsa calisir — yoksa "NIP-MBR-A1B2C3" gibi bir kodun
   // rakamlari ilgisiz telefonlarla eslesirdi.
-  const aranan = search.trim().toLocaleLowerCase("tr-TR");
+  // Turkce kucultme "I"yi "ı" yapar: "NIP-MBR-…" kodu kucuk harfle yazilinca
+  // bulunmuyordu. Iki taraf da ayni bicime indirilir (ı -> i).
+  const duz = (v) => String(v || "").toLocaleLowerCase("tr-TR").replace(/ı/g, "i");
+  const aranan = duz(search.trim());
   const arananRakam = /^[\d\s+().-]+$/.test(aranan) ? aranan.replace(/\D/g, "") : "";
   const filtered = members.filter(m => {
     if (aranan) {
-      return [m.name, m.email, m.member_code].some(v => String(v || "").toLocaleLowerCase("tr-TR").includes(aranan))
+      return [m.name, m.email, m.member_code].some(v => duz(v).includes(aranan))
         || (arananRakam.length >= 3 && String(m.phone || "").replace(/\D/g, "").includes(arananRakam));
     }
     if (filter === "debtors") return Number(m.outstanding_balance) > 0;

@@ -2100,7 +2100,7 @@ export default function CustomerMenu() {
             <Ikon ad="ara" boy={15} style={{color:"#666666"}}/>
             <input value={menuSearch} onChange={e=>setMenuSearch(e.target.value)}
               placeholder={L("Ürün ara — latte, efes, aperol","Search — latte, beer, aperol","Поиск — латте, пиво, апероль")}
-              style={{flex:1,minWidth:0,border:"none",outline:"none",fontSize:13,color:"#000",background:"transparent",fontFamily:"inherit",padding:0}}/>
+              style={{flex:1,minWidth:0,border:"none",outline:"none",boxShadow:"none",fontSize:13,color:"#000",background:"transparent",fontFamily:"inherit",padding:0}}/>
             {menuSearch && (
               <button onClick={()=>setMenuSearch("")} aria-label={L("Aramayı temizle","Clear search","Очистить")}
                 style={{border:"none",background:"none",color:"#666666",fontSize:17,lineHeight:1,cursor:"pointer",padding:0,flexShrink:0,fontFamily:"inherit",

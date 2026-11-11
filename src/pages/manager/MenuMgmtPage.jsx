@@ -1,4 +1,4 @@
-import { useEffect, useState } from "react";
+import { useEffect, useRef, useState } from "react";
 import { supabase } from "../../lib/supabase.js";
 import { gorselYukle } from "../../lib/gorsel.js";
 import { useAuth } from "../../contexts/AuthContext.jsx";
@@ -36,7 +36,11 @@ export default function MenuMgmtPage() {
   // sessiz: kayit / silme / siralama sonrasi tazelemede sayfa "Yükleniyor"
   // yazisina dusmesin (liste sokulup kaydirma basa sariyordu). Ilk acilis
   // yine yukleme yazisini gosterir.
+  // Son siralama isteginin numarasi: eski tazeleme cevabi yeni dokunusun
+  // sirasini ezmesin (hizli art arda tasimada satir geri zipliyordu).
+  const siraNo = useRef(0);
   const load = async (sessiz) => {
+    const n = siraNo.current;
     if (!sessiz) setLoading(true);
     const [{data: cats, error: katHata}, {data: prods, error: urunHata}] = await Promise.all([
       supabase.from("categories").select("*").in("store_id", staffUser?.store_ids?.length ? staffUser.store_ids : ["00000000-0000-0000-0000-000000000000"]).order("sort_order"),
@@ -44,7 +48,7 @@ export default function MenuMgmtPage() {
     ]);
     // Sessiz tazeleme basarisizsa (sinyal koptu) ekrandaki liste kalsin:
     // bos listeyle degistirmek sayfayi bosaltirdi.
-    if (sessiz && (katHata || urunHata)) return;
+    if (sessiz && (katHata || urunHata || n !== siraNo.current)) return;
     setCategories(cats || []);
     setProducts(prods || []);
     // Tukenen urune "haber ver" diyen musteri sayisi — hangi urunu geri getirmek
@@ -287,6 +291,7 @@ export default function MenuMgmtPage() {
   // basinca satir hemen yer degistirir, sayfa yeniden kurulmaz. Sunucuya giden
   // istekler ayni (kategorinin tamami 10, 20, 30...).
   const siraKaydet = async (reordered) => {
+    const n = ++siraNo.current;
     const yeniSira = new Map(reordered.map((prod, i) => [prod.id, (i + 1) * 10]));
     setProducts(ps => ps.map(x => (yeniSira.has(x.id) ? { ...x, sort_order: yeniSira.get(x.id) } : x)));
     await Promise.all(
@@ -294,7 +299,8 @@ export default function MenuMgmtPage() {
         supabase.from("products").update({ sort_order: (i + 1) * 10 }).eq("id", prod.id)
       )
     );
-    load(true);
+    // Arada yeni bir tasima yapildiysa tazelemeyi o yapar
+    if (n === siraNo.current) load(true);
   };
 
   const reorderProducts = async (fromIdx, toIdx) => {

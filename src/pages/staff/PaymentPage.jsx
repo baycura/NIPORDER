@@ -442,7 +442,8 @@ export default function PaymentPage() {
     <div style={{fontFamily:cv,color:"#F0EDE8"}}>
       <div style={{fontSize:24,fontWeight:800,marginBottom:4}}>Kasa</div>
       <div style={{fontSize:11,color:"#888",letterSpacing:"1px",marginBottom:18}}>
-        {orders.length} BEKLEYEN HESAP
+        {/* Ilk yukleme basarisizsa "0 hesap" denmez: liste hic okunmadi. */}
+        {yukHata && orders.length === 0 ? "HESAPLAR YÜKLENEMEDİ" : orders.length + " BEKLEYEN HESAP"}
         {orders.filter(o => bayatMi(o.created_at)).length > 0 &&
           <span style={{color:"#FFFFFF"}}> · {orders.filter(o => bayatMi(o.created_at)).length} UNUTULMUŞ</span>}
       </div>
@@ -451,7 +452,7 @@ export default function PaymentPage() {
         <div role="alert" style={{display:"flex",alignItems:"center",gap:10,background:"#1A1A1A",border:"1px solid #C87A6A",borderRadius:12,padding:"10px 14px",fontSize:13,marginBottom:12}}>
           <span style={{color:"#C87A6A",display:"flex",flexShrink:0}}><Ikon ad="uyari" boy={16}/></span>
           <span style={{flex:1,lineHeight:1.4}}>Bağlantı kurulamadı — liste güncel olmayabilir.</span>
-          <button onClick={() => load()} style={{minHeight:44,padding:"0 14px",flexShrink:0,background:"transparent",color:"#F0EDE8",border:"1px solid #3A3A3A",borderRadius:10,fontSize:13,fontWeight:700,cursor:"pointer",fontFamily:"inherit"}}>Tekrar dene</button>
+          <button onClick={() => { setBildirim(null); load(); }} style={{minHeight:44,padding:"0 14px",flexShrink:0,background:"transparent",color:"#F0EDE8",border:"1px solid #3A3A3A",borderRadius:10,fontSize:13,fontWeight:700,cursor:"pointer",fontFamily:"inherit"}}>Tekrar dene</button>
         </div>
       )}
 

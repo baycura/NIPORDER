@@ -236,7 +236,8 @@ export default function TablesPage() {
   return (
     <div style={{fontFamily:cv,color:"#F0EDE8"}}>
       <Bildirim/>
-      {hata && <Bildirim tur="hata" metin={hata.m} key={hata.n}/>}
+      {/* Pencere acikken (klavye) bildirim ustte cikar: altta klavyenin arkasinda kalirdi. */}
+      {hata && <Bildirim tur="hata" konum={(walkinOpen || editTable) ? "ust" : "alt"} metin={hata.m} key={hata.n}/>}
       <div style={{marginBottom:14}}>
         <div style={{fontSize:24,fontWeight:800,color:"#F0EDE8",letterSpacing:"-0.4px"}}>Masalar</div>
         <div style={{fontSize:11,color:"#8A8580",letterSpacing:"1.5px",fontWeight:700,marginTop:3,textTransform:"uppercase"}}>
