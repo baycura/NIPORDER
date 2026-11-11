@@ -1,4 +1,5 @@
 import { useEffect, useMemo, useState } from "react";
+import { uyar } from "../../lib/uyar.js";
 import { supabase } from "../../lib/supabase.js";
 import { useAuth } from "../../contexts/AuthContext.jsx";
 import Ikon from "../../components/Ikon.jsx";
@@ -115,7 +116,7 @@ export default function ExpensesPage() {
       expense_date: isoDate(new Date()),
     });
     setSaving(false);
-    if (error) { alert("Kaydedilemedi: " + error.message); return; }
+    if (error) { uyar("Kaydedilemedi: " + error.message); return; }
     setSheet(false);
     setForm({ category: "gida", amount: "", description: "", payment_method: "kasa" });
     // Suzgec acikken yeni satir listede gorunmeyebilir; kayit yine de onaylanir.
@@ -127,7 +128,7 @@ export default function ExpensesPage() {
     if (!window.confirm(`Silinsin mi? ${r.description} — ${fmtTL(r.amount)}`)) return;
     if (DEMO) { setRows(x => x.filter(i => i.id !== r.id)); return; }
     const { error } = await supabase.from("expenses").delete().eq("id", r.id);
-    if (error) { alert(error.message); return; }
+    if (error) { uyar(error.message); return; }
     load();
   }
 

@@ -1,4 +1,5 @@
 import { useEffect, useRef, useState } from "react";
+import { uyar } from "../../lib/uyar.js";
 import FormPencere, { altlikStil } from "../../components/FormPencere.jsx";
 import { supabase } from "../../lib/supabase.js";
 import { gorselYukle } from "../../lib/gorsel.js";
@@ -81,7 +82,7 @@ export default function MenuMgmtPage() {
 
   const saveCat = async () => {
     if (busy) return;
-    if (!catForm.name?.trim()) { alert("Kategori adi gerekli"); return; }
+    if (!catForm.name?.trim()) { uyar("Kategori adi gerekli"); return; }
     setBusy(true);
     const payload = {
       name: catForm.name.trim(), name_en: catForm.name_en?.trim() || null, name_ru: catForm.name_ru?.trim() || null, icon: catForm.icon || null,
@@ -111,30 +112,30 @@ export default function MenuMgmtPage() {
     // Gonderilmezse NULL kalir ve "new row violates row-level security policy" hatasi doner.
     if (catModal.mode === "new") {
       const storeId = staffUser?.store_ids?.[0];
-      if (!storeId) { alert("Hesabina magaza atanmamis — yonetici ile gorus."); setBusy(false); return; }
+      if (!storeId) { uyar("Hesabina magaza atanmamis — yonetici ile gorus."); setBusy(false); return; }
       payload.store_id = storeId;
     }
     const res = catModal.mode === "new"
       ? await supabase.from("categories").insert(payload)
       : await supabase.from("categories").update(payload).eq("id", catModal.data.id);
-    if (res.error) { alert("Hata: " + res.error.message); setBusy(false); return; }
+    if (res.error) { uyar("Hata: " + res.error.message); setBusy(false); return; }
     setCatModal(null); setBusy(false); load(true);
   };
 
   // Donen deger: silindi mi. Pencere ancak silme gerceklestiyse kapanir.
   const delCat = async (c) => {
     const prodCount = products.filter(p => p.category_id === c.id).length;
-    if (prodCount > 0) { alert("Bu kategoride " + prodCount + " urun var. Once urunleri sil/tasi."); return false; }
+    if (prodCount > 0) { uyar("Bu kategoride " + prodCount + " urun var. Once urunleri sil/tasi."); return false; }
     if (!confirm('"' + c.name + '" silinsin mi?')) return false;
     const { error } = await supabase.from("categories").delete().eq("id", c.id);
-    if (error) { alert("Silinemedi: " + error.message); return false; }
+    if (error) { uyar("Silinemedi: " + error.message); return false; }
     load(true);
     return true;
   };
 
   // -------- PRODUCTS --------
   const openNewProd = () => {
-    if (!selectedCat) { alert("Once kategori sec"); return; }
+    if (!selectedCat) { uyar("Once kategori sec"); return; }
     setProdModal({mode:"new"});
     setProdForm({
       name:"", name_en:"", name_ru:"", brand:"", description:"", description_en:"", description_ru:"", price:'', cost_price:'', instant_discount_pct:'', hh_enabled:false, hh_price:'', hh_start:'', hh_end:'', hh_days:[0,1,2,3,4,5,6],
@@ -181,19 +182,19 @@ export default function MenuMgmtPage() {
     try {
       const url = await gorselYukle(supabase, f, "urunler", { enUzun: 400, kalite: 0.8 });
       setProdForm(pf => ({ ...pf, image_url: url }));
-    } catch (err) { alert("Görsel yüklenemedi: " + (err?.message || err)); }
+    } catch (err) { uyar("Görsel yüklenemedi: " + (err?.message || err)); }
     setGorselBusy(false);
   };
 
   const saveProd = async () => {
     if (busy) return;
-    if (!prodForm.name?.trim()) { alert("Ürün adı gerekli"); return; }
+    if (!prodForm.name?.trim()) { uyar("Ürün adı gerekli"); return; }
     // Validate options_config groups
     if (prodForm.has_options) {
       const groups = (prodForm.options_config && prodForm.options_config.groups) || [];
       for (const g of groups) {
-        if (!g.name?.trim()) { alert("Secenek grubu adi bos olamaz"); return; }
-        if (!g.options || g.options.length === 0) { alert(g.name + " grubunun hic secenegi yok"); return; }
+        if (!g.name?.trim()) { uyar("Secenek grubu adi bos olamaz"); return; }
+        if (!g.options || g.options.length === 0) { uyar(g.name + " grubunun hic secenegi yok"); return; }
       }
     }
     setBusy(true);
@@ -243,7 +244,7 @@ export default function MenuMgmtPage() {
     const res = prodModal.mode === "new"
       ? await supabase.from("products").insert(payload)
       : await supabase.from("products").update(payload).eq("id", prodModal.data.id);
-    if (res.error) { alert("Hata: " + res.error.message); setBusy(false); return; }
+    if (res.error) { uyar("Hata: " + res.error.message); setBusy(false); return; }
     setProdModal(null); setBusy(false); load(true);
   };
 
@@ -253,7 +254,7 @@ export default function MenuMgmtPage() {
   const delProd = async (p) => {
     if (!confirm('"' + p.name + '" silinsin mi?')) return false;
     const { error: pdErr } = await supabase.from("products").delete().eq("id", p.id);
-    if (pdErr) { alert("Silinemedi: " + pdErr.message); return false; }
+    if (pdErr) { uyar("Silinemedi: " + pdErr.message); return false; }
     load(true);
     return true;
   };

@@ -1,4 +1,5 @@
 import { useEffect, useState } from "react";
+import { uyar } from "../../lib/uyar.js";
 import FormPencere from "../../components/FormPencere.jsx";
 import { supabase } from "../../lib/supabase.js";
 import { useAuth } from "../../contexts/AuthContext.jsx";
@@ -76,7 +77,7 @@ export default function FixedExpensesPage() {
 
   const save = async () => {
     if (busy) return;
-    if (!form.name?.trim()) { alert("Gider adı gerekli"); return; }
+    if (!form.name?.trim()) { uyar("Gider adı gerekli"); return; }
     setBusy(true);
     const payload = {
       name: form.name.trim(),
@@ -92,14 +93,14 @@ export default function FixedExpensesPage() {
       ? await supabase.from("fixed_expenses").insert(payload)
       : await supabase.from("fixed_expenses").update(payload).eq("id", modal.data.id);
     setBusy(false);
-    if (error) { alert("Hata: " + error.message); return; }
+    if (error) { uyar("Hata: " + error.message); return; }
     setModal(null); load(true);
   };
 
   const del = async (i) => {
     if (!confirm('"' + i.name + '" silinsin mi?')) return;
     const { error } = await supabase.from("fixed_expenses").delete().eq("id", i.id);
-    if (error) { alert("Hata: " + error.message); return; }
+    if (error) { uyar("Hata: " + error.message); return; }
     load(true);
   };
 

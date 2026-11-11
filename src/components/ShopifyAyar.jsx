@@ -1,4 +1,5 @@
 import { useEffect, useState } from "react";
+import { uyar } from "../lib/uyar.js";
 import { supabase, hataMetni } from "../lib/supabase.js";
 import { useAuth } from "../contexts/AuthContext.jsx";
 import Ikon from "./Ikon.jsx";
@@ -29,7 +30,7 @@ export default function ShopifyAyar() {
 
   const kaydet = async () => {
     if (busy) return;
-    if (!shop.trim() && !token.trim()) { alert("Mağaza adresi ya da erişim anahtarı gir"); return; }
+    if (!shop.trim() && !token.trim()) { uyar("Mağaza adresi ya da erişim anahtarı gir"); return; }
     setBusy("kaydet"); setSonuc(null);
     const { error } = await supabase.rpc("nip_shopify_ayar_kaydet", { p_shop: shop.trim() || null, p_token: token.trim() || null });
     setBusy("");

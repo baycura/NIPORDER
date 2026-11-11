@@ -1,4 +1,5 @@
 import { useEffect, useState } from "react";
+import { uyar } from "../../lib/uyar.js";
 import { supabase } from "../../lib/supabase.js";
 import { useAuth } from "../../contexts/AuthContext.jsx";
 import SayiGirisi from "../../components/SayiGirisi.jsx";
@@ -53,7 +54,7 @@ export default function TablesMgmtPage() {
 
   const saveTable = async () => {
     const name = tName.trim();
-    if (!name) { alert("Masa adi gerekli"); return; }
+    if (!name) { uyar("Masa adi gerekli"); return; }
     const payload = {
       name,
       capacity: Number(tCap) || 4,
@@ -67,10 +68,10 @@ export default function TablesMgmtPage() {
     };
     if (modal.mode === "new") {
       const { error } = await supabase.from("cafe_tables").insert(payload);
-      if (error) { alert("Hata: " + error.message); return; }
+      if (error) { uyar("Hata: " + error.message); return; }
     } else {
       const { error } = await supabase.from("cafe_tables").update(payload).eq("id", modal.data.id);
-      if (error) { alert("Hata: " + error.message); return; }
+      if (error) { uyar("Hata: " + error.message); return; }
     }
     setModal(null); load(true);
   };
@@ -78,14 +79,14 @@ export default function TablesMgmtPage() {
   const deleteTable = async (t) => {
     if (!confirm('"' + t.name + '" silinsin mi?')) return;
     const { error } = await supabase.from("cafe_tables").delete().eq("id", t.id);
-    if (error) { alert("Hata: " + error.message); return; }
+    if (error) { uyar("Hata: " + error.message); return; }
     load(true);
   };
 
   const addAllPresets = async () => {
     if (!confirm("7 hazir masayi ekle (Bar 1-2, Masa 1-3, Teras 1-2)?")) return;
     const { error } = await supabase.from("cafe_tables").insert(PRESETS.map(p => ({...p, store_id: staffUser?.store_ids?.[0], is_walkin: false})));
-    if (error) { alert("Hata: " + error.message); return; }
+    if (error) { uyar("Hata: " + error.message); return; }
     load(true);
   };
 

@@ -1,4 +1,5 @@
 import { useEffect, useState } from "react";
+import { uyar } from "../../lib/uyar.js";
 import { supabase, hataMetni } from "../../lib/supabase.js";
 import { PARIS_STORE_ID } from "../../lib/stores.js";
 import { ozellik } from "../../lib/profil.js";
@@ -50,15 +51,15 @@ export default function SettingsPage() {
       const { data, error } = await supabase.functions.invoke("eur-rate-sync", { body: {} });
       if (error) throw new Error(hataMetni(error));
       if (data?.error) throw new Error(data.error);
-      alert("Kur cekildi: 1 € = ₺" + data.fetched + " (" + (data.source || "") + ")");
+      uyar("Kur cekildi: 1 € = ₺" + data.fetched + " (" + (data.source || "") + ")", "basari");
       load(true);
-    } catch (e) { alert("Kur guncellenemedi: " + (e?.message || e)); }
+    } catch (e) { uyar("Kur guncellenemedi: " + (e?.message || e)); }
     setEurBusy(false);
   };
 
   const translateAnnouncement = async () => {
     const src = (settings.announcement_tr || "").trim();
-    if (!src) { alert("Once Turkce duyuruyu yaz"); return; }
+    if (!src) { uyar("Once Turkce duyuruyu yaz"); return; }
     if (trBusy) return;
     setTrBusy(true);
     try {
@@ -66,7 +67,7 @@ export default function SettingsPage() {
       if (error) throw new Error(hataMetni(error));
       if (data?.error) throw new Error(data.error);
       setSettings(s => ({ ...s, announcement_en: data.en || s.announcement_en, announcement_ru: data.ru || s.announcement_ru }));
-    } catch (e) { alert("Ceviri hatasi: " + (e?.message || e)); }
+    } catch (e) { uyar("Ceviri hatasi: " + (e?.message || e)); }
     setTrBusy(false);
   };
 
@@ -77,7 +78,7 @@ export default function SettingsPage() {
     // Postgres 42P10 verir ve kayit SESSIZCE duserdi. Hatalari da gosteriyoruz.
     const rows = Object.entries(settings).map(([key, value]) => ({ key, value, store_id: PARIS_STORE_ID }));
     const { error } = await supabase.from("app_settings").upsert(rows, { onConflict: "key,store_id" });
-    if (error) { setBusy(false); alert("Ayarlar kaydedilemedi: " + (error.message || "bilinmeyen hata")); return; }
+    if (error) { setBusy(false); uyar("Ayarlar kaydedilemedi: " + (error.message || "bilinmeyen hata")); return; }
     // Dugme tazeleme bitene kadar mesgul kalir: arada "Ayarları Kaydet" yazip
     // kayit olmamis gibi gorunuyordu.
     await load(true);

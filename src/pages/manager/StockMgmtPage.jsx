@@ -1,4 +1,5 @@
 import { useEffect, useMemo, useState } from "react";
+import { uyar } from "../../lib/uyar.js";
 import FormPencere, { altlikStil } from "../../components/FormPencere.jsx";
 import { useNavigate } from "react-router-dom";
 import { supabase } from "../../lib/supabase.js";
@@ -78,7 +79,7 @@ export default function StockMgmtPage() {
   const geriAl = async () => {
     if (!sonGiris) return;
     const { error } = await stokGeriAl(sonGiris);
-    if (error) { alert("Geri alinamadi: " + error.message); return; }
+    if (error) { uyar("Geri alinamadi: " + error.message); return; }
     setSonGiris(null);
     load(true);
   };
@@ -95,7 +96,7 @@ export default function StockMgmtPage() {
   // o.adim: 0 hicbir sey sorulmadi, 1 paket sorusu cevaplandi, 2 kap sorusu cevaplandi.
   const save = async (o = {}) => {
     if (busy) return;
-    if (!form.name?.trim()) { alert("Isim gerekli"); return; }
+    if (!form.name?.trim()) { uyar("Isim gerekli"); return; }
     const adim = Number(o.adim) || 0;
     let maliyet = o.maliyet != null ? Number(o.maliyet) : (Number(form.cost_per_unit) || 0);
 
@@ -153,10 +154,10 @@ export default function StockMgmtPage() {
     };
     if (modal.mode === "new") {
       const { error } = await supabase.from("ingredients").insert({ ...payload, store_id: staffUser?.store_ids?.[0] });
-      if (error) { alert("Hata: " + error.message); setBusy(false); return; }
+      if (error) { uyar("Hata: " + error.message); setBusy(false); return; }
     } else {
       const { error } = await supabase.from("ingredients").update(payload).eq("id", modal.data.id);
-      if (error) { alert("Hata: " + error.message); setBusy(false); return; }
+      if (error) { uyar("Hata: " + error.message); setBusy(false); return; }
     }
     setModal(null); setBusy(false); load(true);
   };
@@ -164,7 +165,7 @@ export default function StockMgmtPage() {
   const del = async (i) => {
     if (!confirm('"' + i.name + '" silinsin mi?')) return;
     const { error } = await supabase.from("ingredients").delete().eq("id", i.id);
-    if (error) { alert("Silinemedi: " + error.message); return; }
+    if (error) { uyar("Silinemedi: " + error.message); return; }
     load(true);
   };
 

@@ -1,4 +1,5 @@
 import { useEffect, useState } from "react";
+import { uyar } from "../../lib/uyar.js";
 import FormPencere, { altlikStil } from "../../components/FormPencere.jsx";
 import { supabase } from "../../lib/supabase.js";
 import { useAuth } from "../../contexts/AuthContext.jsx";
@@ -66,7 +67,7 @@ export default function RetailPage() {
   const openEditBrand = (b) => { setBrandModal({ mode: "edit", data: b }); setBrandForm({ name: b.name, description: b.description || "", sort_order: b.sort_order || 100, konsinye: !!b.konsinye, konsinye_pay_pct: b.konsinye_pay_pct ?? "" }); };
   const saveBrand = async () => {
     if (busy) return;
-    if (!brandForm.name?.trim()) { alert("Marka adı gerekli"); return; }
+    if (!brandForm.name?.trim()) { uyar("Marka adı gerekli"); return; }
     setBusy(true);
     const payload = { name: brandForm.name.trim(), description: brandForm.description?.trim() || null, sort_order: Number(brandForm.sort_order) || 100, store_id: storeId,
       // Konsinye marka: urunleri tedarikcinin mali, satisin %X'i bizim (docs/konsinye.md)
@@ -75,7 +76,7 @@ export default function RetailPage() {
       ? await supabase.from("brands").insert(payload)
       : await supabase.from("brands").update(payload).eq("id", brandModal.data.id);
     setBusy(false);
-    if (error) { alert("Hata: " + error.message); return; }
+    if (error) { uyar("Hata: " + error.message); return; }
     setBrandModal(null); load(true);
   };
   // Donen deger: silindi mi. Pencere ancak silme gerceklestiyse kapanir.
@@ -83,7 +84,7 @@ export default function RetailPage() {
     const n = products.filter(p => p.brand_id === b.id).length;
     if (!confirm('"' + b.name + '" markası silinsin mi?' + (n ? "\n\n" + n + " ürün markasız kalacak (silinmez)." : ""))) return false;
     const { error } = await supabase.from("brands").delete().eq("id", b.id);
-    if (error) { alert("Hata: " + error.message); return false; }
+    if (error) { uyar("Hata: " + error.message); return false; }
     load(true);
     return true;
   };
@@ -130,8 +131,8 @@ export default function RetailPage() {
 
   const saveProduct = async () => {
     if (busy) return;
-    if (!form.name?.trim()) { alert("Ürün adı gerekli"); return; }
-    if (!category) { alert("Önce Menü Yönetimi'nden 'Yalnız kasada' işaretli bir kategori açın"); return; }
+    if (!form.name?.trim()) { uyar("Ürün adı gerekli"); return; }
+    if (!category) { uyar("Önce Menü Yönetimi'nden 'Yalnız kasada' işaretli bir kategori açın"); return; }
     setBusy(true);
     const variants = (form.variants || []).filter(v => v.name);
     const totalFromVariants = variants.reduce((s, v) => s + (Number(v.stock) || 0), 0);
@@ -165,7 +166,7 @@ export default function RetailPage() {
       ? await supabase.from("products").insert(payload)
       : await supabase.from("products").update(payload).eq("id", prodModal.data.id);
     setBusy(false);
-    if (error) { alert("Hata: " + error.message); return; }
+    if (error) { uyar("Hata: " + error.message); return; }
     setProdModal(null); load(true);
   };
   const stokEkleAc = (p) => {
@@ -176,7 +177,7 @@ export default function RetailPage() {
   const geriAl = async () => {
     if (!sonGiris) return;
     const { error } = await stokGeriAl(sonGiris);
-    if (error) { alert("Geri alinamadi: " + error.message); return; }
+    if (error) { uyar("Geri alinamadi: " + error.message); return; }
     setSonGiris(null); load(true);
   };
 
@@ -186,7 +187,7 @@ export default function RetailPage() {
   const delProduct = async (p) => {
     if (!confirm('"' + p.name + '" silinsin mi?')) return false;
     const { error } = await supabase.from("products").delete().eq("id", p.id);
-    if (error) { alert("Silinemedi (geçmiş siparişlerde kullanılmış olabilir): " + error.message); return false; }
+    if (error) { uyar("Silinemedi (geçmiş siparişlerde kullanılmış olabilir): " + error.message); return false; }
     load(true);
     return true;
   };

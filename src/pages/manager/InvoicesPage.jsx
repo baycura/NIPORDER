@@ -1,4 +1,5 @@
 import { useEffect, useState } from "react";
+import { uyar } from "../../lib/uyar.js";
 import FormPencere, { altlikStil } from "../../components/FormPencere.jsx";
 import { parseUblInvoice } from "../../lib/ublInvoice.js";
 import { supabase, hataMetni } from "../../lib/supabase.js";
@@ -166,7 +167,7 @@ export default function InvoicesPage() {
     if (!file) return;
     try {
       const parsed = parseUblInvoice(await file.text());
-      if (!parsed.lines.length) { alert("XML'de fatura kalemi bulunamadi"); return; }
+      if (!parsed.lines.length) { uyar("XML'de fatura kalemi bulunamadi"); return; }
       setForm(f => ({
         ...f,
         supplier_name: parsed.supplier_name || f.supplier_name,
@@ -196,11 +197,11 @@ export default function InvoicesPage() {
         currency: parsed.currency,
       });
     } catch (err) {
-      alert("XML okunamadi: " + (err?.message || err));
+      uyar("XML okunamadi: " + (err?.message || err));
     }
   };
   const runOcr = async () => {
-    if (!photoFile) { alert("Once fatura fotografi sec"); return; }
+    if (!photoFile) { uyar("Once fatura fotografi sec"); return; }
     if (ocrBusy) return;
     setOcrBusy(true);
     try {
@@ -239,12 +240,12 @@ export default function InvoicesPage() {
       if (newLines.length) {
         setLines(newLines);
         const matched = newLines.filter(l => !l.isNew).length;
-        alert(newLines.length + " kalem okundu (" + matched + " mevcut hammaddeyle eslesti). Kontrol edip kaydet.");
+        uyar(newLines.length + " kalem okundu (" + matched + " mevcut hammaddeyle eslesti). Kontrol edip kaydet.", "basari");
       } else {
-        alert("Faturada kalem okunamadi — fotografi daha net cekip tekrar dene.");
+        uyar("Faturada kalem okunamadi — fotografi daha net cekip tekrar dene.");
       }
     } catch (e) {
-      alert("AI okuma hatasi: " + (e?.message || e));
+      uyar("AI okuma hatasi: " + (e?.message || e));
     }
     setOcrBusy(false);
   };
@@ -285,8 +286,8 @@ export default function InvoicesPage() {
 
   const saveInvoice = async () => {
     if (busy) return;
-    if (!form.supplier_name?.trim()) { alert("Tedarikci adi gerekli"); return; }
-    if (lines.length === 0) { alert("En az bir kalem ekle"); return; }
+    if (!form.supplier_name?.trim()) { uyar("Tedarikci adi gerekli"); return; }
+    if (lines.length === 0) { uyar("En az bir kalem ekle"); return; }
 
     // MUKERRER FATURA KONTROLU. Ayni fatura iki kez girilince hem gider iki kez
     // sayiliyor hem de stok sisiyor; bir kez yasandi (ERBAK, 8 ve 17 Agustos).
@@ -315,7 +316,7 @@ export default function InvoicesPage() {
       notes: form.notes?.trim() || null,
       store_id: staffUser?.store_ids?.[0],
     }).select().single();
-    if (invErr) { alert("Hata: " + invErr.message); setBusy(false); return; }
+    if (invErr) { uyar("Hata: " + invErr.message); setBusy(false); return; }
 
     // Create new ingredients if needed and insert items + bump stock
     const anomalies = [];
@@ -349,7 +350,7 @@ export default function InvoicesPage() {
               store_id: staffUser?.store_ids?.[0],
               name: nm, unit: l.newUnit, stock_qty: 0, cost_per_unit: 0,
             }).select().single();
-            if (e) { alert("Ingredient hatasi: " + e.message); continue; }
+            if (e) { uyar("Ingredient hatasi: " + e.message); continue; }
             ingId = newIng.id;
             createdThisRun[key] = ingId;
           }
@@ -408,7 +409,7 @@ export default function InvoicesPage() {
           p_kalemler: [{ ingredient_id: ingId, miktar: qty }],
           p_not: "Fatura" + (faturaNo ? " " + faturaNo : "") + " · " + form.supplier_name.trim(),
         });
-        if (stokHata) { alert("Stok islenemedi (" + (ing?.name || "kalem") + "): " + stokHata.message); }
+        if (stokHata) { uyar("Stok islenemedi (" + (ing?.name || "kalem") + "): " + stokHata.message); }
       }
       // MALIYET stogun disinda: ayni hammadde birden fazla satirda geciyorsa
       // AGIRLIKLI ORTALAMA olmali. Aksi halde son satir kazanir; bedelsiz

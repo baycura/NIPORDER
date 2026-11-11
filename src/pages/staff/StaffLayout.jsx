@@ -1,4 +1,5 @@
 import { Outlet, NavLink, useNavigate, useLocation } from "react-router-dom";
+import UyariYuvasi from "../../components/UyariYuvasi.jsx";
 import { APP_HOST } from "../../lib/appUrl.js";
 import { useState, useEffect, useRef } from "react";
 import { useAuth } from "../../contexts/AuthContext.jsx";
@@ -148,6 +149,7 @@ export default function StaffLayout() {
     return (<div style={{display:"flex",background:"#0C0C0C",minHeight:"100vh"}}>
       <aside style={{position:"fixed",left:0,top:0,zIndex:50}}><Sidebar/></aside>
       <main style={{marginLeft:240,flex:1,padding:"28px 32px",overflowY:"auto",maxHeight:"100vh"}}><Outlet/></main>
+      <UyariYuvasi/>
       <QrSerit serit={qr.serit} onAc={qrHesabaGit} onKapat={qr.seritKapat}/>
     </div>);
   }
@@ -195,6 +197,7 @@ export default function StaffLayout() {
       </div>
     </header>
     <main style={{padding:"16px 14px",paddingBottom:84,minHeight:"calc(100vh - 57px)"}}><Outlet/></main>
+    <UyariYuvasi/>
     <QrSerit serit={qr.serit} onAc={qrHesabaGit} onKapat={qr.seritKapat} mobil/>
     <nav style={{position:"fixed",bottom:0,left:0,right:0,background:"#161616",borderTop:"1px solid #2A2A2A",display:"flex",justifyContent:"space-around",padding:"0 0 14px",zIndex:35,boxShadow:"0 -2px 12px rgba(0,0,0,0.5)"}}>
       {sekmeler.map(item => (

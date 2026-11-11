@@ -58,7 +58,7 @@ export default function Bildirim({ metin: disMetin = null, tur = "basari", sure,
               background:g.zemin,border:"1px solid " + g.kenar,borderRadius:12,color:"#F0EDE8",fontSize:14,fontWeight:700,
               boxShadow:"0 6px 24px rgba(0,0,0,0.5)",fontFamily:"-apple-system,BlinkMacSystemFont,'Segoe UI',Roboto,sans-serif"}}>
       <span style={{color:g.renk,display:"flex",flexShrink:0}}><Ikon ad={g.ikon} boy={16}/></span>
-      <span style={{lineHeight:1.4}}>{metin}</span>
+      <span style={{lineHeight:1.4,whiteSpace:"pre-line",overflowWrap:"anywhere"}}>{metin}</span>
     </div>
   );
 }

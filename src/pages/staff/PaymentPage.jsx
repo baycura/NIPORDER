@@ -1,4 +1,5 @@
 import { useEffect, useState, useRef } from "react";
+import { uyar } from "../../lib/uyar.js";
 import { useSearchParams } from "react-router-dom";
 import { supabase } from "../../lib/supabase.js";
 import { useAuth } from "../../contexts/AuthContext.jsx";
@@ -298,8 +299,8 @@ export default function PaymentPage() {
     if (yeniBusy || !yeniKisi) return;
     const ad = yeniKisi.ad.trim();
     const tel = telefonNormalize(yeniKisi.tel);
-    if (ad.length < 2) { alert("Ad gir (en az 2 harf)"); return; }
-    if (tel && tel.replace(/\D/g, "").length < 10) { alert("Telefon eksik görünüyor — boş bırak ya da tam numarayı yaz"); return; }
+    if (ad.length < 2) { uyar("Ad gir (en az 2 harf)"); return; }
+    if (tel && tel.replace(/\D/g, "").length < 10) { uyar("Telefon eksik görünüyor — boş bırak ya da tam numarayı yaz"); return; }
     setYeniBusy(true);
     const { data, error } = await supabase.from("customers")
       .insert({ name: ad, phone: tel || null, provider: "kasa", store_id: staffUser?.store_ids?.[0] })
@@ -310,11 +311,11 @@ export default function PaymentPage() {
         const { data: mevcut } = await supabase.from("customers")
           .select("id, name, phone, points, outstanding_balance").eq("phone", tel).maybeSingle();
         setYeniBusy(false);
-        if (mevcut) { kisiSecDirekt(mevcut); alert("Bu numara zaten kayıtlı: " + mevcut.name); return; }
+        if (mevcut) { kisiSecDirekt(mevcut); uyar("Bu numara zaten kayıtlı: " + mevcut.name); return; }
       } else {
         setYeniBusy(false);
       }
-      alert("Kişi eklenemedi: " + error.message);
+      uyar("Kişi eklenemedi: " + error.message);
       return;
     }
     setYeniBusy(false);
@@ -361,10 +362,10 @@ export default function PaymentPage() {
     if (busy) return;
     const amt = Number(amount);
     // Puan tum tutari karsiliyorsa nakit 0 olabilir
-    if ((!amt || amt <= 0) && !(usePoints && ptsCover(modal) >= Number(modal.total || 0))) { alert("Geçerli tutar gir"); return; }
-    if (method === "debt" && !uyeId) { alert("Borç için kişi seç — üye olması gerekmez, ad yeter"); return; }
+    if ((!amt || amt <= 0) && !(usePoints && ptsCover(modal) >= Number(modal.total || 0))) { uyar("Geçerli tutar gir"); return; }
+    if (method === "debt" && !uyeId) { uyar("Borç için kişi seç — üye olması gerekmez, ad yeter"); return; }
     if (farkVar && farkNedeni.trim().length < 2) {
-      alert("Girilen tutar hesaptan farklı — nedenini yaz (bahşiş, indirim, eksik tahsilat…)");
+      uyar("Girilen tutar hesaptan farklı — nedenini yaz (bahşiş, indirim, eksik tahsilat…)");
       return;
     }
 
@@ -382,7 +383,7 @@ export default function PaymentPage() {
       p_kalemler: secimListesi.length ? secimListesi : null,
     });
     setBusy(false);
-    if (error) { alert("Tahsilat yapılamadı: " + error.message); return; }
+    if (error) { uyar("Tahsilat yapılamadı: " + error.message); return; }
 
     const sonuc = Array.isArray(data) ? data[0] : data;
     // Indirimde hesap odenen tutara iner; puan da o tutardan hesaplanir.

@@ -1,4 +1,5 @@
 import { useEffect, useMemo, useState } from "react";
+import { uyar } from "../../lib/uyar.js";
 import { supabase } from "../../lib/supabase.js";
 import { useAuth } from "../../contexts/AuthContext.jsx";
 import Ikon from "../../components/Ikon.jsx";
@@ -70,8 +71,8 @@ export default function RidesPage() {
 
   const kaydet = async () => {
     if (busy) return;
-    if (!form.title.trim()) { alert("Başlık gerekli"); return; }
-    if (!form.ride_date) { alert("Tarih gerekli"); return; }
+    if (!form.title.trim()) { uyar("Başlık gerekli"); return; }
+    if (!form.ride_date) { uyar("Tarih gerekli"); return; }
     setBusy(true);
 
     // Strava etkinlik id'si girildiyse rota linkini kendimiz kuralim —
@@ -100,7 +101,7 @@ export default function RidesPage() {
       : await supabase.from("ride_posts").insert(payload);
     setBusy(false);
     if (error) {
-      alert(/duplicate|unique/i.test(error.message)
+      uyar(/duplicate|unique/i.test(error.message)
         ? "Bu Strava etkinliği zaten kayıtlı."
         : "Kaydedilemedi: " + error.message);
       return;
@@ -111,13 +112,13 @@ export default function RidesPage() {
   const sil = async (r) => {
     if (!confirm(`"${r.title}" silinsin mi?`)) return;
     const { error } = await supabase.from("ride_posts").delete().eq("id", r.id);
-    if (error) { alert("Silinemedi: " + error.message); return; }
+    if (error) { uyar("Silinemedi: " + error.message); return; }
     yukle();
   };
 
   const durumDegistir = async (r, yeni) => {
     const { error } = await supabase.from("ride_posts").update({ status: yeni }).eq("id", r.id);
-    if (error) { alert("Güncellenemedi: " + error.message); return; }
+    if (error) { uyar("Güncellenemedi: " + error.message); return; }
     setListe(l => (l || []).map(x => x.id === r.id ? { ...x, status: yeni } : x));
   };
 

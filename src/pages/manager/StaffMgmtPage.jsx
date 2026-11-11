@@ -1,4 +1,5 @@
 import { useEffect, useState } from "react";
+import { uyar } from "../../lib/uyar.js";
 import FormPencere from "../../components/FormPencere.jsx";
 import { supabase } from "../../lib/supabase.js";
 import { useAuth } from "../../contexts/AuthContext.jsx";
@@ -61,18 +62,18 @@ export default function StaffMgmtPage() {
 
   const saveStaff = async () => {
     if (busy) return;
-    if (!form.name?.trim()) { alert("Isim gerekli"); return; }
+    if (!form.name?.trim()) { uyar("Isim gerekli"); return; }
     setBusy(true);
 
     if (modal.mode === "new") {
-      if (!form.email?.trim() || !form.password?.trim()) { alert("Email ve sifre gerekli"); setBusy(false); return; }
+      if (!form.email?.trim() || !form.password?.trim()) { uyar("Email ve sifre gerekli"); setBusy(false); return; }
       const { data: newId, error } = await supabase.rpc("admin_create_staff_with_auth", {
         p_email: form.email.trim(),
         p_password: form.password,
         p_name: form.name.trim(),
         p_role: form.role,
       });
-      if (error) { alert("Hata: " + error.message); setBusy(false); return; }
+      if (error) { uyar("Hata: " + error.message); setBusy(false); return; }
       // Update display_role + phone after creation
       const { error: upErr } = await supabase.from("staff").update({
         display_role: form.display_role || "Yönetici",
@@ -92,14 +93,14 @@ export default function StaffMgmtPage() {
       // .select() ile kac satir etkilendigini gor: RLS engellerse hata DEGIL,
       // sessizce 0 satir doner ve kullanici kaydettim saniyordu
       const { data: upd, error } = await supabase.from("staff").update(payload).eq("id", modal.data.id).select("id");
-      if (error) { alert("Hata: " + error.message); setBusy(false); return; }
-      if (!upd?.length) { alert("Kaydedilemedi: bu islem icin yetkin yok (personel duzenlemeyi yalniz admin yapabilir)."); setBusy(false); return; }
+      if (error) { uyar("Hata: " + error.message); setBusy(false); return; }
+      if (!upd?.length) { uyar("Kaydedilemedi: bu islem icin yetkin yok (personel duzenlemeyi yalniz admin yapabilir)."); setBusy(false); return; }
     }
     setModal(null); setBusy(false); load(true);
   };
 
   const resetPassword = async () => {
-    if (!pwModal || !newPassword || newPassword.length < 6) { alert("En az 6 karakter sifre gir"); return; }
+    if (!pwModal || !newPassword || newPassword.length < 6) { uyar("En az 6 karakter sifre gir"); return; }
     if (busy) return;
     setBusy(true);
     const { error } = await supabase.rpc("admin_set_user_password", {
@@ -107,22 +108,22 @@ export default function StaffMgmtPage() {
       p_new_password: newPassword,
     });
     setBusy(false);
-    if (error) { alert("Hata: " + error.message); return; }
+    if (error) { uyar("Hata: " + error.message); return; }
     alert(pwModal.name + " icin yeni sifre belirlendi:\n\n" + newPassword + "\n\nLutfen bu sifreyi personel ile paylasin.");
     setPwModal(null); setNewPassword("");
   };
 
   const toggleActive = async (s) => {
     const { data, error } = await supabase.from("staff").update({ is_active: !s.is_active }).eq("id", s.id).select("id");
-    if (error) { alert("Hata: " + error.message); return; }
-    if (!data?.length) { alert("Değiştirilemedi: bu işlem için yetkin yok."); return; }
+    if (error) { uyar("Hata: " + error.message); return; }
+    if (!data?.length) { uyar("Değiştirilemedi: bu işlem için yetkin yok."); return; }
     load(true);
   };
 
   const deleteStaff = async (s) => {
     if (!confirm('"' + s.name + '" silinsin mi?')) return;
     const { error } = await supabase.from("staff").delete().eq("id", s.id);
-    if (error) { alert("Hata: " + error.message); return; }
+    if (error) { uyar("Hata: " + error.message); return; }
     load(true);
   };
 
