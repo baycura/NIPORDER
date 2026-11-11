@@ -273,6 +273,11 @@ function Rezervasyonlar({ uyar }) {
   const [etkinlik, setEtkinlik] = useState("");
   const [qr, setQr] = useState("");
   const [busy, setBusy] = useState(false);
+  // KAPI SONUCU kalici kartta durur. Eskiden 3-6 saniyede kaybolan bir yazi
+  // idi: kapidaki kisi misafire bakarken sonucu kaciriyordu. Kart bir sonraki
+  // kod yazilana ya da kapatilana kadar ekranda kalir.
+  const [kapi, setKapi] = useState(null); // { ok, baslik, alt }
+  const kapiYaz = (ok, baslik, alt) => setKapi({ ok, baslik, alt });
   // Onay e-postasinin durumu: rez_id -> satir (Order: nip_reserve_onay_bildirim)
   const [bildirim, setBildirim] = useState({});
   // Geri alinmaz dugmeler iki dokunus ister: "<id>:g" (gelmedi) / "<id>:r" (reddet)
@@ -410,11 +415,13 @@ function Rezervasyonlar({ uyar }) {
       const kod = qr.trim().toUpperCase();
       if (!kod) return uyar("QR kodu gir", true);
       const res = await reserve.from("reservations").select("*").eq("qr_id", kod).maybeSingle();
+      // Okunamadi ile "kod yok" ayri: baglanti kopukken gecerli misafir geri cevrilmesin.
+      if (res.error) return kapiYaz(false, "OKUNAMADI", "Bağlantıyı kontrol et ve yeniden dene. Kod: " + kod);
       r = res.data;
-      if (!r) return uyar("GEÇERSİZ — kod bulunamadı", true);
+      if (!r) return kapiYaz(false, "GEÇERSİZ", "Kod bulunamadı: " + kod);
     }
-    if (r.status === "used") return uyar("KULLANILMIŞ — " + r.name + " zaten girdi", true);
-    if (r.status !== "approved") return uyar("ONAYSIZ — " + r.name + " (" + (REZ_DURUM[r.status]?.ad || r.status) + ")", true);
+    if (r.status === "used") return kapiYaz(false, "KULLANILMIŞ", r.name + " zaten girdi.");
+    if (r.status !== "approved") return kapiYaz(false, "ONAYSIZ", r.name + " · " + (REZ_DURUM[r.status]?.ad || r.status));
 
     setBusy(true);
     try {
@@ -447,18 +454,33 @@ function Rezervasyonlar({ uyar }) {
           seriMsg += " · " + (SEVIYE[nTier] || nTier);
         }
       }
-      uyar("GİRİŞ OK — " + r.name + " · " + (r.guest_count || 1) + " kişi" + seriMsg);
+      kapiYaz(true, "GİRİŞ OK", r.name + " · " + (r.guest_count || 1) + " kişi" + seriMsg);
       setQr(""); yukle();
-    } catch (e) { uyar("Giriş yapılamadı: " + e.message, true); } finally { setBusy(false); }
+    } catch (e) { kapiYaz(false, "GİRİŞ YAPILAMADI", r.name + " · " + e.message); } finally { setBusy(false); }
   };
 
   return (
     <div>
       {/* Kapi: kod ile giris */}
       <div style={{ display: "flex", gap: 8, marginBottom: 12 }}>
-        <input value={qr} onChange={e => setQr(e.target.value)} placeholder={"Kapıda: rezervasyon kodu (" + (rezervasyonYerel ? MARKA.kisa.replace(/[^A-Z0-9]/gi, "").toUpperCase().slice(0, 4) : "NIP") + "-…)"} style={{ ...inputS, textTransform: "uppercase", letterSpacing: "1px" }} onKeyDown={e => e.key === "Enter" && girisYap(null)} />
+        <input value={qr} onChange={e => { setQr(e.target.value); if (kapi) setKapi(null); }} aria-label="Rezervasyon kodu" placeholder={"Kapıda: rezervasyon kodu (" + (rezervasyonYerel ? MARKA.kisa.replace(/[^A-Z0-9]/gi, "").toUpperCase().slice(0, 4) : "NIP") + "-…)"} style={{ ...inputS, textTransform: "uppercase", letterSpacing: "1px" }} onKeyDown={e => e.key === "Enter" && girisYap(null)} />
         <button onClick={() => girisYap(null)} disabled={busy} style={btnS(C.ink, "#000")}>GİRİŞ</button>
       </div>
+      {kapi && (
+        <div role={kapi.ok ? "status" : "alert"} aria-live={kapi.ok ? "polite" : "assertive"}
+          style={{ display: "flex", alignItems: "center", gap: 12, padding: "12px 8px 12px 14px", marginBottom: 12, borderRadius: 12,
+                   border: "2px solid " + (kapi.ok ? "#7FA88A" : "#C87A6A"), background: kapi.ok ? "#152015" : "#241412", color: "#F0EDE8" }}>
+          <Ikon ad={kapi.ok ? "onay" : "uyari"} boy={28} style={{ color: kapi.ok ? "#7FA88A" : "#C87A6A", flexShrink: 0 }} />
+          <div style={{ flex: 1, minWidth: 0 }}>
+            <div style={{ fontSize: 22, fontWeight: 900, letterSpacing: "0.5px", lineHeight: 1.15 }}>{kapi.baslik}</div>
+            <div style={{ fontSize: 15, marginTop: 3, lineHeight: 1.4, overflowWrap: "anywhere" }}>{kapi.alt}</div>
+          </div>
+          <button onClick={() => setKapi(null)} aria-label="Sonucu kapat"
+            style={{ width: 44, height: 44, flexShrink: 0, background: "none", border: "none", color: "#B5B0AA", cursor: "pointer", display: "flex", alignItems: "center", justifyContent: "center" }}>
+            <Ikon ad="kapat" boy={16} />
+          </button>
+        </div>
+      )}
 
       <div style={{ display: "flex", gap: 6, flexWrap: "wrap", marginBottom: 8 }}>
         {[["pending", "Bekleyen"], ["approved", "Onaylı"], ["used", "Girdi"], ["no_show", "Gelmedi"], ["rejected", "Red"], ["", "Hepsi"]].filter(([k]) => k !== "no_show" || gelmediAcik).map(([k, ad]) =>
