@@ -56,7 +56,7 @@ export default function OrdersPage() {
     const [{data: ords, error: e1}, {data: tabs, error: e2}] = await Promise.all([
       supabase.from("orders").select("*, stores:origin_store_id(slug, name)").in("origin_store_id", staffUser?.store_ids?.length ? staffUser.store_ids : ["00000000-0000-0000-0000-000000000000"])
         .in("status", statuses).order("created_at", {ascending:false}).limit(80),
-      supabase.from("cafe_tables").select("id, name, store_id").order("sort_order"),
+      supabase.from("cafe_tables").select("id, name, store_id, shared").order("sort_order"),
     ]);
     // Baglanti koptuysa liste SILINMEZ: 15 sn'lik yoklama eskiden listeyi
     // bosaltip "Hiç sipariş yok" yaziyordu. Eski liste kalir, serit cikar.
@@ -173,6 +173,20 @@ export default function OrdersPage() {
       setBusy(false);
       hataGoster(newMode === "table" ? "Masa mağaza bilgisi bulunamadı — sayfayı yenileyip tekrar deneyin." : "Hesabınıza mağaza atanmamış.");
       return;
+    }
+    // DOLU MASA: acik hesap varsa yenisi acilmaz, ona gidilir (Masalar
+    // ekraniyla ayni kural). Eskiden burasi ayni masaya ikinci hesap aciyordu;
+    // urunler iki hesaba dagiliyordu. Ortak masada her kisi ayri hesap acar.
+    if (table && !table.shared) {
+      const { data: acik, error: acikHata } = await supabase.from("orders").select("id")
+        .eq("table_id", table.id).in("status", ["open", "sent", "preparing", "ready"])
+        .order("created_at", { ascending: false }).limit(1);
+      if (acikHata) { setBusy(false); hataGoster(personelHata(acikHata)); return; }
+      if (acik?.length) {
+        setBusy(false); setNewModal(false); setNewTableId(""); setNewCustomerName("");
+        navigate("/orders/" + acik[0].id, { state: { bildirim: `${table.name}: açık hesap vardı, o hesap açıldı` } });
+        return;
+      }
     }
     const payload = {
       status: "open", subtotal: 0, total: 0,

@@ -1069,6 +1069,8 @@ export default function OrderDetailPage() {
 
       {/* Liste gorunumunde sabit alt cubugun USTUNDE: "X silindi" yazisi Kart/Nakit
           dugmesindeki tutari ortmesin. Parti izgarasinda varsayilan yer. */}
+      {/* Yonlendirmeyle gelen yazi ("Masa 3: açık hesap vardı…"). */}
+      {!duzBilgi && <Bildirim tur="uyari" alt={partiKasaAcik ? 96 : cubukAlt + 62}/>}
       {duzBilgi && <Bildirim key={duzBilgi.id} metin={duzBilgi.metin} tur={duzBilgi.tur} sure={duzBilgi.sure} alt={partiKasaAcik ? 96 : cubukAlt + 62}/>}
       {ikramKapatAcik && !kapali && (
         <IkramKapatPenceresi order={order} staffUser={staffUser}

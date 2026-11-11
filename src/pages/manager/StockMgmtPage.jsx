@@ -54,8 +54,8 @@ export default function StockMgmtPage() {
 
   // Yeni hammadde acik raftan aciliyorsa o rafi hazir getir (Cin rafindayken
   // "+ Yeni Hammadde" -> grup Cin)
-  const openNew = () => { setUzerineYaz(true); setModal({mode:"new"}); setForm({name:"", unit:"ml", grup: grupFiltre && grupFiltre !== GRUPSUZ ? grupFiltre : "", stock_qty:0, cost_per_unit:0, waste_pct:0, pack_qty:1, unit_volume_ml:"", waste_per_pack:0, is_consumable:false}); };
-  const openEdit = (i) => { setUzerineYaz(false); setModal({mode:"edit", data:i}); setForm({name:i.name, unit:i.unit, grup:i.grup||"", stock_qty:Number(i.stock_qty)||0, cost_per_unit:Number(i.cost_per_unit)||0, waste_pct:Number(i.waste_pct)||0, pack_qty:Number(i.pack_qty)||1, unit_volume_ml:i.unit_volume_ml??"", waste_per_pack:Number(i.waste_per_pack)||0, is_consumable:!!i.is_consumable}); };
+  const openNew = () => { setKarar(null); setUzerineYaz(true); setModal({mode:"new"}); setForm({name:"", unit:"ml", grup: grupFiltre && grupFiltre !== GRUPSUZ ? grupFiltre : "", stock_qty:0, cost_per_unit:0, waste_pct:0, pack_qty:1, unit_volume_ml:"", waste_per_pack:0, is_consumable:false}); };
+  const openEdit = (i) => { setKarar(null); setUzerineYaz(false); setModal({mode:"edit", data:i}); setForm({name:i.name, unit:i.unit, grup:i.grup||"", stock_qty:Number(i.stock_qty)||0, cost_per_unit:Number(i.cost_per_unit)||0, waste_pct:Number(i.waste_pct)||0, pack_qty:Number(i.pack_qty)||1, unit_volume_ml:i.unit_volume_ml??"", waste_per_pack:Number(i.waste_per_pack)||0, is_consumable:!!i.is_consumable}); };
 
   // Satirdan ya da modalin icinden acilir; kaydedince listeyi tazeler.
   // storeId kalemin kendi magazasi: iki magazali yoneticide liste iki magazadan
@@ -82,41 +82,59 @@ export default function StockMgmtPage() {
     load(true);
   };
 
-  const save = async () => {
+  // MALIYET KARARI pencerenin icinde sorulur. Eskiden tarayicinin onay
+  // kutusu cikiyordu: "TAMAM = paket fiyati, İPTAL = girdigim gibi kaydet".
+  // "İptal"e basan kaydi iptal ettigini saniyordu; rakam paket kati kadar
+  // bozuk kaydediliyordu. Simdi her secenek ne yapacagini yazar, "Vazgeç"
+  // gercekten vazgecer.
+  const [karar, setKarar] = useState(null); // { adim, metin, secenekler: [{ ad, deger }] }
+  // Rakam ya da birim degisirse eski soru gecersiz.
+  useEffect(() => { setKarar(null); }, [form.cost_per_unit, form.unit, form.unit_volume_ml, form.pack_qty]);
+
+  // o.adim: 0 hicbir sey sorulmadi, 1 paket sorusu cevaplandi, 2 kap sorusu cevaplandi.
+  const save = async (o = {}) => {
     if (busy) return;
     if (!form.name?.trim()) { alert("Isim gerekli"); return; }
+    const adim = Number(o.adim) || 0;
+    let maliyet = o.maliyet != null ? Number(o.maliyet) : (Number(form.cost_per_unit) || 0);
 
     // Fatura geldiginde guncellenen hane burasi. Yeni rakam eskisinin ~paket
     // kati ise paket fiyati girilmis olma ihtimali cok yuksek — pipet boyle
     // kacmisti. Otomatik bolmuyoruz, soruyoruz.
-    let maliyet = Number(form.cost_per_unit) || 0;
-    const ik = modal.mode === "edit" ? paketIkilemi(maliyet, modal.data) : null;
-    if (ik?.kesin) {
-      const paketMi = confirm(
-        ikilemMetni(ik, form.unit) +
-        `\n\nEski birim maliyet ${birimYaz(modal.data.cost_per_unit)} idi.\n\n` +
-        `TAMAM = paket fiyati, ${birimYaz(ik.birim)} olarak kaydet\n` +
-        `İPTAL = adet fiyati, girdigim gibi kaydet`
-      );
-      if (paketMi) { maliyet = ik.birim; setForm(f => ({ ...f, cost_per_unit: ik.birim })); }
+    if (adim < 1) {
+      const ik = modal.mode === "edit" ? paketIkilemi(maliyet, modal.data) : null;
+      if (ik?.kesin) {
+        setKarar({ adim: 1,
+          metin: ikilemMetni(ik, form.unit) + `\n\nEski birim maliyet ${birimYaz(modal.data.cost_per_unit)} idi.`,
+          secenekler: [
+            { ad: `Paket fiyatı: ${birimYaz(ik.birim)} olarak kaydet`, deger: ik.birim },
+            { ad: `Bir ${form.unit} fiyatı: ${birimYaz(maliyet)} olarak kaydet`, deger: maliyet },
+          ] });
+        return;
+      }
     }
 
     // Kap/olcu karisikligi. Soda bu yoldan gecip 200 kat sisik kaydedilmisti;
     // hane ml basinayken sisenin fiyati yazilmisti ve hicbir ekran durdurmadi.
-    const kik = kapIkilemi(maliyet, { unit: form.unit, unit_volume_ml: form.unit_volume_ml });
-    if (kik?.yon === "olcude-kap") {
-      const kapMi = confirm(
-        kapIkilemMetni(kik) +
-        `\n\nTAMAM = kabin fiyati, ${birimYaz(kik.onerilen)} olarak kaydet\n` +
-        `İPTAL = girdigim gibi kaydet`
-      );
-      if (kapMi) { maliyet = kik.onerilen; setForm(f => ({ ...f, cost_per_unit: kik.onerilen })); }
-    } else if (kik?.yon === "kapta-olcu") {
-      // Buradaki duzeltme belirsiz: ya birim yanlis ya rakam. Karar bizim
-      // degil — yalnizca "gercekten boyle mi?" diye soruyoruz.
-      // (setBusy henuz cagrilmadi — asagida cagriliyor, burada donmek yeterli)
-      if (!confirm(kapIkilemMetni(kik) + `\n\nYine de girdigin gibi kaydedilsin mi?`)) return;
+    if (adim < 2) {
+      const kik = kapIkilemi(maliyet, { unit: form.unit, unit_volume_ml: form.unit_volume_ml });
+      if (kik?.yon === "olcude-kap") {
+        setKarar({ adim: 2, maliyetOnce: maliyet, metin: kapIkilemMetni(kik),
+          secenekler: [
+            { ad: `Kabın fiyatı: ${birimYaz(kik.onerilen)} olarak kaydet`, deger: kik.onerilen },
+            { ad: `Girdiğim gibi kaydet: ${birimYaz(maliyet)}`, deger: maliyet },
+          ] });
+        return;
+      }
+      if (kik?.yon === "kapta-olcu") {
+        // Buradaki duzeltme belirsiz: ya birim yanlis ya rakam. Karar bizim degil.
+        setKarar({ adim: 2, metin: kapIkilemMetni(kik),
+          secenekler: [{ ad: `Yine de girdiğim gibi kaydet: ${birimYaz(maliyet)}`, deger: maliyet }] });
+        return;
+      }
     }
+    setKarar(null);
+    if (maliyet !== (Number(form.cost_per_unit) || 0)) setForm(f => ({ ...f, cost_per_unit: maliyet }));
 
     setBusy(true);
     const payload = {
@@ -462,9 +480,28 @@ export default function StockMgmtPage() {
             <input type="checkbox" checked={!!form.is_consumable} onChange={e=>setForm(f => ({...f,is_consumable:e.target.checked}))} style={{width:18,height:18,accentColor:"#FFFFFF"}}/>
             <span style={{fontSize:13,color:"#F0EDE8"}}>Sarf malzeme (buz, pet bardak, pipet...) — recetelere tek dokunusla eklenir</span>
           </label>
+          {/* MALIYET KARARI: her dugme ne kaydedecegini yazar; "Vazgeç" forma doner. */}
+          {karar && (
+            <div role="alertdialog" aria-label="Maliyet kararı" style={{background:"#0C0C0C",border:"1px solid #C87A6A",borderRadius:10,padding:12,marginTop:10}}>
+              <div style={{fontSize:13,color:"#F0EDE8",lineHeight:1.6,whiteSpace:"pre-line",marginBottom:10}}>{karar.metin}</div>
+              <div style={{display:"flex",flexDirection:"column",gap:7}}>
+                {karar.secenekler.map((sc, i) => (
+                  <button key={i} onClick={() => save({ adim: karar.adim, maliyet: sc.deger })} disabled={busy}
+                    style={{minHeight:46,padding:"10px 12px",background:i===0?"#FFFFFF":"transparent",color:i===0?"#000":"#F0EDE8",
+                            border:"1px solid "+(i===0?"#FFFFFF":"#3A3A3A"),borderRadius:10,fontSize:13.5,fontWeight:800,cursor:"pointer",fontFamily:"inherit",textAlign:"left"}}>
+                    {sc.ad}
+                  </button>
+                ))}
+                <button onClick={() => setKarar(null)} disabled={busy}
+                  style={{minHeight:44,padding:"10px 12px",background:"transparent",color:"#888",border:"1px solid #2A2A2A",borderRadius:10,fontSize:13,fontWeight:700,cursor:"pointer",fontFamily:"inherit",textAlign:"left"}}>
+                  Vazgeç: kaydetme, rakamı düzelteceğim
+                </button>
+              </div>
+            </div>
+          )}
           <div style={{display:"flex",gap:8,marginTop:10}}>
             <button onClick={() => setModal(null)} style={cancelBtn}>İptal</button>
-            <button onClick={save} disabled={busy} style={{...saveBtn,opacity:busy?0.6:1}}>{busy?"...":"Kaydet"}</button>
+            <button onClick={() => save()} disabled={busy || !!karar} style={{...saveBtn,opacity:(busy || karar)?0.6:1}}>{busy?"...":"Kaydet"}</button>
           </div>
         </Modal>
       )}
