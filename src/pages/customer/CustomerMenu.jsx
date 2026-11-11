@@ -2110,7 +2110,10 @@ export default function CustomerMenu() {
     // dilli. CSS buyuk harfi dile gore yapar; secili dili buraya yaziyoruz ki
     // Ingilizce/Rusca metin Turkce kuralla buyumesin.
     <div lang={lang} className="nip-customer nip-customer-shell" style={{fontFamily:cv,background:"#fff",minHeight:"100vh",color:"#000",paddingBottom:cart.length>0?156:96}}>
-      <div ref={basRef} style={{borderBottom:"1px solid #eee",position:"sticky",top:0,background:"#fff",zIndex:20}}>
+      {/* BASLIK YAPISMAZ, yalniz kategori cipleri yapisir. Eskiden duyuru +
+          marka + cipler + alt cipler + arama birlikte yapisiyordu (~220-250 px);
+          kucuk telefonda 2-3 urun satiri gorunuyordu. */}
+      <div style={{background:"#fff",borderBottom:custTab === "menu" ? "none" : "1px solid #eee"}}>
         {(() => {
           // Duyuru seridi — Ayarlar > Duyuru Seridi'nden yonetilir (uc dilli, TR'ye dusme)
           const annOn = settings && (settings.announcement_enabled === true || settings.announcement_enabled === "true");
@@ -2121,7 +2124,7 @@ export default function CustomerMenu() {
             </div>
           ) : null;
         })()}
-        <div style={{padding:"20px 16px 10px"}}>
+        <div style={{padding:"16px 16px 8px"}}>
         <div style={{display:"flex",alignItems:"center",justifyContent:"space-between"}}>
           <div>
             {/* lang: CSS'te buyuk harf DILE gore yapilir. Sayfa lang="tr" oldugu
@@ -2141,9 +2144,12 @@ export default function CustomerMenu() {
             {LangSwitcher()}
           </div>
         </div>
-        {custTab === "menu" && (
+        </div>
+      </div>
+      {custTab === "menu" && (
         <>
-        <div className="no-scrollbar" style={{display:"flex",gap:6,overflowX:"auto",marginTop:12,paddingBottom:4}}>
+        <div ref={basRef} style={{position:"sticky",top:0,zIndex:20,background:"#fff",padding:"6px 16px 8px",borderBottom:"1px solid #eee"}}>
+        <div className="no-scrollbar" style={{display:"flex",gap:6,overflowX:"auto",paddingBottom:4}}>
           {visibleCategories.map(c => (
             <button key={c.id} onClick={(e) => katSec(c.id, e.currentTarget)} style={{flexShrink:0,padding:"8px 14px",border:"none",borderRadius:16,fontSize:12,fontWeight:700,background:selectedCat===c.id?"#000":"#f2f2f2",color:selectedCat===c.id?"#fff":"#333",cursor:"pointer",whiteSpace:"nowrap",letterSpacing:"0.3px"}}>
               {/* Kategori emojisi cizilmiyor (20.09.2026, sahip karari). Emoji
@@ -2170,9 +2176,12 @@ export default function CustomerMenu() {
             ))}
           </div>
         )}
+        </div>
         {/* Urun arama — uzun listede aranan seyi bulmak icin kategorileri tek tek
-            gezmek gerekiyordu. Yazilinca kategori secimi devre disi kalir. */}
-        <div style={{display:"flex",alignItems:"center",gap:8,marginTop:12}}>
+            gezmek gerekiyordu. Yazilinca kategori secimi devre disi kalir.
+            Arama yapismaz: liste kaydirilinca cipler kalir, arama yukari gider. */}
+        <div style={{padding:"10px 16px 10px",background:"#fff"}}>
+        <div style={{display:"flex",alignItems:"center",gap:8}}>
           <div style={{flex:1,border:"1px solid #ddd",borderRadius:8,display:"flex",alignItems:"center",gap:8,padding:"9px 12px"}}>
             <Ikon ad="ara" boy={15} style={{color:"#666666"}}/>
             <input value={menuSearch} onChange={e=>setMenuSearch(e.target.value)}
@@ -2192,10 +2201,9 @@ export default function CustomerMenu() {
               : L("Sonuç yok","No results","Ничего не найдено")}
           </div>
         )}
-        </>
-        )}
         </div>
-      </div>
+        </>
+      )}
 
       {/* QR okutuldu ama masa bulunamadi: siparis masasiz gider. Sessiz kalmasin. */}
       {qrToken && !table && custTab === "menu" && (
