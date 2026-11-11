@@ -1,4 +1,5 @@
 import { useState } from "react";
+import { baslikStil } from "../../theme/panel.js";
 import { menuUrl } from "../../lib/appUrl.js";
 
 const cv = "'Coolvetica','Bebas Neue',sans-serif";
@@ -66,7 +67,7 @@ export default function QRCodesPage() {
 
       <div className="qr-print-hint" style={{ display: "flex", justifyContent: "space-between", alignItems: "center", marginBottom: 24, flexWrap: "wrap", gap: 12 }}>
         <div>
-          <h1 style={{ fontSize: 32, fontFamily: cvc, letterSpacing: "2px", margin: 0 }}>QR kodlar</h1>
+          <h1 style={baslikStil}>QR Kodlar</h1>
           <div style={{ color: "#888", fontSize: 13, marginTop: 4 }}>Masalara koymak için yazdır veya indir</div>
         </div>
         <button onClick={() => printOne("both")} style={{ padding: "12px 20px", background: "#FFFFFF", color: "#000", border: "none", fontFamily: cvc, fontSize: 14, letterSpacing: "1px", cursor: "pointer", borderRadius: 8 }}>Her ikisini yazdır</button>

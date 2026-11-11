@@ -1,4 +1,5 @@
 import { useEffect, useState } from "react";
+import { baslikStil } from "../../theme/panel.js";
 import { uyar } from "../../lib/uyar.js";
 import { supabase } from "../../lib/supabase.js";
 import { useAuth } from "../../contexts/AuthContext.jsx";
@@ -94,7 +95,7 @@ export default function TablesMgmtPage() {
 
   return (
     <div style={{fontFamily:cv,color:"#F0EDE8"}}>
-      <div style={{fontSize:24,fontWeight:800,marginBottom:4}}>Masa Yonetimi</div>
+      <h1 style={{...baslikStil,marginBottom:4}}>Masa Yönetimi</h1>
       <div style={{fontSize:11,color:"#888",letterSpacing:"1px",marginBottom:18}}>{tables.length} MASA</div>
 
       <div style={{display:"flex",gap:8,marginBottom:18,flexWrap:"wrap"}}>

@@ -1,4 +1,5 @@
 import { useState, useEffect, useMemo } from "react";
+import { baslikStil } from "../../theme/panel.js";
 import { supabase } from "../../lib/supabase.js";
 import { useAuth } from "../../contexts/AuthContext.jsx";
 import Ikon from "../../components/Ikon.jsx";
@@ -82,7 +83,7 @@ export default function StockViewPage() {
 
   return (
     <div>
-      <h1 style={{ color: "#F0EDE8", fontFamily: cv, fontSize: 28, letterSpacing: "-0.5px", margin: "0 0 16px" }}>Stok</h1>
+      <h1 style={{ ...baslikStil, margin: "0 0 16px" }}>Stok</h1>
       {sonGiris && (
         <div role="status" style={{ background: "#161616", border: "1px solid #FFFFFF", borderRadius: 10, padding: "6px 6px 6px 14px", marginBottom: 16, display: "flex", gap: 8, alignItems: "center" }}>
           <Ikon ad="onayli" boy={15} style={{ color: "#FFFFFF", flexShrink: 0 }} />

@@ -1,4 +1,5 @@
 import { useCallback, useEffect, useRef, useState } from "react";
+import { baslikStil } from "../../theme/panel.js";
 import { useSearchParams } from "react-router-dom";
 import { supabase } from "../../lib/supabase.js";
 import { ayGecerli, ayKaydir, guncelAy, hakedisRaporu, mutfakRaporUrl, panoyaKopyala } from "../../lib/hakedis.js";
@@ -61,8 +62,8 @@ export default function SettlementPage() {
   return (
     <div style={{ fontFamily: cv, color: C.ink, maxWidth: 900, margin: "0 auto" }}>
       <div style={{ display: "flex", justifyContent: "space-between", alignItems: "baseline", flexWrap: "wrap", gap: 8 }}>
-        <h1 style={{ fontFamily: hv, fontWeight: 900, fontSize: 34, margin: 0, letterSpacing: 1 }}>
-          <Ikon ad="mutfakodeme" boy={22} style={{ marginRight: 10 }} />MUTFAĞA ÖDENECEK
+        <h1 style={{ ...baslikStil, display: "flex", alignItems: "center" }}>
+          <Ikon ad="mutfakodeme" boy={22} style={{ marginRight: 10 }} />Mutfağa Ödenecek
         </h1>
         <button type="button" onClick={yukle} title="Yenile" style={{ background: "none", border: `1px solid ${C.cardLine}`, color: C.muted, borderRadius: 6, padding: "4px 8px", cursor: "pointer", display: "inline-flex" }}><Ikon ad="yenile" boy={13} /></button>
       </div>

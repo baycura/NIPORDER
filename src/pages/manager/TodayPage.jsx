@@ -1,4 +1,5 @@
 import { useEffect, useState } from "react";
+import { baslikStil } from "../../theme/panel.js";
 import { useNavigate } from "react-router-dom";
 import { supabase } from "../../lib/supabase.js";
 import { useAuth } from "../../contexts/AuthContext.jsx";
@@ -124,7 +125,7 @@ export default function TodayPage() {
   // Ilk okuma basarisiz: rakam yok, sifir da gosterilmez.
   if (!veri) return (
     <div style={{ fontFamily: cv, color: "#F0EDE8", maxWidth: 560, margin: "0 auto" }}>
-      <div style={{ fontSize: 22, fontWeight: 800, marginBottom: 10 }}>Bugün</div>
+      <h1 style={{ ...baslikStil, marginBottom: 10 }}>Bugün</h1>
       <div role="alert" style={{ background: "#161616", border: "1px solid #C87A6A", borderRadius: 14, padding: 16 }}>
         <div style={{ fontSize: 14, fontWeight: 700, marginBottom: 4 }}>Bugünün bilgisi okunamadı.</div>
         <div style={{ fontSize: 13, color: "#B5B0AA", lineHeight: 1.5 }}>{hata || "Bağlantıyı kontrol et."}</div>
@@ -154,7 +155,7 @@ export default function TodayPage() {
     <div style={{ fontFamily: cv, color: "#F0EDE8", maxWidth: 560, margin: "0 auto",
                   display: "flex", flexDirection: "column", gap: 10 }}>
       <div style={{ display: "flex", justifyContent: "space-between", alignItems: "baseline" }}>
-        <div style={{ fontSize: 22, fontWeight: 800 }}>Bugün</div>
+        <h1 style={baslikStil}>Bugün</h1>
         <div style={{ fontSize: 11, color: "#8A8580" }}>{gun} · gün 03:00'te biter</div>
       </div>
 

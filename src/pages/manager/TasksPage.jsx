@@ -1,4 +1,5 @@
 import { useState, useEffect } from "react";
+import { baslikStil } from "../../theme/panel.js";
 import { supabase } from "../../lib/supabase";
 import { useAuth } from "../../contexts/AuthContext";
 import Ikon from "../../components/Ikon.jsx";
@@ -119,7 +120,7 @@ export default function TasksPage() {
     <div style={{ maxWidth: 900, margin: "0 auto", color: "#F0EDE8" }}>
       {hata && <Bildirim tur="hata" metin={hata.m} key={hata.n}/>}
       <div style={{ display: "flex", justifyContent: "space-between", alignItems: "center", marginBottom: 16, flexWrap: "wrap", gap: 8 }}>
-        <h1 style={{ fontSize: 24, fontWeight: 900, letterSpacing: 1, margin: 0, fontFamily: "'Coolvetica Condensed','Barlow Condensed','Bebas Neue',sans-serif", display: "flex", alignItems: "center", gap: 10 }}><Ikon ad="gorev" boy={24}/>GÖREVLER</h1>
+        <h1 style={{ ...baslikStil, display: "flex", alignItems: "center", gap: 10 }}><Ikon ad="gorev" boy={22}/>Görevler</h1>
         <div style={{ display: "flex", gap: 8 }}>
           <select value={storeId} onChange={e => setStoreId(e.target.value)} style={{ padding: "8px 12px", background: "#1A1A1A", color: "#F0EDE8", border: "1px solid #333", borderRadius: 8, fontSize: 14 }}>
             <option value={PARIS_STORE_UUID}>Paris</option>

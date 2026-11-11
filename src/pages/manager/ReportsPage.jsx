@@ -1,4 +1,5 @@
 import { useEffect, useRef, useState } from "react";
+import { baslikStil } from "../../theme/panel.js";
 import { personelHata } from "../../lib/errorText.js";
 import { Link } from "react-router-dom";
 import { supabase } from "../../lib/supabase.js";
@@ -214,7 +215,7 @@ export default function ReportsPage() {
   return (
     <div style={{ fontFamily: cv, maxWidth: 900, margin: "0 auto", color: C.ink }}>
       <div style={{ display: "flex", justifyContent: "space-between", alignItems: "baseline", flexWrap: "wrap", gap: 8 }}>
-        <h1 style={{ fontFamily: hv, fontWeight: 900, fontSize: 34, margin: 0, letterSpacing: 1 }}>Gün Özeti</h1>
+        <h1 style={baslikStil}>Gün Özeti</h1>
         <div style={{ fontSize: 12, color: C.faint }}>
           {new Date().toLocaleDateString("tr-TR", { weekday: "long", day: "numeric", month: "long" })}
           {updatedAt && <> · <span style={{ color: C.muted }}>{updatedAt.toLocaleTimeString("tr-TR", { hour: "2-digit", minute: "2-digit" })}</span></>}

@@ -1,4 +1,5 @@
 import { useEffect, useMemo, useRef, useState } from "react";
+import { baslikStil } from "../../theme/panel.js";
 import { supabase } from "../../lib/supabase.js";
 import { reserve, reserveOturumAl, reserveCikis, RESERVATION_URL } from "../../lib/reserve.js";
 import { rezervasyonYerel, MARKA } from "../../lib/profil.js";
@@ -207,7 +208,7 @@ export default function ReservePage() {
   return (
     <div style={{ padding: 16, maxWidth: 900, margin: "0 auto", fontFamily: cv, color: C.ink }}>
       <div style={{ display: "flex", alignItems: "baseline", gap: 12, flexWrap: "wrap", marginBottom: 6 }}>
-        <h1 style={{ fontFamily: hv, fontSize: 30, letterSpacing: "2px", margin: 0 }}>REZERVASYON</h1>
+        <h1 style={baslikStil}>Rezervasyon</h1>
         {!rezervasyonYerel && <a href={RESERVATION_URL} target="_blank" rel="noreferrer" style={{ fontSize: 11, color: C.muted }}>reservation.notinparis.me ↗</a>}
       </div>
 

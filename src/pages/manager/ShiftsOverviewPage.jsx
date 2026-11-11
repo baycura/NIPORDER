@@ -1,4 +1,5 @@
 import { useEffect, useState } from "react";
+import { baslikStil } from "../../theme/panel.js";
 import { supabase } from "../../lib/supabase.js";
 import { personelHata } from "../../lib/errorText.js";
 import { Okunamadi } from "../../components/Durum.jsx";
@@ -88,7 +89,7 @@ export default function ShiftsOverviewPage() {
 
   return (
     <div style={{ fontFamily: cv, color: "#F0EDE8", maxWidth: 560, margin: "0 auto" }}>
-      <div style={{ fontSize: 22, fontWeight: 800, marginBottom: 4 }}>Vardiyalar</div>
+      <h1 style={{ ...baslikStil, marginBottom: 4 }}>Vardiyalar</h1>
       <div style={{ fontSize: 11, color: "#8A8580", marginBottom: 14 }}>
         Ekibin giriş-çıkışı ve kişi başı tahsilat · gün 03:00'te biter
       </div>

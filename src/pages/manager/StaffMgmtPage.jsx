@@ -1,4 +1,5 @@
 import { useEffect, useState } from "react";
+import { baslikStil } from "../../theme/panel.js";
 import { uyar } from "../../lib/uyar.js";
 import FormPencere from "../../components/FormPencere.jsx";
 import { supabase } from "../../lib/supabase.js";
@@ -131,7 +132,7 @@ export default function StaffMgmtPage() {
 
   return (
     <div style={{fontFamily:cv,color:"#F0EDE8"}}>
-      <div style={{fontSize:24,fontWeight:800,marginBottom:4}}>Personel Yonetimi</div>
+      <h1 style={{...baslikStil,marginBottom:4}}>Personel Yönetimi</h1>
       <div style={{fontSize:11,color:"#888",letterSpacing:"1px",marginBottom:18}}>{staff.length} PERSONEL</div>
 
       <button onClick={openNew} style={{padding:"10px 16px",background:"#FFFFFF",color:"#000",border:"none",borderRadius:10,fontSize:13,fontWeight:800,cursor:"pointer",marginBottom:16}}>+ Yeni Personel</button>

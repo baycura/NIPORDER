@@ -1,4 +1,5 @@
 import { useEffect, useMemo, useState } from "react";
+import { baslikStil } from "../../theme/panel.js";
 import { uyar } from "../../lib/uyar.js";
 import { supabase } from "../../lib/supabase.js";
 import { useAuth } from "../../contexts/AuthContext.jsx";
@@ -141,7 +142,7 @@ export default function ExpensesPage() {
   return (
     <div style={{ fontFamily: cv, maxWidth: 700, margin: "0 auto", paddingBottom: 120, color: C.ink }}>
       <div style={{ display: "flex", justifyContent: "space-between", alignItems: "center", gap: 8 }}>
-        <h1 style={{ fontFamily: hv, fontWeight: 900, fontSize: 34, margin: 0, letterSpacing: 1 }}>Giderler</h1>
+        <h1 style={baslikStil}>Giderler</h1>
         <div style={{ display: "flex", border: `1px solid ${C.cardLine}`, borderRadius: 999, overflow: "hidden" }}>
           {[["Tümü", false], ["Benim", true]].map(([l, v]) => (
             <button key={l} onClick={() => setMine(v)} style={{

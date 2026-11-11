@@ -1,6 +1,7 @@
 import{useState,useEffect}from"react";import{useNavigate}from"react-router-dom";import{supabase}from"../../lib/supabase.js";import{useAuth}from"../../contexts/AuthContext.jsx";
 import{businessDayStart,businessDayKey}from"../../lib/businessDay.js";
 import Ikon from "../../components/Ikon.jsx";
+import { baslikStil } from "../../theme/panel.js";
 import HaftalikLig from "../../components/HaftalikLig.jsx";
 import TelegramBagla from "../../components/TelegramBagla.jsx";
 import Bildirim from "../../components/Bildirim.jsx";
@@ -83,7 +84,7 @@ export default function MyShiftPage(){
   };
   return(<div>
     <div style={{display:"flex",justifyContent:"space-between",alignItems:"center",marginBottom:24}}>
-      <h1 style={{color:"#F0EDE8",fontFamily:cv,fontSize:28,letterSpacing:"-0.5px",margin:0}}>Vardiyam</h1>
+      <h1 style={baslikStil}>Vardiyam</h1>
       {(loading||yukHata) ? null : !shift?.checked_in_at
         ? <button onClick={handleCheckIn} disabled={mesgul} style={{padding:"0 18px",minHeight:44,background:"#FFFFFF",border:"none",color:"#000",fontFamily:cv,fontSize:16,cursor:"pointer",borderRadius:8,opacity:mesgul?0.6:1}}>Vardiyaya gir</button>
         : shift?.status==="active"
