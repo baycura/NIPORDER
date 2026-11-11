@@ -2,6 +2,7 @@ import { useEffect, useMemo, useRef, useState } from "react";
 import { useParams, useNavigate, useSearchParams } from "react-router-dom";
 import { supabase, hataMetni } from "../../lib/supabase.js";
 import { useAuth } from "../../contexts/AuthContext.jsx";
+import MusteriSheet from "../../components/MusteriSheet.jsx";
 import { happyHourPrices, hhSadeceUyeMi } from "../../lib/happyHour.js";
 import { optionMod } from "../../lib/productOptions.js";
 import { PHONE_CODES, toE164 } from "../../lib/phoneCodes.js";
@@ -815,12 +816,23 @@ export default function CustomerMenu() {
     setOtpBusy(false);
     if (error) { bildir(errorText(error, lang)); return; }
     setOtpSent(true);
+    setOtpBekle(30); // yeniden gonderme arasi
   };
 
-  const dogrulaOtp = async () => {
+  // Yeniden gonderme sayaci: kod gelmediyse musteri 30 sn sonra yeniden ister.
+  // Eskiden tek yol geri donup adresi bastan yazmakti.
+  const [otpBekle, setOtpBekle] = useState(0);
+  useEffect(() => {
+    if (otpBekle <= 0) return;
+    const z = setTimeout(() => setOtpBekle(n => Math.max(0, n - 1)), 1000);
+    return () => clearTimeout(z);
+  }, [otpBekle]);
+
+  // kodArg: 6. hane yazilinca dogrudan cagrilir (durum henuz guncellenmemistir).
+  const dogrulaOtp = async (kodArg) => {
     if (otpBusy) return;
     if (!kvkkHazirla()) return;
-    const kod = otpCode.trim();
+    const kod = (typeof kodArg === "string" ? kodArg : otpCode).trim();
     if (kod.length < 6) { bildir(L("Kodun 6 hanesini de yaz", "Enter all 6 digits", "Введите все 6 цифр")); return; }
     setOtpBusy(true);
     const { error } = await supabase.auth.verifyOtp({ email: otpEmail.trim().toLowerCase(), token: kod, type: "email" });
@@ -2706,8 +2718,8 @@ export default function CustomerMenu() {
       )}
 
       {rezForm && (
-        <div role="dialog" aria-modal="true" aria-label={L("Rezervasyon","Reservation","Бронирование")} onClick={() => !rezForm.busy && setRezForm(null)} style={{position:"fixed",inset:0,background:"rgba(0,0,0,0.5)",display:"flex",alignItems:"flex-end",justifyContent:"center",zIndex:120}}>
-          <div onClick={e=>e.stopPropagation()} style={{background:"#fff",borderRadius:"18px 18px 0 0",padding:"22px 20px calc(30px + env(safe-area-inset-bottom))",width:"100%",maxWidth:520,maxHeight:"92vh",overflowY:"auto"}}>
+        <MusteriSheet etiket={L("Rezervasyon","Reservation","Бронирование")} onKapat={() => !rezForm.busy && setRezForm(null)}
+          kilit kapatDugmesi={!!rezForm.sonuc} kapatEtiket={L("Kapat","Close","Закрыть")}>
             {rezForm.sonuc ? (
               <>
                 <div style={{fontSize:18,fontWeight:800,marginBottom:6,display:"flex",alignItems:"center",gap:8}}>
@@ -2795,13 +2807,12 @@ export default function CustomerMenu() {
                 )}
               </>
             )}
-          </div>
-        </div>
+        </MusteriSheet>
       )}
 
       {profileOpen && customer && (
-        <div onClick={() => setProfileOpen(false)} style={{position:"fixed",inset:0,background:"rgba(0,0,0,0.55)",display:"flex",alignItems:"flex-end",justifyContent:"center",zIndex:120}}>
-          <div onClick={e => e.stopPropagation()} style={{background:"#fff",borderRadius:"20px 20px 0 0",padding:"20px 18px 28px",width:"100%",maxWidth:520,maxHeight:"85vh",overflowY:"auto"}}>
+        <MusteriSheet etiket={L("Profilim","My profile","Мой профиль")} onKapat={() => setProfileOpen(false)} kapat="ust"
+          kutu={{padding:"20px 18px calc(28px + env(safe-area-inset-bottom))",maxHeight:"85vh"}} kapatEtiket={L("Kapat","Close","Закрыть")}>
             <div style={{display:"flex",alignItems:"center",gap:12,marginBottom:16}}>
               {(profileStats?.cust?.avatar_url || customer.avatar_url) ? (
                 <img src={profileStats?.cust?.avatar_url || customer.avatar_url} alt="" referrerPolicy="no-referrer" style={{width:48,height:48,borderRadius:"50%",objectFit:"cover"}}/>
@@ -2933,14 +2944,13 @@ export default function CustomerMenu() {
               <button onClick={() => setProfileOpen(false)} style={{flex:2,padding:"13px",background:"#000",color:"#fff",border:"none",borderRadius:12,fontSize:14,fontWeight:700,cursor:"pointer"}}>{L("Kapat","Close","Закрыть")}</button>
               <button onClick={async () => { await signOut(); setProfileOpen(false); }} style={{flex:1,padding:"13px",background:"#fff",color:"#A34A3A",border:"1px solid #eee",borderRadius:12,fontSize:13,fontWeight:700,cursor:"pointer"}}>{L("Çıkış","Sign out","Выйти")}</button>
             </div>
-          </div>
-        </div>
+        </MusteriSheet>
       )}
 
       {optModal && (
-        <div onClick={() => setOptModal(null)} style={{position:"fixed",inset:0,background:"rgba(0,0,0,0.55)",display:"flex",alignItems:"flex-end",justifyContent:"center",zIndex:100}}>
-          <div onClick={e=>e.stopPropagation()} style={{background:"#fff",borderRadius:"18px 18px 0 0",padding:20,width:"100%",maxWidth:500,maxHeight:"85vh",overflowY:"auto"}}>
-            <div style={{fontSize:20,fontWeight:800,marginBottom:4}}>{pName(optModal)}</div>
+        <MusteriSheet etiket={pName(optModal)} onKapat={() => setOptModal(null)} z={100}
+          kutu={{padding:"20px 20px calc(20px + env(safe-area-inset-bottom))",maxWidth:500,maxHeight:"85vh"}} kapatEtiket={L("Kapat","Close","Закрыть")}>
+            <div style={{fontSize:20,fontWeight:800,marginBottom:4,paddingRight:36}}>{pName(optModal)}</div>
             <div style={{fontSize:13,color:"#666",marginBottom:18}}>
               {para(calcPrice(optModal, optSelected))}
               {eur(calcPrice(optModal, optSelected)) && <span style={{color:"#9A9A9A",marginLeft:6}}>{eur(calcPrice(optModal, optSelected))}</span>}
@@ -2986,14 +2996,13 @@ export default function CustomerMenu() {
               <button onClick={() => setOptModal(null)} style={{flex:1,padding:"14px",background:"#fff",color:"#666",border:"1px solid #ddd",borderRadius:12,fontSize:14,fontWeight:700,cursor:"pointer"}}>{t.cancel}</button>
               <button onClick={confirmOptions} style={{flex:2,padding:"14px",background:"#000",color:"#fff",border:"none",borderRadius:12,fontSize:14,fontWeight:800,cursor:"pointer"}}>{t.add_to_cart} · {para(calcPrice(optModal, optSelected) * optAdet)}</button>
             </div>
-          </div>
-        </div>
+        </MusteriSheet>
       )}
 
       {loginSheet && (
-        <div onClick={() => setLoginSheet(false)} style={{position:"fixed",inset:0,background:"rgba(0,0,0,0.5)",display:"flex",alignItems:"flex-end",justifyContent:"center",zIndex:120}}>
-          <div onClick={e=>e.stopPropagation()} style={{background:"#fff",borderRadius:"18px 18px 0 0",padding:"22px 20px 30px",width:"100%",maxWidth:520}}>
-            <div style={{fontSize:18,fontWeight:800,marginBottom:4}}>{t.login_title}</div>
+        <MusteriSheet etiket={t.login_title} onKapat={() => !otpBusy && setLoginSheet(false)}
+          kilit={otpSent || otpBusy || !!otpEmail.trim()} kapatEtiket={L("Kapat","Close","Закрыть")}>
+            <div style={{fontSize:18,fontWeight:800,marginBottom:4,paddingRight:36}}>{t.login_title}</div>
             <div style={{fontSize:12.5,color:"#666666",marginBottom:16}}>{t.login_note}</div>
 
             {inAppBrowser && (
@@ -3048,8 +3057,14 @@ export default function CustomerMenu() {
               </>
             ) : (
               <>
-                <div style={{fontSize:13,color:"#333",marginBottom:12}}><Ikon ad="posta" boy={14} style={{marginRight:6}}/>{t.login_sent}</div>
-                <input value={otpCode} onChange={e=>setOtpCode(e.target.value.replace(/\D/g,"").slice(0,6))} placeholder={t.login_code_ph}
+                <div style={{fontSize:13,color:"#333",marginBottom:12,lineHeight:1.5}}>
+                  <Ikon ad="posta" boy={14} style={{marginRight:6}}/>{t.login_sent}
+                  {/* Kodun gittigi adres: yanlis yazildiysa musteri burada gorur. */}
+                  <div style={{fontWeight:800,color:"#101214",marginTop:4,wordBreak:"break-all"}}>{otpEmail.trim().toLowerCase()}</div>
+                </div>
+                {/* 6. hane yazilinca giris kendiliginden denenir. */}
+                <input value={otpCode} onChange={e => { const v = e.target.value.replace(/\D/g,"").slice(0,6); setOtpCode(v); if (v.length === 6 && !otpBusy) dogrulaOtp(v); }}
+                  placeholder={t.login_code_ph} aria-label={t.login_code_ph}
                   inputMode="numeric" autoComplete="one-time-code"
                   style={{width:"100%",padding:"13px 14px",background:"#f7f7f7",border:"1px solid #eee",borderRadius:12,fontSize:20,letterSpacing:"0.3em",textAlign:"center",outline:"none",fontFamily:"inherit",marginBottom:10}}/>
                 <button onClick={dogrulaOtp} disabled={otpBusy}
@@ -3057,18 +3072,28 @@ export default function CustomerMenu() {
                   {otpBusy ? "..." : t.login_verify}
                 </button>
                 <div style={{fontSize:11.5,color:"#666666",marginTop:10,textAlign:"center"}}>{t.login_link_hint}</div>
-                <button onClick={()=>{setOtpSent(false);setOtpCode("");}} style={{width:"100%",marginTop:8,background:"none",border:"none",color:"#666666",fontSize:12,cursor:"pointer",fontFamily:"inherit",display:"flex",justifyContent:"center"}}><Ikon ad="oksol" boy={15}/></button>
+                <div style={{display:"flex",gap:8,marginTop:10}}>
+                  <button onClick={()=>{setOtpSent(false);setOtpCode("");}}
+                    style={{flex:1,minHeight:44,background:"none",border:"1px solid #E5E5E5",borderRadius:12,color:"#333",fontSize:13,fontWeight:700,cursor:"pointer",fontFamily:"inherit",display:"inline-flex",alignItems:"center",justifyContent:"center",gap:6}}>
+                    <Ikon ad="oksol" boy={15}/>{L("E-postayı değiştir","Change email","Изменить почту")}
+                  </button>
+                  <button onClick={sendOtp} disabled={otpBusy || otpBekle > 0}
+                    style={{flex:1,minHeight:44,background:"none",border:"1px solid #E5E5E5",borderRadius:12,color:(otpBusy || otpBekle > 0)?"#999":"#333",fontSize:13,fontWeight:700,cursor:(otpBusy || otpBekle > 0)?"default":"pointer",fontFamily:"inherit",fontVariantNumeric:"tabular-nums"}}>
+                    {otpBekle > 0
+                      ? L(`Yeniden gönder (${otpBekle})`, `Resend (${otpBekle})`, `Отправить снова (${otpBekle})`)
+                      : L("Kodu yeniden gönder","Resend code","Отправить код снова")}
+                  </button>
+                </div>
               </>
             )}
-          </div>
-        </div>
+        </MusteriSheet>
       )}
 
       {/* KVKK metni (aydinlatma) */}
       {kvkkMetinOpen && kvkkDoc && (
-        <div onClick={() => setKvkkMetinOpen(false)} style={{position:"fixed",inset:0,background:"rgba(0,0,0,0.5)",display:"flex",alignItems:"flex-end",justifyContent:"center",zIndex:140}}>
-          <div onClick={e=>e.stopPropagation()} style={{background:"#fff",borderRadius:"18px 18px 0 0",padding:"22px 20px 28px",width:"100%",maxWidth:520,maxHeight:"85vh",display:"flex",flexDirection:"column"}}>
-            <div style={{fontSize:17,fontWeight:800,marginBottom:4}}>{kvkkDoc.title}</div>
+        <MusteriSheet etiket={kvkkDoc.title} onKapat={() => setKvkkMetinOpen(false)} z={140} sutun
+          kutu={{padding:"22px 20px calc(28px + env(safe-area-inset-bottom))",maxHeight:"85vh"}} kapatEtiket={L("Kapat","Close","Закрыть")}>
+            <div style={{fontSize:17,fontWeight:800,marginBottom:4,paddingRight:36}}>{kvkkDoc.title}</div>
             <div style={{fontSize:11,color:"#999",marginBottom:12}}>v{kvkkDoc.version}</div>
             <div style={{flex:1,overflowY:"auto",fontSize:13,lineHeight:1.55,color:"#333",whiteSpace:"pre-wrap",paddingRight:4}}>
               {kvkkDoc.body}
@@ -3077,14 +3102,12 @@ export default function CustomerMenu() {
               style={{marginTop:16,width:"100%",padding:"14px",background:"#000",color:"#fff",border:"none",borderRadius:12,fontSize:14,fontWeight:800,cursor:"pointer",fontFamily:"inherit"}}>
               {t.kvkk_close}
             </button>
-          </div>
-        </div>
+        </MusteriSheet>
       )}
 
       {/* KVKK surum guncellendi — yeniden onay (mevcut uyeler) */}
       {needsKvkk && (
-        <div style={{position:"fixed",inset:0,background:"rgba(0,0,0,0.55)",display:"flex",alignItems:"flex-end",justifyContent:"center",zIndex:130}}>
-          <div style={{background:"#fff",borderRadius:"18px 18px 0 0",padding:"22px 20px 30px",width:"100%",maxWidth:520}}>
+        <MusteriSheet etiket={t.kvkk_re_title} zorunlu z={130}>
             <div style={{fontSize:18,fontWeight:800,marginBottom:6}}>{t.kvkk_re_title}</div>
             <div style={{fontSize:13,color:"#666",lineHeight:1.5,marginBottom:14}}>{t.kvkk_re_note}</div>
             <label style={{display:"flex",gap:10,alignItems:"flex-start",marginBottom:14,cursor:"pointer"}}>
@@ -3108,13 +3131,12 @@ export default function CustomerMenu() {
               style={{width:"100%",marginTop:10,background:"none",border:"none",color:"#666",fontSize:12,cursor:"pointer",fontFamily:"inherit"}}>
               {t.kvkk_re_later}
             </button>
-          </div>
-        </div>
+        </MusteriSheet>
       )}
 
       {checkoutOpen && (
-        <div onClick={() => setCheckoutOpen(false)} style={{position:"fixed",inset:0,background:"rgba(0,0,0,0.55)",display:"flex",alignItems:"flex-end",justifyContent:"center",zIndex:110}}>
-          <div onClick={e=>e.stopPropagation()} style={{background:"#fff",borderRadius:"18px 18px 0 0",padding:20,width:"100%",maxWidth:520,maxHeight:"92vh",overflowY:"auto"}}>
+        <MusteriSheet etiket={L("Sepetim","My cart","Моя корзина")} onKapat={() => setCheckoutOpen(false)} z={110} kapatDugmesi={false}
+          kutu={{padding:"20px 20px calc(20px + env(safe-area-inset-bottom))"}}>
             <div style={{display:"flex",justifyContent:"space-between",alignItems:"center",marginBottom:14}}>
               {/* Masa adi basligin altinda: musteri siparisi nereye gonderdigini gorsun. */}
               <div style={{minWidth:0}}>
@@ -3269,8 +3291,7 @@ export default function CustomerMenu() {
                   ekrani ve bildirim "kasadan alabilirsin" dedigi icin soz tutmuyordu. */}
               {t.pickup_promise}
             </div>
-          </div>
-        </div>
+        </MusteriSheet>
       )}
       {UyariEl}
     </div>
