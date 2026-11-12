@@ -93,7 +93,8 @@
 - **Efes Fıçı 0.5L (liste ₺280) üye fiyatı:**
   - Pazartesi–Cumartesi 09:00–22:00: **₺200** (kural "Üye fiyatı — Pzt–Cmt
     09:00–22:00"). 22:00'den sonra herkes liste fiyatı öder.
-  - Pazar **tüm gün: ₺150** (kural "Üye fiyatı — Pazar tüm gün").
+  - Pazar 09:00–22:00: **₺150** (kural "Üye fiyatı — Pazar 09:00–22:00").
+    Sahip önce "tüm gün" dedi, sonra saati 09:00–22:00 olarak netleştirdi.
   - "Happy week" ve "Happy Sunday" (₺160) kuralları KAPALI kalır (sahip: "ilk
     seçenek iyi"). Eski gece kuralları ("Üye fiyatı — HH dışı …") kapatıldı,
     silinmedi.
@@ -103,6 +104,26 @@
   ₺150". Aynı ürün için iki kural AYNI ANDA açık olmamalı: hangisinin
   kazanacağı belli değildir. Günleri ya da saatleri ayır.
 - Başlıktaki "HAPPY HOUR" rozeti yalnız indirimi gören kişiye çıkar.
+
+## Rezervasyon: "Gelmedi" (sahip onayı, 2026-11-12)
+- Panelde onaylı rezervasyonda **"Gelmedi"** düğmesi var (iki dokunuş). Üyede
+  güven −40, gelmedi sayısı +1, seri 0. Misafirde yalnız işaret.
+- **"Geldi — geri al":** yanlış işaret ya da geç gelen misafir için. İşaret
+  kalkar, rezervasyon yeniden "Onaylı" olur, güven +40 geri verilir (seri
+  geri gelmez).
+- İşaretli rezervasyonun kodu kapıda okutulursa "ONAYSIZ · Gelmedi" yazar;
+  giriş için önce geri alınır.
+- **Teknik:** RESERVE veritabanı `no_show` durumunu kabul etmez
+  (`reservations_status_check`) ve kısıt silinmeden değiştirilemez. İşaret
+  `reservations.no_show_at` sütununda tutulur; durum `approved` kalır. Üye bu
+  sütunu değiştiremez (`nip_rez_koru` tetiği). Yerel modda durum doğrudan
+  `no_show` olur. Göç: `supabase/reserve_migrations/20261112_gelmedi_isareti.sql`.
+- İşaret ve güven puanı TEK sunucu işleminde yazılır: RESERVE
+  `nip_gelmedi(p_rez, p_geri)` (yalnız yönetici). Düşülen gerçek miktar itibar
+  defterine yazılır (`no_show` / `no_show_geri`); geri almada o kadar geri
+  verilir (taban 0'a takılan düşüş fazladan puan kazandırmaz). "Gelmedi"
+  işaretli rezervasyona giriş hiçbir istemciden yazılamaz
+  (`nip_rez_gelmedi_koru` tetiği). Göç: `20261112_gelmedi_fonksiyon.sql`.
 - Kurallar panelden yönetilir: Panel → Happy Hour.
 
 ## Partiler

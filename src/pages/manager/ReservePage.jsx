@@ -119,10 +119,14 @@ const waOnayLinki = (r) => {
   return "https://wa.me/" + tel + "?text=" + encodeURIComponent(metin);
 };
 
-// "Gelmedi": rezervasyon sitesinin veritabani (RESERVE) "no_show" durumunu kabul
-// etmiyor (reservations_status_check). Dugme orada hic calismadi; kisit
-// genisletilene kadar kopru modunda gosterilmez. Yerel modda calisir.
-const gelmediAcik = rezervasyonYerel;
+// "GELMEDI" (sahip onayi 12.11.2026). Rezervasyon sitesinin veritabani
+// (RESERVE) "no_show" DURUMUNU kabul etmiyor (reservations_status_check) ve
+// kisit silinmeden degistirilemiyor. Kopru modunda isaret ayri sutunda
+// tutulur: reservations.no_show_at (durum "approved" kalir). Yerel modda durum
+// dogrudan "no_show" olur. Goc: supabase/reserve_migrations/20261112_gelmedi_isareti.sql
+//
+// rezDurumu: ekranda, suzgecte ve kapida kullanilan durum.
+const rezDurumu = (r) => (r?.status === "approved" && r?.no_show_at ? "no_show" : r?.status);
 
 // E-posta bildiriminin karttaki ozeti (nip_reserve_onay_bildirim satiri)
 const bildirimOzeti = (b) => {
@@ -295,7 +299,7 @@ function Rezervasyonlar({ uyar }) {
 
   const bildirimOku = async (kayitlar) => {
     if (rezervasyonYerel) return;
-    const idler = (kayitlar || []).filter(r => r.status === "approved").slice(0, 150).map(r => r.id);
+    const idler = (kayitlar || []).filter(r => rezDurumu(r) === "approved").slice(0, 150).map(r => r.id);
     if (!idler.length) return;
     const { data, error } = await supabase.from("nip_reserve_onay_bildirim").select("rez_id,durum,hata,son").in("rez_id", idler);
     if (error || !data) return;   // tablo okunamazsa kart bildirimsiz cizilir
@@ -340,12 +344,12 @@ function Rezervasyonlar({ uyar }) {
   };
 
   const gorunen = useMemo(() => (liste || [])
-    .filter(r => !durum || r.status === durum)
+    .filter(r => !durum || rezDurumu(r) === durum)
     .filter(r => !etkinlik || r.event_id === etkinlik), [liste, durum, etkinlik]);
 
   const sayac = useMemo(() => {
     const s = {};
-    for (const r of liste || []) s[r.status] = (s[r.status] || 0) + 1;
+    for (const r of liste || []) s[rezDurumu(r)] = (s[rezDurumu(r)] || 0) + 1;
     return s;
   }, [liste]);
 
@@ -385,27 +389,49 @@ function Rezervasyonlar({ uyar }) {
     uyar("Reddedildi"); yukle();
   };
 
-  // index.html:1869 markNoShow — guven -40 (tabani 0), no_show +1, seri sifir
+  // "GELMEDI" ve geri alma (index.html:1869 markNoShow). Kopru modunda TEK
+  // sunucu islemi: RESERVE nip_gelmedi(p_rez, p_geri) rezervasyonu kilitler;
+  // isaret, guven puani (-40, tabani 0), gelmedi sayisi, seri ve itibar defteri
+  // birlikte yazilir. Geri almada dusulen GERCEK miktar geri verilir. Eskiden
+  // iki ayri istekti: arada ag koparsa isaret yazilip puan dusmuyor, geri almada
+  // hic dusulmemis 40 puan ekleniyordu (inceleme 12.11).
+  // Doner: { ok, neden, uye, delta }. ok = false: kayit baska cihazda degisti.
+  const gelmediYaz = async (r, geri) => {
+    if (!rezervasyonYerel) {
+      const { data, error } = await reserve.rpc("nip_gelmedi", { p_rez: r.id, p_geri: geri });
+      if (error) throw error;
+      return data || { ok: false, neden: "degisti" };
+    }
+    // Yerel mod: profil ve guven puani yok; yalniz durum degisir.
+    const u = await reserve.from("reservations").update({ status: geri ? "approved" : "no_show" })
+      .eq("id", r.id).eq("status", geri ? "no_show" : "approved").select("id");
+    if (u.error) throw u.error;
+    return { ok: !!(u.data && u.data.length), neden: "degisti", uye: false, delta: 0 };
+  };
+
   const gelmedi = async (r) => {
     if (busy) return; setBusy(true); setEmin(null);
     try {
-      const u = await reserve.from("reservations").update({ status: "no_show" }).eq("id", r.id);
-      if (u.error) throw u.error;
-      if (r.profile_id) {
-        const p = await reserve.from("profiles").select("trust_score,total_no_show,attendance_streak").eq("id", r.profile_id).single();
-        if (p.data) {
-          const nt = Math.max(0, (p.data.trust_score || 100) - 40);
-          const u2 = await reserve.from("profiles").update({ total_no_show: (p.data.total_no_show || 0) + 1, trust_score: nt, attendance_streak: 0 }).eq("id", r.profile_id);
-          if (u2.error) throw u2.error;
-        }
-      }
-      uyar(r.profile_id ? "Gelmedi işaretlendi. −40 güven" : "Gelmedi işaretlendi"); yukle();
+      const c = await gelmediYaz(r, false);
+      if (!c.ok) uyar("Bu rezervasyon az önce değişti. Liste yenilendi.", true);
+      else uyar(c.uye ? `Gelmedi işaretlendi. −${Math.abs(Number(c.delta) || 0)} güven` : "Gelmedi işaretlendi");
     } catch (e) {
-      // RESERVE'de reservations_status_check "no_show" durumunu tanimiyor (10.11.2026
-      // bulgusu): durum yazilamaz, puan da dusmez. Ham kisit metni yerine sebep.
-      const kisit = /reservations_status_check/i.test(e?.message || "");
-      uyar(kisit ? "Gelmedi yazılamadı: rezervasyon veritabanı bu durumu henüz kabul etmiyor. Güven puanı değişmedi." : "İşaretlenemedi: " + e.message, true);
-    } finally { setBusy(false); }
+      uyar("İşaretlenemedi: " + e.message, true);
+    } finally { setBusy(false); yukle(); }
+  };
+
+  // Yanlis isaret ya da gec gelen misafir: isaret kalkar, rezervasyon yeniden
+  // "Onaylı" olur (kapida giris yapilabilir), dusulen guven puani geri verilir.
+  // Seri (attendance_streak) geri gelmez: eski deger saklanmiyor.
+  const gelmediGeriAl = async (r) => {
+    if (busy) return; setBusy(true); setEmin(null);
+    try {
+      const c = await gelmediYaz(r, true);
+      if (!c.ok) uyar("Bu rezervasyon az önce değişti. Liste yenilendi.", true);
+      else uyar(c.uye ? `Gelmedi işareti kaldırıldı. +${Math.abs(Number(c.delta) || 0)} güven` : "Gelmedi işareti kaldırıldı");
+    } catch (e) {
+      uyar("Geri alınamadı: " + e.message, true);
+    } finally { setBusy(false); yukle(); }
   };
 
   // index.html:1880 scanQR — kapida giris. Kod ya da dogrudan kayit.
@@ -424,13 +450,20 @@ function Rezervasyonlar({ uyar }) {
       r = res.data;
       if (!r) return kapiYaz(false, "GEÇERSİZ", "Kod bulunamadı: " + kod);
     }
-    if (r.status === "used") return sonuc(false, "KULLANILMIŞ", r.name + " zaten girdi.");
-    if (r.status !== "approved") return sonuc(false, "ONAYSIZ", r.name + " · " + (REZ_DURUM[r.status]?.ad || r.status));
+    if (rezDurumu(r) === "used") return sonuc(false, "KULLANILMIŞ", r.name + " zaten girdi.");
+    if (rezDurumu(r) !== "approved") return sonuc(false, "ONAYSIZ", r.name + " · " + (REZ_DURUM[rezDurumu(r)]?.ad || rezDurumu(r)));
 
     setBusy(true);
     try {
-      const u = await reserve.from("reservations").update({ status: "used", checked_in_at: new Date().toISOString() }).eq("id", r.id);
+      // Yalniz HALA onayli (ve "gelmedi" isaretsiz) kayit girer. Ekrandaki satir
+      // eski olabilir: baska cihaz az once giris yaptiysa ya da "gelmedi"
+      // isaretlediyse giris ikinci kez yazilmaz, guven puani iki kez artmaz.
+      let gu = reserve.from("reservations").update({ status: "used", checked_in_at: new Date().toISOString() })
+        .eq("id", r.id).eq("status", "approved");
+      if (!rezervasyonYerel) gu = gu.is("no_show_at", null);
+      const u = await gu.select("id");
       if (u.error) throw u.error;
+      if (!u.data || !u.data.length) { sonuc(false, "DEĞİŞTİ", r.name + " · bu rezervasyon az önce değişti. Liste yenilendi."); yukle(); return; }
       let seriMsg = "";
       if (r.profile_id) {
         const pRes = await reserve.from("profiles").select("trust_score,loyalty_score,total_attended,total_reservations,attendance_streak,max_streak,last_attended_at,tier").eq("id", r.profile_id).single();
@@ -440,7 +473,8 @@ function Rezervasyonlar({ uyar }) {
           const la = pd.last_attended_at ? new Date(pd.last_attended_at) : null;
           if (la && (Date.now() - la.getTime()) < 45 * 24 * 3600 * 1000) ns = (pd.attendance_streak || 0) + 1;
           if (ns >= 10) sB = 30; else if (ns >= 5) sB = 15; else if (ns >= 3) sB = 5;
-          const nT = (pd.trust_score || 100) + tD + sB, nL = (pd.loyalty_score || 0) + lD;
+          // "??": guveni 0 olan uye 100 sayilmaz (yalniz bos deger varsayilan alir).
+          const nT = (pd.trust_score ?? 100) + tD + sB, nL = (pd.loyalty_score ?? 0) + lD;
           const nTier = nT >= 500 ? "elite" : nT >= 300 ? "gold" : nT >= 150 ? "silver" : "bronze";
           const u2 = await reserve.from("profiles").update({
             trust_score: nT, loyalty_score: nL, tier: nTier,
@@ -487,7 +521,7 @@ function Rezervasyonlar({ uyar }) {
       )}
 
       <div style={{ display: "flex", gap: 6, flexWrap: "wrap", marginBottom: 8 }}>
-        {[["pending", "Bekleyen"], ["approved", "Onaylı"], ["used", "Girdi"], ["no_show", "Gelmedi"], ["rejected", "Red"], ["", "Hepsi"]].filter(([k]) => k !== "no_show" || gelmediAcik).map(([k, ad]) =>
+        {[["pending", "Bekleyen"], ["approved", "Onaylı"], ["used", "Girdi"], ["no_show", "Gelmedi"], ["rejected", "Red"], ["", "Hepsi"]].map(([k, ad]) =>
           <Cip key={k} aktif={durum === k} onClick={() => setDurum(k)}>{ad}{k && sayac[k] ? " · " + sayac[k] : ""}</Cip>)}
       </div>
       <select value={etkinlik} onChange={e => setEtkinlik(e.target.value)} style={{ ...inputS, marginBottom: 12 }}>
@@ -501,7 +535,7 @@ function Rezervasyonlar({ uyar }) {
         <div key={r.id} style={{ background: C.card, border: "1px solid " + C.line, borderRadius: 10, padding: 12, marginBottom: 8 }}>
           <div style={{ display: "flex", gap: 8, alignItems: "center", flexWrap: "wrap" }}>
             <div style={{ fontWeight: 700, fontSize: 14 }}>{r.name || "—"}</div>
-            <Durum tablo={REZ_DURUM} kod={r.status} />
+            <Durum tablo={REZ_DURUM} kod={rezDurumu(r)} />
             {!r.profile_id && !rezervasyonYerel && <span style={{ fontSize: 10, color: C.muted }}>MİSAFİR</span>}
             <span style={{ flex: 1 }} />
             <span style={{ fontSize: 12, color: C.muted }}>{r.guest_count || 1} kişi</span>
@@ -512,7 +546,7 @@ function Rezervasyonlar({ uyar }) {
           <div style={{ fontSize: 11, color: C.faint, marginTop: 2 }}>
             {r.phone || "—"} · QR {r.qr_id || "—"}{Array.isArray(r.guest_names) ? (r.guest_names.length ? " · " + r.guest_names.join(", ") : "") : (r.guest_names ? " · " + r.guest_names : "")}{r.note ? " · " + r.note : ""}
           </div>
-          {r.status === "approved" && bildirimOzeti(bildirim[r.id]) && (() => {
+          {rezDurumu(r) === "approved" && bildirimOzeti(bildirim[r.id]) && (() => {
             const b = bildirimOzeti(bildirim[r.id]);
             return (
               <div style={{ fontSize: 12, color: b.renk, marginTop: 6, display: "flex", alignItems: "center", gap: 6, fontWeight: 600 }}>
@@ -521,24 +555,31 @@ function Rezervasyonlar({ uyar }) {
             );
           })()}
           <div style={{ display: "flex", gap: 6, marginTop: 8, flexWrap: "wrap", alignItems: "center" }}>
-            {r.status === "pending" && <button disabled={busy} onClick={() => onayla(r)} style={btnS(C.up, "#000")}>Onayla</button>}
-            {r.status === "approved" && <button disabled={busy} onClick={() => girisYap(r)} style={btnS(C.ink, "#000")}>Giriş</button>}
-            {r.status === "approved" && waOnayLinki(r) && (
+            {rezDurumu(r) === "pending" && <button disabled={busy} onClick={() => onayla(r)} style={btnS(C.up, "#000")}>Onayla</button>}
+            {rezDurumu(r) === "approved" && <button disabled={busy} onClick={() => girisYap(r)} style={btnS(C.ink, "#000")}>Giriş</button>}
+            {rezDurumu(r) === "approved" && waOnayLinki(r) && (
               <a href={waOnayLinki(r)} target="_blank" rel="noreferrer" style={{ ...btnS("#0F0F0F", "#7FD4A0"), textDecoration: "none" }}>{waTel(r.phone) ? "WhatsApp'tan haber ver" : "WhatsApp (numara hatalı — kişiyi seç)"}</a>
             )}
-            {r.status !== "approved" && waTel(r.phone) && <a href={"https://wa.me/" + waTel(r.phone)} target="_blank" rel="noreferrer" style={{ ...btnS("#0F0F0F", C.muted), textDecoration: "none" }}>WhatsApp</a>}
+            {rezDurumu(r) !== "approved" && waTel(r.phone) && <a href={"https://wa.me/" + waTel(r.phone)} target="_blank" rel="noreferrer" style={{ ...btnS("#0F0F0F", C.muted), textDecoration: "none" }}>WhatsApp</a>}
             <span style={{ flex: 1 }} />
             {/* Geri alinmaz: ilk dokunus sorar, ikinci dokunus yapar (4 sn) */}
-            {r.status === "pending" && (
+            {rezDurumu(r) === "pending" && (
               <button disabled={busy} onClick={() => emin === r.id + ":r" ? reddet(r) : eminSor(r.id + ":r")}
                 style={btnS(emin === r.id + ":r" ? C.down : "#0F0F0F", emin === r.id + ":r" ? "#000" : C.down)}>
                 {emin === r.id + ":r" ? "Emin misin? Reddet" : "Reddet"}
               </button>
             )}
-            {r.status === "approved" && gelmediAcik && (
+            {rezDurumu(r) === "approved" && (
               <button disabled={busy} onClick={() => emin === r.id + ":g" ? gelmedi(r) : eminSor(r.id + ":g")}
                 style={btnS(emin === r.id + ":g" ? C.down : "#0F0F0F", emin === r.id + ":g" ? "#000" : C.down)}>
                 {emin === r.id + ":g" ? (r.profile_id ? "Emin misin? −40 güven" : "Emin misin? Gelmedi") : "Gelmedi"}
+              </button>
+            )}
+            {/* Yanlis isaret ya da gec gelen misafir icin. */}
+            {rezDurumu(r) === "no_show" && (
+              <button disabled={busy} onClick={() => emin === r.id + ":k" ? gelmediGeriAl(r) : eminSor(r.id + ":k")}
+                style={btnS(emin === r.id + ":k" ? C.up : "#0F0F0F", emin === r.id + ":k" ? "#000" : C.muted)}>
+                {emin === r.id + ":k" ? (r.profile_id ? "Emin misin? +40 güven" : "Emin misin? Geri al") : "Geldi — geri al"}
               </button>
             )}
           </div>
