@@ -25,6 +25,10 @@ import { donemEtiketi, dosyaAdi, type Hesap, raporXlsx } from "./rapor.ts";
 import { type Ek, eposta, mailGonder } from "./mail.ts";
 
 const PARIS = "c3c6e0c7-1821-4edd-993d-ad960cfbc452";
+// Uygulamanin genel adresi (e-posta ve Telegram metinlerindeki baglanti).
+// APP_URL gizli degiskeni yoksa eski adres: order ve club ayni uygulamayi sunar.
+const UYGULAMA = (Deno.env.get("APP_URL") || "https://order.notinparis.me").replace(/\/+$/, "");
+const UYG_HOST = UYGULAMA.replace(/^https?:\/\//, "");
 const CORS = {
   "Access-Control-Allow-Origin": "*",
   "Access-Control-Allow-Headers": "authorization, x-client-info, apikey, content-type, x-nip-cron",
@@ -103,7 +107,7 @@ function ozetHtml(hesaplar: Hesap[], etiket: string, toplam: number, bekleyen: n
 <tbody>${satir}</tbody>
 <tfoot><tr style="background:#f2f2f2;font-weight:700"><td style="padding:7px 8px">Toplam tedarikçi payı</td><td></td><td></td><td></td><td style="padding:7px 8px;text-align:right">${tl(toplam)}</td><td style="padding:7px 8px;text-align:center">bekleyen ${tl(bekleyen)}</td></tr></tfoot>
 </table>
-<p style="margin:14px 0 0;color:#555;font-size:12px">Ödeme yapılınca "Ödendi" işareti: <a href="https://order.notinparis.me/konsinye">order.notinparis.me/konsinye</a>. Bu e-posta her ayın 1'inde kendiliğinden gönderilir.</p>
+<p style="margin:14px 0 0;color:#555;font-size:12px">Ödeme yapılınca "Ödendi" işareti: <a href="${UYGULAMA}/konsinye">${UYG_HOST}/konsinye</a>. Bu e-posta her ayın 1'inde kendiliğinden gönderilir.</p>
 </body></html>`;
 }
 
@@ -158,7 +162,7 @@ Deno.serve(async (req: Request) => {
       try {
         const { data: yon } = await supa.from("staff").select("telegram_chat_id").eq("role", "admin").eq("is_active", true).not("telegram_chat_id", "is", null);
         for (const y of yon || []) {
-          await supa.rpc("nip_tg_gonder", { p_chat_id: String(y.telegram_chat_id), p_metin: `⚠️ Konsinye e-postası (${etiket}) gönderilemedi: ${mesaj}\nElle: order.notinparis.me/konsinye → E-postayla gönder`, p_kaynak: "konsinye_mail" });
+          await supa.rpc("nip_tg_gonder", { p_chat_id: String(y.telegram_chat_id), p_metin: `⚠️ Konsinye e-postası (${etiket}) gönderilemedi: ${mesaj}\nElle: ${UYG_HOST}/konsinye → E-postayla gönder`, p_kaynak: "konsinye_mail" });
         }
       } catch (_e) { /* telegram yoksa sessiz */ }
     }
@@ -209,7 +213,7 @@ Deno.serve(async (req: Request) => {
     const m = (e as Error).message;
     // E-posta gidemedi: dosyalar yonetici Telegram'ina belge olarak gider.
     const tg = await telegramaGonder(supa, ekler,
-      `📎 Konsinye hesapları — ${etiket}: ${hesaplar.length} tedarikçi, bekleyen ödeme ${tl(bekleyen)}\nE-posta gönderilemedi (${m.slice(0, 160)})\nDosyalar burada. Ödendi: order.notinparis.me/konsinye`);
+      `📎 Konsinye hesapları — ${etiket}: ${hesaplar.length} tedarikçi, bekleyen ödeme ${tl(bekleyen)}\nE-posta gönderilemedi (${m.slice(0, 160)})\nDosyalar burada. Ödendi: ${UYG_HOST}/konsinye`);
     await sonucYaz(false, tg ? `${m} Dosyalar Telegram'a gönderildi (${tg}).` : m, { dosyalar: ekler.map((e) => e.ad), toplam, telegram: tg }, tg > 0);
     return json({ error: m, telegram: tg }, 502);
   }
