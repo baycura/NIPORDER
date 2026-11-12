@@ -3,7 +3,7 @@ import { useParams, useNavigate, useSearchParams } from "react-router-dom";
 import { supabase, hataMetni } from "../../lib/supabase.js";
 import { useAuth } from "../../contexts/AuthContext.jsx";
 import MusteriSheet from "../../components/MusteriSheet.jsx";
-import { happyHourPrices, hhSadeceUyeMi } from "../../lib/happyHour.js";
+import { happyHourPrices, happyHourPlan, hhSadeceUyeMi } from "../../lib/happyHour.js";
 import { optionMod } from "../../lib/productOptions.js";
 import { PHONE_CODES, toE164 } from "../../lib/phoneCodes.js";
 import { errorText } from "../../lib/errorText.js";
@@ -563,6 +563,29 @@ export default function CustomerMenu() {
   const [settings, setSettings] = useState(null);
   const [hh, setHh] = useState(null);
   const [hhProductPrices, setHhProductPrices] = useState({});
+  // Kurallar saklanir: fiyat ve "en yakin pencere" saat ilerledikce yeniden
+  // hesaplanir. Eskiden fiyat yalniz menu yuklenirken hesaplaniyordu; 20:55'te
+  // acilan menu 21:00'de baslayan fiyati sayfa yenilenene kadar gormuyordu.
+  const [hhKurallar, setHhKurallar] = useState(null);
+  const [hhDakika, setHhDakika] = useState(() => Math.floor(Date.now() / 60000));
+  useEffect(() => {
+    const z = setInterval(() => setHhDakika(Math.floor(Date.now() / 60000)), 20000);
+    return () => clearInterval(z);
+  }, []);
+  useEffect(() => {
+    if (hhKurallar === null) return;
+    // Icerik ayniysa eski nesne kalir: menu her dakika bosuna yeniden cizilmez.
+    setHhProductPrices(eski => {
+      const yeni = happyHourPrices(products, hhKurallar, new Date());
+      const a = Object.keys(eski), b = Object.keys(yeni);
+      return a.length === b.length && b.every(k => eski[k] === yeni[k]) ? eski : yeni;
+    });
+  }, [hhDakika, hhKurallar, products]);
+  // Urun basina en yakin happy hour penceresi (uye olmayana "Üyelere özel ·
+  // 21:00–09:00 arası ₺200" yazisi icin).
+  const hhPlan = useMemo(
+    () => (hhKurallar === null ? {} : happyHourPlan(products, hhKurallar, new Date())),
+    [hhDakika, hhKurallar, products]);
   const [fadedProdInfo, setFadedProdInfo] = useState({});
   const [loading, setLoading] = useState(true);
   // Menu sorgulari hata verdi (baglanti koptu): bos menu yerine "tekrar dene" ekrani.
@@ -1178,6 +1201,7 @@ export default function CustomerMenu() {
       if (hhRes && hhRes.data && hhRes.data[0]) setHh(hhRes.data[0]);
       // Happy hour fiyatlari: kasa ile ayni hesap (src/lib/happyHour.js)
       setHhProductPrices(happyHourPrices(finalProds, hhRules, new Date()));
+      setHhKurallar(hhRules || []);
       // Ilk sekme: alt kategori degil, ust kategori secilir
       if (!selectedCat) {
         const firstTop = finalCatsAfterSchedule.find(c => !c.parent_id && !c.show_in_shop);
@@ -1580,6 +1604,32 @@ export default function CustomerMenu() {
   const hhVar = Object.keys(hhProductPrices).some(id => hhProductPrices[id] != null);
   // Uye olmayanin gorecegi "uye olursan" fiyati: indirimler acikmis gibi hesap.
   const uyeOlursaFiyat = (p, options) => (!uyeMi && hhSadeceUye) ? calcPrice(p, options, true) : null;
+  // UYELIK CAGRISI (sahip 12.11): uye olmayan, happy hour urununun altinda uye
+  // fiyatini ve saatini HER ZAMAN gorur — saat disinda da. "Üyelere özel ·
+  // 21:00–09:00 arası ₺200"; pencere baska gundeyse gun adi da yazilir.
+  // Doner: { fiyat, yazi } ya da null (gosterilecek bir sey yok).
+  const uyeCagrisi = (p, fp) => {
+    if (uyeMi || !hhSadeceUye) return null;
+    const simdi = uyeOlursaFiyat(p);          // su an uye olsa odeyecegi
+    const pl = hhPlan[p.id];
+    const saat = pl ? `${pl.bas}–${pl.bit}` : null;
+    if (simdi != null && simdi < fp) {
+      // Indirim su an acik. Nedeni happy hour ise saatini de yaz.
+      if (pl?.aktif && hhProductPrices[p.id] != null) {
+        return { fiyat: simdi, yazi: L(`Üyelere özel · ${saat} arası ${para(simdi)}`, `Members only · ${saat} · ${para(simdi)} — join`, `Только для участников · ${saat} · ${para(simdi)} — вступить`) };
+      }
+      return { fiyat: simdi, yazi: L(`Üye olursan ${para(simdi)}`, `Members pay ${para(simdi)} — join`, `Для участников ${para(simdi)} — вступить`) };
+    }
+    if (!pl) return null;
+    // Siradaki pencere: kasadaki hesapla ayni (happy hour fiyati + anlik indirim).
+    const f = Math.round(pl.fiyat * (100 - (Number(p.instant_discount_pct) || 0)) / 100);
+    if (!(f < fp)) return null;
+    const gunTarih = new Date(Date.now() + pl.gun * 86400000);
+    const gun = pl.gun === 0 || pl.aktif ? ""
+      : pl.gun === 1 ? L("yarın ", "tomorrow ", "завтра ")
+      : gunTarih.toLocaleDateString(paraDil, { weekday: "long" }) + " ";
+    return { fiyat: f, yazi: L(`Üyelere özel · ${gun}${saat} arası ${para(f)}`, `Members only · ${gun}${saat} · ${para(f)} — join`, `Только для участников · ${gun}${saat} · ${para(f)} — вступить`) };
+  };
 
   // Ustu cizilecek liste fiyati: yalniz gercekten indirim varsa
   const listPrice = (p, options) => {
@@ -2663,11 +2713,13 @@ export default function CustomerMenu() {
                 {(() => {
                   // Happy hour / indirim yalniz uyelere: uye olmayan liste fiyatini
                   // gorur, altinda uye fiyati ve giris cagrisi (sahip 24.10).
-                  const uf = uyeOlursaFiyat(p);
-                  if (uf == null || uf >= fp) return null;
+                  // Happy hour urununde saat ve fiyat HER ZAMAN yazar (saat disinda da):
+                  // "Üyelere özel · 21:00–09:00 arası ₺200" (sahip 12.11).
+                  const cagri = uyeCagrisi(p, fp);
+                  if (!cagri) return null;
                   return (
-                    <button onClick={uyeOlAc} style={{marginTop:6,background:"none",border:"none",padding:0,fontSize:12,color:"#000",fontWeight:700,cursor:"pointer",fontFamily:"inherit",textAlign:"left",display:"flex",alignItems:"center",gap:5,opacity:sol}}>
-                      <Ikon ad="uye" boy={12}/>{L(`Üye olursan ${para(uf)}`, `Members pay ${para(uf)} — join`, `Для участников ${para(uf)} — вступить`)}
+                    <button onClick={uyeOlAc} style={{marginTop:6,background:"none",border:"none",padding:"4px 0",minHeight:0,fontSize:12,color:"#000",fontWeight:700,cursor:"pointer",fontFamily:"inherit",textAlign:"left",display:"flex",alignItems:"flex-start",gap:5,lineHeight:1.35,opacity:sol}}>
+                      <Ikon ad="uye" boy={12} style={{flexShrink:0,marginTop:2}}/><span>{cagri.yazi}</span>
                     </button>
                   );
                 })()}
