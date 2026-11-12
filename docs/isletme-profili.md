@@ -93,8 +93,9 @@
 - **Efes Fıçı 0.5L (liste ₺280) üye fiyatı:**
   - Pazartesi–Cumartesi 09:00–22:00: **₺200** (kural "Üye fiyatı — Pzt–Cmt
     09:00–22:00"). 22:00'den sonra herkes liste fiyatı öder.
-  - Pazar 09:00–22:00: **₺150** (kural "Üye fiyatı — Pazar 09:00–22:00").
-    Sahip önce "tüm gün" dedi, sonra saati 09:00–22:00 olarak netleştirdi.
+  - Pazar **tüm gün: ₺150** (kural "Üye fiyatı — Pazar tüm gün", 00:00–23:59).
+    Sahip 12.11'de iki kez doğruladı: "Pazar full gün". 09:00–22:00 yalnız
+    Pazartesi–Cumartesi içindir.
   - "Happy week" ve "Happy Sunday" (₺160) kuralları KAPALI kalır (sahip: "ilk
     seçenek iyi"). Eski gece kuralları ("Üye fiyatı — HH dışı …") kapatıldı,
     silinmedi.
