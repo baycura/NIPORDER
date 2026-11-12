@@ -837,12 +837,24 @@ export default function CustomerMenu() {
       email, options: { shouldCreateUser: true, emailRedirectTo: window.location.origin + "/menu" },
     });
     setOtpBusy(false);
-    if (error) { bildir(errorText(error, lang)); return; }
+    if (error) {
+      // Sunucu ayni adrese 60 sn'de bir kod gonderir (429). Sayac sunucunun
+      // soyledigi sureye kurulur: dugme acik kalip ayni hatayi vermesin.
+      if (Number(error.status) === 429) {
+        const kalan = /after (\d+) seconds?/.exec(error.message || "");
+        setOtpBekle(kalan ? Number(kalan[1]) : 60);
+        bildir(L("Kod az önce gönderildi. Biraz bekle, sonra yeniden iste.",
+                 "A code was just sent. Wait a moment, then ask again.",
+                 "Код только что отправлен. Подождите немного и запросите снова."));
+        return;
+      }
+      bildir(errorText(error, lang)); return;
+    }
     setOtpSent(true);
-    setOtpBekle(30); // yeniden gonderme arasi
+    setOtpBekle(60); // yeniden gonderme arasi (sunucunun adres basina siniri)
   };
 
-  // Yeniden gonderme sayaci: kod gelmediyse musteri 30 sn sonra yeniden ister.
+  // Yeniden gonderme sayaci: kod gelmediyse musteri 60 sn sonra yeniden ister.
   // Eskiden tek yol geri donup adresi bastan yazmakti.
   const [otpBekle, setOtpBekle] = useState(0);
   useEffect(() => {
@@ -1064,7 +1076,9 @@ export default function CustomerMenu() {
   const para = (n) => "₺" + (Number(n) || 0).toLocaleString(paraDil, { maximumFractionDigits: 2 });
   // Sekme beslemesinin durumu: okunamadi -> sebep + tekrar dene; okunuyor ->
   // iskelet satirlar (eskiden yalniz "..." yaziyordu). Veri geldiyse hicbir sey.
-  const feedDurum = (k, veri) => feedHata[k] ? (
+  // Hata kutusu yalniz veri YOKKEN: sekmeye donuste yapilan basarili okuma
+  // eski hatanin altina liste cizmesin.
+  const feedDurum = (k, veri) => (feedHata[k] && veri === undefined) ? (
     <div role="alert" style={{textAlign:"center",padding:"26px 16px",fontSize:14,color:"#101214",lineHeight:1.5}}>
       <div style={{fontWeight:700,marginBottom:4}}>{L("Yüklenemedi","Could not load","Не удалось загрузить")}</div>
       <div style={{fontSize:13,color:"#666666",marginBottom:12}}>{L("İnternet bağlantını kontrol et.","Check your connection.","Проверьте подключение к интернету.")}</div>
@@ -1220,7 +1234,20 @@ export default function CustomerMenu() {
   // Bu sipariste en az bir kez urun goruldu mu (personel hepsini kaldirirsa
   // "iptal" sayilir; yeni acilmis bos hesap ile karismasin).
   const urunGoruldu = useRef(false);
-  useEffect(() => { setSiparisDurum(null); setBagliPuan(null); urunGoruldu.current = false; }, [successOrderId]);
+  // BOS HESAP iptal DEGILDIR. Kasiyer urunleri baska hesaba tasiyinca ya da
+  // yanlis urunu silip dogrusunu eklerken hesap bir sure bos kalir; eskiden
+  // 3 saniyelik ilk bos yoklamada "Sipariş iptal edildi" yaziyordu, icecek
+  // hazirlanirken. Simdi: hesap ~30 sn boyunca bos kalirsa notr "kasaya sor"
+  // ekrani ("bos"); urun geri gelirse ekran kendiliginden toparlanir.
+  const bosSayac = useRef(0);
+  const bosGeri = useRef(false);   // sayfa yenilendi: "bos" asamasi geri kuruluyor
+  const BOS_ESIK = 10;             // art arda bos yoklama (3 sn arayla)
+  useEffect(() => {
+    setSiparisDurum(null); setBagliPuan(null);
+    urunGoruldu.current = bosGeri.current;
+    bosSayac.current = bosGeri.current ? BOS_ESIK : 0;
+    bosGeri.current = false;
+  }, [successOrderId]);
 
   useEffect(() => {
     if (!successOrderId) return;
@@ -1230,10 +1257,9 @@ export default function CustomerMenu() {
       // Misafir siparis listesini okuyamaz (gizlilik) — durum RPC ile sorulur
       const { data: st } = await supabase.rpc("order_public_status", { p_order_id: successOrderId });
       if (!st) return;
-      // IPTAL: personel hesabi iptal ederse (ya da butun urunleri kaldirirsa)
-      // ekran eskiden 12 saat "Hazırlanıyor"da kaliyordu; musteri gelmeyecek
-      // siparisi bekliyordu.
-      if (st.status === "cancelled" || (!st.item_count && urunGoruldu.current)) {
+      // IPTAL: personel hesabi iptal ederse ekran eskiden 12 saat
+      // "Hazırlanıyor"da kaliyordu; musteri gelmeyecek siparisi bekliyordu.
+      if (st.status === "cancelled") {
         setOrderStage(prev => {
           if (prev === "cancelled") return prev;
           setBrowsing(false); // sekmelerde geziyorsa haberi gorsun
@@ -1241,8 +1267,23 @@ export default function CustomerMenu() {
         });
         return;
       }
-      if (!st.item_count) return;
+      if (!st.item_count) {
+        // Hic urun gorulmediyse yeni acilmis hesaptir: bekle.
+        if (!urunGoruldu.current) return;
+        bosSayac.current += 1;
+        if (bosSayac.current >= BOS_ESIK) {
+          setOrderStage(prev => {
+            if (prev === "bos" || prev === "cancelled") return prev;
+            setBrowsing(false);
+            return "bos";
+          });
+        }
+        return;
+      }
       urunGoruldu.current = true;
+      bosSayac.current = 0;
+      // Urun geri geldi: "bos" ekrani kalkar, asagidaki kurallar asamayi yazar.
+      setOrderStage(prev => prev === "bos" ? "pending" : prev);
       // 3 saniyede bir ayni cevap gelir: degismediyse eski nesne kalsin ki
       // 2900 satirlik bilesen bosuna yeniden cizilmesin.
       setSiparisDurum(prev => (prev && JSON.stringify(prev) === JSON.stringify(st)) ? prev : st);
@@ -1305,6 +1346,7 @@ export default function CustomerMenu() {
         // HAZIR asamasi geri kurulur ki zil yeniden calmasin ve musteri
         // menudeyse menude kalsin (eskiden buyuk HAZIR ekranina kilitleniyordu).
         if (d.asama === "ready") setOrderStage("ready");
+        else if (d.asama === "bos") { bosGeri.current = true; setOrderStage("bos"); }
         if (d.gozat) setBrowsing(true);
       }
     }
@@ -2055,14 +2097,22 @@ export default function CustomerMenu() {
           </div>
         )}
         <div style={{maxWidth:460,margin:"0 auto",textAlign:"center"}}>
-          {orderStage === "cancelled" ? (
+          {orderStage === "cancelled" || orderStage === "bos" ? (
             <div role="status">
               <Ikon ad="uyari" boy={60} kalin={1.3} style={{display:"block",margin:"0 auto 14px"}}/>
-              <div style={{fontSize:24,fontWeight:800,marginBottom:8}}>{L("Sipariş iptal edildi","Order cancelled","Заказ отменён")}</div>
+              {/* "bos": urunler kasada baska hesaba alinmis ya da degistirilmis
+                  olabilir; iptal demek yanlis olur. */}
+              <div style={{fontSize:24,fontWeight:800,marginBottom:8}}>{orderStage === "bos"
+                ? L("Siparişin kasada değişti","Your order was changed at the counter","Ваш заказ изменён на кассе")
+                : L("Sipariş iptal edildi","Order cancelled","Заказ отменён")}</div>
               <div style={{fontSize:14,color:"#555",marginBottom:24,lineHeight:1.5}}>
-                {L("Bu sipariş kasada iptal edildi. Bir yanlışlık varsa kasaya sor.",
-                   "This order was cancelled at the counter. If this is a mistake, please ask at the counter.",
-                   "Этот заказ отменён на кассе. Если это ошибка, обратитесь на кассу.")}
+                {orderStage === "bos"
+                  ? L("Ürünlerin bu siparişten çıkarıldı ya da başka hesaba alındı. Durumu kasaya sor.",
+                      "Your items were removed from this order or moved to another tab. Please ask at the counter.",
+                      "Позиции удалены из этого заказа или перенесены в другой счёт. Уточните на кассе.")
+                  : L("Bu sipariş kasada iptal edildi. Bir yanlışlık varsa kasaya sor.",
+                      "This order was cancelled at the counter. If this is a mistake, please ask at the counter.",
+                      "Этот заказ отменён на кассе. Если это ошибка, обратитесь на кассу.")}
               </div>
               <button onClick={() => { setSuccessOrderId(null); setOrderStage("pending"); load(); }}
                 style={{padding:"14px 28px",minHeight:48,background:"#000000",color:"#FFFFFF",border:"none",borderRadius:12,fontSize:14,fontWeight:800,cursor:"pointer",fontFamily:"inherit"}}>
@@ -2179,11 +2229,11 @@ export default function CustomerMenu() {
           ) : null;
         })()}
         <div style={{padding:"16px 16px 8px"}}>
-        <div style={{display:"flex",alignItems:"center",justifyContent:"space-between"}}>
-          <div>
+        <div style={{display:"flex",alignItems:"center",justifyContent:"space-between",gap:8}}>
+          <div style={{flexShrink:0}}>
             {/* lang: CSS'te buyuk harf DILE gore yapilir. Sayfa lang="tr" oldugu
                 icin "Not in Paris" Turkce kuralla "NOT İN PARİS" cikiyordu. */}
-            <div lang={MARKA.dil} style={{fontSize:24,fontWeight:400,letterSpacing:"0.005em",fontFamily:"'Coolvetica Heavy','Coolvetica Condensed','Barlow Condensed',sans-serif",textTransform:"uppercase"}}>{MARKA.ad}</div>
+            <div lang={MARKA.dil} style={{fontSize:24,fontWeight:400,letterSpacing:"0.005em",whiteSpace:"nowrap",fontFamily:"'Coolvetica Heavy','Coolvetica Condensed','Barlow Condensed',sans-serif",textTransform:"uppercase"}}>{MARKA.ad}</div>
             <div style={{fontSize:12,color:"#666666",letterSpacing:"0.2px",marginTop:2}}>
               {custTab !== "menu" ? (CUST_TABS.find(x=>x.key===custTab)?.[["en","ru"].includes(lang)?lang:"tr"] || "").toLocaleUpperCase(lang) : (table ? table.name?.toLocaleUpperCase(lang) : t.menu)}
               {partyMode && custTab === "menu" && <span style={{marginLeft:6,color:"#000000",fontWeight:700}}>· {t.partyMode}</span>}
@@ -2193,11 +2243,14 @@ export default function CustomerMenu() {
                   ipucu orada yerinde, basligin isi degil. */}
             </div>
           </div>
-          <div style={{display:"flex",alignItems:"center",gap:8}}>
-            {/* Happy hour rozeti: su an indirimli fiyati olan urun varsa gorunur.
-                Eskiden `hh` kaydina bakiyordu; o sorgu kaldirildigi icin rozet
-                hic cikmiyordu ve musteri ustu cizili fiyatin nedenini gormuyordu. */}
-            {hhVar && custTab === "menu" && <div style={{background:"#000000",color:"#FFFFFF",padding:"4px 10px",borderRadius:10,fontSize:12,fontWeight:600,letterSpacing:"0.2px",whiteSpace:"nowrap"}}>{t.happy_hour}{hhSadeceUye && !uyeMi ? " · " + L("üyelere","members","участникам") : ""}</div>}
+          <div style={{display:"flex",alignItems:"center",justifyContent:"flex-end",flexWrap:"wrap",gap:8,rowGap:4,minWidth:0}}>
+            {/* Happy hour rozeti: ustu cizili fiyatin nedeni. Yalniz indirimi
+                GOREN kisiye cikar (uye, ya da happy hour herkese aciksa). Uye
+                olmayan indirimli fiyat gormez; ona urunun altindaki "Üyelere
+                özel · saat · fiyat" yazisi konusur. Eskiden rozet "HAPPY HOUR ·
+                üyelere" idi: dar telefonda baslik satirina sigmiyor, marka adi
+                uc satira kiriliyor, dil dugmeleri ekran disina tasiyordu. */}
+            {hhVar && (uyeMi || !hhSadeceUye) && custTab === "menu" && <div style={{background:"#000000",color:"#FFFFFF",padding:"4px 10px",borderRadius:10,fontSize:12,fontWeight:600,letterSpacing:"0.2px",whiteSpace:"nowrap"}}>{t.happy_hour}</div>}
             {LangSwitcher()}
           </div>
         </div>
@@ -2718,8 +2771,8 @@ export default function CustomerMenu() {
                   const cagri = uyeCagrisi(p, fp);
                   if (!cagri) return null;
                   return (
-                    <button onClick={uyeOlAc} style={{marginTop:6,background:"none",border:"none",padding:"4px 0",minHeight:0,fontSize:12,color:"#000",fontWeight:700,cursor:"pointer",fontFamily:"inherit",textAlign:"left",display:"flex",alignItems:"flex-start",gap:5,lineHeight:1.35,opacity:sol}}>
-                      <Ikon ad="uye" boy={12} style={{flexShrink:0,marginTop:2}}/><span>{cagri.yazi}</span>
+                    <button onClick={uyeOlAc} style={{marginTop:2,background:"none",border:"none",padding:0,minHeight:44,fontSize:12,color:"#000",fontWeight:700,cursor:"pointer",fontFamily:"inherit",textAlign:"left",display:"flex",alignItems:"center",gap:5,lineHeight:1.35,opacity:sol}}>
+                      <Ikon ad="uye" boy={12} style={{flexShrink:0}}/><span>{cagri.yazi}</span>
                     </button>
                   );
                 })()}

@@ -83,7 +83,10 @@ const anahtar = (err) => {
   if (/failed to fetch|networkerror|load failed|network request failed|err_internet|timeout|aborted|cevap gelmedi|sinyal zayıf|failed to send a request/.test(metin)) {
     return "baglanti_yok";
   }
-  if (kod === "429" || /rate limit|too many requests/.test(metin)) return "cok_hizli";
+  // Supabase Auth: status 429, code "over_email_send_rate_limit", mesaj
+  // "you can only request this after N seconds".
+  if (kod === "429" || String(err?.status) === "429" || /rate_limit/.test(kod)
+      || /rate limit|too many requests|only request this after/.test(metin)) return "cok_hizli";
 
   // Postgres kodlari
   if (kod === "23505" || /duplicate key|unique constraint/.test(metin)) {

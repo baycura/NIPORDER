@@ -440,7 +440,10 @@ export function BorcEkstrePenceresi({ kisi, onKapat, onDegisti }) {
         <span style={{fontSize:24,fontWeight:800,fontVariantNumeric:"tabular-nums"}}>{tl(bakiye)}</span>
       </div>
 
-      {hata && <div role="alert" style={{color:"#C87A6A",fontSize:13,lineHeight:1.5,marginBottom:10}}>{hata}</div>}
+      {/* Ustteki satir yalniz dokum OKUNAMADIGINDA. Islem hatasi (geri al, geri
+          yaz, kopyala) islemin yaninda yazilir: dugmeler kayan listenin
+          dibinde, ustteki yazi ekran disinda kaliyordu. */}
+      {hata && !duzelt && !(satirlar && satirlar.length > 0) && <div role="alert" style={{color:"#C87A6A",fontSize:13,lineHeight:1.5,marginBottom:10}}>{hata}</div>}
       {satirlar == null && <div style={{color:"#888",fontSize:13,padding:"16px 0"}}>Yükleniyor…</div>}
       {satirlar && satirlar.length === 0 && !hata && <div style={{color:"#888",fontSize:13,padding:"16px 0"}}>Kayıt yok.</div>}
 
@@ -484,6 +487,7 @@ export function BorcEkstrePenceresi({ kisi, onKapat, onDegisti }) {
                       </div>
                       <input value={neden} onChange={e => setNeden(e.target.value)} placeholder="Neden? (zorunlu, en az 3 harf)" aria-label="Neden"
                         style={{width:"100%",padding:"10px 12px",background:"#0C0C0C",border:"1px solid #2A2A2A",borderRadius:8,color:"#F0EDE8",fontSize:14,outline:"none",fontFamily:"inherit",boxSizing:"border-box",marginBottom:8}}/>
+                      {hata && <div role="alert" style={{color:"#C87A6A",fontSize:13,lineHeight:1.5,marginBottom:8}}>{hata}</div>}
                       <div style={{display:"flex",gap:8}}>
                         <button onClick={() => { setDuzelt(null); setNeden(""); }} disabled={busy}
                           style={{flex:1,minHeight:44,background:"transparent",color:"#888",border:"1px solid #333",borderRadius:9,fontSize:13,fontWeight:700,cursor:"pointer",fontFamily:"inherit"}}>
@@ -508,6 +512,7 @@ export function BorcEkstrePenceresi({ kisi, onKapat, onDegisti }) {
         </div>
       )}
 
+      {hata && !duzelt && satirlar && satirlar.length > 0 && <div role="alert" style={{color:"#C87A6A",fontSize:13,lineHeight:1.5,marginBottom:8}}>{hata}</div>}
       <div style={{display:"flex",gap:8}}>
         <button onClick={kopyala} disabled={!satirlar}
           style={{flex:1,minHeight:46,background:"transparent",color:"#F0EDE8",border:"1px solid #2A2A2A",borderRadius:10,fontSize:13,fontWeight:700,cursor:"pointer",fontFamily:"inherit",display:"flex",alignItems:"center",justifyContent:"center",gap:6}}>

@@ -71,14 +71,17 @@ export default function StockViewPage() {
   // dokunup "yetkin yok" hatasi aliyorlardi.
   const stokGirebilir = !["kitchen", "viewer", "parttime"].includes(staffUser?.role);
   const alerts = items.filter(i => alertLevel(i) !== "ok");
+  // Suzgec TURETILIR: eksik kalmayinca (son eksik de girildi) serit ve dugmesi
+  // kaybolur; suzgec acik kalirsa liste bos kilitlenir, cikis yolu kalmazdi.
+  const suzgec = yalnizEksik && alerts.length > 0;
   // Duz liste 146 satirdi; raflara ayrildi (Stok Yonetimi ile ayni raflar).
   // Arama hem malzeme hem raf adinda.
   const q = trKucuk(search.trim());
   const raflar = useMemo(() => raflaraAyir(
-    items.filter(i => (!yalnizEksik || alertLevel(i) !== "ok")
+    items.filter(i => (!suzgec || alertLevel(i) !== "ok")
       && (!q || trKucuk(i.name).includes(q) || trKucuk(i.grup).includes(q))),
     (g, i) => { if (alertLevel(i) !== "ok") g.uyari = (g.uyari || 0) + 1; }
-  ), [items, q, yalnizEksik]);
+  ), [items, q, suzgec]);
   const filtered = raflar.flatMap(g => g.items);
 
   return (
@@ -112,14 +115,14 @@ export default function StockViewPage() {
       )}
       {/* Kritik seridi ayni zamanda suzgec: dokununca yalniz eksikler kalir. */}
       {alerts.length > 0 && (
-        <button onClick={() => setYalnizEksik(v => !v)} aria-pressed={yalnizEksik}
-          style={{ width: "100%", minHeight: 44, background: yalnizEksik ? "#C87A6A" : "rgba(224,90,90,0.12)", border: "1px solid " + (yalnizEksik ? "#C87A6A" : "#2A2A2A"), borderRadius: 10, padding: "8px 14px", marginBottom: 16, display: "flex", gap: 10, alignItems: "center", cursor: "pointer", textAlign: "left" }}>
-          <Ikon ad="uyari" boy={15} style={{ color: yalnizEksik ? "#0C0C0C" : "#C87A6A", flexShrink: 0 }}/>
-          <span style={{ color: yalnizEksik ? "#0C0C0C" : "#C87A6A", fontFamily: cvc, fontSize: 12, flex: 1 }}>
+        <button onClick={() => setYalnizEksik(v => !v)} aria-pressed={suzgec}
+          style={{ width: "100%", minHeight: 44, background: suzgec ? "#C87A6A" : "rgba(224,90,90,0.12)", border: "1px solid " + (suzgec ? "#C87A6A" : "#2A2A2A"), borderRadius: 10, padding: "8px 14px", marginBottom: 16, display: "flex", gap: 10, alignItems: "center", cursor: "pointer", textAlign: "left" }}>
+          <Ikon ad="uyari" boy={15} style={{ color: suzgec ? "#0C0C0C" : "#C87A6A", flexShrink: 0 }}/>
+          <span style={{ color: suzgec ? "#0C0C0C" : "#C87A6A", fontFamily: cvc, fontSize: 12, flex: 1 }}>
             {alerts.length} malzeme kritik
           </span>
-          <span style={{ color: yalnizEksik ? "#0C0C0C" : "#F0EDE8", fontFamily: cvc, fontSize: 12, fontWeight: 700 }}>
-            {yalnizEksik ? "Tümünü göster" : "Yalnız bunları göster"}
+          <span style={{ color: suzgec ? "#0C0C0C" : "#F0EDE8", fontFamily: cvc, fontSize: 12, fontWeight: 700 }}>
+            {suzgec ? "Tümünü göster" : "Yalnız bunları göster"}
           </span>
         </button>
       )}
@@ -129,7 +132,7 @@ export default function StockViewPage() {
       {loading && <div style={{ color: "#888", fontFamily: cvc, fontSize: 12, textAlign: "center", padding: 40 }}>Yükleniyor…</div>}
       {!loading && filtered.length === 0 && (
         <div style={{ color: "#888888", fontFamily: cvc, fontSize: 12, textAlign: "center", padding: 40 }}>
-          {yukHata ? "" : items.length === 0 ? "Henüz hammadde girilmemiş." : yalnizEksik && !q ? "Eksik malzeme yok." : "Aramaya uyan malzeme yok."}
+          {yukHata ? "" : items.length === 0 ? "Henüz hammadde girilmemiş." : suzgec && !q ? "Eksik malzeme yok." : "Aramaya uyan malzeme yok."}
         </div>
       )}
       {/* Raf raf: barmen buz ve pipet ararken mop ile tuvalet kagidini
@@ -179,7 +182,7 @@ export default function StockViewPage() {
             ? "Faturayla gelen mallar için Faturalar ekranını kullan — maliyet de oradan güncellenir. Burası elden alınan mal ve düzeltme içindir."
             : "Faturayla gelen mal dahil TÜM stok girişi buradan yapılır — fatura kaydı stoğa dokunmuyor."}
           onKapat={() => setEntry(null)}
-          onBitti={(s) => { setEntry(null); setSonGiris(s); load(); }}
+          onBitti={(s) => { setEntry(null); setGeriHata(null); setSonGiris(s); load(); }}
         />
       )}
     </div>

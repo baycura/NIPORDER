@@ -198,12 +198,18 @@ export default function PaymentPage() {
   const secilenAdet = (k) => Number(secim[k.id] || 0);
   // Kalemin uzerine dokunmak: hic secili degilse TAMAMINI sec (en sik hal),
   // seciliyse birak. Adet ayari icin satirdaki −/+ var.
+  // ₺0'LIK SATIR (ikram, %100 indirim) SECILMEZ: odenecek para yok. Secilirse
+  // sunucu satiri "0 TL ile odendi" diye isaretler; ikram raporu ve "ikram
+  // olarak kapat" penceresi bu adedi farkli sayardi (inceleme 12.11).
+  const ucretsiz = (k) => !(Number(k.final_price) > 0);
   const kalemTikla = (k) => setSecim(s => {
+    if (ucretsiz(k)) return s;
     const y = { ...s };
     if (y[k.id]) delete y[k.id]; else y[k.id] = kalanAdet(k);
     return y;
   });
   const adetDegis = (k, d) => setSecim(s => {
+    if (ucretsiz(k)) return s;
     const yeni = Math.min(kalanAdet(k), Math.max(0, (s[k.id] || 0) + d));
     const y = { ...s };
     if (yeni <= 0) delete y[k.id]; else y[k.id] = yeni;
@@ -755,15 +761,17 @@ export default function PaymentPage() {
                     const kalanA = kalanAdet(k);
                     const secA = secilenAdet(k);
                     const bitti = kalanA <= 0;
+                    const bedava = !bitti && ucretsiz(k);   // odenecek para yok
+                    const secilmez = bitti || bedava;
                     return (
                       <div key={k.id}
-                        onClick={() => !bitti && kalemTikla(k)}
-                        role={bitti ? undefined : "button"}
-                        tabIndex={bitti ? undefined : 0}
-                        onKeyDown={e => { if (!bitti && (e.key === "Enter" || e.key === " ")) { e.preventDefault(); kalemTikla(k); } }}
+                        onClick={() => !secilmez && kalemTikla(k)}
+                        role={secilmez ? undefined : "button"}
+                        tabIndex={secilmez ? undefined : 0}
+                        onKeyDown={e => { if (!secilmez && (e.key === "Enter" || e.key === " ")) { e.preventDefault(); kalemTikla(k); } }}
                         style={{display:"flex",alignItems:"center",gap:10,padding:"10px 13px",minHeight:44,
-                                borderBottom:"1px solid #161616",cursor:bitti?"default":"pointer",
-                                background: secA > 0 ? "#1C1C1C" : "transparent", opacity: bitti ? 0.45 : 1}}>
+                                borderBottom:"1px solid #161616",cursor:secilmez?"default":"pointer",
+                                background: secA > 0 ? "#1C1C1C" : "transparent", opacity: bitti ? 0.45 : bedava ? 0.7 : 1}}>
                         <span style={{width:18,flexShrink:0,color:secA>0?"#FFFFFF":"#3A3A3A",display:"flex"}}>
                           <Ikon ad={secA > 0 ? "onayli" : "bos"} boy={17}/>
                         </span>
@@ -772,7 +780,8 @@ export default function PaymentPage() {
                             {k.product_name}{k.quantity > 1 ? ` ×${k.quantity}` : ""}
                           </div>
                           <div style={{fontSize:11,color:"#888",marginTop:1}}>
-                            {bitti ? "ödendi" : (k.odenen_adet > 0 ? `${k.odenen_adet} ödendi · ${kalanA} kaldı` : `₺${Math.round(k.final_price)}`)}
+                            {bitti ? "ödendi" : bedava ? (k.is_treat ? "ikram · ödeme gerekmez" : "₺0 · ödeme gerekmez")
+                              : (k.odenen_adet > 0 ? `${k.odenen_adet} ödendi · ${kalanA} kaldı` : `₺${Math.round(k.final_price)}`)}
                             {secA > 0 && kalanA > 1 && <> · seçilen {secA}</>}
                           </div>
                         </div>

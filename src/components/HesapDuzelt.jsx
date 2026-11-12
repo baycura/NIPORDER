@@ -340,8 +340,10 @@ export function IkramKapatPenceresi({ order, ad, staffUser, onKapat, onBitti }) 
   const acik = (kalemler || []).filter(k => kalanAdet(k) > 0);
   const kalan = acik.reduce((t, k) => t + Number(k.final_price || 0) * kalanAdet(k), 0);
   const eksik = acik.filter(k => !k.is_treat || !k.treated_by);
-  // Deger ve adet ODENMEMIS adetlerden: parayla odenmis adet ikram degildir
-  // (sunucu da boyle sayar).
+  // Deger ve adet ODENMEMIS adetlerden: parayla odenmis adet ikram degildir.
+  // Sunucu ayni kurali uygular. Tek fark eski kayitlarda: kasada 0 TL ile
+  // "odendi" isaretlenmis ikram adedini sunucu da ikram sayar (20261112).
+  // Kasa artik ₺0'lik satiri sectirmedigi icin yeni hesaplarda sayim aynidir.
   const deger = acik.reduce((t, k) => t + Number(k.product_price || 0) * kalanAdet(k), 0);
   const adet = acik.reduce((t, k) => t + kalanAdet(k), 0);
 

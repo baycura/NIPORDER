@@ -64,7 +64,8 @@ export function happyHourPlan(products, rules, now = new Date()) {
     if (s == null || e == null || fiyat == null || fiyat === "" || !Number.isFinite(f)) return;
     const parcalar = s <= e ? [[s, e]] : [[0, e], [s, 1440]];
     for (let k = 0; k <= 7; k++) {
-      if (!gunVar((jsDay + k) % 7)) continue;
+      const g = (jsDay + k) % 7;
+      if (!gunVar(g)) continue;
       let bulundu = false;
       for (const [a, b] of parcalar) {
         if (b <= a) continue;                // bos aralik
@@ -72,9 +73,16 @@ export function happyHourPlan(products, rules, now = new Date()) {
         const aktif = k === 0 && a <= mins;
         const uzak = aktif ? 0 : k * 1440 + a - mins;
         const eski = out[pid];
+        // YAZILAN SAAT gercek parcaya uyar. Gece yarisini asan kural (21:00–
+        // 09:00) her gun seciliyse kesintisizdir. Bir onceki / sonraki gun
+        // secili DEGILSE parca gece yarisinda baslar ya da biter: "00:00–09:00"
+        // ya da "21:00–00:00" yazilir, musteriye tutulmayacak saat soylenmez.
+        const sarar = s > e;
+        const gBas = (sarar && a === 0 && !gunVar((g + 6) % 7)) ? "00:00" : kisaSaat(bas);
+        const gBit = (sarar && b === 1440 && !gunVar((g + 1) % 7)) ? "00:00" : kisaSaat(bit);
         // Esitlikte sonra gelen kazanir: happyHourPrices'ta da sonraki kural
         // oncekinin, urunun kendi alani kuralin ustune yazar.
-        if (!eski || uzak <= eski.uzak) out[pid] = { fiyat: f, bas: kisaSaat(bas), bit: kisaSaat(bit), gun: k, aktif, uzak };
+        if (!eski || uzak <= eski.uzak) out[pid] = { fiyat: f, bas: gBas, bit: gBit, gun: k, aktif, uzak };
         bulundu = true;
       }
       if (bulundu) break; // sonraki gunler daha uzak
