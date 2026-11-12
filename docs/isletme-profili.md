@@ -118,6 +118,12 @@
   `reservations.no_show_at` sütununda tutulur; durum `approved` kalır. Üye bu
   sütunu değiştiremez (`nip_rez_koru` tetiği). Yerel modda durum doğrudan
   `no_show` olur. Göç: `supabase/reserve_migrations/20261112_gelmedi_isareti.sql`.
+- İşaret ve güven puanı TEK sunucu işleminde yazılır: RESERVE
+  `nip_gelmedi(p_rez, p_geri)` (yalnız yönetici). Düşülen gerçek miktar itibar
+  defterine yazılır (`no_show` / `no_show_geri`); geri almada o kadar geri
+  verilir (taban 0'a takılan düşüş fazladan puan kazandırmaz). "Gelmedi"
+  işaretli rezervasyona giriş hiçbir istemciden yazılamaz
+  (`nip_rez_gelmedi_koru` tetiği). Göç: `20261112_gelmedi_fonksiyon.sql`.
 - Kurallar panelden yönetilir: Panel → Happy Hour.
 
 ## Partiler

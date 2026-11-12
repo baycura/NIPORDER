@@ -389,31 +389,35 @@ function Rezervasyonlar({ uyar }) {
     uyar("Reddedildi"); yukle();
   };
 
-  // index.html:1869 markNoShow — guven -40 (tabani 0), no_show +1, seri sifir
+  // "GELMEDI" ve geri alma (index.html:1869 markNoShow). Kopru modunda TEK
+  // sunucu islemi: RESERVE nip_gelmedi(p_rez, p_geri) rezervasyonu kilitler;
+  // isaret, guven puani (-40, tabani 0), gelmedi sayisi, seri ve itibar defteri
+  // birlikte yazilir. Geri almada dusulen GERCEK miktar geri verilir. Eskiden
+  // iki ayri istekti: arada ag koparsa isaret yazilip puan dusmuyor, geri almada
+  // hic dusulmemis 40 puan ekleniyordu (inceleme 12.11).
+  // Doner: { ok, neden, uye, delta }. ok = false: kayit baska cihazda degisti.
+  const gelmediYaz = async (r, geri) => {
+    if (!rezervasyonYerel) {
+      const { data, error } = await reserve.rpc("nip_gelmedi", { p_rez: r.id, p_geri: geri });
+      if (error) throw error;
+      return data || { ok: false, neden: "degisti" };
+    }
+    // Yerel mod: profil ve guven puani yok; yalniz durum degisir.
+    const u = await reserve.from("reservations").update({ status: geri ? "approved" : "no_show" })
+      .eq("id", r.id).eq("status", geri ? "no_show" : "approved").select("id");
+    if (u.error) throw u.error;
+    return { ok: !!(u.data && u.data.length), neden: "degisti", uye: false, delta: 0 };
+  };
+
   const gelmedi = async (r) => {
     if (busy) return; setBusy(true); setEmin(null);
     try {
-      // Yalniz HALA onayli ve isaretsiz kayit isaretlenir: iki cihaz ayni anda
-      // basarsa guven puani iki kez dusmesin.
-      let s = reserve.from("reservations")
-        .update(rezervasyonYerel ? { status: "no_show" } : { no_show_at: new Date().toISOString() })
-        .eq("id", r.id).eq("status", "approved");
-      if (!rezervasyonYerel) s = s.is("no_show_at", null);
-      const u = await s.select("id");
-      if (u.error) throw u.error;
-      if (!u.data || !u.data.length) { uyar("Bu rezervasyon az önce değişti. Liste yenilendi.", true); yukle(); return; }
-      if (r.profile_id) {
-        const p = await reserve.from("profiles").select("trust_score,total_no_show,attendance_streak").eq("id", r.profile_id).single();
-        if (p.data) {
-          const nt = Math.max(0, (p.data.trust_score || 100) - 40);
-          const u2 = await reserve.from("profiles").update({ total_no_show: (p.data.total_no_show || 0) + 1, trust_score: nt, attendance_streak: 0 }).eq("id", r.profile_id);
-          if (u2.error) throw u2.error;
-        }
-      }
-      uyar(r.profile_id ? "Gelmedi işaretlendi. −40 güven" : "Gelmedi işaretlendi"); yukle();
+      const c = await gelmediYaz(r, false);
+      if (!c.ok) uyar("Bu rezervasyon az önce değişti. Liste yenilendi.", true);
+      else uyar(c.uye ? `Gelmedi işaretlendi. −${Math.abs(Number(c.delta) || 0)} güven` : "Gelmedi işaretlendi");
     } catch (e) {
       uyar("İşaretlenemedi: " + e.message, true);
-    } finally { setBusy(false); }
+    } finally { setBusy(false); yukle(); }
   };
 
   // Yanlis isaret ya da gec gelen misafir: isaret kalkar, rezervasyon yeniden
@@ -422,24 +426,12 @@ function Rezervasyonlar({ uyar }) {
   const gelmediGeriAl = async (r) => {
     if (busy) return; setBusy(true); setEmin(null);
     try {
-      let s = reserve.from("reservations")
-        .update(rezervasyonYerel ? { status: "approved" } : { no_show_at: null })
-        .eq("id", r.id).eq("status", rezervasyonYerel ? "no_show" : "approved");
-      if (!rezervasyonYerel) s = s.not("no_show_at", "is", null);
-      const u = await s.select("id");
-      if (u.error) throw u.error;
-      if (!u.data || !u.data.length) { uyar("Bu rezervasyon az önce değişti. Liste yenilendi.", true); yukle(); return; }
-      if (r.profile_id) {
-        const p = await reserve.from("profiles").select("trust_score,total_no_show").eq("id", r.profile_id).single();
-        if (p.data) {
-          const u2 = await reserve.from("profiles").update({ total_no_show: Math.max(0, (p.data.total_no_show || 0) - 1), trust_score: (p.data.trust_score || 0) + 40 }).eq("id", r.profile_id);
-          if (u2.error) throw u2.error;
-        }
-      }
-      uyar(r.profile_id ? "Gelmedi işareti kaldırıldı. +40 güven" : "Gelmedi işareti kaldırıldı"); yukle();
+      const c = await gelmediYaz(r, true);
+      if (!c.ok) uyar("Bu rezervasyon az önce değişti. Liste yenilendi.", true);
+      else uyar(c.uye ? `Gelmedi işareti kaldırıldı. +${Math.abs(Number(c.delta) || 0)} güven` : "Gelmedi işareti kaldırıldı");
     } catch (e) {
       uyar("Geri alınamadı: " + e.message, true);
-    } finally { setBusy(false); }
+    } finally { setBusy(false); yukle(); }
   };
 
   // index.html:1880 scanQR — kapida giris. Kod ya da dogrudan kayit.
@@ -481,7 +473,8 @@ function Rezervasyonlar({ uyar }) {
           const la = pd.last_attended_at ? new Date(pd.last_attended_at) : null;
           if (la && (Date.now() - la.getTime()) < 45 * 24 * 3600 * 1000) ns = (pd.attendance_streak || 0) + 1;
           if (ns >= 10) sB = 30; else if (ns >= 5) sB = 15; else if (ns >= 3) sB = 5;
-          const nT = (pd.trust_score || 100) + tD + sB, nL = (pd.loyalty_score || 0) + lD;
+          // "??": guveni 0 olan uye 100 sayilmaz (yalniz bos deger varsayilan alir).
+          const nT = (pd.trust_score ?? 100) + tD + sB, nL = (pd.loyalty_score ?? 0) + lD;
           const nTier = nT >= 500 ? "elite" : nT >= 300 ? "gold" : nT >= 150 ? "silver" : "bronze";
           const u2 = await reserve.from("profiles").update({
             trust_score: nT, loyalty_score: nL, tier: nTier,
