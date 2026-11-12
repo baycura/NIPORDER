@@ -1,4 +1,5 @@
 import { useEffect, useState, useMemo } from "react";
+import { onayla } from "../../lib/onayla.js";
 import { uyar } from "../../lib/uyar.js";
 import { supabase, hataMetni } from "../../lib/supabase.js";
 import { useAuth } from "../../contexts/AuthContext.jsx";
@@ -191,7 +192,7 @@ export default function RecipesMgmtPage() {
       .filter(p => !recipes.find(r => r.product_id === p.id && r.ingredient_id === ing.id))
       .map(p => ({ product_id: p.id, ingredient_id: ing.id, qty_per_unit: defaultQty(ing), store_id: storeId }));
     if (!rows.length) { uyar("Bu kategorideki tüm ürünlerde zaten ekli"); return; }
-    if (!confirm(ing.name + " → " + rows.length + " ürüne eklenecek. Devam?")) return;
+    if (!(await onayla(ing.name + " → " + rows.length + " ürüne eklenecek. Devam?"))) return;
     setBusy(true);
     const { data, error } = await supabase.from("recipes").insert(rows).select();
     setBusy(false);

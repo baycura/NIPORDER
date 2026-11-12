@@ -1,4 +1,5 @@
 import { useEffect, useState } from "react";
+import { onayla } from "../../lib/onayla.js";
 import { uyar } from "../../lib/uyar.js";
 import { supabase, hataMetni } from "../../lib/supabase.js";
 import { useAuth } from "../../contexts/AuthContext.jsx";
@@ -109,7 +110,7 @@ export default function PollsPage() {
   };
 
   const del = async (p) => {
-    if (!confirm('"' + p.question + '" silinsin mi? (oylar da silinir)')) return;
+    if (!(await onayla('"' + p.question + '" silinsin mi? (oylar da silinir)', { evet: "Sil", tehlike: true }))) return;
     const { error } = await supabase.from("polls").delete().eq("id", p.id);
     if (error) { uyar("Silinemedi: " + error.message); return; }
     load(true);

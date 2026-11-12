@@ -1,4 +1,5 @@
 import { useEffect, useState } from "react";
+import { onayla } from "../../lib/onayla.js";
 import { uyar } from "../../lib/uyar.js";
 import FormPencere, { altlikStil } from "../../components/FormPencere.jsx";
 import { supabase } from "../../lib/supabase.js";
@@ -82,7 +83,7 @@ export default function RetailPage() {
   // Donen deger: silindi mi. Pencere ancak silme gerceklestiyse kapanir.
   const delBrand = async (b) => {
     const n = products.filter(p => p.brand_id === b.id).length;
-    if (!confirm('"' + b.name + '" markası silinsin mi?' + (n ? "\n\n" + n + " ürün markasız kalacak (silinmez)." : ""))) return false;
+    if (!(await onayla('"' + b.name + '" markası silinsin mi?' + (n ? "\n\n" + n + " ürün markasız kalacak (silinmez)." : ""), { evet: "Sil", tehlike: true }))) return false;
     const { error } = await supabase.from("brands").delete().eq("id", b.id);
     if (error) { uyar("Hata: " + error.message); return false; }
     load(true);
@@ -185,7 +186,7 @@ export default function RetailPage() {
   // onay kutusunda "Iptal" denince pencere ACIK kalmali, yoksa kaydedilmemis
   // fiyat degisikligi sessizce ucuyordu.
   const delProduct = async (p) => {
-    if (!confirm('"' + p.name + '" silinsin mi?')) return false;
+    if (!(await onayla('"' + p.name + '" silinsin mi?', { evet: "Sil", tehlike: true }))) return false;
     const { error } = await supabase.from("products").delete().eq("id", p.id);
     if (error) { uyar("Silinemedi (geçmiş siparişlerde kullanılmış olabilir): " + error.message); return false; }
     load(true);

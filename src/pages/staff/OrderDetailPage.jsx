@@ -1,4 +1,5 @@
 import { useEffect, useRef, useState } from "react";
+import { onayla } from "../../lib/onayla.js";
 import { uyar } from "../../lib/uyar.js";
 import { useParams, useNavigate, useLocation } from "react-router-dom";
 import { supabase } from "../../lib/supabase.js";
@@ -410,7 +411,7 @@ export default function OrderDetailPage() {
         variantName = hit.name;
       }
     } else if (p.track_stock && Number(p.retail_stock) <= 0) {
-      if (!confirm(p.name + " stokta görünmüyor. Yine de eklensin mi?")) return;
+      if (!(await onayla(p.name + " stokta görünmüyor. Yine de eklensin mi?"))) return;
     }
     // Fiyati 0 olan urunler (magaza: tisort, seramik...) icin tutar kasada sorulur
     let price = Number(p.price) || 0;

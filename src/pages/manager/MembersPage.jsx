@@ -1,4 +1,5 @@
 import { useEffect, useState } from "react";
+import { onayla } from "../../lib/onayla.js";
 import { uyar } from "../../lib/uyar.js";
 import FormPencere from "../../components/FormPencere.jsx";
 import { supabase } from "../../lib/supabase.js";
@@ -148,7 +149,7 @@ export default function MembersPage() {
     // Borclu silinemez: siparisleri ve odemeleri ona bagli (veritabani da
     // reddeder, ama ham hata mesaji yerine ne yapilacagini soyleyelim).
     if (Number(m.outstanding_balance) > 0) { uyar('"' + m.name + '" kişisinin ' + tl(m.outstanding_balance) + ' borcu var. Önce tahsil et ya da borcu sil.'); return; }
-    if (!confirm('"' + m.name + '" silinsin mi?')) return;
+    if (!(await onayla('"' + m.name + '" silinsin mi?', { evet: "Sil", tehlike: true }))) return;
     const { error } = await supabase.from("customers").delete().eq("id", m.id);
     if (error) { uyar("Hata: " + error.message); return; }
     load();

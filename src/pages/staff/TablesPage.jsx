@@ -1,4 +1,5 @@
 import { useEffect, useRef, useState } from "react";
+import { onayla } from "../../lib/onayla.js";
 import { useNavigate } from "react-router-dom";
 import { supabase } from "../../lib/supabase.js";
 import { useAuth } from "../../contexts/AuthContext.jsx";
@@ -108,10 +109,10 @@ export default function TablesPage() {
   const partiDegistir = async () => {
     if (partiBusy || !parti || !partiMagaza) return;
     const ac = !parti.aktif;
-    if (ac && !confirm(
+    if (ac && !(await onayla(
       `Parti menüsüne geçilsin mi?\n\nMüşteri menüsünde ve sipariş ekranında sadece parti ürünleri (${parti.urunSayisi} ürün) görünecek.\nSabah 05:00'te kendiliğinden normale döner.`
-    )) return;
-    if (!ac && !confirm("Normal menüye dönülsün mü?")) return;
+    ))) return;
+    if (!ac && !(await onayla("Normal menüye dönülsün mü?"))) return;
     setPartiBusy(true);
     const { data, error } = await supabase.rpc("nip_parti_ac", { p_store_id: partiMagaza, p_ac: ac });
     setPartiBusy(false);

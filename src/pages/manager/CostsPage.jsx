@@ -1,4 +1,5 @@
 import { useEffect, useMemo, useState } from "react";
+import { onayla } from "../../lib/onayla.js";
 import { uyar } from "../../lib/uyar.js";
 import { supabase } from "../../lib/supabase.js";
 import { useAuth } from "../../contexts/AuthContext.jsx";
@@ -80,12 +81,12 @@ export default function CostsPage() {
     // uyari var ama bu sayfa "hizli gec" sayfasi; rakam yazip Enter'a basan
     // kisi ipucunu okumadan kaydedebiliyor.
     const kik = kapIkilemi(deger, kaplar[r.kayit_id]);
-    if (kik && !confirm(
+    if (kik && !(await onayla(
       (kik.yon === "olcude-kap"
         ? `${birimYaz(deger)} girdin. Bu hane ${kik.unit} BAŞINA, yani ${kik.kap} ${kik.unit}'lik kap ${kapYaz(kik.kapYazildigiGibi)} eder.\n\nKabın fiyatını yazdıysan ${birimYaz(kik.onerilen)} olmalı.`
         : `${birimYaz(deger)} girdin. Bir ${kik.unit} bu kadar olamaz; ml fiyatıysa kap ${kapYaz(kik.kapYazildigiGibi)} eder.`)
       + `\n\nYine de girdiğin gibi kaydedilsin mi?`
-    )) return;
+    ))) return;
 
     setBusy(r.kayit_id);
     const { error } = r.tip === "malzeme"

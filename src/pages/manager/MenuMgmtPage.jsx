@@ -1,4 +1,5 @@
 import { useEffect, useRef, useState } from "react";
+import { onayla } from "../../lib/onayla.js";
 import { trKucuk } from "../../lib/malzemeGrup.js";
 import { uyar } from "../../lib/uyar.js";
 import FormPencere, { altlikStil } from "../../components/FormPencere.jsx";
@@ -128,7 +129,7 @@ export default function MenuMgmtPage() {
   const delCat = async (c) => {
     const prodCount = products.filter(p => p.category_id === c.id).length;
     if (prodCount > 0) { uyar("Bu kategoride " + prodCount + " ürün var. Önce ürünleri sil ya da taşı."); return false; }
-    if (!confirm('"' + c.name + '" silinsin mi?')) return false;
+    if (!(await onayla('"' + c.name + '" silinsin mi?', { evet: "Sil", tehlike: true }))) return false;
     const { error } = await supabase.from("categories").delete().eq("id", c.id);
     if (error) { uyar("Silinemedi: " + error.message); return false; }
     load(true);
@@ -254,7 +255,7 @@ export default function MenuMgmtPage() {
   // onay kutusunda "Iptal" denince pencere ACIK kalmali, yoksa kaydedilmemis
   // degisiklik sessizce ucuyordu.
   const delProd = async (p) => {
-    if (!confirm('"' + p.name + '" silinsin mi?')) return false;
+    if (!(await onayla('"' + p.name + '" silinsin mi?', { evet: "Sil", tehlike: true }))) return false;
     const { error: pdErr } = await supabase.from("products").delete().eq("id", p.id);
     if (pdErr) { uyar("Silinemedi: " + pdErr.message); return false; }
     load(true);

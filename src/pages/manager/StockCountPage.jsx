@@ -1,4 +1,5 @@
 import { useEffect, useMemo, useRef, useState } from "react";
+import { onayla } from "../../lib/onayla.js";
 import { uyar } from "../../lib/uyar.js";
 import { supabase } from "../../lib/supabase.js";
 import { useAuth } from "../../contexts/AuthContext.jsx";
@@ -274,11 +275,11 @@ export default function StockCountPage() {
         : { ingredient_id: i.id, sayilan: Math.round(temel * 1e6) / 1e6 });
     }
 
-    if (!confirm(
+    if (!(await onayla(
       `${yuk.length} kalem sayıldı, ${ozet.sapan} tanesinde fark var.\n` +
       `Sayılmayan ${(malzemeler || []).length - yuk.length} kaleme dokunulmayacak.\n\n` +
       `Kaydedilsin mi?`
-    )) return;
+    ))) return;
 
     setBusy(true);
     const { data, error } = await supabase.rpc("nip_stok_sayimi_kaydet", {
