@@ -1,4 +1,5 @@
 import { useEffect, useMemo, useRef, useState } from "react";
+import { uyar } from "../../lib/uyar.js";
 import { supabase } from "../../lib/supabase.js";
 import { useAuth } from "../../contexts/AuthContext.jsx";
 import Ikon from "../../components/Ikon.jsx";
@@ -254,9 +255,9 @@ export default function StockCountPage() {
 
   const kaydet = async () => {
     if (busy) return;
-    if (!storeId) { alert("Önce mağaza seç"); return; }
-    if (!sayan.trim() || sayan.trim().length < 2) { alert("Sayan kişinin adını yaz"); return; }
-    if (ozet.adet === 0) { alert("Hiçbir kalem sayılmamış"); return; }
+    if (!storeId) { uyar("Önce mağaza seç"); return; }
+    if (!sayan.trim() || sayan.trim().length < 2) { uyar("Sayan kişinin adını yaz"); return; }
+    if (ozet.adet === 0) { uyar("Hiçbir kalem sayılmamış"); return; }
 
     const yuk = [];
     for (const i of malzemeler || []) {
@@ -265,9 +266,9 @@ export default function StockCountPage() {
       // Gonderilen deger HER ZAMAN kayit birimindedir; ekran kap modunda olsa
       // bile veritabani mililitre gorur.
       const temel = kabaGeri(Number(sayimlar[i.id]), i, boylar[i.id]);
-      if (!isFinite(temel) || temel < 0) { alert(`${i.name}: geçersiz sayı`); return; }
+      if (!isFinite(temel) || temel < 0) { uyar(`${i.name}: geçersiz sayı`); return; }
       // Raf urunu adetle sayilir; 1,5 tisort yok. Sunucu da ayni kurali kosar.
-      if (i.urun && !Number.isInteger(temel)) { alert(`${i.name}: adet tam sayı olmalı`); return; }
+      if (i.urun && !Number.isInteger(temel)) { uyar(`${i.name}: adet tam sayı olmalı`); return; }
       yuk.push(i.urun
         ? { product_id: i.product_id, variant: i.variant, sayilan: temel }
         : { ingredient_id: i.id, sayilan: Math.round(temel * 1e6) / 1e6 });
@@ -284,7 +285,7 @@ export default function StockCountPage() {
       p_store_id: storeId, p_sayimlar: yuk, p_sayan: sayan.trim(), p_note: not.trim() || null,
     });
     setBusy(false);
-    if (error) { alert("Kaydedilemedi: " + error.message); return; }
+    if (error) { uyar("Kaydedilemedi: " + error.message); return; }
     try { localStorage.removeItem(TASLAK_KEY(storeId)); } catch (e) { /* onemsiz */ }
     setBitti(Array.isArray(data) ? data[0] : data);
     // Stok degisti: bir sonraki sayimin "beklenen"i artik baska.

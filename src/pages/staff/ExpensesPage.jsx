@@ -1,4 +1,6 @@
 import { useEffect, useMemo, useState } from "react";
+import { baslikStil } from "../../theme/panel.js";
+import { uyar } from "../../lib/uyar.js";
 import { supabase } from "../../lib/supabase.js";
 import { useAuth } from "../../contexts/AuthContext.jsx";
 import Ikon from "../../components/Ikon.jsx";
@@ -115,7 +117,7 @@ export default function ExpensesPage() {
       expense_date: isoDate(new Date()),
     });
     setSaving(false);
-    if (error) { alert("Kaydedilemedi: " + error.message); return; }
+    if (error) { uyar("Kaydedilemedi: " + error.message); return; }
     setSheet(false);
     setForm({ category: "gida", amount: "", description: "", payment_method: "kasa" });
     // Suzgec acikken yeni satir listede gorunmeyebilir; kayit yine de onaylanir.
@@ -127,7 +129,7 @@ export default function ExpensesPage() {
     if (!window.confirm(`Silinsin mi? ${r.description} — ${fmtTL(r.amount)}`)) return;
     if (DEMO) { setRows(x => x.filter(i => i.id !== r.id)); return; }
     const { error } = await supabase.from("expenses").delete().eq("id", r.id);
-    if (error) { alert(error.message); return; }
+    if (error) { uyar(error.message); return; }
     load();
   }
 
@@ -140,7 +142,7 @@ export default function ExpensesPage() {
   return (
     <div style={{ fontFamily: cv, maxWidth: 700, margin: "0 auto", paddingBottom: 120, color: C.ink }}>
       <div style={{ display: "flex", justifyContent: "space-between", alignItems: "center", gap: 8 }}>
-        <h1 style={{ fontFamily: hv, fontWeight: 900, fontSize: 34, margin: 0, letterSpacing: 1 }}>Giderler</h1>
+        <h1 style={baslikStil}>Giderler</h1>
         <div style={{ display: "flex", border: `1px solid ${C.cardLine}`, borderRadius: 999, overflow: "hidden" }}>
           {[["Tümü", false], ["Benim", true]].map(([l, v]) => (
             <button key={l} onClick={() => setMine(v)} style={{

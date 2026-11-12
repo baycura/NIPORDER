@@ -1,7 +1,10 @@
 import { useState, useEffect } from "react";
+import { baslikStil } from "../../theme/panel.js";
 import { supabase } from "../../lib/supabase";
 import { useAuth } from "../../contexts/AuthContext";
 import Ikon from "../../components/Ikon.jsx";
+import Bildirim from "../../components/Bildirim.jsx";
+import { personelHata } from "../../lib/errorText.js";
 
 const PATRON_ROLES = ["super_admin", "owner", "admin", "manager"];
 const PARIS_STORE_UUID = "c3c6e0c7-1821-4edd-993d-ad960cfbc452";
@@ -57,29 +60,51 @@ export default function TasksPage() {
       assigned_to: form.assigned_to,
       created_by: staffUser.id
     });
-    if (error) { alert("Görev eklenemedi: " + error.message); return; }
+    if (error) { hataGoster("Görev eklenemedi: " + personelHata(error)); return; }
     setForm({ title: "", description: "", assigned_to: [] });
     setModal(false);
     load(true);
   };
 
+  // Hata sayfanin icinde (kisa yazi); tarayicinin uyari kutusu degil.
+  const [hata, setHata] = useState(null); // { m, n }
+  const hataGoster = (m) => setHata({ m, n: Date.now() });
+
+  // IYIMSER ISARETLEME: kutu dokunur dokunmaz degisir. Eskiden sunucu yaniti
+  // beklenirken kutu eski halinde kaliyor, personel bir daha dokunuyordu
+  // (isaret geri aliniyordu). Kaydedilemezse eski hal geri gelir ve nedeni yazilir.
   const toggle = async (task) => {
     const newDone = !task.done;
-    const { data, error } = await supabase.from("tasks").update({
+    const degisim = {
       done: newDone,
       done_by: newDone ? staffUser.id : null,
       done_at: newDone ? new Date().toISOString() : null,
-      updated_at: new Date().toISOString()
+    };
+    setTasks(ts => ts.map(t => t.id === task.id ? { ...t, ...degisim } : t));
+    const { data, error } = await supabase.from("tasks").update({
+      ...degisim, updated_at: new Date().toISOString()
     }).eq("id", task.id).select("id");
-    if (error) { alert("Değiştirilemedi: " + error.message); return; }
-    if (!data?.length) { alert("Değiştirilemedi: bu işlem için yetkin yok."); return; }
+    if (error || !data?.length) {
+      setTasks(ts => ts.map(t => t.id === task.id ? { ...t, done: task.done, done_by: task.done_by, done_at: task.done_at } : t));
+      hataGoster(error ? "Değiştirilemedi: " + personelHata(error) : "Değiştirilemedi: bu işlem için yetkin yok.");
+      return;
+    }
     load(true);
   };
 
+  // SILME iki adimli: ilk dokunus cop dugmesini KURAR ("Sil?"), ikincisi siler.
+  // Dort saniyede kendiliginden geri doner.
+  const [silKurulu, setSilKurulu] = useState(null); // gorev id
+  useEffect(() => {
+    if (!silKurulu) return;
+    const z = setTimeout(() => setSilKurulu(null), 4000);
+    return () => clearTimeout(z);
+  }, [silKurulu]);
   const deleteTask = async (id) => {
-    if (!confirm("Görevi silmek istediğine emin misin?")) return;
+    if (silKurulu !== id) { setSilKurulu(id); return; }
+    setSilKurulu(null);
     const { error } = await supabase.from("tasks").delete().eq("id", id);
-    if (error) { alert("Silinemedi: " + error.message); return; }
+    if (error) { hataGoster("Silinemedi: " + personelHata(error)); return; }
     load(true);
   };
 
@@ -93,8 +118,9 @@ export default function TasksPage() {
 
   return (
     <div style={{ maxWidth: 900, margin: "0 auto", color: "#F0EDE8" }}>
+      {hata && <Bildirim tur="hata" metin={hata.m} key={hata.n}/>}
       <div style={{ display: "flex", justifyContent: "space-between", alignItems: "center", marginBottom: 16, flexWrap: "wrap", gap: 8 }}>
-        <h1 style={{ fontSize: 24, fontWeight: 900, letterSpacing: 1, margin: 0, fontFamily: "'Coolvetica Condensed','Barlow Condensed','Bebas Neue',sans-serif", display: "flex", alignItems: "center", gap: 10 }}><Ikon ad="gorev" boy={24}/>GÖREVLER</h1>
+        <h1 style={{ ...baslikStil, display: "flex", alignItems: "center", gap: 10 }}><Ikon ad="gorev" boy={22}/>Görevler</h1>
         <div style={{ display: "flex", gap: 8 }}>
           <select value={storeId} onChange={e => setStoreId(e.target.value)} style={{ padding: "8px 12px", background: "#1A1A1A", color: "#F0EDE8", border: "1px solid #333", borderRadius: 8, fontSize: 14 }}>
             <option value={PARIS_STORE_UUID}>Paris</option>
@@ -113,7 +139,7 @@ export default function TasksPage() {
             {active.length === 0 && <div style={{ color: "#888888", fontSize: 14, fontStyle: "italic", padding: "12px 0" }}>Aktif görev yok</div>}
             {active.map(t => (
               <div key={t.id} style={{ background: "#1A1A1A", border: "1px solid #2A2A2A", borderRadius: 10, padding: 14, marginBottom: 8, display: "flex", alignItems: "flex-start", gap: 12 }}>
-                <input type="checkbox" checked={false} onChange={() => toggle(t)} style={{ width: 22, height: 22, cursor: "pointer", marginTop: 2, accentColor: "#FFFFFF" }} />
+                <input type="checkbox" checked={false} onChange={() => toggle(t)} aria-label={"Tamamlandı: " + t.title} style={{ width: 26, height: 26, cursor: "pointer", marginTop: 0, flexShrink: 0, accentColor: "#FFFFFF" }} />
                 <div style={{ flex: 1, minWidth: 0 }}>
                   <div style={{ fontSize: 15, fontWeight: 600 }}>{t.title}</div>
                   {t.description && <div style={{ fontSize: 13, color: "#888", marginTop: 4 }}>{t.description}</div>}
@@ -126,7 +152,10 @@ export default function TasksPage() {
                   )}
                 </div>
                 {isPatron && (
-                  <button onClick={() => deleteTask(t.id)} style={{ background: "transparent", border: "none", color: "#888888", cursor: "pointer", display: "flex" }} title="Sil"><Ikon ad="cop" boy={17}/></button>
+                  <button onClick={() => deleteTask(t.id)} aria-label={silKurulu === t.id ? "Silmeyi onayla" : "Görevi sil"}
+                    style={{ minWidth: 44, minHeight: 44, padding: "0 10px", background: silKurulu === t.id ? "#C87A6A" : "transparent", border: "none", borderRadius: 9, color: silKurulu === t.id ? "#0C0C0C" : "#888888", cursor: "pointer", display: "flex", alignItems: "center", justifyContent: "center", gap: 5, fontSize: 12.5, fontWeight: 800, fontFamily: "inherit" }}>
+                    <Ikon ad="cop" boy={17}/>{silKurulu === t.id ? "Sil?" : ""}
+                  </button>
                 )}
               </div>
             ))}
@@ -137,7 +166,7 @@ export default function TasksPage() {
             {done.length === 0 && <div style={{ color: "#888888", fontSize: 14, fontStyle: "italic", padding: "12px 0" }}>Henüz tamamlanan görev yok</div>}
             {done.map(t => (
               <div key={t.id} style={{ background: "#0F0F0F", border: "1px solid #1A1A1A", borderRadius: 10, padding: 14, marginBottom: 8, display: "flex", alignItems: "flex-start", gap: 12, opacity: 0.75 }}>
-                <input type="checkbox" checked={true} onChange={() => toggle(t)} style={{ width: 22, height: 22, cursor: "pointer", marginTop: 2, accentColor: "#FFFFFF" }} />
+                <input type="checkbox" checked={true} onChange={() => toggle(t)} aria-label={"Geri al: " + t.title} style={{ width: 26, height: 26, cursor: "pointer", marginTop: 0, flexShrink: 0, accentColor: "#FFFFFF" }} />
                 <div style={{ flex: 1, minWidth: 0 }}>
                   <div style={{ fontSize: 15, fontWeight: 600, textDecoration: "line-through", color: "#888" }}>{t.title}</div>
                   {t.description && <div style={{ fontSize: 13, color: "#888888", marginTop: 4, textDecoration: "line-through" }}>{t.description}</div>}
@@ -148,7 +177,10 @@ export default function TasksPage() {
                   )}
                 </div>
                 {isPatron && (
-                  <button onClick={() => deleteTask(t.id)} style={{ background: "transparent", border: "none", color: "#888888", cursor: "pointer", display: "flex" }} title="Sil"><Ikon ad="cop" boy={17}/></button>
+                  <button onClick={() => deleteTask(t.id)} aria-label={silKurulu === t.id ? "Silmeyi onayla" : "Görevi sil"}
+                    style={{ minWidth: 44, minHeight: 44, padding: "0 10px", background: silKurulu === t.id ? "#C87A6A" : "transparent", border: "none", borderRadius: 9, color: silKurulu === t.id ? "#0C0C0C" : "#888888", cursor: "pointer", display: "flex", alignItems: "center", justifyContent: "center", gap: 5, fontSize: 12.5, fontWeight: 800, fontFamily: "inherit" }}>
+                    <Ikon ad="cop" boy={17}/>{silKurulu === t.id ? "Sil?" : ""}
+                  </button>
                 )}
               </div>
             ))}

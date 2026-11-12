@@ -1,4 +1,5 @@
 import { useEffect, useMemo, useRef, useState } from "react";
+import { baslikStil } from "../../theme/panel.js";
 import { supabase } from "../../lib/supabase.js";
 import { reserve, reserveOturumAl, reserveCikis, RESERVATION_URL } from "../../lib/reserve.js";
 import { rezervasyonYerel, MARKA } from "../../lib/profil.js";
@@ -207,7 +208,7 @@ export default function ReservePage() {
   return (
     <div style={{ padding: 16, maxWidth: 900, margin: "0 auto", fontFamily: cv, color: C.ink }}>
       <div style={{ display: "flex", alignItems: "baseline", gap: 12, flexWrap: "wrap", marginBottom: 6 }}>
-        <h1 style={{ fontFamily: hv, fontSize: 30, letterSpacing: "2px", margin: 0 }}>REZERVASYON</h1>
+        <h1 style={baslikStil}>Rezervasyon</h1>
         {!rezervasyonYerel && <a href={RESERVATION_URL} target="_blank" rel="noreferrer" style={{ fontSize: 11, color: C.muted }}>reservation.notinparis.me ↗</a>}
       </div>
 
@@ -272,6 +273,11 @@ function Rezervasyonlar({ uyar }) {
   const [etkinlik, setEtkinlik] = useState("");
   const [qr, setQr] = useState("");
   const [busy, setBusy] = useState(false);
+  // KAPI SONUCU kalici kartta durur. Eskiden 3-6 saniyede kaybolan bir yazi
+  // idi: kapidaki kisi misafire bakarken sonucu kaciriyordu. Kart bir sonraki
+  // kod yazilana ya da kapatilana kadar ekranda kalir.
+  const [kapi, setKapi] = useState(null); // { ok, baslik, alt }
+  const kapiYaz = (ok, baslik, alt) => setKapi({ ok, baslik, alt });
   // Onay e-postasinin durumu: rez_id -> satir (Order: nip_reserve_onay_bildirim)
   const [bildirim, setBildirim] = useState({});
   // Geri alinmaz dugmeler iki dokunus ister: "<id>:g" (gelmedi) / "<id>:r" (reddet)
@@ -404,16 +410,21 @@ function Rezervasyonlar({ uyar }) {
   // index.html:1880 scanQR — kapida giris. Kod ya da dogrudan kayit.
   const girisYap = async (kayit) => {
     if (busy) return;
+    // Kart kod kutusunun altinda durur. Listeden (satirdaki "Giriş") basildiysa
+    // liste asagi kaydirilmis olabilir: sonuc ayrica kisa bildirim olarak cikar.
+    const sonuc = (ok, baslik, alt) => { kapiYaz(ok, baslik, alt); if (kayit) uyar(baslik + " — " + alt, !ok); };
     let r = kayit;
     if (!r) {
       const kod = qr.trim().toUpperCase();
       if (!kod) return uyar("QR kodu gir", true);
       const res = await reserve.from("reservations").select("*").eq("qr_id", kod).maybeSingle();
+      // Okunamadi ile "kod yok" ayri: baglanti kopukken gecerli misafir geri cevrilmesin.
+      if (res.error) return kapiYaz(false, "OKUNAMADI", "Bağlantıyı kontrol et ve yeniden dene. Kod: " + kod);
       r = res.data;
-      if (!r) return uyar("GEÇERSİZ — kod bulunamadı", true);
+      if (!r) return kapiYaz(false, "GEÇERSİZ", "Kod bulunamadı: " + kod);
     }
-    if (r.status === "used") return uyar("KULLANILMIŞ — " + r.name + " zaten girdi", true);
-    if (r.status !== "approved") return uyar("ONAYSIZ — " + r.name + " (" + (REZ_DURUM[r.status]?.ad || r.status) + ")", true);
+    if (r.status === "used") return sonuc(false, "KULLANILMIŞ", r.name + " zaten girdi.");
+    if (r.status !== "approved") return sonuc(false, "ONAYSIZ", r.name + " · " + (REZ_DURUM[r.status]?.ad || r.status));
 
     setBusy(true);
     try {
@@ -446,18 +457,33 @@ function Rezervasyonlar({ uyar }) {
           seriMsg += " · " + (SEVIYE[nTier] || nTier);
         }
       }
-      uyar("GİRİŞ OK — " + r.name + " · " + (r.guest_count || 1) + " kişi" + seriMsg);
+      sonuc(true, "GİRİŞ OK", r.name + " · " + (r.guest_count || 1) + " kişi" + seriMsg);
       setQr(""); yukle();
-    } catch (e) { uyar("Giriş yapılamadı: " + e.message, true); } finally { setBusy(false); }
+    } catch (e) { sonuc(false, "GİRİŞ YAPILAMADI", r.name + " · " + e.message); } finally { setBusy(false); }
   };
 
   return (
     <div>
       {/* Kapi: kod ile giris */}
       <div style={{ display: "flex", gap: 8, marginBottom: 12 }}>
-        <input value={qr} onChange={e => setQr(e.target.value)} placeholder={"Kapıda: rezervasyon kodu (" + (rezervasyonYerel ? MARKA.kisa.replace(/[^A-Z0-9]/gi, "").toUpperCase().slice(0, 4) : "NIP") + "-…)"} style={{ ...inputS, textTransform: "uppercase", letterSpacing: "1px" }} onKeyDown={e => e.key === "Enter" && girisYap(null)} />
+        <input value={qr} onChange={e => { setQr(e.target.value); if (kapi) setKapi(null); }} aria-label="Rezervasyon kodu" placeholder={"Kapıda: rezervasyon kodu (" + (rezervasyonYerel ? MARKA.kisa.replace(/[^A-Z0-9]/gi, "").toUpperCase().slice(0, 4) : "NIP") + "-…)"} style={{ ...inputS, textTransform: "uppercase", letterSpacing: "1px" }} onKeyDown={e => e.key === "Enter" && girisYap(null)} />
         <button onClick={() => girisYap(null)} disabled={busy} style={btnS(C.ink, "#000")}>GİRİŞ</button>
       </div>
+      {kapi && (
+        <div role={kapi.ok ? "status" : "alert"} aria-live={kapi.ok ? "polite" : "assertive"}
+          style={{ display: "flex", alignItems: "center", gap: 12, padding: "12px 8px 12px 14px", marginBottom: 12, borderRadius: 12,
+                   border: "2px solid " + (kapi.ok ? "#7FA88A" : "#C87A6A"), background: kapi.ok ? "#152015" : "#241412", color: "#F0EDE8" }}>
+          <Ikon ad={kapi.ok ? "onay" : "uyari"} boy={28} style={{ color: kapi.ok ? "#7FA88A" : "#C87A6A", flexShrink: 0 }} />
+          <div style={{ flex: 1, minWidth: 0 }}>
+            <div style={{ fontSize: 22, fontWeight: 900, letterSpacing: "0.5px", lineHeight: 1.15 }}>{kapi.baslik}</div>
+            <div style={{ fontSize: 15, marginTop: 3, lineHeight: 1.4, overflowWrap: "anywhere" }}>{kapi.alt}</div>
+          </div>
+          <button onClick={() => setKapi(null)} aria-label="Sonucu kapat"
+            style={{ width: 44, height: 44, flexShrink: 0, background: "none", border: "none", color: "#B5B0AA", cursor: "pointer", display: "flex", alignItems: "center", justifyContent: "center" }}>
+            <Ikon ad="kapat" boy={16} />
+          </button>
+        </div>
+      )}
 
       <div style={{ display: "flex", gap: 6, flexWrap: "wrap", marginBottom: 8 }}>
         {[["pending", "Bekleyen"], ["approved", "Onaylı"], ["used", "Girdi"], ["no_show", "Gelmedi"], ["rejected", "Red"], ["", "Hepsi"]].filter(([k]) => k !== "no_show" || gelmediAcik).map(([k, ad]) =>

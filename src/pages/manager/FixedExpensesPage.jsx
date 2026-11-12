@@ -1,4 +1,6 @@
 import { useEffect, useState } from "react";
+import { uyar } from "../../lib/uyar.js";
+import FormPencere from "../../components/FormPencere.jsx";
 import { supabase } from "../../lib/supabase.js";
 import { useAuth } from "../../contexts/AuthContext.jsx";
 import Ikon from "../../components/Ikon.jsx";
@@ -75,7 +77,7 @@ export default function FixedExpensesPage() {
 
   const save = async () => {
     if (busy) return;
-    if (!form.name?.trim()) { alert("Gider adı gerekli"); return; }
+    if (!form.name?.trim()) { uyar("Gider adı gerekli"); return; }
     setBusy(true);
     const payload = {
       name: form.name.trim(),
@@ -91,14 +93,14 @@ export default function FixedExpensesPage() {
       ? await supabase.from("fixed_expenses").insert(payload)
       : await supabase.from("fixed_expenses").update(payload).eq("id", modal.data.id);
     setBusy(false);
-    if (error) { alert("Hata: " + error.message); return; }
+    if (error) { uyar("Hata: " + error.message); return; }
     setModal(null); load(true);
   };
 
   const del = async (i) => {
     if (!confirm('"' + i.name + '" silinsin mi?')) return;
     const { error } = await supabase.from("fixed_expenses").delete().eq("id", i.id);
-    if (error) { alert("Hata: " + error.message); return; }
+    if (error) { uyar("Hata: " + error.message); return; }
     load(true);
   };
 
@@ -255,11 +257,6 @@ function Field({ label, children }) {
   </div>);
 }
 
-function Modal({ title, children, onClose }) {
-  return (<div onClick={onClose} style={{ position: "fixed", inset: 0, background: "rgba(0,0,0,0.75)", display: "flex", alignItems: "flex-end", justifyContent: "center", zIndex: 100 }}>
-    <div onClick={e => e.stopPropagation()} style={{ background: "#161616", border: "1px solid #2A2A2A", borderRadius: "16px 16px 0 0", padding: 20, width: "100%", maxWidth: 500, maxHeight: "90vh", overflowY: "auto" }}>
-      <div style={{ fontSize: 18, fontWeight: 800, color: "#F0EDE8", marginBottom: 16 }}>{title}</div>
-      {children}
-    </div>
-  </div>);
-}
+// Ortak form penceresi (components/FormPencere.jsx): karartma kapatmaz,
+// baslik ve kapat dugmesi ustte sabit.
+function Modal(props) { return <FormPencere {...props} />; }

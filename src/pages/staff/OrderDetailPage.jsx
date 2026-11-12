@@ -1,4 +1,5 @@
 import { useEffect, useRef, useState } from "react";
+import { uyar } from "../../lib/uyar.js";
 import { useParams, useNavigate, useLocation } from "react-router-dom";
 import { supabase } from "../../lib/supabase.js";
 import { happyHourPrices, hhSadeceUyeMi } from "../../lib/happyHour.js";
@@ -139,7 +140,7 @@ export default function OrderDetailPage() {
     const patch = { customer_id: custId || null };
     if (c?.name) patch.customer_name = c.name;
     const { error } = await supabase.from("orders").update(patch).eq("id", orderId);
-    if (error) { alert("Üye bağlanamadı: " + error.message); return; }
+    if (error) { uyar("Üye bağlanamadı: " + error.message); return; }
     setOrder(prev => prev ? { ...prev, ...patch } : prev);
     if (c?.name) setCustomerNameEdit(c.name);
     // Fiyatlar customer_id degisince effect'te yeniden okunur.
@@ -260,17 +261,18 @@ export default function OrderDetailPage() {
     const next = items.map(i => i.id === it.id ? { ...i, ...patch } : i);
     setItems(next); syncTotal(next);
     const { error } = await supabase.from("order_items").update(patch).eq("id", it.id);
-    if (error) { alert("İndirim kaydedilemedi: " + error.message); loadOrderOnly(); }
+    if (error) { uyar("İndirim kaydedilemedi: " + error.message); loadOrderOnly(); }
   };
   const toggleTreat = (it) => {
     if (it.is_treat) { applyTreat(it, null); return; } // geri alma tek dokunus
     // Ikram SATIRIN TAMAMINI ₺0 yapar. Satirin bir adedi parayla odendiyse o
     // adedin fiyati da silinir, alinan para cirodan duserdi. Odenmis satir
-    // ikram edilmez; kalan adet ayri satir olarak eklenip ikram edilir.
+    // ikram edilmez; kalan adet "Taşı" ile yeni hesaba alinir, orada ikram
+    // edilir (kaldir + yeniden ekle mutfaga yeni siparis dusururdu).
     if (Number(it.odenen_adet) > 0) {
       const odenen = Number(it.odenen_adet), kalan = Math.max(0, Number(it.quantity || 0) - odenen);
       setDuzBilgi({ tur: "uyari", sure: 9000, id: Date.now(), metin: kalan > 0
-        ? `${it.product_name}: ${odenen} adedi ödendi, bu satır ikram edilmez. Kalan ${kalan} adet için: satırdan ${kalan} adet kaldır, ürünü yeniden ekle, yeni satırı ikram et.`
+        ? `${it.product_name}: ${odenen} adedi ödendi, bu satır ikram edilmez. Kalan ${kalan} adet için: satırdaki "Taşı" ile yeni hesaba al, orada ikram et.`
         : `${it.product_name} ödendi. Ödenmiş ürün ikram edilmez.` });
       return;
     }
@@ -283,7 +285,7 @@ export default function OrderDetailPage() {
     const next = items.map(i => i.id === it.id ? { ...i, ...patch } : i);
     setItems(next); syncTotal(next);
     const { error } = await supabase.from("order_items").update(patch).eq("id", it.id);
-    if (error) { alert("İkram işaretlenemedi: " + error.message); load(); }
+    if (error) { uyar("İkram işaretlenemedi: " + error.message); load(); }
   };
   // Secim listesi: islemi yapan + sahipler (admin). Ayni kisi iki kez cikmasin.
   const treatVerenler = () => {
@@ -315,7 +317,7 @@ export default function OrderDetailPage() {
     const { error } = await supabase.from("order_items").update({ is_takeaway: val }).eq("id", it.id);
     if (error) {
       setItems(prev => prev.map(i => i.id === it.id ? { ...i, is_takeaway: !val } : i));
-      alert("Değiştirilemedi: " + error.message);
+      uyar("Değiştirilemedi: " + error.message);
     }
   };
 
@@ -398,7 +400,7 @@ export default function OrderDetailPage() {
     if (vs.length) {
       if (!variantName) {
         const avail = vs.filter(v => Number(v.stock) > 0);
-        if (!avail.length) { alert(p.name + " — tüm bedenler tükendi"); return; }
+        if (!avail.length) { uyar(p.name + " — tüm bedenler tükendi"); return; }
         // Secenek penceresinde beden zaten secildiyse (Shop tisortleri: "Beden"
         // grubu ile variants ayni bedenleri tasir) ikinci kez sorulmaz. Secilen
         // beden tukendiyse yine sorulur ki stokta olana yonlendirsin.
@@ -487,7 +489,7 @@ export default function OrderDetailPage() {
       if (hata) {
         const geri = items.map(i => i.id === mevcut.id ? { ...i, quantity: mevcut.quantity } : i);
         setItems(geri); syncTotal(geri);
-        alert("Ürün eklenemedi: " + hata.message);
+        uyar("Ürün eklenemedi: " + hata.message);
         return;
       }
       setSonEklenen({ id: mevcut.id, ad: mevcut.product_name, adet: yeni });
@@ -502,7 +504,7 @@ export default function OrderDetailPage() {
     const { data: saved, error } = await supabase.from("order_items").insert(row).select().single();
     if (error) {
       setItems(prev => { const back = prev.filter(i => i.id !== tempId); syncTotal(back); return back; });
-      alert("Ürün eklenemedi: " + error.message);
+      uyar("Ürün eklenemedi: " + error.message);
       return;
     }
     setItems(prev => prev.map(i => i.id === tempId ? saved : i));
@@ -532,13 +534,13 @@ export default function OrderDetailPage() {
       setItems(iyimser); syncTotal(iyimser);
       setSonEklenen({ id: it.id, ad: it.product_name, adet: azalt });
       const { error: hata } = await supabase.from("order_items").update({ quantity: azalt }).eq("id", it.id);
-      if (hata) { alert("Geri alınamadı: " + hata.message); loadOrderOnly(); }
+      if (hata) { uyar("Geri alınamadı: " + hata.message); loadOrderOnly(); }
       return;
     }
     const next = items.filter(i => i.id !== sonEklenen.id);
     setItems(next); syncTotal(next); setSonEklenen(null);
     const { error } = await supabase.from("order_items").delete().eq("id", sonEklenen.id);
-    if (error) { alert("Geri alınamadı: " + error.message); loadOrderOnly(); }
+    if (error) { uyar("Geri alınamadı: " + error.message); loadOrderOnly(); }
   };
 
   const changeQty = async (itemId, delta) => {
@@ -558,13 +560,13 @@ export default function OrderDetailPage() {
       // silinmis kalemi gostermeye devam etmesin.
       if (sonEklenen?.id === itemId) setSonEklenen(null);
       const { error } = await supabase.from("order_items").delete().eq("id", itemId);
-      if (error) { alert("Silinemedi: " + error.message); loadOrderOnly(); }
+      if (error) { uyar("Silinemedi: " + error.message); loadOrderOnly(); }
       else setDuzBilgi({ metin: it.product_name + " silindi", id: Date.now() });
     } else {
       const next = items.map(i => i.id === itemId ? { ...i, quantity: newQty } : i);
       setItems(next); syncTotal(next);
       const { error } = await supabase.from("order_items").update({ quantity: newQty }).eq("id", itemId);
-      if (error) { alert("Güncellenemedi: " + error.message); loadOrderOnly(); }
+      if (error) { uyar("Güncellenemedi: " + error.message); loadOrderOnly(); }
     }
   };
 
@@ -575,14 +577,14 @@ export default function OrderDetailPage() {
     const yeni = customerNameEdit.trim() || null;
     const degisti = yeni !== (order?.customer_name || null);
     const { error } = await supabase.from("orders").update({ customer_name: yeni }).eq("id", orderId);
-    if (error) { if (degisti) alert("İsim kaydedilemedi: " + personelHata(error)); return; }
+    if (error) { if (degisti) uyar("İsim kaydedilemedi: " + personelHata(error)); return; }
     loadOrderOnly();
   };
   const saveOrderNote = async () => {
     const yeni = orderNote.trim() || null;
     const degisti = yeni !== (order?.note || null);
     const { error } = await supabase.from("orders").update({ note: yeni }).eq("id", orderId);
-    if (error) { if (degisti) alert("Not kaydedilemedi: " + personelHata(error)); return; }
+    if (error) { if (degisti) uyar("Not kaydedilemedi: " + personelHata(error)); return; }
     if (degisti) setDuzBilgi({ metin: yeni ? "Not kaydedildi" : "Not silindi", id: Date.now() });
     loadOrderOnly();
   };
@@ -647,7 +649,7 @@ export default function OrderDetailPage() {
       p_kalemler: null,
     });
     setTahsilBusy(false);
-    if (error) { alert("Tahsilat yapılamadı: " + error.message); return; }
+    if (error) { uyar("Tahsilat yapılamadı: " + error.message); return; }
     const sonuc = Array.isArray(data) ? data[0] : data;
     // Baska bir cihazdan kismi tahsilat yapilmissa hesap kapanmayabilir.
     // Kasiyer bunu MUTLAKA bilmeli, sessizce ilerlemeyelim.
@@ -699,7 +701,7 @@ export default function OrderDetailPage() {
   // yariyor ("3 numara hazır" diye seslenebiliyorlar).
   const yeniHesap = async () => {
     const { data: yeni, error } = await misafirHesapAc({ staffUser });
-    if (error || !yeni) { alert("Hesap açılamadı: " + (error?.message || "")); return false; }
+    if (error || !yeni) { uyar("Hesap açılamadı: " + (error?.message || "")); return false; }
     navigate("/orders/" + yeni.id);
     return true;
   };
@@ -967,6 +969,16 @@ export default function OrderDetailPage() {
               </span>
             </div>
           )}
+          {/* KURULU DURUM: ilk dokunustan sonra ne olacagi yaziyla da soylenir
+              (yontem + tutar). Renk degisimi tek basina yeterli degildi; ekran
+              okuyucu da duyar. Dokunusu yutmaz. */}
+          {hizliKurulu && !ikramKapanir && (
+            <div role="status" style={{maxWidth:sayfaEni,margin:"0 auto 6px",display:"flex",justifyContent:"center"}}>
+              <span style={{fontSize:12.5,fontWeight:800,color:"#0C0C0C",background:"#C87A6A",borderRadius:20,padding:"5px 12px",fontVariantNumeric:"tabular-nums",boxShadow:"0 4px 16px rgba(0,0,0,0.5)"}}>
+                {hizliKurulu === "card" ? "Kart" : "Nakit"} · {tl(hizliTutar)} — onaylamak için yeniden dokun
+              </span>
+            </div>
+          )}
           <div style={{display:"flex",gap:8,maxWidth:sayfaEni,margin:"0 auto",pointerEvents:"auto"}}>
             <button onClick={() => setEkleAcik(true)}
               style={{flex:items.length > 0 ? 1.4 : 3,minWidth:0,padding:"14px 8px",minHeight:50,borderRadius:12,fontSize:14,fontWeight:800,cursor:"pointer",
@@ -1069,6 +1081,8 @@ export default function OrderDetailPage() {
 
       {/* Liste gorunumunde sabit alt cubugun USTUNDE: "X silindi" yazisi Kart/Nakit
           dugmesindeki tutari ortmesin. Parti izgarasinda varsayilan yer. */}
+      {/* Yonlendirmeyle gelen yazi ("Masa 3: açık hesap vardı…"). */}
+      {!duzBilgi && <Bildirim tur="uyari" alt={partiKasaAcik ? 96 : cubukAlt + 62}/>}
       {duzBilgi && <Bildirim key={duzBilgi.id} metin={duzBilgi.metin} tur={duzBilgi.tur} sure={duzBilgi.sure} alt={partiKasaAcik ? 96 : cubukAlt + 62}/>}
       {ikramKapatAcik && !kapali && (
         <IkramKapatPenceresi order={order} staffUser={staffUser}

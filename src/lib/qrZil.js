@@ -27,6 +27,9 @@ const sesOku = () => {
 export function useQrSiparisZili({ staffUser, aktif }) {
   const [sesAcik, setSesAcik] = useState(sesOku);
   const [serit, setSerit] = useState(null);
+  // Serit acikken gelen HER hesap burada birikir. Eskiden ikinci siparis
+  // ilkinin seridinin ustune yaziyor, ilk masa sessizce kayboluyordu.
+  const bekleyen = useRef(new Set());
   const sesRef = useRef(sesAcik);
   useEffect(() => { sesRef.current = sesAcik; }, [sesAcik]);
 
@@ -70,11 +73,12 @@ export function useQrSiparisZili({ staffUser, aktif }) {
       const son = hesaplar[hesaplar.length - 1];
       const adet = yeni.filter(r => r.order_id === son.id)
         .reduce((t, r) => t + (Number(r.quantity) || 1), 0);
+      hesaplar.forEach(h => bekleyen.current.add(h.id));
       setSerit({
         orderId: son.id,
         ad: son.masa?.name || son.customer_name || "Misafir",
         adet,
-        diger: hesaplar.length - 1,
+        diger: bekleyen.current.size - 1,
         an: Date.now(),
       });
       if (sesRef.current) qrZilCal();
@@ -120,7 +124,7 @@ export function useQrSiparisZili({ staffUser, aktif }) {
 
   // Serit 30 sn sonra kendiliginden kapanir.
   useEffect(() => {
-    if (!serit) return;
+    if (!serit) { bekleyen.current.clear(); return; }
     const t = setTimeout(() => setSerit(null), SERIT_SURE_MS);
     return () => clearTimeout(t);
   }, [serit]);

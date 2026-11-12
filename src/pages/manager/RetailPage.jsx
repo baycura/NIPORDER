@@ -1,4 +1,6 @@
 import { useEffect, useState } from "react";
+import { uyar } from "../../lib/uyar.js";
+import FormPencere, { altlikStil } from "../../components/FormPencere.jsx";
 import { supabase } from "../../lib/supabase.js";
 import { useAuth } from "../../contexts/AuthContext.jsx";
 import Ikon from "../../components/Ikon.jsx";
@@ -65,7 +67,7 @@ export default function RetailPage() {
   const openEditBrand = (b) => { setBrandModal({ mode: "edit", data: b }); setBrandForm({ name: b.name, description: b.description || "", sort_order: b.sort_order || 100, konsinye: !!b.konsinye, konsinye_pay_pct: b.konsinye_pay_pct ?? "" }); };
   const saveBrand = async () => {
     if (busy) return;
-    if (!brandForm.name?.trim()) { alert("Marka adı gerekli"); return; }
+    if (!brandForm.name?.trim()) { uyar("Marka adı gerekli"); return; }
     setBusy(true);
     const payload = { name: brandForm.name.trim(), description: brandForm.description?.trim() || null, sort_order: Number(brandForm.sort_order) || 100, store_id: storeId,
       // Konsinye marka: urunleri tedarikcinin mali, satisin %X'i bizim (docs/konsinye.md)
@@ -74,7 +76,7 @@ export default function RetailPage() {
       ? await supabase.from("brands").insert(payload)
       : await supabase.from("brands").update(payload).eq("id", brandModal.data.id);
     setBusy(false);
-    if (error) { alert("Hata: " + error.message); return; }
+    if (error) { uyar("Hata: " + error.message); return; }
     setBrandModal(null); load(true);
   };
   // Donen deger: silindi mi. Pencere ancak silme gerceklestiyse kapanir.
@@ -82,7 +84,7 @@ export default function RetailPage() {
     const n = products.filter(p => p.brand_id === b.id).length;
     if (!confirm('"' + b.name + '" markası silinsin mi?' + (n ? "\n\n" + n + " ürün markasız kalacak (silinmez)." : ""))) return false;
     const { error } = await supabase.from("brands").delete().eq("id", b.id);
-    if (error) { alert("Hata: " + error.message); return false; }
+    if (error) { uyar("Hata: " + error.message); return false; }
     load(true);
     return true;
   };
@@ -129,8 +131,8 @@ export default function RetailPage() {
 
   const saveProduct = async () => {
     if (busy) return;
-    if (!form.name?.trim()) { alert("Ürün adı gerekli"); return; }
-    if (!category) { alert("Önce Menü Yönetimi'nden 'Yalnız kasada' işaretli bir kategori açın"); return; }
+    if (!form.name?.trim()) { uyar("Ürün adı gerekli"); return; }
+    if (!category) { uyar("Önce Menü Yönetimi'nden 'Yalnız kasada' işaretli bir kategori açın"); return; }
     setBusy(true);
     const variants = (form.variants || []).filter(v => v.name);
     const totalFromVariants = variants.reduce((s, v) => s + (Number(v.stock) || 0), 0);
@@ -164,7 +166,7 @@ export default function RetailPage() {
       ? await supabase.from("products").insert(payload)
       : await supabase.from("products").update(payload).eq("id", prodModal.data.id);
     setBusy(false);
-    if (error) { alert("Hata: " + error.message); return; }
+    if (error) { uyar("Hata: " + error.message); return; }
     setProdModal(null); load(true);
   };
   const stokEkleAc = (p) => {
@@ -175,7 +177,7 @@ export default function RetailPage() {
   const geriAl = async () => {
     if (!sonGiris) return;
     const { error } = await stokGeriAl(sonGiris);
-    if (error) { alert("Geri alinamadi: " + error.message); return; }
+    if (error) { uyar("Geri alınamadı: " + error.message); return; }
     setSonGiris(null); load(true);
   };
 
@@ -185,7 +187,7 @@ export default function RetailPage() {
   const delProduct = async (p) => {
     if (!confirm('"' + p.name + '" silinsin mi?')) return false;
     const { error } = await supabase.from("products").delete().eq("id", p.id);
-    if (error) { alert("Silinemedi (geçmiş siparişlerde kullanılmış olabilir): " + error.message); return false; }
+    if (error) { uyar("Silinemedi (geçmiş siparişlerde kullanılmış olabilir): " + error.message); return false; }
     load(true);
     return true;
   };
@@ -462,15 +464,15 @@ export default function RetailPage() {
             <span style={{ fontSize: 13, color: "#F0EDE8" }}>Satışta (kasada listelensin)</span>
           </label>
 
-          <div style={{ display: "flex", gap: 8, marginTop: 10 }}>
-            <button onClick={() => setProdModal(null)} style={cancelBtn}>İptal</button>
-            <button onClick={saveProduct} disabled={busy} style={{ ...saveBtn, opacity: busy ? 0.6 : 1 }}>{busy ? "..." : "Kaydet"}</button>
-          </div>
           {/* Silme listede degil burada: karttaki "Sil" dugmesine yanlislikla
               dokunmak urunu goturuyordu. */}
           {prodModal.mode !== "new" && (
             <button onClick={async () => { const p = prodModal.data; if (await delProduct(p)) setProdModal(null); }} style={silBtn}>Bu ürünü sil</button>
           )}
+          <div style={{ display: "flex", gap: 8, ...altlikStil }}>
+            <button onClick={() => setProdModal(null)} style={cancelBtn}>İptal</button>
+            <button onClick={saveProduct} disabled={busy} style={{ ...saveBtn, opacity: busy ? 0.6 : 1 }}>{busy ? "..." : "Kaydet"}</button>
+          </div>
         </Modal>
       )}
 
@@ -493,11 +495,6 @@ function Field({ label, children }) {
   </div>);
 }
 
-function Modal({ title, children, onClose }) {
-  return (<div onClick={onClose} style={{ position: "fixed", inset: 0, background: "rgba(0,0,0,0.75)", display: "flex", alignItems: "flex-end", justifyContent: "center", zIndex: 100 }}>
-    <div onClick={e => e.stopPropagation()} style={{ background: "#161616", border: "1px solid #2A2A2A", borderRadius: "16px 16px 0 0", padding: 20, width: "100%", maxWidth: 500, maxHeight: "90vh", overflowY: "auto" }}>
-      <div style={{ fontSize: 18, fontWeight: 800, color: "#F0EDE8", marginBottom: 16 }}>{title}</div>
-      {children}
-    </div>
-  </div>);
-}
+// Ortak form penceresi (components/FormPencere.jsx): karartma kapatmaz,
+// baslik ve kapat dugmesi ustte sabit.
+function Modal(props) { return <FormPencere {...props} />; }

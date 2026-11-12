@@ -66,7 +66,7 @@ export default function ProductStockPage() {
   const geriAl = async () => {
     if (!sonGiris) return;
     const { error } = await stokGeriAl(sonGiris);
-    if (error) { setHata("Geri alinamadi: " + error.message); return; }
+    if (error) { setHata("Geri alınamadı: " + error.message); return; }
     setSonGiris(null); setTazele(t => t + 1);
   };
 

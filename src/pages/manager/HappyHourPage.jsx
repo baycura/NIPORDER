@@ -1,4 +1,5 @@
 import { useState, useEffect } from "react";
+import { uyar } from "../../lib/uyar.js";
 import { supabase } from "../../lib/supabase.js";
 import { hhSadeceUyeMi } from "../../lib/happyHour.js";
 import { useAuth } from "../../contexts/AuthContext.jsx";
@@ -42,10 +43,10 @@ export default function HappyHourPage() {
   const magazaId = staffUser?.store_ids?.[0] || null;
   const [sadeceUye, setSadeceUye] = useState(true);
   const sadeceUyeYaz = async (deger) => {
-    if (!magazaId) { alert("Mağaza bulunamadı."); return; }
+    if (!magazaId) { uyar("Mağaza bulunamadı."); return; }
     const onceki = sadeceUye; setSadeceUye(deger);
     const { error } = await supabase.from("app_settings").upsert({ key: "hh_sadece_uye", value: !!deger, store_id: magazaId, updated_at: new Date().toISOString() }, { onConflict: "key,store_id" });
-    if (error) { setSadeceUye(onceki); alert("Kaydedilemedi: " + error.message); }
+    if (error) { setSadeceUye(onceki); uyar("Kaydedilemedi: " + error.message); }
   };
 
   const load = async () => {
@@ -64,14 +65,14 @@ export default function HappyHourPage() {
 
   const toggle = async (id, val) => {
     const { error } = await supabase.from("happy_hour_rules").update({ is_active: val }).eq("id", id);
-    if (error) { alert("Değiştirilemedi: " + error.message); return; }
+    if (error) { uyar("Değiştirilemedi: " + error.message); return; }
     load();
   };
 
   const remove = async (id) => {
     if (!confirm("Bu kuralı silmek istediğinizden emin misiniz?")) return;
     const { error } = await supabase.from("happy_hour_rules").delete().eq("id", id);
-    if (error) { alert("Silinemedi: " + error.message); return; }
+    if (error) { uyar("Silinemedi: " + error.message); return; }
     load();
   };
 
@@ -98,8 +99,8 @@ export default function HappyHourPage() {
   // Saatler DB'den "17:00:00" gelir, input "17:00" ister.
   const duzenle = async (r) => {
     const { data: taze, error } = await supabase.from("happy_hour_rules").select("*").eq("id", r.id).maybeSingle();
-    if (error) { alert("Kural okunamadı: " + error.message); return; }
-    if (!taze) { alert("Bu kural artık yok (silinmiş olabilir). Liste yenilendi."); load(); return; }
+    if (error) { uyar("Kural okunamadı: " + error.message); return; }
+    if (!taze) { uyar("Bu kural artık yok (silinmiş olabilir). Liste yenilendi."); load(); return; }
     const po = {};
     Object.entries(taze.product_overrides || {}).forEach(([pid, v]) => { po[pid] = Math.round(Number(v)) || 0; });
     setForm({
@@ -116,10 +117,10 @@ export default function HappyHourPage() {
   };
 
   const save = async () => {
-    if (!form.name.trim()) return alert("Kural ismi gerekli");
-    if (Object.keys(form.product_overrides).length === 0) return alert("En az bir ürün seçip yeni fiyatını yaz");
-    if (!form.days_of_week.length) return alert("En az bir gün seç");
-    if (!staffUser?.store_ids?.[0]) return alert("Hesabına mağaza atanmamış — yönetici ile görüş.");
+    if (!form.name.trim()) return uyar("Kural ismi gerekli");
+    if (Object.keys(form.product_overrides).length === 0) return uyar("En az bir ürün seçip yeni fiyatını yaz");
+    if (!form.days_of_week.length) return uyar("En az bir gün seç");
+    if (!staffUser?.store_ids?.[0]) return uyar("Hesabına mağaza atanmamış — yönetici ile görüş.");
     setBusy(true);
     const payload = {
       name: form.name.trim(),
@@ -134,11 +135,11 @@ export default function HappyHourPage() {
     const { data, error } = editId
       ? await supabase.from("happy_hour_rules").update(payload).eq("id", editId).select("id")
       : await supabase.from("happy_hour_rules").insert({ ...payload, store_id: staffUser?.store_ids?.[0], is_active: true }).select("id");
-    if (error) { setBusy(false); return alert("Kaydedilemedi: " + error.message); }
+    if (error) { setBusy(false); return uyar("Kaydedilemedi: " + error.message); }
     if (!data?.length) {
       // Guncellemede 0 satir: kural silinmis ya da RLS gizliyor; ikisi ayni gorunur.
       setBusy(false);
-      alert(editId ? "Kaydedilemedi: kural silinmiş olabilir ya da bu işlem için yetkin yok. Liste yenilendi." : "Kaydedilemedi: bu işlem için yetkin yok.");
+      uyar(editId ? "Kaydedilemedi: kural silinmiş olabilir ya da bu işlem için yetkin yok. Liste yenilendi." : "Kaydedilemedi: bu işlem için yetkin yok.");
       if (editId) { kapat(); load(); }
       return;
     }
@@ -157,10 +158,10 @@ export default function HappyHourPage() {
   // Secili urunlere yuzde indirim uygula (fiyatlari tek tek yazmaya gerek kalmasin)
   const applyBulkPct = () => {
     const pct = Number(bulkPct);
-    if (!pct || pct <= 0 || pct >= 100) { alert("1-99 arasi bir yüzde gir"); return; }
+    if (!pct || pct <= 0 || pct >= 100) { uyar("1-99 arası bir yüzde gir"); return; }
     const po = { ...form.product_overrides };
     const ids = Object.keys(po);
-    if (!ids.length) { alert("Önce ürünleri işaretle"); return; }
+    if (!ids.length) { uyar("Önce ürünleri işaretle"); return; }
     ids.forEach(pid => {
       const prod = products.find(x => x.id === pid);
       if (prod) po[pid] = Math.round(Number(prod.price) * (100 - pct) / 100);

@@ -1,4 +1,5 @@
 import { useEffect, useState } from "react";
+import { uyar } from "../../lib/uyar.js";
 import { supabase, hataMetni } from "../../lib/supabase.js";
 import { kucult } from "../../lib/gorsel.js";
 import Ikon from "../../components/Ikon.jsx";
@@ -48,7 +49,7 @@ export default function ContentPage() {
       const f = await kucult(ham, { enUzun: 1000, kalite: 0.82 });
       const path = "posts/" + Date.now() + "_" + f.name.replace(/[^a-zA-Z0-9.]/g, "_");
       const { error } = await supabase.storage.from("product-images").upload(path, f, { contentType: f.type || undefined });
-      if (error) { alert("Foto yükleme hatası: " + error.message); continue; }
+      if (error) { uyar("Foto yükleme hatası: " + error.message); continue; }
       const { data } = supabase.storage.from("product-images").getPublicUrl(path);
       if (data?.publicUrl) urls.push(data.publicUrl);
     }
@@ -82,7 +83,7 @@ export default function ContentPage() {
   const runAiWrite = async () => {
     if (aiBusy) return;
     const firstImg = (form.images || [])[0];
-    if (!aiBrief.trim() && !(useImage && firstImg)) { alert("Kısa bir not yaz ya da önce fotoğraf yükle"); return; }
+    if (!aiBrief.trim() && !(useImage && firstImg)) { uyar("Kısa bir not yaz ya da önce fotoğraf yükle"); return; }
     setAiBusy(true); setAiTip("");
     try {
       const image = (useImage && firstImg) ? await imageToBase64(firstImg) : "";
@@ -98,13 +99,13 @@ export default function ContentPage() {
         title_ru: data.title_ru || f.title_ru, body_ru: data.body_ru || f.body_ru,
       }));
       setAiTip(data.photo_tip || "");
-    } catch (e) { alert("AI hatası: " + (e?.message || e)); }
+    } catch (e) { uyar("AI hatası: " + (e?.message || e)); }
     setAiBusy(false);
   };
 
   const save = async () => {
     if (busy) return;
-    if (!form.title?.trim()) { alert("Başlık gerekli"); return; }
+    if (!form.title?.trim()) { uyar("Başlık gerekli"); return; }
     setBusy(true);
     const payload = {
       kind: form.kind, title: form.title.trim(), body: form.body?.trim() || null,
@@ -119,20 +120,20 @@ export default function ContentPage() {
       ? await supabase.from("posts").insert(payload)
       : await supabase.from("posts").update(payload).eq("id", modal.data.id);
     setBusy(false);
-    if (error) { alert("Hata: " + error.message); return; }
+    if (error) { uyar("Hata: " + error.message); return; }
     setModal(null); load(true);
   };
 
   const toggleActive = async (p) => {
     const { data, error } = await supabase.from("posts").update({ is_active: !p.is_active }).eq("id", p.id).select("id");
-    if (error) { alert("Değiştirilemedi: " + error.message); return; }
-    if (!data?.length) { alert("Değiştirilemedi: bu işlem için yetkin yok."); return; }
+    if (error) { uyar("Değiştirilemedi: " + error.message); return; }
+    if (!data?.length) { uyar("Değiştirilemedi: bu işlem için yetkin yok."); return; }
     load(true);
   };
   const del = async (p) => {
     if (!confirm('"' + p.title + '" silinsin mi?')) return;
     const { error } = await supabase.from("posts").delete().eq("id", p.id);
-    if (error) { alert("Silinemedi: " + error.message); return; }
+    if (error) { uyar("Silinemedi: " + error.message); return; }
     load(true);
   };
 

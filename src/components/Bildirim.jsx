@@ -31,11 +31,15 @@ export const sonListe = () => {
 export default function Bildirim({ metin: disMetin = null, tur = "basari", sure, konum = "alt", alt = 96 }) {
   const location = useLocation();
   const navigate = useNavigate();
-  const [metin, setMetin] = useState(disMetin || location.state?.bildirim || null);
+  // Yonlendirme yazisini yalniz METINSIZ ornek dinler. Metin verilen ornek
+  // (ornegin UyariYuvasi'ndaki kalici yuva) dinlerse ayni basari yazisi ikinci
+  // kez, ustte ve son uyarinin kirmizi gorunumuyle cikiyordu.
+  const yonlu = disMetin == null;
+  const [metin, setMetin] = useState(disMetin || (yonlu ? location.state?.bildirim : null) || null);
 
   // Yonlendirmeyle gelen yazi bir kez gosterilir; geri tusu tekrar gostermesin.
   useEffect(() => {
-    if (!location.state?.bildirim) return;
+    if (!yonlu || !location.state?.bildirim) return;
     setMetin(location.state.bildirim);
     navigate(location.pathname + location.search, { replace: true, state: {} });
   }, [location.key]);
@@ -58,7 +62,7 @@ export default function Bildirim({ metin: disMetin = null, tur = "basari", sure,
               background:g.zemin,border:"1px solid " + g.kenar,borderRadius:12,color:"#F0EDE8",fontSize:14,fontWeight:700,
               boxShadow:"0 6px 24px rgba(0,0,0,0.5)",fontFamily:"-apple-system,BlinkMacSystemFont,'Segoe UI',Roboto,sans-serif"}}>
       <span style={{color:g.renk,display:"flex",flexShrink:0}}><Ikon ad={g.ikon} boy={16}/></span>
-      <span style={{lineHeight:1.4}}>{metin}</span>
+      <span style={{lineHeight:1.4,whiteSpace:"pre-line",overflowWrap:"anywhere"}}>{metin}</span>
     </div>
   );
 }

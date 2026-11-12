@@ -1,4 +1,5 @@
 import { useEffect, useMemo, useState } from "react";
+import { uyar } from "../../lib/uyar.js";
 import { supabase } from "../../lib/supabase.js";
 import { useAuth } from "../../contexts/AuthContext.jsx";
 import Ikon from "../../components/Ikon.jsx";
@@ -73,7 +74,7 @@ export default function CostsPage() {
     if (r.tip === "konsinye") return;
     const ham = degerler[r.kayit_id];
     const deger = Number(ham);
-    if (!ham || !isFinite(deger) || deger <= 0) { alert("Sıfırdan büyük bir tutar gir"); return; }
+    if (!ham || !isFinite(deger) || deger <= 0) { uyar("Sıfırdan büyük bir tutar gir"); return; }
 
     // Kap/olcu karisikligi kaydedilmeden once bir kez sorulur. Ekranda zaten
     // uyari var ama bu sayfa "hizli gec" sayfasi; rakam yazip Enter'a basan
@@ -91,7 +92,7 @@ export default function CostsPage() {
       ? await supabase.from("ingredients").update({ cost_per_unit: deger }).eq("id", r.kayit_id)
       : await supabase.from("products").update({ cost_price: deger }).eq("id", r.kayit_id);
     setBusy(null);
-    if (error) { alert("Kaydedilemedi: " + error.message); return; }
+    if (error) { uyar("Kaydedilemedi: " + error.message); return; }
     // Satiri listeden dusurmuyoruz — girilen rakam ekranda kalsin ki yanlis
     // yazdiysan gorup duzeltebilesin. Yenile'ye basinca liste tazelenir.
     setKaydedilen(k => ({ ...k, [r.kayit_id]: deger }));

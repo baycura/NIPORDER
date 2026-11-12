@@ -1,5 +1,8 @@
 import { useEffect, useState } from "react";
+import { baslikStil } from "../../theme/panel.js";
 import { supabase } from "../../lib/supabase.js";
+import { personelHata } from "../../lib/errorText.js";
+import { Okunamadi } from "../../components/Durum.jsx";
 import { useAuth } from "../../contexts/AuthContext.jsx";
 import { businessDayStart, businessDayKey } from "../../lib/businessDay.js";
 import Ikon from "../../components/Ikon.jsx";
@@ -15,6 +18,8 @@ export default function ShiftsOverviewPage() {
   const { staffUser } = useAuth();
   const [gunOffset, setGunOffset] = useState(0);
   const [loading, setLoading] = useState(true);
+  const [hata, setHata] = useState(null);
+  const [tik, setTik] = useState(0); // "Tekrar dene"
   const [veri, setVeri] = useState(null);
 
   useEffect(() => {
@@ -26,13 +31,20 @@ export default function ShiftsOverviewPage() {
       const key = businessDayKey(new Date(start.getTime() + 12 * 3600 * 1000));
       const storeIds = staffUser?.store_ids?.length ? staffUser.store_ids : ["00000000-0000-0000-0000-000000000000"];
 
-      const [{ data: vardiyalar }, { data: satislar }, { data: kisiler }] = await Promise.all([
+      const [{ data: vardiyalar, error: vHata }, { data: satislar, error: sHata }, { data: kisiler }] = await Promise.all([
         supabase.from("shifts").select("staff_id,status,checked_in_at,checked_out_at").eq("date", key),
         supabase.from("orders").select("staff_id,total,points_used,paid_at")
           .in("origin_store_id", storeIds).eq("status", "paid")
           .gte("paid_at", start.toISOString()).lt("paid_at", end.toISOString()),
         supabase.from("staff").select("id,name,display_role").eq("is_active", true),
       ]);
+
+      // Okunamadiysa "₺0 / vardiya yok" yazilmaz: sebep ve tekrar dene.
+      if (vHata || sHata) {
+        if (!iptal) { setHata(personelHata(vHata || sHata)); setVeri(null); setLoading(false); }
+        return;
+      }
+      if (!iptal) setHata(null);
 
       const adi = (id) => kisiler?.find(k => k.id === id)?.name || "Bilinmeyen";
 
@@ -63,7 +75,7 @@ export default function ShiftsOverviewPage() {
       }
     })();
     return () => { iptal = true; };
-  }, [gunOffset, staffUser?.store_ids]);
+  }, [gunOffset, staffUser?.store_ids, tik]);
 
   const saat = (iso) => iso ? new Date(iso).toLocaleTimeString("tr-TR", { hour: "2-digit", minute: "2-digit" }) : "—";
   const sure = (v) => {
@@ -77,7 +89,7 @@ export default function ShiftsOverviewPage() {
 
   return (
     <div style={{ fontFamily: cv, color: "#F0EDE8", maxWidth: 560, margin: "0 auto" }}>
-      <div style={{ fontSize: 22, fontWeight: 800, marginBottom: 4 }}>Vardiyalar</div>
+      <h1 style={{ ...baslikStil, marginBottom: 4 }}>Vardiyalar</h1>
       <div style={{ fontSize: 11, color: "#8A8580", marginBottom: 14 }}>
         Ekibin giriş-çıkışı ve kişi başı tahsilat · gün 03:00'te biter
       </div>
@@ -95,7 +107,9 @@ export default function ShiftsOverviewPage() {
         ))}
       </div>
 
-      {loading ? (<div style={{ color: "#888", padding: 20 }}>Yükleniyor...</div>) : (<>
+      {loading ? (<div style={{ color: "#888", padding: 20 }}>Yükleniyor...</div>)
+        : hata || !veri ? (<Okunamadi baslik="Vardiyalar okunamadı." hata={hata} onTekrar={() => setTik(n => n + 1)}/>)
+        : (<>
         <div style={{ display: "flex", gap: 10, marginBottom: 12 }}>
           <div style={{ flex: 1, background: "#161616", border: "1px solid #2A2A2A", borderRadius: 13, padding: "11px 14px" }}>
             <div style={{ fontSize:12, letterSpacing:"0.2px", color: "#8A8580", fontWeight:600 }}>Gün cirosu</div>

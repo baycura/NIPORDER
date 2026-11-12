@@ -1,4 +1,5 @@
 import { useEffect, useState, useRef } from "react";
+import { uyar } from "../../lib/uyar.js";
 import { useSearchParams } from "react-router-dom";
 import { supabase } from "../../lib/supabase.js";
 import { useAuth } from "../../contexts/AuthContext.jsx";
@@ -197,12 +198,18 @@ export default function PaymentPage() {
   const secilenAdet = (k) => Number(secim[k.id] || 0);
   // Kalemin uzerine dokunmak: hic secili degilse TAMAMINI sec (en sik hal),
   // seciliyse birak. Adet ayari icin satirdaki −/+ var.
+  // ₺0'LIK SATIR (ikram, %100 indirim) SECILMEZ: odenecek para yok. Secilirse
+  // sunucu satiri "0 TL ile odendi" diye isaretler; ikram raporu ve "ikram
+  // olarak kapat" penceresi bu adedi farkli sayardi (inceleme 12.11).
+  const ucretsiz = (k) => !(Number(k.final_price) > 0);
   const kalemTikla = (k) => setSecim(s => {
+    if (ucretsiz(k)) return s;
     const y = { ...s };
     if (y[k.id]) delete y[k.id]; else y[k.id] = kalanAdet(k);
     return y;
   });
   const adetDegis = (k, d) => setSecim(s => {
+    if (ucretsiz(k)) return s;
     const yeni = Math.min(kalanAdet(k), Math.max(0, (s[k.id] || 0) + d));
     const y = { ...s };
     if (yeni <= 0) delete y[k.id]; else y[k.id] = yeni;
@@ -298,8 +305,8 @@ export default function PaymentPage() {
     if (yeniBusy || !yeniKisi) return;
     const ad = yeniKisi.ad.trim();
     const tel = telefonNormalize(yeniKisi.tel);
-    if (ad.length < 2) { alert("Ad gir (en az 2 harf)"); return; }
-    if (tel && tel.replace(/\D/g, "").length < 10) { alert("Telefon eksik görünüyor — boş bırak ya da tam numarayı yaz"); return; }
+    if (ad.length < 2) { uyar("Ad gir (en az 2 harf)"); return; }
+    if (tel && tel.replace(/\D/g, "").length < 10) { uyar("Telefon eksik görünüyor — boş bırak ya da tam numarayı yaz"); return; }
     setYeniBusy(true);
     const { data, error } = await supabase.from("customers")
       .insert({ name: ad, phone: tel || null, provider: "kasa", store_id: staffUser?.store_ids?.[0] })
@@ -310,11 +317,11 @@ export default function PaymentPage() {
         const { data: mevcut } = await supabase.from("customers")
           .select("id, name, phone, points, outstanding_balance").eq("phone", tel).maybeSingle();
         setYeniBusy(false);
-        if (mevcut) { kisiSecDirekt(mevcut); alert("Bu numara zaten kayıtlı: " + mevcut.name); return; }
+        if (mevcut) { kisiSecDirekt(mevcut); uyar("Bu numara zaten kayıtlı: " + mevcut.name); return; }
       } else {
         setYeniBusy(false);
       }
-      alert("Kişi eklenemedi: " + error.message);
+      uyar("Kişi eklenemedi: " + error.message);
       return;
     }
     setYeniBusy(false);
@@ -361,10 +368,10 @@ export default function PaymentPage() {
     if (busy) return;
     const amt = Number(amount);
     // Puan tum tutari karsiliyorsa nakit 0 olabilir
-    if ((!amt || amt <= 0) && !(usePoints && ptsCover(modal) >= Number(modal.total || 0))) { alert("Geçerli tutar gir"); return; }
-    if (method === "debt" && !uyeId) { alert("Borç için kişi seç — üye olması gerekmez, ad yeter"); return; }
+    if ((!amt || amt <= 0) && !(usePoints && ptsCover(modal) >= Number(modal.total || 0))) { uyar("Geçerli tutar gir"); return; }
+    if (method === "debt" && !uyeId) { uyar("Borç için kişi seç — üye olması gerekmez, ad yeter"); return; }
     if (farkVar && farkNedeni.trim().length < 2) {
-      alert("Girilen tutar hesaptan farklı — nedenini yaz (bahşiş, indirim, eksik tahsilat…)");
+      uyar("Girilen tutar hesaptan farklı — nedenini yaz (bahşiş, indirim, eksik tahsilat…)");
       return;
     }
 
@@ -382,7 +389,7 @@ export default function PaymentPage() {
       p_kalemler: secimListesi.length ? secimListesi : null,
     });
     setBusy(false);
-    if (error) { alert("Tahsilat yapılamadı: " + error.message); return; }
+    if (error) { uyar("Tahsilat yapılamadı: " + error.message); return; }
 
     const sonuc = Array.isArray(data) ? data[0] : data;
     // Indirimde hesap odenen tutara iner; puan da o tutardan hesaplanir.
@@ -754,15 +761,17 @@ export default function PaymentPage() {
                     const kalanA = kalanAdet(k);
                     const secA = secilenAdet(k);
                     const bitti = kalanA <= 0;
+                    const bedava = !bitti && ucretsiz(k);   // odenecek para yok
+                    const secilmez = bitti || bedava;
                     return (
                       <div key={k.id}
-                        onClick={() => !bitti && kalemTikla(k)}
-                        role={bitti ? undefined : "button"}
-                        tabIndex={bitti ? undefined : 0}
-                        onKeyDown={e => { if (!bitti && (e.key === "Enter" || e.key === " ")) { e.preventDefault(); kalemTikla(k); } }}
+                        onClick={() => !secilmez && kalemTikla(k)}
+                        role={secilmez ? undefined : "button"}
+                        tabIndex={secilmez ? undefined : 0}
+                        onKeyDown={e => { if (!secilmez && (e.key === "Enter" || e.key === " ")) { e.preventDefault(); kalemTikla(k); } }}
                         style={{display:"flex",alignItems:"center",gap:10,padding:"10px 13px",minHeight:44,
-                                borderBottom:"1px solid #161616",cursor:bitti?"default":"pointer",
-                                background: secA > 0 ? "#1C1C1C" : "transparent", opacity: bitti ? 0.45 : 1}}>
+                                borderBottom:"1px solid #161616",cursor:secilmez?"default":"pointer",
+                                background: secA > 0 ? "#1C1C1C" : "transparent", opacity: bitti ? 0.45 : bedava ? 0.7 : 1}}>
                         <span style={{width:18,flexShrink:0,color:secA>0?"#FFFFFF":"#3A3A3A",display:"flex"}}>
                           <Ikon ad={secA > 0 ? "onayli" : "bos"} boy={17}/>
                         </span>
@@ -771,7 +780,8 @@ export default function PaymentPage() {
                             {k.product_name}{k.quantity > 1 ? ` ×${k.quantity}` : ""}
                           </div>
                           <div style={{fontSize:11,color:"#888",marginTop:1}}>
-                            {bitti ? "ödendi" : (k.odenen_adet > 0 ? `${k.odenen_adet} ödendi · ${kalanA} kaldı` : `₺${Math.round(k.final_price)}`)}
+                            {bitti ? "ödendi" : bedava ? (k.is_treat ? "ikram · ödeme gerekmez" : "₺0 · ödeme gerekmez")
+                              : (k.odenen_adet > 0 ? `${k.odenen_adet} ödendi · ${kalanA} kaldı` : `₺${Math.round(k.final_price)}`)}
                             {secA > 0 && kalanA > 1 && <> · seçilen {secA}</>}
                           </div>
                         </div>

@@ -1,4 +1,5 @@
 import { useState, useEffect } from "react";
+import { uyar } from "../../lib/uyar.js";
 import { supabase } from "../../lib/supabase.js";
 import { useAuth } from "../../contexts/AuthContext.jsx";
 import Ikon from "../../components/Ikon.jsx";
@@ -44,22 +45,22 @@ export default function CategorySchedulePage() {
 
   const toggle = async (id, val) => {
     const { error } = await supabase.from("category_schedule_rules").update({ is_active: val }).eq("id", id);
-    if (error) { alert("Değiştirilemedi: " + error.message); return; }
+    if (error) { uyar("Değiştirilemedi: " + error.message); return; }
     load();
   };
 
   const remove = async (id) => {
     if (!confirm("Bu kuralı silmek istediğinizden emin misiniz?")) return;
     const { error } = await supabase.from("category_schedule_rules").delete().eq("id", id);
-    if (error) { alert("Silinemedi: " + error.message); return; }
+    if (error) { uyar("Silinemedi: " + error.message); return; }
     load();
   };
 
   const save = async () => {
-    if (!form.name) return alert("Kural ismi gerekli");
+    if (!form.name) return uyar("Kural ismi gerekli");
     const catCount = Object.keys(form.category_overrides).length;
     const prodCount = Object.keys(form.product_overrides).length;
-    if (catCount === 0 && prodCount === 0) return alert("En az bir kategori veya ürün seçin");
+    if (catCount === 0 && prodCount === 0) return uyar("En az bir kategori veya ürün seçin");
     const payload = {
       name: form.name,
       start_time: form.start_time,
@@ -72,7 +73,7 @@ export default function CategorySchedulePage() {
       is_active: true,
     };
     const { error } = await supabase.from("category_schedule_rules").insert(payload);
-    if (error) return alert("Hata: " + error.message);
+    if (error) return uyar("Hata: " + error.message);
     setShowAdd(false);
     setForm({ name: "", start_time: "22:00", end_time: "06:00", days_of_week: [1, 2, 3, 4, 5, 6, 7], category_overrides: {}, product_overrides: {} });
     load();

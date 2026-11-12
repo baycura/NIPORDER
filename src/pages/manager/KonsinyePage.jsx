@@ -1,4 +1,6 @@
 import { useEffect, useMemo, useRef, useState } from "react";
+import { baslikStil } from "../../theme/panel.js";
+import { uyar } from "../../lib/uyar.js";
 import { useSearchParams } from "react-router-dom";
 import { supabase } from "../../lib/supabase.js";
 import { useAuth } from "../../contexts/AuthContext.jsx";
@@ -122,7 +124,7 @@ export default function KonsinyePage() {
     setBusy(h.id);
     const { data, error } = await supabase.rpc("nip_konsinye_odendi", { p_id: h.id, p_geri: !!geri });
     setBusy(null);
-    if (error) { alert("Kaydedilemedi: " + error.message); return; }
+    if (error) { uyar("Kaydedilemedi: " + error.message); return; }
     setHesaplar(list => (list || []).map(x => x.id === h.id ? { ...x, ...(data || {}) } : x));
   };
 
@@ -133,8 +135,8 @@ export default function KonsinyePage() {
     setBusy("kes");
     const { data, error } = await supabase.rpc("nip_konsinye_hesap_kes", { p_store_id: storeId, p_donem: kesimAy + "-01" });
     setBusy(null);
-    if (error) { alert("Kesilemedi: " + error.message); return; }
-    alert(`${ayEtiketi(kesimAy)}: ${Number(data) || 0} tedarikçi hesabı kesildi.`);
+    if (error) { uyar("Kesilemedi: " + error.message); return; }
+    uyar(`${ayEtiketi(kesimAy)}: ${Number(data) || 0} tedarikçi hesabı kesildi.`, "basari");
     hesaplariYukle();
   };
   // Secili ayin hesaplarini tedarikci basina Excel olarak e-postayla yolla
@@ -154,8 +156,8 @@ export default function KonsinyePage() {
     }
     hesaplariYukle();
     // E-posta gidemezse fonksiyon dosyalari sahibin Telegram'ina belge olarak yollar
-    if (hataMetni) { alert("E-posta gönderilemedi: " + hataMetni + (tg ? "\n\nDosyalar Telegram'a gönderildi." : "")); return; }
-    alert(`Gönderildi: ${(data?.dosyalar || []).length} dosya → ${(data?.alicilar || []).join(", ")}`);
+    if (hataMetni) { uyar("E-posta gönderilemedi: " + hataMetni + (tg ? "\n\nDosyalar Telegram'a gönderildi." : "")); return; }
+    uyar(`Gönderildi: ${(data?.dosyalar || []).length} dosya → ${(data?.alicilar || []).join(", ")}`, "basari");
   };
 
   // ---- Tedarikciye giden metin / CSV (Excel ile ayni duzen)
@@ -233,8 +235,8 @@ export default function KonsinyePage() {
   return (
     <div style={{ padding: 16, fontFamily: cv, color: C.ink, maxWidth: 900, margin: "0 auto", paddingBottom: 80 }}>
       <div style={{ display: "flex", justifyContent: "space-between", alignItems: "baseline", flexWrap: "wrap", gap: 8 }}>
-        <h1 style={{ fontFamily: hv, fontWeight: 900, fontSize: 34, margin: 0, letterSpacing: 1 }}>
-          <Ikon ad="raf" boy={22} style={{ marginRight: 10 }} />KONSİNYE HESABI
+        <h1 style={{ ...baslikStil, display: "flex", alignItems: "center" }}>
+          <Ikon ad="raf" boy={22} style={{ marginRight: 10 }} />Konsinye Hesabı
         </h1>
         <button type="button" onClick={yukle} title="Yenile" style={{ background: "none", border: `1px solid ${C.line}`, color: C.muted, borderRadius: 6, padding: "4px 8px", cursor: "pointer", display: "inline-flex" }}><Ikon ad="yenile" boy={13} /></button>
       </div>

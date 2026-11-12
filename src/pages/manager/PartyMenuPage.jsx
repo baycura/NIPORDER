@@ -1,4 +1,5 @@
 import { useEffect, useMemo, useState } from "react";
+import { uyar } from "../../lib/uyar.js";
 import { supabase } from "../../lib/supabase.js";
 import { useAuth } from "../../contexts/AuthContext.jsx";
 import Ikon from "../../components/Ikon.jsx";
@@ -77,7 +78,7 @@ export default function PartyMenuPage() {
     setBekleyen(b => { const o = { ...b }; delete o[u.id]; return o; });
     if (error) {
       setUrunler(list => list.map(x => x.id === u.id ? { ...x, [alan]: u[alan] } : x));
-      alert("Kaydedilemedi: " + error.message);
+      uyar("Kaydedilemedi: " + error.message);
     }
   };
 
@@ -91,7 +92,7 @@ export default function PartyMenuPage() {
       .update({ show_in_party_menu: yeniDeger }).in("id", idler);
     if (error) {
       setUrunler(list => list.map(x => idler.includes(x.id) ? { ...x, show_in_party_menu: !yeniDeger } : x));
-      alert("Kaydedilemedi: " + error.message);
+      uyar("Kaydedilemedi: " + error.message);
     }
   };
 

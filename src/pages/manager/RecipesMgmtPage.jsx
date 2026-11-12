@@ -1,4 +1,5 @@
 import { useEffect, useState, useMemo } from "react";
+import { uyar } from "../../lib/uyar.js";
 import { supabase, hataMetni } from "../../lib/supabase.js";
 import { useAuth } from "../../contexts/AuthContext.jsx";
 import { ozellik } from "../../lib/profil.js";
@@ -86,20 +87,20 @@ export default function RecipesMgmtPage() {
   const addIngredient = async (ing, qty) => {
     if (!selectedProduct) return;
     const exists = recipes.find(r => r.product_id === selectedProduct.id && r.ingredient_id === ing.id);
-    if (exists) { alert(ing.name + " zaten reçetede — miktarını aşağıdan düzenleyebilirsin."); return; }
+    if (exists) { uyar(ing.name + " zaten reçetede — miktarını aşağıdan düzenleyebilirsin."); return; }
     const payload = { product_id: selectedProduct.id, ingredient_id: ing.id, qty_per_unit: qty ?? defaultQty(ing), store_id: storeId };
     const temp = { ...payload, id: "temp-" + Date.now() };
     setRecipes(prev => [...prev, temp]);
     setIngSearch("");
     const { data, error } = await supabase.from("recipes").insert(payload).select().single();
-    if (error) { setRecipes(prev => prev.filter(r => r.id !== temp.id)); alert("Hata: " + error.message); return; }
+    if (error) { setRecipes(prev => prev.filter(r => r.id !== temp.id)); uyar("Hata: " + error.message); return; }
     setRecipes(prev => prev.map(r => r.id === temp.id ? data : r));
   };
 
   const removeRecipe = async (r) => {
     setRecipes(prev => prev.filter(x => x.id !== r.id));
     const { error } = await supabase.from("recipes").delete().eq("id", r.id);
-    if (error) { alert("Hata: " + error.message); load(); }
+    if (error) { uyar("Hata: " + error.message); load(); }
   };
 
   const setQty = async (r, val) => {
@@ -107,7 +108,7 @@ export default function RecipesMgmtPage() {
     setRecipes(prev => prev.map(x => x.id === r.id ? { ...x, qty_per_unit: qty } : x));
     if (String(r.id).startsWith("temp-")) return;
     const { error } = await supabase.from("recipes").update({ qty_per_unit: qty }).eq("id", r.id);
-    if (error) { alert("Hata: " + error.message); load(); }
+    if (error) { uyar("Hata: " + error.message); load(); }
   };
 
   // Sadece parti gecesi tuketilen sarf (PET bardak): satis aninda
@@ -116,7 +117,7 @@ export default function RecipesMgmtPage() {
     setRecipes(prev => prev.map(x => x.id === r.id ? { ...x, party_only: val } : x));
     if (String(r.id).startsWith("temp-")) return;
     const { error } = await supabase.from("recipes").update({ party_only: val }).eq("id", r.id);
-    if (error) { alert("Hata: " + error.message); load(); }
+    if (error) { uyar("Hata: " + error.message); load(); }
   };
 
   const toggleConsumable = async (ing) => {
@@ -139,7 +140,7 @@ export default function RecipesMgmtPage() {
       .insert({ name, unit, stock_qty: 0, cost_per_unit: 0, store_id: storeId })
       .select().single();
     setBusy(false);
-    if (error) { alert("Hata: " + error.message); return; }
+    if (error) { uyar("Hata: " + error.message); return; }
     setIngredients(prev => [...prev, data].sort((a, b) => a.name.localeCompare(b.name, "tr")));
     addIngredient(data);
   };
@@ -154,9 +155,9 @@ export default function RecipesMgmtPage() {
       });
       if (error) throw new Error(hataMetni(error));
       if (data?.error) throw new Error(data.error);
-      if (!data.lines?.length) { alert("Malzeme çıkarılamadı — biraz daha açık yaz."); setAiBusy(false); return; }
+      if (!data.lines?.length) { uyar("Malzeme çıkarılamadı — biraz daha açık yaz."); setAiBusy(false); return; }
       setAiPreview(data.lines);
-    } catch (e) { alert("AI hatası: " + (e?.message || e)); }
+    } catch (e) { uyar("AI hatası: " + (e?.message || e)); }
     setAiBusy(false);
   };
 
@@ -189,30 +190,30 @@ export default function RecipesMgmtPage() {
     const rows = targets
       .filter(p => !recipes.find(r => r.product_id === p.id && r.ingredient_id === ing.id))
       .map(p => ({ product_id: p.id, ingredient_id: ing.id, qty_per_unit: defaultQty(ing), store_id: storeId }));
-    if (!rows.length) { alert("Bu kategorideki tüm ürünlerde zaten ekli"); return; }
+    if (!rows.length) { uyar("Bu kategorideki tüm ürünlerde zaten ekli"); return; }
     if (!confirm(ing.name + " → " + rows.length + " ürüne eklenecek. Devam?")) return;
     setBusy(true);
     const { data, error } = await supabase.from("recipes").insert(rows).select();
     setBusy(false);
-    if (error) { alert("Hata: " + error.message); return; }
+    if (error) { uyar("Hata: " + error.message); return; }
     setRecipes(prev => [...prev, ...(data || [])]);
-    alert((data?.length || 0) + " ürüne eklendi");
+    uyar((data?.length || 0) + " ürüne eklendi", "basari");
   };
 
   // Baska bir urunun recetesini kopyala (highball'lar birbirinin ayni)
   const copyRecipe = async (fromId) => {
     if (!fromId || !selectedProduct) return;
     const src = recipes.filter(r => r.product_id === fromId);
-    if (!src.length) { alert("O üründe reçete yok"); return; }
+    if (!src.length) { uyar("O üründe reçete yok"); return; }
     setBusy(true);
     const mine = recipes.filter(r => r.product_id === selectedProduct.id);
     const rows = src
       .filter(r => !mine.find(m => m.ingredient_id === r.ingredient_id))
       .map(r => ({ product_id: selectedProduct.id, ingredient_id: r.ingredient_id, qty_per_unit: r.qty_per_unit, store_id: storeId }));
-    if (!rows.length) { setBusy(false); alert("Tüm malzemeler zaten ekli"); return; }
+    if (!rows.length) { setBusy(false); uyar("Tüm malzemeler zaten ekli"); return; }
     const { data, error } = await supabase.from("recipes").insert(rows).select();
     setBusy(false); setCopyFrom("");
-    if (error) { alert("Hata: " + error.message); return; }
+    if (error) { uyar("Hata: " + error.message); return; }
     setRecipes(prev => [...prev, ...(data || [])]);
   };
 

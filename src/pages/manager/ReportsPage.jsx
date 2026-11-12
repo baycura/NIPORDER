@@ -1,4 +1,5 @@
 import { useEffect, useRef, useState } from "react";
+import { baslikStil } from "../../theme/panel.js";
 import { personelHata } from "../../lib/errorText.js";
 import { Link } from "react-router-dom";
 import { supabase } from "../../lib/supabase.js";
@@ -47,6 +48,10 @@ export default function ReportsPage() {
   const [hata, setHata] = useState(null); // { metin, ilk }
   // Bu magaza icin en az bir basarili okuma oldu mu. State degil ref: 60 sn'lik
   // zamanlayici loadData'nin ESKI kopyasini cagirir, state'i goremez.
+  // GRAFIKTE DOKUNULABILIR DEGER: cubuga dokununca rakami yazilir. Eskiden
+  // rakam yalniz fareyle uzerine gelince (title) gorunuyordu; telefonda hic.
+  const [secSaat, setSecSaat] = useState(null);   // saat
+  const [secGun, setSecGun] = useState(null);     // gunluk dizide sira
   const okundu = useRef(false);
   const istekNo = useRef(0); // magaza degisirken gec gelen eski yanit yazmasin
   const [updatedAt, setUpdatedAt] = useState(null);
@@ -150,7 +155,8 @@ export default function ReportsPage() {
       .reduce((s, o) => s + net(o), 0);
     // Aktif = hala ACIK hesap. Eskiden "odenmemis her sey" sayiliyordu;
     // iptal edilen hesap da aktif gorunuyordu.
-    const active = todayOrders.filter(o => acikDurum.includes(o.status)).length;
+    // Bugün sayfasiyla ayni kural: dun acilip hala acik duran hesap da sayilir.
+    const active = all.filter(o => acikDurum.includes(o.status)).length;
     // Ortalama fis para alinan fislerden: ₺0 kapanan ikram hesabi ortalamayi dusurmesin.
     const paraliFis = todayPaid.filter(o => net(o) > 0.005).length;
     const kitchenToday = todayPaid.reduce((s, o) => s + kitchenOf(o), 0);
@@ -210,7 +216,7 @@ export default function ReportsPage() {
   return (
     <div style={{ fontFamily: cv, maxWidth: 900, margin: "0 auto", color: C.ink }}>
       <div style={{ display: "flex", justifyContent: "space-between", alignItems: "baseline", flexWrap: "wrap", gap: 8 }}>
-        <h1 style={{ fontFamily: hv, fontWeight: 900, fontSize: 34, margin: 0, letterSpacing: 1 }}>Gün Özeti</h1>
+        <h1 style={baslikStil}>Gün Özeti</h1>
         <div style={{ fontSize: 12, color: C.faint }}>
           {new Date().toLocaleDateString("tr-TR", { weekday: "long", day: "numeric", month: "long" })}
           {updatedAt && <> · <span style={{ color: C.muted }}>{updatedAt.toLocaleTimeString("tr-TR", { hour: "2-digit", minute: "2-digit" })}</span></>}
@@ -330,20 +336,27 @@ export default function ReportsPage() {
           <div style={{ ...card, marginBottom: 10 }}>
             <div style={{ display: "flex", justifyContent: "space-between", alignItems: "baseline", marginBottom: 14 }}>
               <div style={label}>Saatlik satış</div>
-              {peak.hour !== null && peak.total > 0 && (
-                <div style={{ fontSize: 12, color: C.muted }}>En yoğun <b style={{ color: C.accent }}>{peak.hour}:00</b> · {fmtTL(peak.total)}</div>
-              )}
+              <div role="status" style={{ fontSize: 12, color: C.muted, fontVariantNumeric: "tabular-nums" }}>
+                {secSaat !== null
+                  ? <><b style={{ color: C.accent }}>{String(secSaat).padStart(2, "0")}:00</b> · {fmtTL(data.hourly.find(h => h.hour === secSaat)?.total)}</>
+                  : peak.hour !== null && peak.total > 0
+                    ? <>En yoğun <b style={{ color: C.accent }}>{peak.hour}:00</b> · {fmtTL(peak.total)}</>
+                    : "Saate dokun: tutarı gör"}
+              </div>
             </div>
             <div style={{ display: "flex", alignItems: "flex-end", gap: 3, height: 130 }}>
               {data.hourly.map(h => (
-                <div key={h.hour} style={{ flex: 1, textAlign: "center", display: "flex", flexDirection: "column", justifyContent: "flex-end", height: "100%" }}>
+                <button key={h.hour} type="button" onClick={() => setSecSaat(secSaat === h.hour ? null : h.hour)}
+                  aria-label={`${String(h.hour).padStart(2, "0")}:00 — ${fmtTL(h.total)}`} aria-pressed={secSaat === h.hour}
+                  style={{ flex: 1, minWidth: 0, minHeight: 0, padding: 0, background: "none", border: "none", cursor: "pointer", fontFamily: "inherit",
+                           textAlign: "center", display: "flex", flexDirection: "column", justifyContent: "flex-end", height: "100%" }}>
                   <div style={{
-                    background: h.hour === peak.hour && h.total > 0 ? C.accent : h.total > 0 ? "#8A8580" : "#222",
+                    background: secSaat === h.hour ? C.accent : h.hour === peak.hour && h.total > 0 && secSaat === null ? C.accent : h.total > 0 ? "#8A8580" : "#222",
                     height: `${Math.max((h.total / maxHour) * 100, 2)}%`,
                     borderRadius: "3px 3px 0 0",
-                  }} title={`${h.hour}:00 — ${fmtTL(h.total)}`} />
-                  <div style={{ fontSize: 10, color: h.hour % 2 === 0 ? C.muted : "transparent", marginTop: 5 }}>{h.hour}</div>
-                </div>
+                  }} />
+                  <div style={{ fontSize: 10, color: secSaat === h.hour ? C.accent : h.hour % 2 === 0 ? C.muted : "transparent", marginTop: 5 }}>{h.hour}</div>
+                </button>
               ))}
             </div>
           </div>
@@ -351,20 +364,31 @@ export default function ReportsPage() {
           {/* 14-day trend + top products side by side on wide screens */}
           <div style={{ display: "grid", gridTemplateColumns: "repeat(auto-fit, minmax(280px, 1fr))", gap: 10 }}>
             <div style={card}>
-              <div style={{ ...label, marginBottom: 14 }}>Son 14 gün</div>
+              <div style={{ display: "flex", justifyContent: "space-between", alignItems: "baseline", gap: 8, marginBottom: 14 }}>
+                <div style={label}>Son 14 gün</div>
+                <div role="status" style={{ fontSize: 12, color: C.muted, fontVariantNumeric: "tabular-nums", textAlign: "right" }}>
+                  {secGun !== null && data.daily[secGun]
+                    ? (() => { const d = data.daily[secGun]; return <><b style={{ color: C.accent }}>{d.date.toLocaleDateString("tr-TR", { day: "numeric", month: "short" })}</b> · {fmtTL(d.total)} · {d.orders} fiş{d.kitchen > 0 ? ` · mutfak ${fmtTL(d.kitchen)}` : ""}</>; })()
+                    : "Güne dokun: tutarı gör"}
+                </div>
+              </div>
               <div style={{ display: "flex", alignItems: "flex-end", gap: 3, height: 110 }}>
                 {data.daily.map((d, i) => {
                   const isToday = i === data.daily.length - 1;
+                  const secili = secGun === i;
                   return (
-                    <div key={i} style={{ flex: 1, textAlign: "center", display: "flex", flexDirection: "column", justifyContent: "flex-end", height: "100%" }}>
-                      {isToday && <div style={{ fontSize: 10, color: C.accent, marginBottom: 3, whiteSpace: "nowrap" }}>{fmtTL(d.total).replace("₺", "")}</div>}
+                    <button key={i} type="button" onClick={() => setSecGun(secili ? null : i)} aria-pressed={secili}
+                      aria-label={`${d.date.toLocaleDateString("tr-TR", { day: "numeric", month: "short" })} — ${fmtTL(d.total)} · ${d.orders} fiş`}
+                      style={{ flex: 1, minWidth: 0, minHeight: 0, padding: 0, background: "none", border: "none", cursor: "pointer", fontFamily: "inherit",
+                               textAlign: "center", display: "flex", flexDirection: "column", justifyContent: "flex-end", height: "100%" }}>
+                      {isToday && secGun === null && <div style={{ fontSize: 10, color: C.accent, marginBottom: 3, whiteSpace: "nowrap" }}>{fmtTL(d.total).replace("₺", "")}</div>}
                       <div style={{
-                        background: isToday ? C.accent : d.total > 0 ? "#3a3a36" : "#222",
+                        background: secili ? C.accent : isToday && secGun === null ? C.accent : d.total > 0 ? "#3a3a36" : "#222",
                         height: `${Math.max((d.total / maxDay) * 70, 3)}%`,
                         borderRadius: "3px 3px 0 0",
-                      }} title={`${d.date.toLocaleDateString("tr-TR", { day: "numeric", month: "short" })} — ${fmtTL(d.total)} · ${d.orders} fiş${d.kitchen > 0 ? ` · mutfak ${fmtTL(d.kitchen)}` : ""}`} />
-                      <div style={{ fontSize: 9, color: isToday ? C.accent : i % 2 === 0 ? C.muted : "transparent", marginTop: 5, fontWeight: isToday ? 700 : 400 }}>{d.date.getDate()}</div>
-                    </div>
+                      }} />
+                      <div style={{ fontSize: 9, color: secili || isToday ? C.accent : i % 2 === 0 ? C.muted : "transparent", marginTop: 5, fontWeight: secili || isToday ? 700 : 400 }}>{d.date.getDate()}</div>
+                    </button>
                   );
                 })}
               </div>

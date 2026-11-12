@@ -1,4 +1,6 @@
 import { useEffect, useState } from "react";
+import { uyar } from "../../lib/uyar.js";
+import FormPencere, { altlikStil } from "../../components/FormPencere.jsx";
 import { parseUblInvoice } from "../../lib/ublInvoice.js";
 import { supabase, hataMetni } from "../../lib/supabase.js";
 import { useAuth } from "../../contexts/AuthContext.jsx";
@@ -113,7 +115,7 @@ export default function InvoicesPage() {
       URL.revokeObjectURL(url);
       resolve(canvas.toDataURL("image/jpeg", 0.85).split(",")[1]);
     };
-    img.onerror = () => { URL.revokeObjectURL(url); reject(new Error("Fotograf okunamadi")); };
+    img.onerror = () => { URL.revokeObjectURL(url); reject(new Error("Fotoğraf okunamadı")); };
     img.src = url;
   });
 
@@ -165,7 +167,7 @@ export default function InvoicesPage() {
     if (!file) return;
     try {
       const parsed = parseUblInvoice(await file.text());
-      if (!parsed.lines.length) { alert("XML'de fatura kalemi bulunamadi"); return; }
+      if (!parsed.lines.length) { uyar("XML'de fatura kalemi bulunamadı"); return; }
       setForm(f => ({
         ...f,
         supplier_name: parsed.supplier_name || f.supplier_name,
@@ -195,11 +197,11 @@ export default function InvoicesPage() {
         currency: parsed.currency,
       });
     } catch (err) {
-      alert("XML okunamadi: " + (err?.message || err));
+      uyar("XML okunamadı: " + (err?.message || err));
     }
   };
   const runOcr = async () => {
-    if (!photoFile) { alert("Once fatura fotografi sec"); return; }
+    if (!photoFile) { uyar("Önce fatura fotoğrafı seç"); return; }
     if (ocrBusy) return;
     setOcrBusy(true);
     try {
@@ -238,12 +240,12 @@ export default function InvoicesPage() {
       if (newLines.length) {
         setLines(newLines);
         const matched = newLines.filter(l => !l.isNew).length;
-        alert(newLines.length + " kalem okundu (" + matched + " mevcut hammaddeyle eslesti). Kontrol edip kaydet.");
+        uyar(newLines.length + " kalem okundu (" + matched + " mevcut hammaddeyle eşleşti). Kontrol edip kaydet.", "basari");
       } else {
-        alert("Faturada kalem okunamadi — fotografi daha net cekip tekrar dene.");
+        uyar("Faturada kalem okunamadı — fotoğrafı daha net çekip tekrar dene.");
       }
     } catch (e) {
-      alert("AI okuma hatasi: " + (e?.message || e));
+      uyar("AI okuma hatası: " + (e?.message || e));
     }
     setOcrBusy(false);
   };
@@ -284,8 +286,8 @@ export default function InvoicesPage() {
 
   const saveInvoice = async () => {
     if (busy) return;
-    if (!form.supplier_name?.trim()) { alert("Tedarikci adi gerekli"); return; }
-    if (lines.length === 0) { alert("En az bir kalem ekle"); return; }
+    if (!form.supplier_name?.trim()) { uyar("Tedarikçi adı gerekli"); return; }
+    if (lines.length === 0) { uyar("En az bir kalem ekle"); return; }
 
     // MUKERRER FATURA KONTROLU. Ayni fatura iki kez girilince hem gider iki kez
     // sayiliyor hem de stok sisiyor; bir kez yasandi (ERBAK, 8 ve 17 Agustos).
@@ -297,9 +299,9 @@ export default function InvoicesPage() {
         .eq("store_id", staffUser?.store_ids?.[0]).eq("invoice_no", faturaNo).limit(1);
       const v = ayni?.[0];
       if (v && !confirm(
-        `"${faturaNo}" numarali fatura zaten kayitli:\n` +
+        `"${faturaNo}" numaralı fatura zaten kayıtlı:\n` +
         `${v.supplier_name} · ${v.invoice_date} · ₺${Math.round(Number(v.total_amount) || 0).toLocaleString("tr-TR")}\n\n` +
-        `Yine de kaydedilsin mi? (Gider${STOK_YAZ ? " ve stok" : ""} iki kez sayilir.)`
+        `Yine de kaydedilsin mi? (Gider${STOK_YAZ ? " ve stok" : ""} iki kez sayılır.)`
       )) return;
     }
 
@@ -314,7 +316,7 @@ export default function InvoicesPage() {
       notes: form.notes?.trim() || null,
       store_id: staffUser?.store_ids?.[0],
     }).select().single();
-    if (invErr) { alert("Hata: " + invErr.message); setBusy(false); return; }
+    if (invErr) { uyar("Hata: " + invErr.message); setBusy(false); return; }
 
     // Create new ingredients if needed and insert items + bump stock
     const anomalies = [];
@@ -348,7 +350,7 @@ export default function InvoicesPage() {
               store_id: staffUser?.store_ids?.[0],
               name: nm, unit: l.newUnit, stock_qty: 0, cost_per_unit: 0,
             }).select().single();
-            if (e) { alert("Ingredient hatasi: " + e.message); continue; }
+            if (e) { uyar("Hammadde hatası: " + e.message); continue; }
             ingId = newIng.id;
             createdThisRun[key] = ingId;
           }
@@ -407,7 +409,7 @@ export default function InvoicesPage() {
           p_kalemler: [{ ingredient_id: ingId, miktar: qty }],
           p_not: "Fatura" + (faturaNo ? " " + faturaNo : "") + " · " + form.supplier_name.trim(),
         });
-        if (stokHata) { alert("Stok islenemedi (" + (ing?.name || "kalem") + "): " + stokHata.message); }
+        if (stokHata) { uyar("Stok işlenemedi (" + (ing?.name || "kalem") + "): " + stokHata.message); }
       }
       // MALIYET stogun disinda: ayni hammadde birden fazla satirda geciyorsa
       // AGIRLIKLI ORTALAMA olmali. Aksi halde son satir kazanir; bedelsiz
@@ -436,12 +438,12 @@ export default function InvoicesPage() {
     setBusy(false); setModal(null); load(true);
     alert(anomalies.length
       ? "Fatura kaydedildi. " + anomalies.length + " üründe anormal fiyat artışı (%" + PRICE_ALERT_PCT + "+)" + (ozellik("telegram") ? " — sahibe Telegram uyarısı gönde" : ".") + "rildi."
-      : STOK_YAZ ? "Fatura kaydedildi! Stok guncellendi."
+      : STOK_YAZ ? "Fatura kaydedildi! Stok güncellendi."
                  : "Fatura kaydedildi (gider). Stok ve maliyet DEĞİŞMEDİ — stoğu Stok Yönetimi'nden gir.");
   };
 
   const del = async (inv) => {
-    if (!confirm(STOK_YAZ ? "Fatura silinsin mi? (Stok geri alinmaz)"
+    if (!confirm(STOK_YAZ ? "Fatura silinsin mi? (Stok geri alınmaz)"
                           : "Fatura silinsin mi? (Bu fatura stoğa zaten dokunmadı)")) return;
     await supabase.from("supplier_invoices").delete().eq("id", inv.id);
     load(true);
@@ -526,7 +528,7 @@ export default function InvoicesPage() {
 
       {modal && (
         <Modal onClose={()=>setModal(null)} title={modal.mode === "manual" ? "Manuel Stok Girişi" : "Yeni Fatura"}>
-          <Field label="TEDARİKÇİ"><input value={form.supplier_name||""} onChange={e=>setForm(f => ({...f,supplier_name:e.target.value}))} placeholder="orn: Anadolu Efes" style={inputS}/></Field>
+          <Field label="TEDARİKÇİ"><input value={form.supplier_name||""} onChange={e=>setForm(f => ({...f,supplier_name:e.target.value}))} placeholder="örn: Anadolu Efes" style={inputS}/></Field>
           <div style={{display:"flex",gap:8}}>
             <Field label="TARİH"><input type="date" value={form.invoice_date||""} onChange={e=>setForm(f => ({...f,invoice_date:e.target.value}))} style={inputS}/></Field>
             {modal.mode !== "manual" && (
@@ -559,15 +561,15 @@ export default function InvoicesPage() {
               isletmede fatura elle ya da e-Fatura XML'iyle girilir. */}
           {modal.mode !== "manual" && ozellik("faturaOcr") && (
           <div style={{marginBottom:14,background:"rgba(255,255,255,0.06)",border:"1px dashed #FFFFFF",borderRadius:10,padding:12}}>
-            <div style={{fontSize:12,color:"#8A8580",letterSpacing:"0.2px",fontWeight:600,marginBottom:5,display:"flex",alignItems:"center",gap:6}}><Ikon ad="parlak" boy={13}/>FATURA FOTOSUNDAN OTOMATIK DOLDUR</div>
+            <div style={{fontSize:12,color:"#8A8580",letterSpacing:"0.2px",fontWeight:600,marginBottom:5,display:"flex",alignItems:"center",gap:6}}><Ikon ad="parlak" boy={13}/>FATURA FOTOSUNDAN OTOMATİK DOLDUR</div>
             <input type="file" accept="image/*" capture="environment" onChange={onPhoto} style={{...inputS, padding:"8px"}}/>
             {photoPreview && <img src={photoPreview} alt="" style={{marginTop:8,maxHeight:120,borderRadius:8,objectFit:"cover"}}/>}
             {photoFile && (
               <button onClick={runOcr} disabled={ocrBusy} style={{width:"100%",marginTop:8,padding:"10px",background:ocrBusy?"#555":"#FFFFFF",color:"#000",border:"none",borderRadius:8,fontSize:13,fontWeight:800,cursor:ocrBusy?"wait":"pointer"}}>
-                {ocrBusy ? "AI okuyor... (10-30 sn)" : <><Ikon ad="parlak" boy={14} style={{marginRight:6}}/>Fotograftan doldur (AI)</>}
+                {ocrBusy ? "AI okuyor... (10-30 sn)" : <><Ikon ad="parlak" boy={14} style={{marginRight:6}}/>Fotoğraftan doldur (AI)</>}
               </button>
             )}
-            <div style={{fontSize:10,color:"#888",marginTop:6}}>Fotograf saklanmaz. Birim fiyatlar KDV DAHIL hesaplanir (satirdaki KDV orani uygulanir). Okunan kalemleri kontrol edip kaydet.</div>
+            <div style={{fontSize:10,color:"#888",marginTop:6}}>Fotoğraf saklanmaz. Birim fiyatlar KDV DAHİL hesaplanır (satırdaki KDV oranı uygulanır). Okunan kalemleri kontrol edip kaydet.</div>
           </div>
           )}
           {!STOK_YAZ && (
@@ -580,7 +582,7 @@ export default function InvoicesPage() {
           )}
           {modal.mode === "manual" && (
             <div style={{marginBottom:14,background:"rgba(111,179,192,0.08)",border:"1px dashed #8A8580",borderRadius:10,padding:10,fontSize:11,color:"#F0EDE8",lineHeight:1.5}}>
-              <Ikon ad="stok" boy={13} style={{marginRight:5}}/>Eldeki mevcut stogu sayip giriyorsun — fatura gerekmez. Birim maliyeti bos (0) birakirsan urunun mevcut maliyeti korunur; biliyorsan girmen maliyet hesaplarini iyilestirir.
+              <Ikon ad="stok" boy={13} style={{marginRight:5}}/>Eldeki mevcut stoğu sayıp giriyorsun — fatura gerekmez. Birim maliyeti boş (0) bırakırsan ürünün mevcut maliyeti korunur; biliyorsan girmen maliyet hesaplarını iyileştirir.
             </div>
           )}
 
@@ -596,14 +598,14 @@ export default function InvoicesPage() {
                 </div>
                 {l.isNew ? (
                   <div style={{display:"flex",gap:6,marginBottom:6}}>
-                    <input value={l.newName||""} onChange={e=>updateLine(idx,"newName",e.target.value)} placeholder="Yeni hammadde adi" style={{...inputS, flex:2, padding:"8px"}}/>
+                    <input value={l.newName||""} onChange={e=>updateLine(idx,"newName",e.target.value)} placeholder="Yeni hammadde adı" style={{...inputS, flex:2, padding:"8px"}}/>
                     <select value={l.newUnit||"ml"} onChange={e=>updateLine(idx,"newUnit",e.target.value)} style={{...inputS, flex:1, padding:"8px"}}>
                       {UNITS.map(u=>(<option key={u}>{u}</option>))}
                     </select>
                   </div>
                 ) : (
                   <select value={l.ingredient_id||""} onChange={e=>updateLine(idx,"ingredient_id",e.target.value)} style={{...inputS, marginBottom:6, padding:"8px"}}>
-                    <option value="">- Hammadde sec -</option>
+                    <option value="">- Hammadde seç -</option>
                     {ingredients.map(i => (<option key={i.id} value={i.id}>{i.name} ({i.unit})</option>))}
                   </select>
                 )}
@@ -683,7 +685,7 @@ export default function InvoicesPage() {
             <div style={{fontSize:18,color:"#F0EDE8",fontWeight:800}}>₺{Math.round(linesTotal).toLocaleString("tr-TR")}</div>
           </div>
 
-          <div style={{display:"flex",gap:8}}>
+          <div style={{display:"flex",gap:8,...altlikStil}}>
             <button onClick={()=>setModal(null)} style={cancelBtn}>İptal</button>
             <button onClick={saveInvoice} disabled={busy} style={{...saveBtn,opacity:busy?0.6:1}}>{busy?"Kaydediliyor…":"Faturayı Kaydet"}</button>
           </div>
@@ -704,11 +706,6 @@ function Field({label, children}) {
   </div>);
 }
 
-function Modal({title, children, onClose}) {
-  return (<div onClick={onClose} style={{position:"fixed",inset:0,background:"rgba(0,0,0,0.75)",display:"flex",alignItems:"flex-end",justifyContent:"center",zIndex:100}}>
-    <div onClick={e => e.stopPropagation()} style={{background:"#161616",border:"1px solid #2A2A2A",borderRadius:"16px 16px 0 0",padding:20,width:"100%",maxWidth:560,maxHeight:"95vh",overflowY:"auto"}}>
-      <div style={{fontSize:18,fontWeight:800,color:"#F0EDE8",marginBottom:16}}>{title}</div>
-      {children}
-    </div>
-  </div>);
-}
+// Ortak form penceresi (components/FormPencere.jsx): karartma kapatmaz,
+// baslik ve kapat dugmesi ustte sabit.
+function Modal(props) { return <FormPencere {...props} en={560} boy="95vh" />; }

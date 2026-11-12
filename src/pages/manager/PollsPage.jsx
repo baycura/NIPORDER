@@ -1,4 +1,5 @@
 import { useEffect, useState } from "react";
+import { uyar } from "../../lib/uyar.js";
 import { supabase, hataMetni } from "../../lib/supabase.js";
 import { useAuth } from "../../contexts/AuthContext.jsx";
 import Ikon from "../../components/Ikon.jsx";
@@ -75,11 +76,11 @@ export default function PollsPage() {
 
   const save = async () => {
     if (busy) return;
-    if (!form.question.trim()) { alert("Soru gerekli"); return; }
+    if (!form.question.trim()) { uyar("Soru gerekli"); return; }
     const opts = (form.options || []).filter(o => o.tr?.trim());
-    if (!opts.length && !form.allow_free_text) { alert("En az bir seçenek gir ya da serbest cevabı aç"); return; }
+    if (!opts.length && !form.allow_free_text) { uyar("En az bir seçenek gir ya da serbest cevabı aç"); return; }
     const storeId = staffUser?.store_ids?.[0];
-    if (!storeId) { alert("Hesabına mağaza atanmamış — yönetici ile görüş."); return; }
+    if (!storeId) { uyar("Hesabına mağaza atanmamış — yönetici ile görüş."); return; }
     setBusy(true);
     const payload = {
       store_id: storeId,
@@ -96,21 +97,21 @@ export default function PollsPage() {
       ? await supabase.from("polls").insert(payload)
       : await supabase.from("polls").update(payload).eq("id", modal.data.id);
     setBusy(false);
-    if (error) { alert("Hata: " + error.message); return; }
+    if (error) { uyar("Hata: " + error.message); return; }
     setModal(null); load(true);
   };
 
   const toggleActive = async (p) => {
     const { data, error } = await supabase.from("polls").update({ is_active: !p.is_active }).eq("id", p.id).select("id");
-    if (error) { alert("Değiştirilemedi: " + error.message); return; }
-    if (!data?.length) { alert("Değiştirilemedi: bu işlem için yetkin yok."); return; }
+    if (error) { uyar("Değiştirilemedi: " + error.message); return; }
+    if (!data?.length) { uyar("Değiştirilemedi: bu işlem için yetkin yok."); return; }
     load(true);
   };
 
   const del = async (p) => {
     if (!confirm('"' + p.question + '" silinsin mi? (oylar da silinir)')) return;
     const { error } = await supabase.from("polls").delete().eq("id", p.id);
-    if (error) { alert("Silinemedi: " + error.message); return; }
+    if (error) { uyar("Silinemedi: " + error.message); return; }
     load(true);
   };
 
@@ -124,7 +125,7 @@ export default function PollsPage() {
       if (error) throw new Error(hataMetni(error));
       if (data?.error) throw new Error(data.error);
       setAiPolls(data.polls || []);
-    } catch (e) { alert("AI hatası: " + (e?.message || e)); }
+    } catch (e) { uyar("AI hatası: " + (e?.message || e)); }
     setAiBusy(false);
   };
 

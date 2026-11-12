@@ -1,4 +1,5 @@
 import { Outlet, NavLink, useNavigate, useLocation } from "react-router-dom";
+import UyariYuvasi from "../../components/UyariYuvasi.jsx";
 import { APP_HOST } from "../../lib/appUrl.js";
 import { useState, useEffect, useRef } from "react";
 import { useAuth } from "../../contexts/AuthContext.jsx";
@@ -148,6 +149,7 @@ export default function StaffLayout() {
     return (<div style={{display:"flex",background:"#0C0C0C",minHeight:"100vh"}}>
       <aside style={{position:"fixed",left:0,top:0,zIndex:50}}><Sidebar/></aside>
       <main style={{marginLeft:240,flex:1,padding:"28px 32px",overflowY:"auto",maxHeight:"100vh"}}><Outlet/></main>
+      <UyariYuvasi/>
       <QrSerit serit={qr.serit} onAc={qrHesabaGit} onKapat={qr.seritKapat}/>
     </div>);
   }
@@ -158,12 +160,31 @@ export default function StaffLayout() {
   const hesabaGider = isViewer || isParttime;
   const avatarTikla = () => navigate(hesabaGider ? "/hub" : "/myshift");
 
+  // GERI DUGMESI: Menü'den acilan sayfalarda (alt barda sekmesi olmayan ~30
+  // sayfa) gorunur bir donus yolu yoktu; yalniz kenardan kaydirma vardi ve
+  // kurulu uygulamada tarayicinin geri tusu da yok. Bu sayfalarda logo
+  // karesinin yerine geri dugmesi gelir ve alt barda "Menü" secili kalir.
+  // Hesap sayfasi (/orders/:id) gibi kendi geri dugmesi olan sayfalar haric.
+  const sekmeYollari = sekmeler.map(i => i.to);
+  const eslesir = (to) => pathname === to || pathname.startsWith(to + "/");
+  const menuSayfasi = !sekmeYollari.some(eslesir) && pathname !== "/hub"
+    && gruplar.some(g => g.items.some(i => !i.external && pathname === i.to));
+  // Dogrudan baglantiyla acildiysa gecmis bos: Menü'ye gider.
+  const geriGit = () => { if (window.history.state?.idx > 0) navigate(-1); else navigate("/hub"); };
+
   return (<div style={{background:"#0C0C0C",minHeight:"100vh",fontFamily:cv}} onTouchStart={onTouchStart} onTouchEnd={onTouchEnd}>
     {/* Dikey dolgu 6px: 44px'lik dugmelerle ust serit eski yuksekliginde (57px) kalir. */}
     <header style={{display:"flex",alignItems:"center",justifyContent:"space-between",padding:"6px 14px",background:"#161616",borderBottom:"1px solid #2A2A2A",position:"sticky",top:0,zIndex:40}}>
       <div style={{display:"flex",alignItems:"center",gap:8}}>
+        {menuSayfasi ? (
+          <button onClick={geriGit} aria-label="Geri"
+            style={{minWidth:44,height:44,margin:"0 0 0 -8px",padding:"0 10px 0 8px",background:"none",border:"none",color:"#F0EDE8",display:"flex",alignItems:"center",gap:6,cursor:"pointer",fontFamily:cv,fontSize:14,fontWeight:700}}>
+            <Ikon ad="oksol" boy={20}/>Menü
+          </button>
+        ) : (<>
         <div style={{width:30,height:30,borderRadius:8,background:"#FFFFFF",display:"flex",alignItems:"center",justifyContent:"center",fontSize:16,color:"#000",fontWeight:900}}>{MARKA.harf}</div>
         <div lang={MARKA.dil} style={{color:"#F0EDE8",fontSize:15,fontWeight:400,fontFamily:"'Coolvetica Heavy',"+cv,textTransform:"uppercase",letterSpacing:"0.005em"}}>{MARKA.ad}</div>
+        </>)}
       </div>
       <div style={{display:"flex",alignItems:"center",gap:8}}>
         {qrSesDugmesi}
@@ -176,10 +197,11 @@ export default function StaffLayout() {
       </div>
     </header>
     <main style={{padding:"16px 14px",paddingBottom:84,minHeight:"calc(100vh - 57px)"}}><Outlet/></main>
+    <UyariYuvasi/>
     <QrSerit serit={qr.serit} onAc={qrHesabaGit} onKapat={qr.seritKapat} mobil/>
     <nav style={{position:"fixed",bottom:0,left:0,right:0,background:"#161616",borderTop:"1px solid #2A2A2A",display:"flex",justifyContent:"space-around",padding:"0 0 14px",zIndex:35,boxShadow:"0 -2px 12px rgba(0,0,0,0.5)"}}>
       {sekmeler.map(item => (
-        <NavLink key={item.to} to={item.to} style={({isActive}) => ({display:"flex",flexDirection:"column",alignItems:"center",justifyContent:"center",gap:3,flex:1,minWidth:0,minHeight:54,paddingTop:8,textDecoration:"none",color:isActive?"#FFFFFF":"#8A8580",borderTop:"2px solid "+(isActive?"#FFFFFF":"transparent")})}>
+        <NavLink key={item.to} to={item.to} style={({isActive: a}) => { const isActive = a || (item.to === "/hub" && menuSayfasi); return ({display:"flex",flexDirection:"column",alignItems:"center",justifyContent:"center",gap:3,flex:1,minWidth:0,minHeight:54,paddingTop:8,textDecoration:"none",color:isActive?"#FFFFFF":"#8A8580",borderTop:"2px solid "+(isActive?"#FFFFFF":"transparent")}); }}>
           <Ikon ad={item.icon} boy={23}/>
           <span style={{fontSize:12,letterSpacing:"0.2px",fontWeight:600,whiteSpace:"nowrap"}}>{(item.kisa || item.label).toLocaleUpperCase("tr-TR")}</span>
         </NavLink>

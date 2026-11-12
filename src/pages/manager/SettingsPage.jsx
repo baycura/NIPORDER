@@ -1,4 +1,5 @@
 import { useEffect, useState } from "react";
+import { uyar } from "../../lib/uyar.js";
 import { supabase, hataMetni } from "../../lib/supabase.js";
 import { PARIS_STORE_ID } from "../../lib/stores.js";
 import { ozellik } from "../../lib/profil.js";
@@ -50,15 +51,15 @@ export default function SettingsPage() {
       const { data, error } = await supabase.functions.invoke("eur-rate-sync", { body: {} });
       if (error) throw new Error(hataMetni(error));
       if (data?.error) throw new Error(data.error);
-      alert("Kur cekildi: 1 € = ₺" + data.fetched + " (" + (data.source || "") + ")");
+      uyar("Kur çekildi: 1 € = ₺" + data.fetched + " (" + (data.source || "") + ")", "basari");
       load(true);
-    } catch (e) { alert("Kur guncellenemedi: " + (e?.message || e)); }
+    } catch (e) { uyar("Kur güncellenemedi: " + (e?.message || e)); }
     setEurBusy(false);
   };
 
   const translateAnnouncement = async () => {
     const src = (settings.announcement_tr || "").trim();
-    if (!src) { alert("Once Turkce duyuruyu yaz"); return; }
+    if (!src) { uyar("Önce Türkçe duyuruyu yaz"); return; }
     if (trBusy) return;
     setTrBusy(true);
     try {
@@ -66,7 +67,7 @@ export default function SettingsPage() {
       if (error) throw new Error(hataMetni(error));
       if (data?.error) throw new Error(data.error);
       setSettings(s => ({ ...s, announcement_en: data.en || s.announcement_en, announcement_ru: data.ru || s.announcement_ru }));
-    } catch (e) { alert("Ceviri hatasi: " + (e?.message || e)); }
+    } catch (e) { uyar("Çeviri hatası: " + (e?.message || e)); }
     setTrBusy(false);
   };
 
@@ -77,7 +78,7 @@ export default function SettingsPage() {
     // Postgres 42P10 verir ve kayit SESSIZCE duserdi. Hatalari da gosteriyoruz.
     const rows = Object.entries(settings).map(([key, value]) => ({ key, value, store_id: PARIS_STORE_ID }));
     const { error } = await supabase.from("app_settings").upsert(rows, { onConflict: "key,store_id" });
-    if (error) { setBusy(false); alert("Ayarlar kaydedilemedi: " + (error.message || "bilinmeyen hata")); return; }
+    if (error) { setBusy(false); uyar("Ayarlar kaydedilemedi: " + (error.message || "bilinmeyen hata")); return; }
     // Dugme tazeleme bitene kadar mesgul kalir: arada "Ayarları Kaydet" yazip
     // kayit olmamis gibi gorunuyordu.
     await load(true);
@@ -118,8 +119,8 @@ export default function SettingsPage() {
           </div>
         </Field>
         <div style={{display:"flex",gap:8}}>
-          <Field label="BASLANGIC" style={{flex:1}}><input type="time" value={partyFrom} onChange={e=>setKey("party_mode_from", e.target.value)} style={inputS}/></Field>
-          <Field label="BITIS" style={{flex:1}}><input type="time" value={partyUntil} onChange={e=>setKey("party_mode_until", e.target.value)} style={inputS}/></Field>
+          <Field label="BAŞLANGIÇ" style={{flex:1}}><input type="time" value={partyFrom} onChange={e=>setKey("party_mode_from", e.target.value)} style={inputS}/></Field>
+          <Field label="BİTİŞ" style={{flex:1}}><input type="time" value={partyUntil} onChange={e=>setKey("party_mode_until", e.target.value)} style={inputS}/></Field>
         </div>
         <div style={{fontSize:11,color:"#888",marginTop:6,lineHeight:1.6}}>
           Şu anki ayar: <b style={{color:"#FFFFFF"}}>{partyDays.length ? partyDays.map(n=>DAYS.find(d=>d[0]===n)?.[1]).join(", ") : "gün seçilmedi"}</b> günleri {partyFrom}–{partyUntil}.
@@ -133,28 +134,28 @@ export default function SettingsPage() {
         <Field label={"TEK ÖLÇÜ (cl) — şu an: " + (Number(settings.house_pour_cl) || 4) + " cl"}>
           <SayiGirisi kip="ondalik" min={1} max={10} value={settings.house_pour_cl ?? 4} onChange={v=>setKey("house_pour_cl", Number(v))} style={inputS}/>
         </Field>
-        <div style={{fontSize:11,color:"#888",marginTop:6}}>NOT: Bu yalniz kisayol dugmelerini etkiler; recetede istedigin miktari her zaman elle yazabilirsin.</div>
+        <div style={{fontSize:11,color:"#888",marginTop:6}}>NOT: Bu yalnız kısayol düğmelerini etkiler; reçetede istediğin miktarı her zaman elle yazabilirsin.</div>
       </Section>
 
       {/* Euro kuru — profil modulu (eur) */}
       {ozellik("eur") && (
-      <Section icon="puan" title="Euro Kuru" desc="Fiyatini EURO olarak girdigin urunlerin TL karsiligi bu kurla hesaplanir. Kur degisince o urunlerin TL fiyati kendiliginden guncellenir. Siparis, odeme ve raporlar her zaman TL kalir.">
+      <Section icon="puan" title="Euro Kuru" desc="Fiyatını euro olarak girdiğin ürünlerin TL karşılığı bu kurla hesaplanır. Kur değişince o ürünlerin TL fiyatı kendiliğinden güncellenir. Sipariş, ödeme ve raporlar her zaman TL kalır.">
         <Toggle checked={settings.eur_rate_auto !== false && settings.eur_rate_auto !== "false"}
-          onChange={v=>setKey("eur_rate_auto", v)} label="Kuru otomatik guncelle (her is gunu 17:00 — TCMB doviz satis)"/>
+          onChange={v=>setKey("eur_rate_auto", v)} label="Kuru otomatik güncelle (her iş günü 17:00 — TCMB döviz satış)"/>
         <div style={{display:"flex",gap:8}}>
-          <Field label="1 EURO KAC TL?" style={{flex:1}}>
-            <SayiGirisi kip="para" value={settings.eur_rate || ""} onChange={v=>setKey("eur_rate", v)} placeholder="Orn: 55.24" style={inputS}/>
+          <Field label="1 EURO KAÇ TL?" style={{flex:1}}>
+            <SayiGirisi kip="para" value={settings.eur_rate || ""} onChange={v=>setKey("eur_rate", v)} placeholder="Örn: 55.24" style={inputS}/>
           </Field>
           <Field label="EK PAY (%)" style={{width:110}}>
             <SayiGirisi kip="ondalik" value={settings.eur_rate_markup_pct ?? "0"} onChange={v=>setKey("eur_rate_markup_pct", v)} placeholder="0" style={inputS}/>
           </Field>
-          <Field label="GUVENLIK BANDI (%)" style={{width:130}}>
+          <Field label="GÜVENLİK BANDI (%)" style={{width:130}}>
             <SayiGirisi kip="ondalik" value={settings.eur_rate_max_jump_pct ?? "10"} onChange={v=>setKey("eur_rate_max_jump_pct", v)} placeholder="10" style={inputS}/>
           </Field>
         </div>
         <button onClick={syncEurRate} disabled={eurBusy}
           style={{width:"100%",padding:"11px",background:eurBusy?"#555":"#2A2A2A",color:"#F0EDE8",border:"1px solid #2A2A2A",borderRadius:8,fontSize:12,fontWeight:800,cursor:eurBusy?"wait":"pointer",margin:"4px 0 8px"}}>
-          {eurBusy ? "Kur cekiliyor..." : "Kuru simdi guncelle"}
+          {eurBusy ? "Kur çekiliyor…" : "Kuru şimdi güncelle"}
         </button>
         {settings.eur_rate_note ? (
           <div style={{padding:"10px 12px",background:"#161616",border:"1px solid #2A2A2A",borderRadius:8,fontSize:12,color:"#F0EDE8",lineHeight:1.5,marginBottom:6}}>
@@ -163,10 +164,10 @@ export default function SettingsPage() {
         ) : null}
         <div style={{fontSize:11,color:"#888",lineHeight:1.6}}>
           {settings.eur_rate_updated_at
-            ? "Son guncelleme: " + new Date(settings.eur_rate_updated_at).toLocaleString("tr-TR") + (settings.eur_rate_source ? " · " + settings.eur_rate_source : "")
-            : "Henuz otomatik guncelleme yapilmadi."}
-          <br/>EK PAY: kura eklenecek yuzde (orn. 2 yazarsan kur %2 yuksek uygulanir).
-          <br/>GUVENLIK BANDI: kur bu yuzdeden fazla sicrarsa otomatik YAZILMAZ, burada uyari cikar — elle onaylarsin.
+            ? "Son güncelleme: " + new Date(settings.eur_rate_updated_at).toLocaleString("tr-TR") + (settings.eur_rate_source ? " · " + settings.eur_rate_source : "")
+            : "Henüz otomatik güncelleme yapılmadı."}
+          <br/>EK PAY: kura eklenecek yüzde (örn. 2 yazarsan kur %2 yüksek uygulanır).
+          <br/>GÜVENLİK BANDI: kur bu yüzdeden fazla sıçrarsa otomatik YAZILMAZ, burada uyarı çıkar — elle onaylarsın.
         </div>
 
         {/* Turist ipucu: TL fiyatin yaninda yaklasik euro. Fiyati euro girilen
@@ -174,10 +175,10 @@ export default function SettingsPage() {
         <div style={{borderTop:"1px solid #2A2A2A",marginTop:12,paddingTop:12}}>
           <Toggle checked={settings.eur_price_hint !== false && settings.eur_price_hint !== "false"}
             onChange={v=>setKey("eur_price_hint", v)}
-            label="QR menude TL fiyatin yaninda yaklasik € goster (yalniz EN/RU dilinde)"/>
+            label="QR menüde TL fiyatın yanında yaklaşık € göster (yalnız EN/RU dilinde)"/>
           <Field label="YUVARLAMA ADIMI">
             <div style={{display:"flex",gap:6}}>
-              {[["0.5","0,50 € adimlarla (onerilen)"],["1","1 € adimlarla"]].map(([k,l]) => {
+              {[["0.5","0,50 € adımlarla (önerilen)"],["1","1 € adımlarla"]].map(([k,l]) => {
                 const secili = String(settings.eur_price_hint_step ?? "0.5") === k;
                 return (
                   <button key={k} type="button" onClick={()=>setKey("eur_price_hint_step", k)}
@@ -189,19 +190,19 @@ export default function SettingsPage() {
             </div>
           </Field>
           <div style={{fontSize:11,color:"#888",lineHeight:1.6}}>
-            Rakam HER ZAMAN asagi yuvarlanir — musteri kasada gordugunden fazlasini odemesin.
-            1 € adiminda ucuz urunler cok sapar (165 ₺ urun 2,94 € eder, "2 €" gorunur); 0,50 adiminda sapma en fazla yarim euro kalir.
-            Menude "1 € ≈ {Math.round(Number(String(settings.eur_rate || "").replace(",", ".")) || 0) || "—"} ₺" notu da cikar, rakamin nereden geldigi belli olur.
+            Rakam HER ZAMAN aşağı yuvarlanır — müşteri kasada gördüğünden fazlasını ödemesin.
+            1 € adımında ucuz ürünler çok sapar (165 ₺ ürün 2,94 € eder, "2 €" görünür); 0,50 adımında sapma en fazla yarım euro kalır.
+            Menude "1 € ≈ {Math.round(Number(String(settings.eur_rate || "").replace(",", ".")) || 0) || "—"} ₺" notu da çıkar, rakamın nereden geldiği belli olur.
           </div>
         </div>
       </Section>
       )}
 
       {/* Duyuru seridi */}
-      <Section icon="duyuru" title="Duyuru Seridi (QR Menu)" desc="QR menunun en ustunde ince siyah bir serit olarak gorunur. Kampanya/duyuru icin — Instagram'a ya da tahtaya yazmaya gerek kalmaz.">
-        <Toggle checked={settings.announcement_enabled === true || settings.announcement_enabled === "true"} onChange={v=>setKey("announcement_enabled", v)} label="Duyuru seridi aktif"/>
-        <Field label="DUYURU (TURKCE)">
-          <input value={settings.announcement_tr || ""} onChange={e=>setKey("announcement_tr", e.target.value)} placeholder="Orn: Pazar gunleri fici bira 150 TL!" style={inputS}/>
+      <Section icon="duyuru" title="Duyuru Şeridi (QR Menü)" desc="QR menünün en üstünde ince siyah bir şerit olarak görünür. Kampanya ve duyuru için; Instagram'a ya da tahtaya yazmaya gerek kalmaz.">
+        <Toggle checked={settings.announcement_enabled === true || settings.announcement_enabled === "true"} onChange={v=>setKey("announcement_enabled", v)} label="Duyuru şeridi aktif"/>
+        <Field label="DUYURU (TÜRKÇE)">
+          <input value={settings.announcement_tr || ""} onChange={e=>setKey("announcement_tr", e.target.value)} placeholder="Örn: Pazar günleri fıçı bira 150 TL!" style={inputS}/>
         </Field>
         {ozellik("yapayZeka") && (
         <button onClick={translateAnnouncement} disabled={trBusy} style={{width:"100%",padding:"10px",background:trBusy?"#555":"#2A2A2A",color:"#F0EDE8",border:"1px solid #2A2A2A",borderRadius:8,fontSize:12,fontWeight:800,cursor:trBusy?"wait":"pointer",margin:"4px 0 8px"}}>
@@ -209,10 +210,10 @@ export default function SettingsPage() {
         </button>
         )}
         <div style={{display:"flex",gap:8}}>
-          <Field label="ENGLISH (BOSSA TR GOSTERILIR)" style={{flex:1}}>
+          <Field label="ENGLISH (BOŞSA TR GÖSTERİLİR)" style={{flex:1}}>
             <input value={settings.announcement_en || ""} onChange={e=>setKey("announcement_en", e.target.value)} placeholder="e.g. Sunday draft beer 150 TL!" style={inputS}/>
           </Field>
-          <Field label="РУССКИЙ (BOSSA TR)" style={{flex:1}}>
+          <Field label="РУССКИЙ (BOŞSA TR)" style={{flex:1}}>
             <input value={settings.announcement_ru || ""} onChange={e=>setKey("announcement_ru", e.target.value)} placeholder="напр.: Разливное пиво 150 TL по воскресеньям!" style={inputS}/>
           </Field>
         </div>

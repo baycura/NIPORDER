@@ -1,4 +1,7 @@
 import { useEffect, useRef, useState } from "react";
+import { trKucuk } from "../../lib/malzemeGrup.js";
+import { uyar } from "../../lib/uyar.js";
+import FormPencere, { altlikStil } from "../../components/FormPencere.jsx";
 import { supabase } from "../../lib/supabase.js";
 import { gorselYukle } from "../../lib/gorsel.js";
 import { useAuth } from "../../contexts/AuthContext.jsx";
@@ -21,6 +24,7 @@ export default function MenuMgmtPage() {
   const [talepler, setTalepler] = useState({}); // urun_id -> kac kisi "haber ver" dedi
   const [loading, setLoading] = useState(true);
   const [selectedCat, setSelectedCat] = useState(null);
+  const [ara, setAra] = useState("");
   const [catModal, setCatModal] = useState(null);
   const [prodModal, setProdModal] = useState(null);
   const [catForm, setCatForm] = useState({});
@@ -80,7 +84,7 @@ export default function MenuMgmtPage() {
 
   const saveCat = async () => {
     if (busy) return;
-    if (!catForm.name?.trim()) { alert("Kategori adi gerekli"); return; }
+    if (!catForm.name?.trim()) { uyar("Kategori adı gerekli"); return; }
     setBusy(true);
     const payload = {
       name: catForm.name.trim(), name_en: catForm.name_en?.trim() || null, name_ru: catForm.name_ru?.trim() || null, icon: catForm.icon || null,
@@ -110,30 +114,30 @@ export default function MenuMgmtPage() {
     // Gonderilmezse NULL kalir ve "new row violates row-level security policy" hatasi doner.
     if (catModal.mode === "new") {
       const storeId = staffUser?.store_ids?.[0];
-      if (!storeId) { alert("Hesabina magaza atanmamis — yonetici ile gorus."); setBusy(false); return; }
+      if (!storeId) { uyar("Hesabına mağaza atanmamış — yönetici ile görüş."); setBusy(false); return; }
       payload.store_id = storeId;
     }
     const res = catModal.mode === "new"
       ? await supabase.from("categories").insert(payload)
       : await supabase.from("categories").update(payload).eq("id", catModal.data.id);
-    if (res.error) { alert("Hata: " + res.error.message); setBusy(false); return; }
+    if (res.error) { uyar("Hata: " + res.error.message); setBusy(false); return; }
     setCatModal(null); setBusy(false); load(true);
   };
 
   // Donen deger: silindi mi. Pencere ancak silme gerceklestiyse kapanir.
   const delCat = async (c) => {
     const prodCount = products.filter(p => p.category_id === c.id).length;
-    if (prodCount > 0) { alert("Bu kategoride " + prodCount + " urun var. Once urunleri sil/tasi."); return false; }
+    if (prodCount > 0) { uyar("Bu kategoride " + prodCount + " ürün var. Önce ürünleri sil ya da taşı."); return false; }
     if (!confirm('"' + c.name + '" silinsin mi?')) return false;
     const { error } = await supabase.from("categories").delete().eq("id", c.id);
-    if (error) { alert("Silinemedi: " + error.message); return false; }
+    if (error) { uyar("Silinemedi: " + error.message); return false; }
     load(true);
     return true;
   };
 
   // -------- PRODUCTS --------
   const openNewProd = () => {
-    if (!selectedCat) { alert("Once kategori sec"); return; }
+    if (!selectedCat) { uyar("Önce kategori seç"); return; }
     setProdModal({mode:"new"});
     setProdForm({
       name:"", name_en:"", name_ru:"", brand:"", description:"", description_en:"", description_ru:"", price:'', cost_price:'', instant_discount_pct:'', hh_enabled:false, hh_price:'', hh_start:'', hh_end:'', hh_days:[0,1,2,3,4,5,6],
@@ -180,19 +184,19 @@ export default function MenuMgmtPage() {
     try {
       const url = await gorselYukle(supabase, f, "urunler", { enUzun: 400, kalite: 0.8 });
       setProdForm(pf => ({ ...pf, image_url: url }));
-    } catch (err) { alert("Görsel yüklenemedi: " + (err?.message || err)); }
+    } catch (err) { uyar("Görsel yüklenemedi: " + (err?.message || err)); }
     setGorselBusy(false);
   };
 
   const saveProd = async () => {
     if (busy) return;
-    if (!prodForm.name?.trim()) { alert("Ürün adı gerekli"); return; }
+    if (!prodForm.name?.trim()) { uyar("Ürün adı gerekli"); return; }
     // Validate options_config groups
     if (prodForm.has_options) {
       const groups = (prodForm.options_config && prodForm.options_config.groups) || [];
       for (const g of groups) {
-        if (!g.name?.trim()) { alert("Secenek grubu adi bos olamaz"); return; }
-        if (!g.options || g.options.length === 0) { alert(g.name + " grubunun hic secenegi yok"); return; }
+        if (!g.name?.trim()) { uyar("Seçenek grubu adı boş olamaz"); return; }
+        if (!g.options || g.options.length === 0) { uyar(g.name + " grubunun hiç seçeneği yok"); return; }
       }
     }
     setBusy(true);
@@ -242,7 +246,7 @@ export default function MenuMgmtPage() {
     const res = prodModal.mode === "new"
       ? await supabase.from("products").insert(payload)
       : await supabase.from("products").update(payload).eq("id", prodModal.data.id);
-    if (res.error) { alert("Hata: " + res.error.message); setBusy(false); return; }
+    if (res.error) { uyar("Hata: " + res.error.message); setBusy(false); return; }
     setProdModal(null); setBusy(false); load(true);
   };
 
@@ -252,7 +256,7 @@ export default function MenuMgmtPage() {
   const delProd = async (p) => {
     if (!confirm('"' + p.name + '" silinsin mi?')) return false;
     const { error: pdErr } = await supabase.from("products").delete().eq("id", p.id);
-    if (pdErr) { alert("Silinemedi: " + pdErr.message); return false; }
+    if (pdErr) { uyar("Silinemedi: " + pdErr.message); return false; }
     load(true);
     return true;
   };
@@ -333,7 +337,14 @@ export default function MenuMgmtPage() {
 
   if (loading) return (<div style={{color:"#888",fontFamily:cv,padding:20}}>Yükleniyor…</div>);
 
-  const visibleProducts = products.filter(p => p.category_id === selectedCat).sort((a,b) => ((a.sort_order||0) - (b.sort_order||0)) || (a.name||"").localeCompare(b.name||""));
+  // ARAMA: yazilinca kategori secimi devre disi kalir, TUM menude aranir
+  // (musteri menusundeki aramayla ayni kural). Eskiden urunu bulmak icin
+  // kategorileri tek tek gezmek gerekiyordu.
+  const aramaQ = trKucuk(ara.trim());
+  const visibleProducts = (aramaQ
+    ? products.filter(p => trKucuk(p.name).includes(aramaQ) || trKucuk(p.name_en).includes(aramaQ))
+    : products.filter(p => p.category_id === selectedCat)
+  ).sort((a,b) => ((a.sort_order||0) - (b.sort_order||0)) || (a.name||"").localeCompare(b.name||""));
   // Alt kategoriler ust kategorisinin hemen ardinda gorunsun
   const orderedCats = categories
     .map(c => {
@@ -406,7 +417,18 @@ export default function MenuMgmtPage() {
           degistir, tukendi isaretle) tek dokunusa indi. */}
       <div style={{display:"flex",gap:8,marginBottom:14,flexWrap:"wrap"}}>
         <button onClick={openNewProd} style={{padding:"10px 16px",background:"#FFFFFF",color:"#000",border:"none",borderRadius:10,fontSize:13,fontWeight:800,cursor:"pointer"}}>+ Yeni Ürün</button>
-        {visibleProducts.length > 1 && (
+        <div style={{flex:"1 1 160px",minWidth:0,display:"flex",alignItems:"center",gap:8,minHeight:44,padding:"0 4px 0 12px",background:"#111",border:"1px solid #2A2A2A",borderRadius:10}}>
+          <Ikon ad="ara" boy={15} style={{color:"#8A8580",flexShrink:0}}/>
+          <input value={ara} onChange={e => { setAra(e.target.value); setSirala(false); }} placeholder="Tüm menüde ürün ara" aria-label="Ürün ara"
+            style={{flex:1,minWidth:0,background:"transparent",border:"none",outline:"none",color:"#F0EDE8",fontSize:14,fontFamily:"inherit",padding:0}}/>
+          {ara && (
+            <button onClick={() => setAra("")} aria-label="Aramayı temizle"
+              style={{width:40,height:40,flexShrink:0,background:"none",border:"none",color:"#8A8580",cursor:"pointer",display:"flex",alignItems:"center",justifyContent:"center"}}>
+              <Ikon ad="kapat" boy={14}/>
+            </button>
+          )}
+        </div>
+        {visibleProducts.length > 1 && !aramaQ && (
           <button onClick={()=>setSirala(v=>!v)} style={{padding:"10px 16px",background:sirala?"#FFFFFF":"transparent",color:sirala?"#000":"#8A8580",border:"1px solid "+(sirala?"#FFFFFF":"#2A2A2A"),borderRadius:10,fontSize:13,fontWeight:800,cursor:"pointer"}}>
             {sirala ? "Sıralamayı bitir" : "Sırala"}
           </button>
@@ -418,12 +440,15 @@ export default function MenuMgmtPage() {
         </div>
       )}
 
-      {visibleProducts.length === 0 && <div style={{textAlign:"center",padding:30,color:"#888888",fontSize:12}}>Bu kategoride ürün yok</div>}
+      {aramaQ && visibleProducts.length > 0 && <div style={{fontSize:12,color:"#8A8580",marginBottom:10}}>Tüm menüde {visibleProducts.length} sonuç</div>}
+      {visibleProducts.length === 0 && <div style={{textAlign:"center",padding:30,color:"#888888",fontSize:12}}>{aramaQ ? "Aramaya uyan ürün yok" : "Bu kategoride ürün yok"}</div>}
 
       {visibleProducts.map((p, idx) => {
         // Rozet enflasyonu yerine tek silik satir: gunluk bakista onemli olan
         // "Tukendi" ve kac kisinin sordugu; gerisi bilgi notu.
         const notlar = [
+          // Aramada urun baska kategoriden gelebilir: hangisinden oldugu yazilir.
+          aramaQ && (categories.find(c => c.id === p.category_id)?.name),
           p.show_in_party_menu && "Parti",
           p.has_options && "Seçenekli",
           p.kitchen_consignment && "Mutfak",
@@ -489,7 +514,7 @@ export default function MenuMgmtPage() {
           <Field label="AD (Türkçe)"><input value={catForm.name||""} onChange={e=>setCatForm(f => ({...f,name:e.target.value}))} style={inputS}/></Field>
           <Field label="AD (İngilizce)"><input value={catForm.name_en||""} onChange={e=>setCatForm(f => ({...f,name_en:e.target.value}))} placeholder="İsteğe bağlı" style={inputS}/></Field>
           <Field label="AD (Rusça)"><input value={catForm.name_ru||""} onChange={e=>setCatForm(f => ({...f,name_ru:e.target.value}))} placeholder="İsteğe bağlı — müşteri RU seçince görünür" style={inputS}/></Field>
-          <Field label="IKON (emoji)"><input value={catForm.icon||""} onChange={e=>setCatForm(f => ({...f,icon:e.target.value}))} placeholder="👕" style={inputS}/></Field>
+          <Field label="İKON (emoji)"><input value={catForm.icon||""} onChange={e=>setCatForm(f => ({...f,icon:e.target.value}))} placeholder="👕" style={inputS}/></Field>
           {/* Urun basina 152 kayit yerine kategori basina bir varsayilan.
               Musteri menusundeki "~8 dk" rozeti boylece calisir hale gelir. */}
           <Field label="HAZIRLANMA SÜRESİ (dk — bu kategorinin varsayılanı)">
@@ -504,11 +529,11 @@ export default function MenuMgmtPage() {
           <Field label="SIRA (küçük = önce)"><SayiGirisi kip="tam" value={catForm.sort_order||0} onChange={v=>setCatForm(f => ({...f,sort_order:v}))} style={inputS}/></Field>
           <Field label="ÜST KATEGORİ">
             <select value={catForm.parent_id||""} onChange={e=>setCatForm(f => ({...f,parent_id:e.target.value||null}))} style={inputS}>
-              <option value="">— Yok (menude sekme olur) —</option>
+              <option value="">— Yok (menüde sekme olur) —</option>
               {categories.filter(c => !c.parent_id && c.id !== catModal.data?.id && !c.show_in_shop)
                 .map(c => <option key={c.id} value={c.id}>{c.name}</option>)}
             </select>
-            <div style={{fontSize:10,color:"#888888",marginTop:4}}>Secilirse ust kategorinin icinde alt secim olarak gorunur, ust menude yer kaplamaz.</div>
+            <div style={{fontSize:10,color:"#888888",marginTop:4}}>Seçilirse üst kategorinin içinde alt seçim olarak görünür, üst menüde yer kaplamaz.</div>
           </Field>
           <div style={{display:"flex",gap:8}}>
             <Field label="SİPARİŞ SAATİ — BAŞLANGIÇ"><input type="time" value={catForm.available_from||""} onChange={e=>setCatForm(f => ({...f,available_from:e.target.value}))} style={inputS}/></Field>
@@ -631,7 +656,7 @@ export default function MenuMgmtPage() {
           </Field>
           <Field label="AD (İngilizce)"><input value={prodForm.name_en||""} onChange={e=>setProdForm(f => ({...f,name_en:e.target.value}))} placeholder="İsteğe bağlı — müşteri EN seçince görünür" style={inputS}/></Field>
           <Field label="AD (Rusça)"><input value={prodForm.name_ru||""} onChange={e=>setProdForm(f => ({...f,name_ru:e.target.value}))} placeholder="İsteğe bağlı — müşteri RU seçince görünür" style={inputS}/></Field>
-          <Field label="MARKA (opsiyonel)"><input value={prodForm.brand||""} onChange={e=>setProdForm(f => ({...f,brand:e.target.value}))} placeholder="Orn: Rapha, Le Bon Bain..." style={inputS}/></Field>
+          <Field label="MARKA (opsiyonel)"><input value={prodForm.brand||""} onChange={e=>setProdForm(f => ({...f,brand:e.target.value}))} placeholder="Örn: Rapha, Le Bon Bain..." style={inputS}/></Field>
           <Field label="BARKOD (opsiyonel)">
             <div style={{display:"flex",gap:8}}>
               <input value={prodForm.barkod||""} onChange={e=>setProdForm(f => ({...f,barkod:e.target.value}))} inputMode="numeric" placeholder="Kutudaki 13 haneli numara — kasada ve stokta bu numarayla aranır" style={{...inputS,flex:1,minWidth:0}}/>
@@ -784,7 +809,7 @@ export default function MenuMgmtPage() {
                 {((prodForm.options_config && prodForm.options_config.groups) || []).map((g, gIdx) => (
                   <div key={gIdx} style={{background:"#161616",border:"1px solid #333",borderRadius:8,padding:10,marginBottom:8}}>
                     <div style={{display:"flex",gap:6,marginBottom:8}}>
-                      <input value={g.name||""} onChange={e=>updateGroup(gIdx,"name",e.target.value)} placeholder="Grup adi (ör: Beden, Renk)" style={{...inputS,flex:1,padding:"8px 10px",fontSize:13}}/>
+                      <input value={g.name||""} onChange={e=>updateGroup(gIdx,"name",e.target.value)} placeholder="Grup adı (ör: Beden, Renk)" style={{...inputS,flex:1,padding:"8px 10px",fontSize:13}}/>
                       <button onClick={()=>removeGroup(gIdx)} style={{padding:"8px 10px",background:"transparent",color:"#C87A6A",border:"1px solid #2A2A2A",borderRadius:6,fontSize:11,cursor:"pointer"}}>Sil</button>
                     </div>
                     <label style={{display:"flex",alignItems:"center",gap:6,marginBottom:8,cursor:"pointer"}}>
@@ -812,7 +837,7 @@ export default function MenuMgmtPage() {
               <input type="checkbox" checked={!!prodForm.sold_out_today} onChange={e=>setProdForm(f => ({...f,sold_out_today:e.target.checked}))}/>
               <span style={{fontSize:13,color:"#F0EDE8"}}>Bugün tükendi</span>
             </label>
-            {prodForm.sold_out_today && (<input value={prodForm.unavailable_reason||""} onChange={e=>setProdForm(f => ({...f,unavailable_reason:e.target.value}))} placeholder="Neden (musteri gorecek)" style={{...inputS,fontSize:13}}/>)}
+            {prodForm.sold_out_today && (<input value={prodForm.unavailable_reason||""} onChange={e=>setProdForm(f => ({...f,unavailable_reason:e.target.value}))} placeholder="Neden (müşteri görecek)" style={{...inputS,fontSize:13}}/>)}
           </div>
 
           <div style={{marginBottom:10}}>
@@ -866,15 +891,17 @@ export default function MenuMgmtPage() {
             )}
           </div>
 
-          <div style={{display:"flex",gap:8,marginTop:10}}>
-            <button onClick={()=>setProdModal(null)} style={cancelBtn}>İptal</button>
-            <button onClick={saveProd} disabled={busy} style={{...saveBtn,opacity:busy?0.6:1}}>{busy?"...":"Kaydet"}</button>
-          </div>
           {/* Silme listede degil burada: karttaki "Sil" dugmesine yanlislikla
               dokunmak urunu goturuyordu. */}
           {prodModal.mode !== "new" && (
             <button onClick={async ()=>{ const p = prodModal.data; if (await delProd(p)) setProdModal(null); }} style={silBtn}>Bu ürünü sil</button>
           )}
+          {/* Dugme satiri altta sabit: 25 alanli formda Kaydet'e ulasmak icin
+              en dibe kaydirmak gerekmiyor. Altlik SON cocuk olmali (ustune binmesin). */}
+          <div style={{display:"flex",gap:8,...altlikStil}}>
+            <button onClick={()=>setProdModal(null)} style={cancelBtn}>İptal</button>
+            <button onClick={saveProd} disabled={busy} style={{...saveBtn,opacity:busy?0.6:1}}>{busy?"...":"Kaydet"}</button>
+          </div>
         </Modal>
       )}
     </div>
@@ -904,11 +931,6 @@ function Field({label, children}) {
   </div>);
 }
 
-function Modal({title, children, onClose}) {
-  return (<div onClick={onClose} style={{position:"fixed",inset:0,background:"rgba(0,0,0,0.75)",display:"flex",alignItems:"flex-end",justifyContent:"center",zIndex:100}}>
-    <div onClick={e => e.stopPropagation()} style={{background:"#161616",border:"1px solid #2A2A2A",borderRadius:"16px 16px 0 0",padding:20,width:"100%",maxWidth:520,maxHeight:"92vh",overflowY:"auto"}}>
-      <div style={{fontSize:18,fontWeight:800,color:"#F0EDE8",marginBottom:16}}>{title}</div>
-      {children}
-    </div>
-  </div>);
-}
+// Ortak form penceresi (components/FormPencere.jsx): karartma kapatmaz,
+// baslik ve kapat dugmesi ustte sabit.
+function Modal(props) { return <FormPencere {...props} en={520} boy="92vh" />; }

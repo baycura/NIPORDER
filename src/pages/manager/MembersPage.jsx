@@ -1,4 +1,6 @@
 import { useEffect, useState } from "react";
+import { uyar } from "../../lib/uyar.js";
+import FormPencere from "../../components/FormPencere.jsx";
 import { supabase } from "../../lib/supabase.js";
 import { useAuth } from "../../contexts/AuthContext.jsx";
 import SayiGirisi from "../../components/SayiGirisi.jsx";
@@ -90,7 +92,7 @@ export default function MembersPage() {
 
   const saveMember = async () => {
     if (busy) return;
-    if (!form.name?.trim()) { alert("İsim gerekli"); return; }
+    if (!form.name?.trim()) { uyar("İsim gerekli"); return; }
     setBusy(true);
     const payload = {
       name: form.name.trim(),
@@ -110,23 +112,23 @@ export default function MembersPage() {
     let customerId = modal.mode === "edit" ? modal.data.id : null;
     if (modal.mode === "new") {
       const { data: created, error } = await supabase.from("customers").insert({ ...payload, store_id: staffUser?.store_ids?.[0] }).select().single();
-      if (error) { alert("Hata: " + error.message); setBusy(false); return; }
+      if (error) { uyar("Hata: " + error.message); setBusy(false); return; }
       customerId = created?.id || null;
     } else {
       const { error } = await supabase.from("customers").update(payload).eq("id", modal.data.id);
-      if (error) { alert("Hata: " + error.message); setBusy(false); return; }
+      if (error) { uyar("Hata: " + error.message); setBusy(false); return; }
     }
     // Uye urun indirimlerini kaydet (tam liste yeniden yazilir)
     if (customerId) {
       const { error: dd } = await supabase.from("member_discounts").delete().eq("customer_id", customerId);
-      if (dd) { alert("Eski üye fiyatları temizlenemedi: " + dd.message); setBusy(false); return; }
+      if (dd) { uyar("Eski üye fiyatları temizlenemedi: " + dd.message); setBusy(false); return; }
       // Artik net fiyat kaydediliyor (price); amount eski kayitlar icin duruyor
       const rows = Object.entries(prodDiscounts)
         .filter(([, v]) => v !== "" && v != null && Number(v) >= 0)
         .map(([pid, v]) => ({ customer_id: customerId, product_id: pid, price: Number(v), amount: 0, is_active: true }));
       if (rows.length) {
         const { error: de } = await supabase.from("member_discounts").insert(rows);
-        if (de) alert("Üye fiyatları kaydedilemedi: " + de.message);
+        if (de) uyar("Üye fiyatları kaydedilemedi: " + de.message);
       }
     }
     setModal(null); setBusy(false); load();
@@ -145,10 +147,10 @@ export default function MembersPage() {
   const deleteMember = async (m) => {
     // Borclu silinemez: siparisleri ve odemeleri ona bagli (veritabani da
     // reddeder, ama ham hata mesaji yerine ne yapilacagini soyleyelim).
-    if (Number(m.outstanding_balance) > 0) { alert('"' + m.name + '" kişisinin ' + tl(m.outstanding_balance) + ' borcu var. Önce tahsil et ya da borcu sil.'); return; }
+    if (Number(m.outstanding_balance) > 0) { uyar('"' + m.name + '" kişisinin ' + tl(m.outstanding_balance) + ' borcu var. Önce tahsil et ya da borcu sil.'); return; }
     if (!confirm('"' + m.name + '" silinsin mi?')) return;
     const { error } = await supabase.from("customers").delete().eq("id", m.id);
-    if (error) { alert("Hata: " + error.message); return; }
+    if (error) { uyar("Hata: " + error.message); return; }
     load();
   };
 
@@ -239,7 +241,7 @@ export default function MembersPage() {
         <Modal onClose={() => setModal(null)} title={modal.mode==="new"?"Yeni müşteri":(modal.data?.name || "Müşteri")}>
           <Field label="AD SOYAD"><input value={form.name||""} onChange={e=>setForm(f => ({...f,name:e.target.value}))} style={inputS}/></Field>
           <div style={{display:"flex",gap:8}}>
-            <Field label="EMAIL"><input value={form.email||""} onChange={e=>setForm(f => ({...f,email:e.target.value}))} style={inputS}/></Field>
+            <Field label="E-POSTA"><input value={form.email||""} onChange={e=>setForm(f => ({...f,email:e.target.value}))} style={inputS}/></Field>
           </div>
           <Field label="TELEFON"><input value={form.phone||""} onChange={e=>setForm(f => ({...f,phone:e.target.value}))} style={inputS}/></Field>
           {modal.mode === "edit" && modal.data?.member_code && (
@@ -361,11 +363,6 @@ function Field({label, children}) {
   </div>);
 }
 
-function Modal({title, children, onClose}) {
-  return (<div onClick={onClose} style={{position:"fixed",inset:0,background:"rgba(0,0,0,0.75)",display:"flex",alignItems:"flex-end",justifyContent:"center",zIndex:100}}>
-    <div onClick={e => e.stopPropagation()} style={{background:"#161616",border:"1px solid #2A2A2A",borderRadius:"16px 16px 0 0",padding:20,width:"100%",maxWidth:500,maxHeight:"90vh",overflowY:"auto"}}>
-      <div style={{fontSize:18,fontWeight:800,color:"#F0EDE8",marginBottom:16}}>{title}</div>
-      {children}
-    </div>
-  </div>);
-}
+// Ortak form penceresi (components/FormPencere.jsx): karartma kapatmaz,
+// baslik ve kapat dugmesi ustte sabit.
+function Modal(props) { return <FormPencere {...props} />; }

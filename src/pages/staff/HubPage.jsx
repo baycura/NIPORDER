@@ -1,4 +1,5 @@
 import { useMemo, useState } from "react";
+import { baslikStil } from "../../theme/panel.js";
 import { NavLink, useNavigate } from "react-router-dom";
 import { useAuth } from "../../contexts/AuthContext.jsx";
 import { gorunurGruplar } from "../../lib/panelNav.js";
@@ -75,7 +76,7 @@ export default function HubPage() {
 
   return (
     <div style={{ fontFamily: cv, color: "#F0EDE8", maxWidth: 560, margin: "0 auto" }}>
-      <div style={{ fontSize: 22, fontWeight: 800, marginBottom: 12 }}>Menü</div>
+      <h1 style={{ ...baslikStil, marginBottom: 12 }}>Menü</h1>
 
       <div style={{ position: "relative", marginBottom: 16 }}>
         <span style={{ position: "absolute", left: 13, top: "50%", transform: "translateY(-50%)",

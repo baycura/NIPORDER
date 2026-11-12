@@ -327,7 +327,9 @@ export function IkramKapatPenceresi({ order, ad, staffUser, onKapat, onBitti }) 
       supabase.from("staff").select("id, name, role").eq("is_active", true),
     ]).then(([k, p]) => {
       if (iptal) return;
-      if (k.error) { setHata(personelHata(k.error)); setOkunamadi(true); setKalemler([]); return; }
+      // Personel listesi okunamazsa tek aday kasiyer kalir ve on secili gelir:
+      // sahibin verdigi ikram kasiyerin adina yazilirdi. Iki sorgu da sart.
+      if (k.error || p.error) { setHata(personelHata(k.error || p.error)); setOkunamadi(true); setKalemler([]); return; }
       setKalemler(k.data || []);
       setPersonel(p.data || []);
     });
@@ -338,8 +340,10 @@ export function IkramKapatPenceresi({ order, ad, staffUser, onKapat, onBitti }) 
   const acik = (kalemler || []).filter(k => kalanAdet(k) > 0);
   const kalan = acik.reduce((t, k) => t + Number(k.final_price || 0) * kalanAdet(k), 0);
   const eksik = acik.filter(k => !k.is_treat || !k.treated_by);
-  // Deger ve adet ODENMEMIS adetlerden: parayla odenmis adet ikram degildir
-  // (sunucu da boyle sayar).
+  // Deger ve adet ODENMEMIS adetlerden: parayla odenmis adet ikram degildir.
+  // Sunucu ayni kurali uygular. Tek fark eski kayitlarda: kasada 0 TL ile
+  // "odendi" isaretlenmis ikram adedini sunucu da ikram sayar (20261112).
+  // Kasa artik ₺0'lik satiri sectirmedigi icin yeni hesaplarda sayim aynidir.
   const deger = acik.reduce((t, k) => t + Number(k.product_price || 0) * kalanAdet(k), 0);
   const adet = acik.reduce((t, k) => t + kalanAdet(k), 0);
 
