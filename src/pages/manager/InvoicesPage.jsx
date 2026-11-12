@@ -1,4 +1,5 @@
 import { useEffect, useState } from "react";
+import { onayla } from "../../lib/onayla.js";
 import { uyar } from "../../lib/uyar.js";
 import FormPencere, { altlikStil } from "../../components/FormPencere.jsx";
 import { parseUblInvoice } from "../../lib/ublInvoice.js";
@@ -298,11 +299,11 @@ export default function InvoicesPage() {
         .select("supplier_name, invoice_date, total_amount")
         .eq("store_id", staffUser?.store_ids?.[0]).eq("invoice_no", faturaNo).limit(1);
       const v = ayni?.[0];
-      if (v && !confirm(
+      if (v && !(await onayla(
         `"${faturaNo}" numaralı fatura zaten kayıtlı:\n` +
         `${v.supplier_name} · ${v.invoice_date} · ₺${Math.round(Number(v.total_amount) || 0).toLocaleString("tr-TR")}\n\n` +
         `Yine de kaydedilsin mi? (Gider${STOK_YAZ ? " ve stok" : ""} iki kez sayılır.)`
-      )) return;
+      ))) return;
     }
 
     setBusy(true);
@@ -443,8 +444,8 @@ export default function InvoicesPage() {
   };
 
   const del = async (inv) => {
-    if (!confirm(STOK_YAZ ? "Fatura silinsin mi? (Stok geri alınmaz)"
-                          : "Fatura silinsin mi? (Bu fatura stoğa zaten dokunmadı)")) return;
+    if (!(await onayla(STOK_YAZ ? "Fatura silinsin mi? (Stok geri alınmaz)"
+                          : "Fatura silinsin mi? (Bu fatura stoğa zaten dokunmadı)", { evet: "Sil", tehlike: true }))) return;
     await supabase.from("supplier_invoices").delete().eq("id", inv.id);
     load(true);
   };

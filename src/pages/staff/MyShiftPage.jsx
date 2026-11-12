@@ -1,6 +1,7 @@
 import{useState,useEffect}from"react";import{useNavigate}from"react-router-dom";import{supabase}from"../../lib/supabase.js";import{useAuth}from"../../contexts/AuthContext.jsx";
 import{businessDayStart,businessDayKey}from"../../lib/businessDay.js";
 import Ikon from "../../components/Ikon.jsx";
+import { onayla } from "../../lib/onayla.js";
 import { baslikStil } from "../../theme/panel.js";
 import HaftalikLig from "../../components/HaftalikLig.jsx";
 import TelegramBagla from "../../components/TelegramBagla.jsx";
@@ -45,7 +46,7 @@ export default function MyShiftPage(){
   const handleCheckIn=async()=>{if(mesgul)return;setMesgul(true);const today=businessDayKey(new Date());const{data,error}=await supabase.from("shifts").upsert({staff_id:staffUser.id,date:today,checked_in_at:new Date().toISOString(),status:"active",store_id:staffUser?.store_ids?.[0]},{onConflict:"staff_id,date"}).select().single();setMesgul(false);if(error){hataGoster(error);return;}setShift(data);};
   const handleCheckOut=async()=>{
     if(mesgul)return;
-    if(!confirm("Vardiyadan çıkış yapılsın mı? (Bildirimler kesilir)"))return;
+    if(!(await onayla("Vardiyadan çıkış yapılsın mı? (Bildirimler kesilir)")))return;
     setMesgul(true);
     const today=businessDayKey(new Date());
     const{data,error}=await supabase.from("shifts").update({status:"done",checked_out_at:new Date().toISOString()}).eq("staff_id",staffUser.id).eq("date",today).select().single();
@@ -76,7 +77,7 @@ export default function MyShiftPage(){
             const{count:sayim,error:hata}=await supabase.from("cash_counts")
               .select("id",{count:"exact",head:true})
               .eq("store_id",magaza).eq("business_day",gun).eq("tur","kapanis");
-            if(!hata&&(sayim||0)===0&&confirm("Bu gecenin kapanış sayımı henüz yapılmadı.\nDükkanı kapatan sayar — şimdi sayalım mı?"))navigate("/cash-count");
+            if(!hata&&(sayim||0)===0&&(await onayla("Bu gecenin kapanış sayımı henüz yapılmadı.\nDükkanı kapatan sayar — şimdi sayalım mı?")))navigate("/cash-count");
           }
         }
       }

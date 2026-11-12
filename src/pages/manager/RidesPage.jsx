@@ -1,4 +1,5 @@
 import { useEffect, useMemo, useState } from "react";
+import { onayla } from "../../lib/onayla.js";
 import { uyar } from "../../lib/uyar.js";
 import { supabase } from "../../lib/supabase.js";
 import { useAuth } from "../../contexts/AuthContext.jsx";
@@ -110,7 +111,7 @@ export default function RidesPage() {
   };
 
   const sil = async (r) => {
-    if (!confirm(`"${r.title}" silinsin mi?`)) return;
+    if (!(await onayla(`"${r.title}" silinsin mi?`, { evet: "Sil", tehlike: true }))) return;
     const { error } = await supabase.from("ride_posts").delete().eq("id", r.id);
     if (error) { uyar("Silinemedi: " + error.message); return; }
     yukle();

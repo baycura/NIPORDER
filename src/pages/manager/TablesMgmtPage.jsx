@@ -1,4 +1,5 @@
 import { useEffect, useState } from "react";
+import { onayla } from "../../lib/onayla.js";
 import { baslikStil } from "../../theme/panel.js";
 import { uyar } from "../../lib/uyar.js";
 import { supabase } from "../../lib/supabase.js";
@@ -78,14 +79,14 @@ export default function TablesMgmtPage() {
   };
 
   const deleteTable = async (t) => {
-    if (!confirm('"' + t.name + '" silinsin mi?')) return;
+    if (!(await onayla('"' + t.name + '" silinsin mi?', { evet: "Sil", tehlike: true }))) return;
     const { error } = await supabase.from("cafe_tables").delete().eq("id", t.id);
     if (error) { uyar("Hata: " + error.message); return; }
     load(true);
   };
 
   const addAllPresets = async () => {
-    if (!confirm("7 hazır masa eklensin mi? (Bar 1-2, Masa 1-3, Teras 1-2)")) return;
+    if (!(await onayla("7 hazır masa eklensin mi? (Bar 1-2, Masa 1-3, Teras 1-2)"))) return;
     const { error } = await supabase.from("cafe_tables").insert(PRESETS.map(p => ({...p, store_id: staffUser?.store_ids?.[0], is_walkin: false})));
     if (error) { uyar("Hata: " + error.message); return; }
     load(true);

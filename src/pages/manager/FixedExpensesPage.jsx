@@ -1,4 +1,5 @@
 import { useEffect, useState } from "react";
+import { onayla } from "../../lib/onayla.js";
 import { uyar } from "../../lib/uyar.js";
 import FormPencere from "../../components/FormPencere.jsx";
 import { supabase } from "../../lib/supabase.js";
@@ -98,7 +99,7 @@ export default function FixedExpensesPage() {
   };
 
   const del = async (i) => {
-    if (!confirm('"' + i.name + '" silinsin mi?')) return;
+    if (!(await onayla('"' + i.name + '" silinsin mi?', { evet: "Sil", tehlike: true }))) return;
     const { error } = await supabase.from("fixed_expenses").delete().eq("id", i.id);
     if (error) { uyar("Hata: " + error.message); return; }
     load(true);

@@ -1,4 +1,5 @@
 import { useEffect, useState } from "react";
+import { onayla } from "../../lib/onayla.js";
 import { uyar } from "../../lib/uyar.js";
 import { supabase, hataMetni } from "../../lib/supabase.js";
 import { kucult } from "../../lib/gorsel.js";
@@ -131,7 +132,7 @@ export default function ContentPage() {
     load(true);
   };
   const del = async (p) => {
-    if (!confirm('"' + p.title + '" silinsin mi?')) return;
+    if (!(await onayla('"' + p.title + '" silinsin mi?', { evet: "Sil", tehlike: true }))) return;
     const { error } = await supabase.from("posts").delete().eq("id", p.id);
     if (error) { uyar("Silinemedi: " + error.message); return; }
     load(true);

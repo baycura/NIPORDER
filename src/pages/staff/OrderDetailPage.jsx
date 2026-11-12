@@ -410,7 +410,10 @@ export default function OrderDetailPage() {
         variantName = hit.name;
       }
     } else if (p.track_stock && Number(p.retail_stock) <= 0) {
-      if (!confirm(p.name + " stokta görünmüyor. Yine de eklensin mi?")) return;
+      // Bilerek tarayici kutusu (confirm): bu soru JS'i DURDURMALI. Surekli
+      // kamera okuyucu ya da el okuyucusu arkada urun eklemeye devam ederse
+      // soru baska urunle karisir, hesap toplami eski listeyle yazilir.
+      if (!window.confirm(p.name + " stokta görünmüyor. Yine de eklensin mi?")) return;
     }
     // Fiyati 0 olan urunler (magaza: tisort, seramik...) icin tutar kasada sorulur
     let price = Number(p.price) || 0;

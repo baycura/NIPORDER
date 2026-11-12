@@ -78,6 +78,32 @@
   kapattı (oturumdan okunur, personel değiştiremez). Sahip "İndirim ve ikram"
   sayfasının İkramlar görünümünde görür. Göç: `20261111_ikram_kapat.sql`.
 - **Ödenmiş hesapta kalem düğmeleri** şimdiki gibi kalır (karar: değişmez).
+- **İkram sayımı:** parayla ödenmiş adet ikram değildir. Kasadaki "Kim ne
+  ödüyor?" listesinde ₺0'lık satır (ikram, %100 indirim) seçilemez. Kısmen
+  ödenmiş satırın kalan adedi ikram edilecekse: satırdaki "Taşı" ile yeni
+  hesaba alınır, orada ikram edilir. Göç: `20261112_ikram_odenen_adet.sql`.
+
+## Üyelik çağrısı ve happy hour (sahip kararları, 2026-11-12)
+- **Amaç: üye sayısını artırmak.** Üye olmayan kişi, happy hour ürününün
+  altında üye fiyatını ve saatini HER ZAMAN görür (saat dışında da):
+  "Üyelere özel · 09:00–22:00 arası ₺200". Pencere başka gündeyse gün adı
+  eklenir ("yarın", "Pazar"). Dokununca üyelik penceresi açılır. Üyeye ve
+  herkese açık happy hour'da (`hh_sadece_uye = false`) gösterilmez.
+  Kod: `lib/happyHour.js` → `happyHourPlan`, `CustomerMenu` → `uyeCagrisi`.
+- **Efes Fıçı 0.5L (liste ₺280) üye fiyatı:**
+  - Pazartesi–Cumartesi 09:00–22:00: **₺200** (kural "Üye fiyatı — Pzt–Cmt
+    09:00–22:00"). 22:00'den sonra herkes liste fiyatı öder.
+  - Pazar **tüm gün: ₺150** (kural "Üye fiyatı — Pazar tüm gün").
+  - "Happy week" ve "Happy Sunday" (₺160) kuralları KAPALI kalır (sahip: "ilk
+    seçenek iyi"). Eski gece kuralları ("Üye fiyatı — HH dışı …") kapatıldı,
+    silinmedi.
+- **"Tüm gün" kuralı 00:00–23:59 yazılır** (panelin saat kutusu 24:00 kabul
+  etmez). Bitişi 23:59 olan kural gece yarısına kadar sayılır (son dakika
+  dahil); menüde saat yerine "tüm gün" yazar: "Üyelere özel · Pazar tüm gün
+  ₺150". Aynı ürün için iki kural AYNI ANDA açık olmamalı: hangisinin
+  kazanacağı belli değildir. Günleri ya da saatleri ayır.
+- Başlıktaki "HAPPY HOUR" rozeti yalnız indirimi gören kişiye çıkar.
+- Kurallar panelden yönetilir: Panel → Happy Hour.
 
 ## Partiler
 - **Çar / Cum / Cmt, 22:00 sonrası.**

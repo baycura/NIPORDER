@@ -1,4 +1,5 @@
 import { useEffect, useMemo, useRef, useState } from "react";
+import { onayla } from "../../lib/onayla.js";
 import { baslikStil } from "../../theme/panel.js";
 import { uyar } from "../../lib/uyar.js";
 import { useSearchParams } from "react-router-dom";
@@ -119,8 +120,8 @@ export default function KonsinyePage() {
 
   const odendiYaz = async (h, geri) => {
     if (!isAdmin) return;
-    if (!geri && !confirm(`${h.tedarikci} — ${ayKisa(h.donem)}: ${tl(h.tedarikci_pay)} ödendi olarak işaretlensin mi?`)) return;
-    if (geri && !confirm(`${h.tedarikci} — ${ayKisa(h.donem)}: ödendi işareti geri alınsın mı?`)) return;
+    if (!geri && !(await onayla(`${h.tedarikci} — ${ayKisa(h.donem)}: ${tl(h.tedarikci_pay)} ödendi olarak işaretlensin mi?`))) return;
+    if (geri && !(await onayla(`${h.tedarikci} — ${ayKisa(h.donem)}: ödendi işareti geri alınsın mı?`))) return;
     setBusy(h.id);
     const { data, error } = await supabase.rpc("nip_konsinye_odendi", { p_id: h.id, p_geri: !!geri });
     setBusy(null);
@@ -131,7 +132,7 @@ export default function KonsinyePage() {
   const [kesimAy, setKesimAy] = useState(ayKaydir(buAy, -1));
   const kes = async () => {
     if (!isAdmin || !storeId) return;
-    if (!confirm(`${ayEtiketi(kesimAy)} hesapları kesilsin mi? Ödenmiş kayıtlar değişmez; bekleyenler güncel satışla tazelenir.`)) return;
+    if (!(await onayla(`${ayEtiketi(kesimAy)} hesapları kesilsin mi? Ödenmiş kayıtlar değişmez; bekleyenler güncel satışla tazelenir.`))) return;
     setBusy("kes");
     const { data, error } = await supabase.rpc("nip_konsinye_hesap_kes", { p_store_id: storeId, p_donem: kesimAy + "-01" });
     setBusy(null);
@@ -144,7 +145,7 @@ export default function KonsinyePage() {
   const mailGonder = async () => {
     if (!isAdmin || !storeId) return;
     const kime = (mail?.alicilar || []).join(", ") || "alıcı yok";
-    if (!confirm(`${ayEtiketi(kesimAy)} hesapları tedarikçi başına Excel olarak e-postayla gönderilsin mi?\nAlıcı: ${kime}`)) return;
+    if (!(await onayla(`${ayEtiketi(kesimAy)} hesapları tedarikçi başına Excel olarak e-postayla gönderilsin mi?\nAlıcı: ${kime}`))) return;
     setBusy("mail");
     const { data, error } = await supabase.functions.invoke("konsinye-mail", { body: { donem: kesimAy, store_id: storeId } });
     setBusy(null);

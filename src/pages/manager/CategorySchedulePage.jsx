@@ -1,4 +1,5 @@
 import { useState, useEffect } from "react";
+import { onayla } from "../../lib/onayla.js";
 import { uyar } from "../../lib/uyar.js";
 import { supabase } from "../../lib/supabase.js";
 import { useAuth } from "../../contexts/AuthContext.jsx";
@@ -50,7 +51,7 @@ export default function CategorySchedulePage() {
   };
 
   const remove = async (id) => {
-    if (!confirm("Bu kuralı silmek istediğinizden emin misiniz?")) return;
+    if (!(await onayla("Bu kuralı silmek istediğinizden emin misiniz?", { evet: "Sil", tehlike: true }))) return;
     const { error } = await supabase.from("category_schedule_rules").delete().eq("id", id);
     if (error) { uyar("Silinemedi: " + error.message); return; }
     load();

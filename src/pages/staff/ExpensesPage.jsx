@@ -1,4 +1,5 @@
 import { useEffect, useMemo, useState } from "react";
+import { onayla } from "../../lib/onayla.js";
 import { baslikStil } from "../../theme/panel.js";
 import { uyar } from "../../lib/uyar.js";
 import { supabase } from "../../lib/supabase.js";
@@ -126,7 +127,7 @@ export default function ExpensesPage() {
   }
 
   async function remove(r) {
-    if (!window.confirm(`Silinsin mi? ${r.description} — ${fmtTL(r.amount)}`)) return;
+    if (!(await onayla(`Silinsin mi? ${r.description} — ${fmtTL(r.amount)}`, { evet: "Sil", tehlike: true }))) return;
     if (DEMO) { setRows(x => x.filter(i => i.id !== r.id)); return; }
     const { error } = await supabase.from("expenses").delete().eq("id", r.id);
     if (error) { uyar(error.message); return; }

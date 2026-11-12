@@ -1,4 +1,5 @@
 import { useEffect, useMemo, useRef, useState } from "react";
+import { onayla } from "../../lib/onayla.js";
 import { baslikStil } from "../../theme/panel.js";
 import { supabase } from "../../lib/supabase.js";
 import { reserve, reserveOturumAl, reserveCikis, RESERVATION_URL } from "../../lib/reserve.js";
@@ -614,7 +615,7 @@ function Etkinlikler({ uyar }) {
 
   // index.html:1803 deleteEvt. Rezervasyonlar SILINMEZ (bag SET NULL, 2026-09-02).
   const sil = async (e) => {
-    if (!window.confirm(e.name + " silinsin mi? Rezervasyon kayıtları kalır, etkinlik bağı boşalır.")) return;
+    if (!(await onayla(e.name + " silinsin mi? Rezervasyon kayıtları kalır, etkinlik bağı boşalır.", { evet: "Sil", tehlike: true }))) return;
     setBusy(true);
     const r = await reserve.from("events").delete().eq("id", e.id);
     setBusy(false);

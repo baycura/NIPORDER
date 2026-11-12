@@ -1,4 +1,5 @@
 import { useEffect, useState } from "react";
+import { onayla } from "../../lib/onayla.js";
 import { baslikStil } from "../../theme/panel.js";
 import { uyar } from "../../lib/uyar.js";
 import FormPencere from "../../components/FormPencere.jsx";
@@ -122,7 +123,7 @@ export default function StaffMgmtPage() {
   };
 
   const deleteStaff = async (s) => {
-    if (!confirm('"' + s.name + '" silinsin mi?')) return;
+    if (!(await onayla('"' + s.name + '" silinsin mi?', { evet: "Sil", tehlike: true }))) return;
     const { error } = await supabase.from("staff").delete().eq("id", s.id);
     if (error) { uyar("Hata: " + error.message); return; }
     load(true);
