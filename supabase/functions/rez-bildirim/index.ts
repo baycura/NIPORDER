@@ -94,7 +94,7 @@ export function rezPosta(k: Kayit): { konu: string; html: string } {
     <p style="margin:0 0 4px;font-size:13px;color:#444;line-height:1.5">${esc(uyg ? m.yolUyg : m.yol)}</p>
     <p style="margin:0;font-size:13px;color:#444;line-height:1.5">${esc(m.iptal)}</p>
   </div>
-  <p style="margin:12px 4px 0;font-size:11px;color:#999">Not in Paris · Fethiye · ${uyg ? "order.notinparis.me" : "reservation.notinparis.me"}</p>
+  <p style="margin:12px 4px 0;font-size:11px;color:#999">Not in Paris · Fethiye · ${uyg ? UYGULAMA.replace(/^https?:\/\//, "") : "reservation.notinparis.me"}</p>
 </div></body></html>`;
   return { konu, html };
 }

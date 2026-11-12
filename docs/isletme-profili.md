@@ -105,6 +105,7 @@
   ₺150". Aynı ürün için iki kural AYNI ANDA açık olmamalı: hangisinin
   kazanacağı belli değildir. Günleri ya da saatleri ayır.
 - Başlıktaki "HAPPY HOUR" rozeti yalnız indirimi gören kişiye çıkar.
+- Kurallar panelden yönetilir: Panel → Happy Hour.
 
 ## Rezervasyon: "Gelmedi" (sahip onayı, 2026-11-12)
 - Panelde onaylı rezervasyonda **"Gelmedi"** düğmesi var (iki dokunuş). Üyede
@@ -125,7 +126,40 @@
   verilir (taban 0'a takılan düşüş fazladan puan kazandırmaz). "Gelmedi"
   işaretli rezervasyona giriş hiçbir istemciden yazılamaz
   (`nip_rez_gelmedi_koru` tetiği). Göç: `20261112_gelmedi_fonksiyon.sql`.
-- Kurallar panelden yönetilir: Panel → Happy Hour.
+
+## Tek uygulama ve adres (sahip kararları, 2026-11-12)
+Sahip: "İki ayrı uygulama yerine rezervasyon uygulamasını direkt Order içinde
+yeniden yapılandırsak. Order adresini de daha kapsayıcı club.notinparis.me
+olarak değiştirelim."
+- **Rezervasyon Order'a taşınıyor.** Ayrı site (reservation.notinparis.me) ve
+  ayrı veritabanı (RESERVE) yerine her şey Order'da olur.
+- **İkinci puan sistemi YOK.** Güven puanı ve kulüp kademeleri taşınmaz
+  ("Zaten sipariş kısmında puan var, ikinci bir puanlama kafa karıştırır").
+  Personel üyede yalnız "kaç kez geldi / kaç kez gelmedi" görür.
+- **Taşınmayan özellikler:** afiş, davet kodu, bekleme listesi, DJ puanlama.
+- **İki adres de çalışır:** club.notinparis.me (yeni ad) ve order.notinparis.me
+  (eski). Eski adres SÜREKLİ açık kalır: basılı QR kodlar ve gönderilmiş
+  bağlantılar onu gösterir. Yönlendirme yok; ikisi aynı uygulamayı sunar.
+- **Adres kuralı (kod):** uygulama hangi adresten açıldıysa ürettiği bağlantı
+  ve QR o adresi taşır (`src/lib/appUrl.js`, `appHostSec`). Sunucu metinleri
+  (e-posta, Telegram) tek `APP_URL` gizli değişkenini okur; yoksa eski adres.
+  Online ödeme dönüşü müşterinin geldiği adrese yapılır (`paytr`, yalnız bu
+  iki adres kabul edilir).
+- **Tarayıcıda adrese bağlı kalanlar:** giriş, sepet, sipariş takibi, misafir
+  rezervasyon kodları, sayım taslakları, ana ekran kısayolu. Yeni adreste bir
+  kez yeniden giriş gerekir. Veritabanındaki hiçbir şey etkilenmez.
+- ⏳ **Sahip adımları (kod bunlar olmadan da zararsız):**
+  1. Vercel → niporder → Settings → Domains → `club.notinparis.me` ekle.
+  2. Alan adı DNS'i: `club` için CNAME → `cname.vercel-dns.com`.
+  3. Supabase (Order) → Authentication → URL Configuration → Redirect URLs →
+     `https://club.notinparis.me/**` ekle (yoksa club'da Google / e-posta
+     girişi eski adrese döner).
+- ⏳ **Yüklenmeyen sunucu sürümleri:** `paytr`, `rez-bildirim`, `konsinye-mail`
+  depoda yeni; canlıda eski sürüm çalışıyor ve bugün AYNI sonucu veriyor
+  (online ödeme Ağustos'tan beri kapalı). Online ödeme açılmadan önce `paytr`
+  yüklenmeli; diğer ikisi bir sonraki değişiklikte yüklenir.
+- ⏳ Altı veritabanı fonksiyonu Telegram mesajına eski adresi yazıyor
+  (çalışır; yalnız yazı). Geçiş günü tek göçle değişecek.
 
 ## Partiler
 - **Çar / Cum / Cmt, 22:00 sonrası.**

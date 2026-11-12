@@ -18,6 +18,19 @@ const CORS = {
 const json = (body: unknown, status = 200) =>
   new Response(JSON.stringify(body), { status, headers: { ...CORS, "Content-Type": "application/json" } });
 
+// Odeme bitince musteri GELDIGI adrese doner. Uygulama iki adresten sunulur
+// (club.notinparis.me ve order.notinparis.me); sepet ve siparis takibi
+// tarayicida adrese bagli tutuldugu icin obur adrese donmek takibi koparir.
+// Yalniz bilinen adresler kabul edilir; tanimsiz bir Origin varsayilana duser.
+const VARSAYILAN_ADRES = (Deno.env.get("APP_URL") || "https://order.notinparis.me").replace(/\/+$/, "");
+const DONUS_ADRESLERI = new Set([
+  VARSAYILAN_ADRES, "https://order.notinparis.me", "https://club.notinparis.me",
+]);
+function donusAdresi(req: Request): string {
+  const o = (req.headers.get("origin") || "").replace(/\/+$/, "").toLowerCase();
+  return DONUS_ADRESLERI.has(o) ? o : VARSAYILAN_ADRES;
+}
+
 async function cfg(key: string): Promise<string | null> {
   const { data } = await supabase.from("bot_config").select("value").eq("key", key).maybeSingle();
   return data?.value ?? null;
@@ -171,8 +184,8 @@ Deno.serve(async (req: Request) => {
         user_name: String(order.customer_name || "Misafir"),
         user_address: "Not in Paris, Fethiye",
         user_phone: "05000000000",
-        merchant_ok_url: "https://order.notinparis.me/menu?pay=ok",
-        merchant_fail_url: "https://order.notinparis.me/menu?pay=fail",
+        merchant_ok_url: donusAdresi(req) + "/menu?pay=ok",
+        merchant_fail_url: donusAdresi(req) + "/menu?pay=fail",
         timeout_limit: "30",
         currency,
         test_mode: testMode,

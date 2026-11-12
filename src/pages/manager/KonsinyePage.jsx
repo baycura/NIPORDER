@@ -7,6 +7,7 @@ import { supabase } from "../../lib/supabase.js";
 import { useAuth } from "../../contexts/AuthContext.jsx";
 import Ikon from "../../components/Ikon.jsx";
 import { guncelAy, ayGecerli, ayKaydir, ayEtiketi, ayGunSayisi, fmtTL, fmtSayi } from "../../lib/hakedis.js";
+import { APP_HOST } from "../../lib/appUrl.js";
 
 const cv = "-apple-system,BlinkMacSystemFont,'Segoe UI',Roboto,sans-serif";
 const hv = "'Bebas Neue','Barlow Condensed','Coolvetica Condensed',sans-serif";
@@ -182,7 +183,7 @@ export default function KonsinyePage() {
         : `${h.tedarikci} payı %${ted}: ${tl(h.tedarikci_pay)} · NOT IN PARIS payı %${biz}: ${tl(h.bizim_pay)}`,
       "Paylar perakende (etiket) fiyatı üzerinden, KDV dahil.",
       h.durum === "odendi" ? `Ödendi: ${tarihSaat(h.odendi_at)}` : "",
-      "Not in Paris · order.notinparis.me",
+      "Not in Paris · " + APP_HOST,
     ].filter(Boolean).join("\n");
   };
   const kopyala = async (h) => {
