@@ -6,11 +6,17 @@
 //
 // Donen deger: { [product_id]: yeniFiyat }
 
+// "23:59" GUN SONU sayilir. "Tüm gün" kurali 00:00–23:59 diye yazilir (panelin
+// saat kutusu 24:00 kabul etmez); son dakika acikta kalmasin diye bitis 23:59
+// ise gece yarisi (1440. dakika) alinir. Kasa ve musteri menusu ayni kural.
+const GUN_SONU = 23 * 60 + 59;
+const bitisDk = (e) => (e === GUN_SONU ? 1440 : e);
+
 const inWindow = (mins, start, end) => {
   const [sh, sm] = String(start).split(":").map(Number);
   const [eh, em] = String(end).split(":").map(Number);
   const s = sh * 60 + (sm || 0);
-  const e = eh * 60 + (em || 0);
+  const e = bitisDk(eh * 60 + (em || 0));
   return s <= e ? (mins >= s && mins < e) : (mins >= s || mins < e); // gece yarisini asan aralik
 };
 
@@ -47,7 +53,8 @@ export function happyHourPrices(products, rules, now = new Date()) {
 // (21:00–09:00) kendi gununde iki parcadir: 00:00–09:00 ve 21:00–24:00.
 //
 // Donen deger: { [product_id]: { fiyat, bas: "21:00", bit: "09:00",
-//                                gun: 0 bugun | 1 yarin | 2..7 gun sonra, aktif } }
+//                                gun: 0 bugun | 1 yarin | 2..7 gun sonra, aktif,
+//                                tumGun: pencere gunun tamami (00:00–23:59) } }
 const dakika = (saat) => {
   const [h, m] = String(saat ?? "").split(":").map(Number);
   return Number.isFinite(h) ? h * 60 + (Number.isFinite(m) ? m : 0) : null;
@@ -60,8 +67,10 @@ export function happyHourPlan(products, rules, now = new Date()) {
   const jsDay = now.getDay(); // 0=Paz .. 6=Cmt
 
   const dene = (pid, fiyat, bas, bit, gunVar) => {
-    const s = dakika(bas), e = dakika(bit), f = Number(fiyat);
-    if (s == null || e == null || fiyat == null || fiyat === "" || !Number.isFinite(f)) return;
+    const s = dakika(bas), eHam = dakika(bit), f = Number(fiyat);
+    if (s == null || eHam == null || fiyat == null || fiyat === "" || !Number.isFinite(f)) return;
+    const e = bitisDk(eHam);
+    const tumGun = s === 0 && e === 1440;
     const parcalar = s <= e ? [[s, e]] : [[0, e], [s, 1440]];
     for (let k = 0; k <= 7; k++) {
       const g = (jsDay + k) % 7;
@@ -82,7 +91,7 @@ export function happyHourPlan(products, rules, now = new Date()) {
         const gBit = (sarar && b === 1440 && !gunVar((g + 1) % 7)) ? "00:00" : kisaSaat(bit);
         // Esitlikte sonra gelen kazanir: happyHourPrices'ta da sonraki kural
         // oncekinin, urunun kendi alani kuralin ustune yazar.
-        if (!eski || uzak <= eski.uzak) out[pid] = { fiyat: f, bas: gBas, bit: gBit, gun: k, aktif, uzak };
+        if (!eski || uzak <= eski.uzak) out[pid] = { fiyat: f, bas: gBas, bit: gBit, gun: k, aktif, uzak, tumGun };
         bulundu = true;
       }
       if (bulundu) break; // sonraki gunler daha uzak

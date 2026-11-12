@@ -1654,23 +1654,33 @@ export default function CustomerMenu() {
     if (uyeMi || !hhSadeceUye) return null;
     const simdi = uyeOlursaFiyat(p);          // su an uye olsa odeyecegi
     const pl = hhPlan[p.id];
-    const saat = pl ? `${pl.bas}–${pl.bit}` : null;
+    // Pencerenin ne zaman oldugu, uc dilde. TUM GUN kurali (00:00–23:59) saat
+    // yerine "tüm gün" yazar: "Üyelere özel · Pazar tüm gün ₺150" (sahip 12.11).
+    const zaman = () => {
+      const bugun = pl.gun === 0 || pl.aktif;
+      const gunAdi = bugun || pl.gun === 1 ? null
+        : new Date(Date.now() + pl.gun * 86400000).toLocaleDateString(paraDil, { weekday: "long" });
+      if (pl.tumGun) {
+        return L(`${bugun ? "bugün" : gunAdi || "yarın"} tüm gün`,
+                 `${bugun ? "today" : gunAdi || "tomorrow"}, all day ·`,
+                 `${bugun ? "сегодня" : gunAdi || "завтра"}, весь день ·`);
+      }
+      const gun = bugun ? "" : (gunAdi || L("yarın", "tomorrow", "завтра")) + " ";
+      return L(`${gun}${pl.bas}–${pl.bit} arası`, `${gun}${pl.bas}–${pl.bit} ·`, `${gun}${pl.bas}–${pl.bit} ·`);
+    };
+    const yaz = (fiyat) => ({ fiyat, yazi: L(`Üyelere özel · ${zaman()} ${para(fiyat)}`,
+                                             `Members only · ${zaman()} ${para(fiyat)} — join`,
+                                             `Только для участников · ${zaman()} ${para(fiyat)} — вступить`) });
     if (simdi != null && simdi < fp) {
       // Indirim su an acik. Nedeni happy hour ise saatini de yaz.
-      if (pl?.aktif && hhProductPrices[p.id] != null) {
-        return { fiyat: simdi, yazi: L(`Üyelere özel · ${saat} arası ${para(simdi)}`, `Members only · ${saat} · ${para(simdi)} — join`, `Только для участников · ${saat} · ${para(simdi)} — вступить`) };
-      }
+      if (pl?.aktif && hhProductPrices[p.id] != null) return yaz(simdi);
       return { fiyat: simdi, yazi: L(`Üye olursan ${para(simdi)}`, `Members pay ${para(simdi)} — join`, `Для участников ${para(simdi)} — вступить`) };
     }
     if (!pl) return null;
     // Siradaki pencere: kasadaki hesapla ayni (happy hour fiyati + anlik indirim).
     const f = Math.round(pl.fiyat * (100 - (Number(p.instant_discount_pct) || 0)) / 100);
     if (!(f < fp)) return null;
-    const gunTarih = new Date(Date.now() + pl.gun * 86400000);
-    const gun = pl.gun === 0 || pl.aktif ? ""
-      : pl.gun === 1 ? L("yarın ", "tomorrow ", "завтра ")
-      : gunTarih.toLocaleDateString(paraDil, { weekday: "long" }) + " ";
-    return { fiyat: f, yazi: L(`Üyelere özel · ${gun}${saat} arası ${para(f)}`, `Members only · ${gun}${saat} · ${para(f)} — join`, `Только для участников · ${gun}${saat} · ${para(f)} — вступить`) };
+    return yaz(f);
   };
 
   // Ustu cizilecek liste fiyati: yalniz gercekten indirim varsa
