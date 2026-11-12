@@ -202,7 +202,7 @@ export default function TodayPage() {
             </div>
           );
         })()}
-        <div style={{ display: "flex", alignItems: "flex-end", gap: 3, height: 46, marginTop: 8 }}>
+        <div onClick={e => e.stopPropagation()} style={{ display: "flex", alignItems: "flex-end", gap: 3, height: 46, marginTop: 8 }}>
           {/* Cubuga dokununca saatin tutari alttaki satira yazilir (telefonda
               "uzerine gelince" yok). Sutunun tamami dokunma alani. */}
           {BUSINESS_HOURS.map(h => (

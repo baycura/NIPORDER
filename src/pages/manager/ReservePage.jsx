@@ -410,6 +410,9 @@ function Rezervasyonlar({ uyar }) {
   // index.html:1880 scanQR — kapida giris. Kod ya da dogrudan kayit.
   const girisYap = async (kayit) => {
     if (busy) return;
+    // Kart kod kutusunun altinda durur. Listeden (satirdaki "Giriş") basildiysa
+    // liste asagi kaydirilmis olabilir: sonuc ayrica kisa bildirim olarak cikar.
+    const sonuc = (ok, baslik, alt) => { kapiYaz(ok, baslik, alt); if (kayit) uyar(baslik + " — " + alt, !ok); };
     let r = kayit;
     if (!r) {
       const kod = qr.trim().toUpperCase();
@@ -420,8 +423,8 @@ function Rezervasyonlar({ uyar }) {
       r = res.data;
       if (!r) return kapiYaz(false, "GEÇERSİZ", "Kod bulunamadı: " + kod);
     }
-    if (r.status === "used") return kapiYaz(false, "KULLANILMIŞ", r.name + " zaten girdi.");
-    if (r.status !== "approved") return kapiYaz(false, "ONAYSIZ", r.name + " · " + (REZ_DURUM[r.status]?.ad || r.status));
+    if (r.status === "used") return sonuc(false, "KULLANILMIŞ", r.name + " zaten girdi.");
+    if (r.status !== "approved") return sonuc(false, "ONAYSIZ", r.name + " · " + (REZ_DURUM[r.status]?.ad || r.status));
 
     setBusy(true);
     try {
@@ -454,9 +457,9 @@ function Rezervasyonlar({ uyar }) {
           seriMsg += " · " + (SEVIYE[nTier] || nTier);
         }
       }
-      kapiYaz(true, "GİRİŞ OK", r.name + " · " + (r.guest_count || 1) + " kişi" + seriMsg);
+      sonuc(true, "GİRİŞ OK", r.name + " · " + (r.guest_count || 1) + " kişi" + seriMsg);
       setQr(""); yukle();
-    } catch (e) { kapiYaz(false, "GİRİŞ YAPILAMADI", r.name + " · " + e.message); } finally { setBusy(false); }
+    } catch (e) { sonuc(false, "GİRİŞ YAPILAMADI", r.name + " · " + e.message); } finally { setBusy(false); }
   };
 
   return (

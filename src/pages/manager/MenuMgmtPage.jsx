@@ -891,17 +891,17 @@ export default function MenuMgmtPage() {
             )}
           </div>
 
-          {/* Dugme satiri altta sabit: 25 alanli formda Kaydet'e ulasmak icin
-              en dibe kaydirmak gerekmiyor. */}
-          <div style={{display:"flex",gap:8,...altlikStil}}>
-            <button onClick={()=>setProdModal(null)} style={cancelBtn}>İptal</button>
-            <button onClick={saveProd} disabled={busy} style={{...saveBtn,opacity:busy?0.6:1}}>{busy?"...":"Kaydet"}</button>
-          </div>
           {/* Silme listede degil burada: karttaki "Sil" dugmesine yanlislikla
               dokunmak urunu goturuyordu. */}
           {prodModal.mode !== "new" && (
             <button onClick={async ()=>{ const p = prodModal.data; if (await delProd(p)) setProdModal(null); }} style={silBtn}>Bu ürünü sil</button>
           )}
+          {/* Dugme satiri altta sabit: 25 alanli formda Kaydet'e ulasmak icin
+              en dibe kaydirmak gerekmiyor. Altlik SON cocuk olmali (ustune binmesin). */}
+          <div style={{display:"flex",gap:8,...altlikStil}}>
+            <button onClick={()=>setProdModal(null)} style={cancelBtn}>İptal</button>
+            <button onClick={saveProd} disabled={busy} style={{...saveBtn,opacity:busy?0.6:1}}>{busy?"...":"Kaydet"}</button>
+          </div>
         </Modal>
       )}
     </div>

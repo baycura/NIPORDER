@@ -327,7 +327,9 @@ export function IkramKapatPenceresi({ order, ad, staffUser, onKapat, onBitti }) 
       supabase.from("staff").select("id, name, role").eq("is_active", true),
     ]).then(([k, p]) => {
       if (iptal) return;
-      if (k.error) { setHata(personelHata(k.error)); setOkunamadi(true); setKalemler([]); return; }
+      // Personel listesi okunamazsa tek aday kasiyer kalir ve on secili gelir:
+      // sahibin verdigi ikram kasiyerin adina yazilirdi. Iki sorgu da sart.
+      if (k.error || p.error) { setHata(personelHata(k.error || p.error)); setOkunamadi(true); setKalemler([]); return; }
       setKalemler(k.data || []);
       setPersonel(p.data || []);
     });

@@ -464,15 +464,15 @@ export default function RetailPage() {
             <span style={{ fontSize: 13, color: "#F0EDE8" }}>Satışta (kasada listelensin)</span>
           </label>
 
-          <div style={{ display: "flex", gap: 8, ...altlikStil }}>
-            <button onClick={() => setProdModal(null)} style={cancelBtn}>İptal</button>
-            <button onClick={saveProduct} disabled={busy} style={{ ...saveBtn, opacity: busy ? 0.6 : 1 }}>{busy ? "..." : "Kaydet"}</button>
-          </div>
           {/* Silme listede degil burada: karttaki "Sil" dugmesine yanlislikla
               dokunmak urunu goturuyordu. */}
           {prodModal.mode !== "new" && (
             <button onClick={async () => { const p = prodModal.data; if (await delProduct(p)) setProdModal(null); }} style={silBtn}>Bu ürünü sil</button>
           )}
+          <div style={{ display: "flex", gap: 8, ...altlikStil }}>
+            <button onClick={() => setProdModal(null)} style={cancelBtn}>İptal</button>
+            <button onClick={saveProduct} disabled={busy} style={{ ...saveBtn, opacity: busy ? 0.6 : 1 }}>{busy ? "..." : "Kaydet"}</button>
+          </div>
         </Modal>
       )}
 

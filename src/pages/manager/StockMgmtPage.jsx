@@ -232,7 +232,11 @@ export default function StockMgmtPage() {
                   style={{padding:"10px 12px",minHeight:44,background:"transparent",color:"#FFFFFF",border:"1px solid #FFFFFF",borderRadius:9,fontSize:12,fontWeight:800,cursor:"pointer",whiteSpace:"nowrap",display:"flex",alignItems:"center",gap:5}}>
                   <Ikon ad="ekle" boy={13}/> Stok
                 </button>
-                <Ikon ad="oksag" boy={14} style={{color:"#666",flexShrink:0}}/>
+                {/* Ok da duzenlemeyi acar (satirin adiyla ayni is; ekran okuyucuda tek dugme). */}
+                <button type="button" aria-hidden="true" tabIndex={-1} onClick={() => openEdit(i)}
+                  style={{minWidth:32,minHeight:44,padding:0,background:"none",border:"none",color:"#666",cursor:"pointer",display:"flex",alignItems:"center",justifyContent:"center",flexShrink:0}}>
+                  <Ikon ad="oksag" boy={14}/>
+                </button>
               </div>
             </div>
           </div>
@@ -488,25 +492,6 @@ export default function StockMgmtPage() {
             <input type="checkbox" checked={!!form.is_consumable} onChange={e=>setForm(f => ({...f,is_consumable:e.target.checked}))} style={{width:18,height:18,accentColor:"#FFFFFF"}}/>
             <span style={{fontSize:13,color:"#F0EDE8"}}>Sarf malzeme (buz, pet bardak, pipet...) — reçetelere tek dokunuşla eklenir</span>
           </label>
-          {/* MALIYET KARARI: her dugme ne kaydedecegini yazar; "Vazgeç" forma doner. */}
-          {karar && (
-            <div role="alertdialog" aria-label="Maliyet kararı" style={{background:"#0C0C0C",border:"1px solid #C87A6A",borderRadius:10,padding:12,marginTop:10}}>
-              <div style={{fontSize:13,color:"#F0EDE8",lineHeight:1.6,whiteSpace:"pre-line",marginBottom:10}}>{karar.metin}</div>
-              <div style={{display:"flex",flexDirection:"column",gap:7}}>
-                {karar.secenekler.map((sc, i) => (
-                  <button key={i} onClick={() => save({ adim: karar.adim, maliyet: sc.deger })} disabled={busy}
-                    style={{minHeight:46,padding:"10px 12px",background:i===0?"#FFFFFF":"transparent",color:i===0?"#000":"#F0EDE8",
-                            border:"1px solid "+(i===0?"#FFFFFF":"#3A3A3A"),borderRadius:10,fontSize:13.5,fontWeight:800,cursor:"pointer",fontFamily:"inherit",textAlign:"left"}}>
-                    {sc.ad}
-                  </button>
-                ))}
-                <button onClick={() => setKarar(null)} disabled={busy}
-                  style={{minHeight:44,padding:"10px 12px",background:"transparent",color:"#888",border:"1px solid #2A2A2A",borderRadius:10,fontSize:13,fontWeight:700,cursor:"pointer",fontFamily:"inherit",textAlign:"left"}}>
-                  Vazgeç: kaydetme, rakamı düzelteceğim
-                </button>
-              </div>
-            </div>
-          )}
           {modal.mode === "edit" && (
             <button onClick={() => del(modal.data)} disabled={busy}
               style={{width:"100%",minHeight:44,marginTop:14,background:silKurulu?"#C87A6A":"transparent",color:silKurulu?"#0C0C0C":"#C87A6A",
@@ -514,9 +499,35 @@ export default function StockMgmtPage() {
               {silKurulu ? `Onayla: "${modal.data.name}" silinsin` : "Bu malzemeyi sil"}
             </button>
           )}
-          <div style={{display:"flex",gap:8,...altlikStil}}>
-            <button onClick={() => setModal(null)} style={cancelBtn}>İptal</button>
-            <button onClick={() => save()} disabled={busy || !!karar} style={{...saveBtn,opacity:(busy || karar)?0.6:1}}>{busy?"...":"Kaydet"}</button>
+          {/* MALIYET KARARI altlikta: Kaydet her kaydirma konumundan basilabiliyor,
+              soru da ayni yerde cikmali. Eskiden formun dibindeydi; telefonda
+              gorunmuyor, Kaydet "olu dugme" gibi kaliyordu. Her dugme ne
+              kaydedecegini yazar; "Vazgeç" forma doner. */}
+          <div style={altlikStil}>
+            {karar && (
+              <div role="alertdialog" aria-label="Maliyet kararı" style={{background:"#0C0C0C",border:"1px solid #C87A6A",borderRadius:10,padding:12,maxHeight:"60vh",overflowY:"auto"}}>
+                <div style={{fontSize:13,color:"#F0EDE8",lineHeight:1.6,whiteSpace:"pre-line",marginBottom:10}}>{karar.metin}</div>
+                <div style={{display:"flex",flexDirection:"column",gap:7}}>
+                  {karar.secenekler.map((sc, i) => (
+                    <button key={i} onClick={() => save({ adim: karar.adim, maliyet: sc.deger })} disabled={busy}
+                      style={{minHeight:46,padding:"10px 12px",background:i===0?"#FFFFFF":"transparent",color:i===0?"#000":"#F0EDE8",
+                              border:"1px solid "+(i===0?"#FFFFFF":"#3A3A3A"),borderRadius:10,fontSize:13.5,fontWeight:800,cursor:"pointer",fontFamily:"inherit",textAlign:"left"}}>
+                      {sc.ad}
+                    </button>
+                  ))}
+                  <button onClick={() => setKarar(null)} disabled={busy}
+                    style={{minHeight:44,padding:"10px 12px",background:"transparent",color:"#888",border:"1px solid #2A2A2A",borderRadius:10,fontSize:13,fontWeight:700,cursor:"pointer",fontFamily:"inherit",textAlign:"left"}}>
+                    Vazgeç: kaydetme, rakamı düzelteceğim
+                  </button>
+                </div>
+              </div>
+            )}
+            {!karar && (
+              <div style={{display:"flex",gap:8}}>
+                <button onClick={() => setModal(null)} style={cancelBtn}>İptal</button>
+                <button onClick={() => save()} disabled={busy} style={{...saveBtn,opacity:busy?0.6:1}}>{busy?"...":"Kaydet"}</button>
+              </div>
+            )}
           </div>
         </Modal>
       )}

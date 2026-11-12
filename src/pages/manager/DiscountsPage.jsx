@@ -100,14 +100,16 @@ export default function DiscountsPage() {
       {/* Gorunum: indirim | ikram. Toplam dugmenin ustunde durur: sahip diger
           gorunumde ne oldugunu sayfayi degistirmeden gorur. */}
       <div role="tablist" aria-label="Görünüm" style={{ display: "flex", gap: 8, marginBottom: 12 }}>
-        {[["indirim", "İndirimler", indirimler], ["ikram", "İkramlar", ikramlar]].map(([k, ad, liste]) => (
+        {[["indirim", "İndirimler", indirimler, indirimHata], ["ikram", "İkramlar", ikramlar, ikramHata]].map(([k, ad, liste, okunmadi]) => (
           <button key={k} role="tab" aria-selected={gorunum === k} onClick={() => { setGorunum(k); setAcikPersonel(null); }}
             style={{ flex: 1, minHeight: 52, padding: "8px 12px", borderRadius: 12, cursor: "pointer", fontFamily: cv, textAlign: "left",
                      background: gorunum === k ? C.card : "transparent", color: gorunum === k ? C.ink : C.muted,
                      border: `1px solid ${gorunum === k ? C.accent : C.line}` }}>
             <div style={{ fontSize: 13, fontWeight: 800 }}>{ad}</div>
             <div style={{ fontSize: 12, marginTop: 2, fontVariantNumeric: "tabular-nums" }}>
-              {liste === null ? "…" : `${liste.length} kalem · ${tl(toplamOf(liste))}`}
+              {/* Okunamayan gorunum "0 kalem · ₺0" yazarsa sahip o hafta hic ikram
+                  verilmedi sanir. */}
+              {liste === null ? "…" : okunmadi ? <span style={{ color: C.down }}>Okunamadı</span> : `${liste.length} kalem · ${tl(toplamOf(liste))}`}
             </div>
           </button>
         ))}

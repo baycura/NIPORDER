@@ -267,11 +267,12 @@ export default function OrderDetailPage() {
     if (it.is_treat) { applyTreat(it, null); return; } // geri alma tek dokunus
     // Ikram SATIRIN TAMAMINI ₺0 yapar. Satirin bir adedi parayla odendiyse o
     // adedin fiyati da silinir, alinan para cirodan duserdi. Odenmis satir
-    // ikram edilmez; kalan adet ayri satir olarak eklenip ikram edilir.
+    // ikram edilmez; kalan adet "Taşı" ile yeni hesaba alinir, orada ikram
+    // edilir (kaldir + yeniden ekle mutfaga yeni siparis dusururdu).
     if (Number(it.odenen_adet) > 0) {
       const odenen = Number(it.odenen_adet), kalan = Math.max(0, Number(it.quantity || 0) - odenen);
       setDuzBilgi({ tur: "uyari", sure: 9000, id: Date.now(), metin: kalan > 0
-        ? `${it.product_name}: ${odenen} adedi ödendi, bu satır ikram edilmez. Kalan ${kalan} adet için: satırdan ${kalan} adet kaldır, ürünü yeniden ekle, yeni satırı ikram et.`
+        ? `${it.product_name}: ${odenen} adedi ödendi, bu satır ikram edilmez. Kalan ${kalan} adet için: satırdaki "Taşı" ile yeni hesaba al, orada ikram et.`
         : `${it.product_name} ödendi. Ödenmiş ürün ikram edilmez.` });
       return;
     }

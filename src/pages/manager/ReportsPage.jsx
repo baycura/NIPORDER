@@ -155,7 +155,8 @@ export default function ReportsPage() {
       .reduce((s, o) => s + net(o), 0);
     // Aktif = hala ACIK hesap. Eskiden "odenmemis her sey" sayiliyordu;
     // iptal edilen hesap da aktif gorunuyordu.
-    const active = todayOrders.filter(o => acikDurum.includes(o.status)).length;
+    // Bugün sayfasiyla ayni kural: dun acilip hala acik duran hesap da sayilir.
+    const active = all.filter(o => acikDurum.includes(o.status)).length;
     // Ortalama fis para alinan fislerden: ₺0 kapanan ikram hesabi ortalamayi dusurmesin.
     const paraliFis = todayPaid.filter(o => net(o) > 0.005).length;
     const kitchenToday = todayPaid.reduce((s, o) => s + kitchenOf(o), 0);
