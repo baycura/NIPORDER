@@ -463,8 +463,15 @@ function Rezervasyonlar({ uyar }) {
 
     setBusy(true);
     try {
-      const u = await reserve.from("reservations").update({ status: "used", checked_in_at: new Date().toISOString() }).eq("id", r.id);
+      // Yalniz HALA onayli (ve "gelmedi" isaretsiz) kayit girer. Ekrandaki satir
+      // eski olabilir: baska cihaz az once giris yaptiysa ya da "gelmedi"
+      // isaretlediyse giris ikinci kez yazilmaz, guven puani iki kez artmaz.
+      let gu = reserve.from("reservations").update({ status: "used", checked_in_at: new Date().toISOString() })
+        .eq("id", r.id).eq("status", "approved");
+      if (!rezervasyonYerel) gu = gu.is("no_show_at", null);
+      const u = await gu.select("id");
       if (u.error) throw u.error;
+      if (!u.data || !u.data.length) { sonuc(false, "DEĞİŞTİ", r.name + " · bu rezervasyon az önce değişti. Liste yenilendi."); yukle(); return; }
       let seriMsg = "";
       if (r.profile_id) {
         const pRes = await reserve.from("profiles").select("trust_score,loyalty_score,total_attended,total_reservations,attendance_streak,max_streak,last_attended_at,tier").eq("id", r.profile_id).single();
