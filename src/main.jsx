@@ -1,5 +1,4 @@
-// ILK ice aktarim olmali: giris sonucu obur adrese tasinacaksa Supabase
-// istemcisi kurulmadan once adres cubugundan alinir (lib/girisDonus.js).
+// Giris sonucu obur ikiz adrese tasiniyorsa uygulama cizilmez (lib/girisDonus.js).
 import { girisTasiniyor } from "./lib/girisDonus.js";
 import React from "react";
 import ReactDOM from "react-dom/client";
@@ -15,7 +14,8 @@ if ("serviceWorker" in navigator) {
   });
 }
 
-// Sayfa obur adrese gidiyorsa uygulama cizilmez (bos ekran bir an gorunur).
+// Sayfa obur adrese gidiyorsa uygulama cizilmez (bos ekran bir an gorunur);
+// Supabase istemcisi de adresteki giris sonucunu okumaz (lib/supabase.js).
 if (!girisTasiniyor) {
   ReactDOM.createRoot(document.getElementById("root")).render(
     <React.StrictMode>

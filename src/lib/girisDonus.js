@@ -2,81 +2,71 @@
 //
 // Uygulama iki adresten sunulur (lib/appUrl.js: club ve order). Supabase,
 // Google ya da e-posta baglantisi ile giristen sonra kullaniciyi yalniz KENDI
-// izin listesindeki adrese geri yollar; listede olmayan adres icin "Site URL"e
-// (order.notinparis.me, kok sayfa) duser. O liste yalniz Supabase panelinden
-// degisir. Olcum (12.11): club listede YOK; club'da baslayan Google girisi
-// order'a donuyor ve kisi yanlis adreste oturum aciyor.
+// kabul ettigi adrese geri yollar. Olcum (12-13.11, canli):
+//   - club.notinparis.me KABUL EDILMIYOR; "Site URL"e (order, kok sayfa) dusuyor.
+//   - order.notinparis.me altindaki her yol ve sorgu KABUL EDILIYOR
+//     (ornek: /menu?donus=club.notinparis.me aynen geri geldi).
+// Kabul listesi yalniz Supabase panelinden degisir; bu kod panel ayari istemez.
 //
-// Cozum (panel ayari gerektirmez):
-//   1) Giris baslarken, baslanan adres kisa omurlu bir cereze yazilir. Cerez
-//      ust alan adina (notinparis.me) aittir; iki adres de okur.
-//   2) Uygulama acilirken adres cubugunda giris sonucu (#access_token / #error)
-//      varsa ve cerez OBUR ikiz adresi gosteriyorsa, sonuc o adrese tasinir.
+// Cozum (araci adres):
+//   1) Giris club'da baslarsa donus adresi olarak order verilir ve nereye
+//      donulecegi ADRESIN ICINE yazilir: https://order…/menu?donus=club….
+//   2) order bu isaretle acilirsa sayfayi, giris sonucuyla (# kismi) birlikte
+//      club'a tasir.
+// Isaret adresin icinde oldugu icin e-postadaki baglanti baska bir tarayicida
+// acilsa da calisir (Instagram / WhatsApp ic tarayicisindan baslayan giriste
+// baglanti telefonun kendi tarayicisinda acilir). Ilk surum cerez kullaniyordu;
+// cerez yalniz ayni tarayicida okunur (inceleme bulgusu, 13.11).
 //
-// Uc kural:
-//   - Tasima yalniz bilinen iki adres arasinda olur; cerezde baska bir sey
+// Kurallar:
+//   - Tasima yalniz bilinen iki adres arasinda olur; isarette baska bir sey
 //     yazsa da oturum anahtari disari gitmez.
-//   - Tasimadan ONCE giris sonucu bu adresin cubugundan silinir. Silinmezse
-//     buradaki istemci de ayni oturumu acar; iki adres ayni yenileme
-//     anahtarini paylasir ve biri yenileyince oburu oturumdan duser.
-//   - Bu dosya main.jsx'in ILK ice aktarimidir: Supabase istemcisi
-//     (lib/supabase.js) kurulmadan once calismalidir.
+//   - Araci adreste oturum ACILMAZ: lib/supabase.js, girisTasiniyor dogruyken
+//     adresteki giris sonucunu okumaz. Okusaydi iki adres ayni yenileme
+//     anahtarini paylasir, biri yenileyince oburu oturumdan duserdi.
+//   - Adres cubugu degistirilmez: sayfa yenilenirse tasima aynen tekrarlanir.
 //
-// Supabase listesine club eklenirse bu kod zararsiz kalir: donus dogrudan
-// club'a gelir, cerez ayni adresi gosterir, tasima olmaz.
+// Supabase listesine club eklenirse bu kod zararsiz kalir (bir ek durak).
 import { IKIZ_ADRESLER } from "./appUrl.js";
 
-export const GIRIS_CEREZ = "nip_giris_adres";
-const CEREZ_ALANI = "notinparis.me";
-// E-postadaki giris baglantisi bir saat gecerlidir; cerez de o kadar yasar.
-const CEREZ_OMRU_SN = 3600;
+// Supabase'in geri donusu kabul ettigi adres ("Site URL").
+export const GIRIS_ARACI = "order.notinparis.me";
+const ISARET = "donus";
 
 const ikizMi = (host) => IKIZ_ADRESLER.includes(String(host || "").toLowerCase());
+const kapi = (loc) => (loc.port ? ":" + loc.port : "");
 
-// Saf karar (test edilir). hedef: tasinacak adres ya da null.
-export function girisDonusKarar({ host, hash, cerez }) {
+// Giris baslarken Supabase'e verilecek donus adresi (Google ve e-posta kodu).
+// Ikiz adreslerin disinda (baska isletme, yerel deneme, onizleme) eskisi gibi.
+export function girisDonusAdresi(loc = typeof window !== "undefined" ? window.location : null) {
+  if (!loc) return "/menu";
+  const h = String(loc.hostname || "").toLowerCase();
+  if (ikizMi(h) && h !== GIRIS_ARACI) {
+    return loc.protocol + "//" + GIRIS_ARACI + kapi(loc) + "/menu?" + ISARET + "=" + encodeURIComponent(h);
+  }
+  return loc.origin + "/menu";
+}
+
+// Saf karar (test edilir): bu adrese "donus" isaretiyle gelindiyse tasinacak
+// adres, degilse null.
+export function girisDonusKarar({ host, search }) {
   const h = String(host || "").toLowerCase();
-  const c = String(cerez || "").toLowerCase();
-  const girisVar = /(^#|&)(access_token|error)=/.test(String(hash || ""));
-  if (!ikizMi(h) || !girisVar) return { hedef: null, cerezSil: false };
-  if (!c) return { hedef: null, cerezSil: false };
-  if (!ikizMi(c) || c === h) return { hedef: null, cerezSil: true };
-  return { hedef: c, cerezSil: true };
+  if (!ikizMi(h)) return null;
+  let d = "";
+  try { d = String(new URLSearchParams(String(search || "")).get(ISARET) || "").toLowerCase(); } catch { d = ""; }
+  return ikizMi(d) && d !== h ? d : null;
 }
 
-function cerezOku(doc) {
-  try {
-    const m = String(doc.cookie || "").match(new RegExp("(?:^|;\\s*)" + GIRIS_CEREZ + "=([^;]*)"));
-    return m ? decodeURIComponent(m[1]) : "";
-  } catch { return ""; }
-}
-
-function cerezYaz(doc, loc, deger, omurSn) {
-  try {
-    doc.cookie = GIRIS_CEREZ + "=" + encodeURIComponent(deger)
-      + "; Domain=" + CEREZ_ALANI + "; Path=/; Max-Age=" + omurSn + "; SameSite=Lax"
-      + (loc.protocol === "https:" ? "; Secure" : "");
-  } catch { /* cerez kapaliysa giris yine calisir; yalniz tasima olmaz */ }
-}
-
-// Giris baslarken cagrilir (Google dugmesi, e-posta kodu isteme).
-export function girisAdresiYaz(w = typeof window !== "undefined" ? window : null) {
-  if (!w || !ikizMi(w.location.hostname)) return;
-  cerezYaz(w.document, w.location, w.location.hostname.toLowerCase(), CEREZ_OMRU_SN);
-}
-
-// Acilista bir kez calisir. true: sayfa obur adrese gidiyor (uygulama cizilmez).
+// Acilista bir kez calisir. true: sayfa obur adrese gidiyor (uygulama cizilmez,
+// oturum acilmaz).
 export function girisDonusCalistir(w = typeof window !== "undefined" ? window : null) {
   if (!w) return false;
   try {
     const loc = w.location;
-    const k = girisDonusKarar({ host: loc.hostname, hash: loc.hash, cerez: cerezOku(w.document) });
-    if (k.cerezSil) cerezYaz(w.document, loc, "", 0);
-    if (!k.hedef) return false;
-    const hash = loc.hash;
-    w.history.replaceState(null, "", loc.pathname + loc.search);
+    const hedef = girisDonusKarar({ host: loc.hostname, search: loc.search });
+    if (!hedef) return false;
     // Ayni sema ve kapi: canlida https ve kapisiz; yerel denemede oldugu gibi.
-    loc.replace(loc.protocol + "//" + k.hedef + (loc.port ? ":" + loc.port : "") + "/menu" + hash);
+    loc.replace(loc.protocol + "//" + hedef + kapi(loc) + "/menu" + (loc.hash || ""));
     return true;
   } catch { return false; }
 }

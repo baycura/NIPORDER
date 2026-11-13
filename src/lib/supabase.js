@@ -1,4 +1,5 @@
 import { createClient } from "@supabase/supabase-js";
+import { girisTasiniyor } from "./girisDonus.js";
 
 // Zayif sinyalde fetch reddedilmez, ASILI kalir. O sirada garson urun eklemisse
 // ekranda eklenmis gorunur (OrderDetailPage once optimistik yazar) ama sunucuya
@@ -75,8 +76,10 @@ export const zamanAsimiliFetch = async (url, options = {}) => {
 export const hataMetni = (error) =>
   error?.context?.message || error?.message || (error ? String(error) : "Bilinmeyen hata");
 
+// detectSessionInUrl: sayfa obur ikiz adrese tasiniyorsa (lib/girisDonus.js)
+// adresteki giris sonucu BURADA okunmaz; oturum yalniz hedef adreste acilir.
 export const supabase = createClient(
   import.meta.env.VITE_SUPABASE_URL,
   import.meta.env.VITE_SUPABASE_ANON_KEY,
-  { global: { fetch: zamanAsimiliFetch } }
+  { global: { fetch: zamanAsimiliFetch }, auth: { detectSessionInUrl: !girisTasiniyor } }
 );

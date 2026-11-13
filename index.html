@@ -2,6 +2,12 @@
 <html lang="tr">
   <head>
     <meta charset="UTF-8" />
+    <!-- GIRIS DONUSU, hizli yol (kural: src/lib/girisDonus.js). Not in Paris iki
+         adresten sunulur; club'da baslayan giris order uzerinden doner
+         (?donus=club…). Bu satir sayfayi uygulama paketi inmeden once tasir:
+         zayif baglantida bos ekran kisalir. Baska adreste hicbir sey yapmaz.
+         Stil dosyalarindan ONCE durmali (yoksa onlari bekler). -->
+    <script>(function(){try{var l=location,h=l.hostname.toLowerCase(),t=["club.notinparis.me","order.notinparis.me"],d=(new URLSearchParams(l.search).get("donus")||"").toLowerCase();if(t.indexOf(h)>=0&&t.indexOf(d)>=0&&d!==h)l.replace(l.protocol+"//"+d+(l.port?":"+l.port:"")+"/menu"+l.hash)}catch(e){}})();</script>
     <meta name="viewport" content="width=device-width, initial-scale=1.0" />
     <!-- %VITE_...% yer tutucularini Vite build aninda doldurur. Varsayilanlar
          (Not in Paris) vite.config.js'de; baska isletme kurulumu

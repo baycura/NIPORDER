@@ -1,6 +1,6 @@
 import { createContext, useContext, useEffect, useState } from "react";
 import { supabase } from "../lib/supabase.js";
-import { girisAdresiYaz } from "../lib/girisDonus.js";
+import { girisDonusAdresi } from "../lib/girisDonus.js";
 import { kvkkPendingOku, kvkkPendingTemizle, kvkkKabulEt } from "../lib/kvkk.js";
 
 const AuthContext = createContext(null);
@@ -113,11 +113,11 @@ export function AuthProvider({ children }) {
   };
 
   const signInWithGoogle = async () => {
-    // Giris hangi adreste basladiysa orada biter (lib/girisDonus.js).
-    girisAdresiYaz();
+    // Giris hangi adreste basladiysa orada biter: club'da donus adresi araci
+    // adres uzerinden verilir (lib/girisDonus.js).
     await supabase.auth.signInWithOAuth({
       provider: "google",
-      options: { redirectTo: window.location.origin + "/menu" },
+      options: { redirectTo: girisDonusAdresi() },
     });
   };
 
