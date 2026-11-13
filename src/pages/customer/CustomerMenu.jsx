@@ -10,6 +10,7 @@ import { errorText } from "../../lib/errorText.js";
 import { ozellik, MARKA, rezervasyonYerel, PROFIL } from "../../lib/profil.js";
 import { euroKuru, euroGosterilsin, euroAdimi, euroYaz } from "../../lib/euro.js";
 import { STORE_SLUG } from "../../lib/stores.js";
+import { girisDonusAdresi } from "../../lib/girisDonus.js";
 import { RESERVE_URL, RESERVE_KEY } from "../../lib/reserve.js";
 import { kvkkGuncelGetir, kvkkPendingKaydet, kvkkEksikMi } from "../../lib/kvkk.js";
 import Ikon from "../../components/Ikon.jsx";
@@ -833,8 +834,10 @@ export default function CustomerMenu() {
     const email = otpEmail.trim().toLowerCase();
     if (!/^[^\s@]+@[^\s@]+\.[^\s@]{2,}$/.test(email)) { bildir(t.login_bad_email); return; }
     setOtpBusy(true);
+    // E-postadaki baglantiya dokunan kisi de basladigi adrese doner; baglanti
+    // baska tarayicida acilsa da (lib/girisDonus.js).
     const { error } = await supabase.auth.signInWithOtp({
-      email, options: { shouldCreateUser: true, emailRedirectTo: window.location.origin + "/menu" },
+      email, options: { shouldCreateUser: true, emailRedirectTo: girisDonusAdresi() },
     });
     setOtpBusy(false);
     if (error) {
@@ -873,6 +876,9 @@ export default function CustomerMenu() {
     const { error } = await supabase.auth.verifyOtp({ email: otpEmail.trim().toLowerCase(), token: kod, type: "email" });
     setOtpBusy(false);
     if (error) { bildir(errorText(error, lang)); return; }
+    // Kodla giris sayfa yenilemeden biter: "giristen donuluyor" isareti burada
+    // kalkar. Kalmasaydi daha sonra duz /menu acildiginda eski adrese gidilirdi.
+    durumYaz({ giris: false });
     // Oturum degisikligini AuthContext yakalar; profil eksikse tamamlama ekrani gelir
     setLoginSheet(false); setOtpSent(false); setOtpCode(""); setKvkkOk(false);
   };
@@ -1316,11 +1322,20 @@ export default function CustomerMenu() {
     return () => { stopped = true; clearInterval(poller); supabase.removeChannel(ch); };
   }, [successOrderId, lang]);
 
-  // Girisle donus: Google /menu'ye doner. Kayitli adres masaliysa oraya git.
+  // Girisle donus: Google /menu'ye doner. Kayitli adres masaliysa ya da magaza
+  // secimi tasiyorsa (/menu?store=…, basili genel QR) oraya git. Eskiden yalniz
+  // masa adresi geri kuruluyordu: genel QR'dan gelen kisi giristen sonra duz
+  // /menu'ye dusuyor, sepeti ve takip ettigi siparis geri gelmiyordu (adres
+  // tutmadigi icin); doner menusundeyken giris yapan kafe menusune donuyordu.
+  // Adreste baska bir sorgu varsa (?rez=…, ?pay=…) dokunulmaz. Giris basarisiz
+  // bittiyse Supabase adrese kendi hata alanlarini ekler; onlar "baska sorgu"
+  // sayilmaz (vazgecen kisi de kaldigi yere doner).
   useEffect(() => {
     const d = durumOku();
-    if (d.giris && window.location.pathname === "/menu" && typeof d.yol === "string"
-        && d.yol.startsWith("/menu/")) {
+    const q = new URLSearchParams(window.location.search);
+    ["error", "error_code", "error_description"].forEach(k => q.delete(k));
+    if (d.giris && window.location.pathname === "/menu" && !q.toString() && typeof d.yol === "string"
+        && (d.yol.startsWith("/menu/") || d.yol.startsWith("/menu?"))) {
       navigate(d.yol, { replace: true });
     }
   }, []);
@@ -2452,7 +2467,8 @@ export default function CustomerMenu() {
                       {fmtDay(r.ride_date)}{r.ride_time ? " · " + r.ride_time : ""}
                     </div>
                     <div style={{fontSize:11,color:"#666666",marginTop:2}}>
-                      {[r.pace, r.distance_km ? Math.round(r.distance_km) + " km" : null, r.elevation_m ? Math.round(r.elevation_m) + " m↑" : null, r.meet_point].filter(Boolean).join(" · ")}
+                      {/* Tempo panelde yalniz sayi olarak girilir (km/s); birimsiz sayi menude anlamsiz kaliyordu. */}
+                      {[r.pace ? (/[a-zA-Zа-яА-Я]/.test(String(r.pace)) ? r.pace : String(r.pace).trim() + " " + L("km/s","km/h","км/ч")) : null, r.distance_km ? Math.round(r.distance_km) + " km" : null, r.elevation_m ? Math.round(r.elevation_m) + " m↑" : null, r.meet_point].filter(Boolean).join(" · ")}
                     </div>
                   </div>
                   <span style={{fontSize:12,fontWeight:700,flexShrink:0,textAlign:"right"}}>

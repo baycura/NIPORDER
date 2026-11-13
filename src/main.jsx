@@ -1,3 +1,5 @@
+// Giris sonucu obur ikiz adrese tasiniyorsa uygulama cizilmez (lib/girisDonus.js).
+import { girisTasiniyor } from "./lib/girisDonus.js";
 import React from "react";
 import ReactDOM from "react-dom/client";
 import { BrowserRouter } from "react-router-dom";
@@ -12,10 +14,14 @@ if ("serviceWorker" in navigator) {
   });
 }
 
-ReactDOM.createRoot(document.getElementById("root")).render(
-  <React.StrictMode>
-    <BrowserRouter>
-      <App />
-    </BrowserRouter>
-  </React.StrictMode>
-);
+// Sayfa obur adrese gidiyorsa uygulama cizilmez (bos ekran bir an gorunur);
+// Supabase istemcisi de adresteki giris sonucunu okumaz (lib/supabase.js).
+if (!girisTasiniyor) {
+  ReactDOM.createRoot(document.getElementById("root")).render(
+    <React.StrictMode>
+      <BrowserRouter>
+        <App />
+      </BrowserRouter>
+    </React.StrictMode>
+  );
+}
