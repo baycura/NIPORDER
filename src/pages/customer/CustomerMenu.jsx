@@ -10,6 +10,7 @@ import { errorText } from "../../lib/errorText.js";
 import { ozellik, MARKA, rezervasyonYerel, PROFIL } from "../../lib/profil.js";
 import { euroKuru, euroGosterilsin, euroAdimi, euroYaz } from "../../lib/euro.js";
 import { STORE_SLUG } from "../../lib/stores.js";
+import { girisAdresiYaz } from "../../lib/girisDonus.js";
 import { RESERVE_URL, RESERVE_KEY } from "../../lib/reserve.js";
 import { kvkkGuncelGetir, kvkkPendingKaydet, kvkkEksikMi } from "../../lib/kvkk.js";
 import Ikon from "../../components/Ikon.jsx";
@@ -833,6 +834,8 @@ export default function CustomerMenu() {
     const email = otpEmail.trim().toLowerCase();
     if (!/^[^\s@]+@[^\s@]+\.[^\s@]{2,}$/.test(email)) { bildir(t.login_bad_email); return; }
     setOtpBusy(true);
+    // E-postadaki baglantiya dokunan kisi de basladigi adrese doner (lib/girisDonus.js).
+    girisAdresiYaz();
     const { error } = await supabase.auth.signInWithOtp({
       email, options: { shouldCreateUser: true, emailRedirectTo: window.location.origin + "/menu" },
     });

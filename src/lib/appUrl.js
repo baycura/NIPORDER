@@ -14,7 +14,7 @@
 // ve ikiz adres kurali ORADA DEVREYE GIRMEZ.
 const env = (typeof import.meta !== "undefined" && import.meta.env) || {};
 
-const IKIZ_ADRESLER = ["club.notinparis.me", "order.notinparis.me"];
+export const IKIZ_ADRESLER = ["club.notinparis.me", "order.notinparis.me"];
 const VARSAYILAN_HOST = env.VITE_APP_HOST || "order.notinparis.me";
 
 export function appHostSec(varsayilan, acilan) {
