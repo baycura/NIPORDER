@@ -2455,7 +2455,8 @@ export default function CustomerMenu() {
                       {fmtDay(r.ride_date)}{r.ride_time ? " · " + r.ride_time : ""}
                     </div>
                     <div style={{fontSize:11,color:"#666666",marginTop:2}}>
-                      {[r.pace, r.distance_km ? Math.round(r.distance_km) + " km" : null, r.elevation_m ? Math.round(r.elevation_m) + " m↑" : null, r.meet_point].filter(Boolean).join(" · ")}
+                      {/* Tempo panelde yalniz sayi olarak girilir (km/s); birimsiz sayi menude anlamsiz kaliyordu. */}
+                      {[r.pace ? (/[a-zA-Zа-яА-Я]/.test(String(r.pace)) ? r.pace : String(r.pace).trim() + " " + L("km/s","km/h","км/ч")) : null, r.distance_km ? Math.round(r.distance_km) + " km" : null, r.elevation_m ? Math.round(r.elevation_m) + " m↑" : null, r.meet_point].filter(Boolean).join(" · ")}
                     </div>
                   </div>
                   <span style={{fontSize:12,fontWeight:700,flexShrink:0,textAlign:"right"}}>
