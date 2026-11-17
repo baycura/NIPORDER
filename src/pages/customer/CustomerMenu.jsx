@@ -987,7 +987,7 @@ export default function CustomerMenu() {
   const etkinlikTik = useRef(0);
   const etkinlikSira = useRef(0);
   const etkinlikOku = async (zorla = false) => {
-    const sira = ++etkinlikSira.current;
+    let sira = 0;   // yalniz GERCEKTEN okuyan cagri sira alir (asagida)
     const today = new Date(Date.now() + 3 * 3600 * 1000).toISOString().slice(0, 10); // TR gunu
     const alanlar = "id,name,subtitle,date,time,genre,access_type,capacity,approved_count,rules,rules_en,rules_ru,note";
     try {
@@ -995,6 +995,9 @@ export default function CustomerMenu() {
       const yerel = await rezYerelOku(zorla ? { tazeMs: 0 } : undefined);
       if (yerel === null) throw new Error("kaynak bilinmiyor");
       if (!zorla && etkinlikKaynak.current === yerel) return;
+      // Sira burada alinir: erken donen bir cagri (yukaridaki satir), o sirada
+      // suren zorla yenilemenin sonucunu gecersiz kilmasin.
+      sira = ++etkinlikSira.current;
       let liste;
       if (yerel) {
         // Yerel: bu veritabanindaki events tablosu (anon yalniz aktif olanlari gorur)
@@ -1016,7 +1019,7 @@ export default function CustomerMenu() {
       setFeeds(f => ({ ...f, events: liste }));
     } catch (e) {
       // Eldeki liste (varsa) ekranda kalir; yoksa "okunamadi / tekrar dene"
-      if (sira === etkinlikSira.current) feedBozuk("events");
+      if (!sira || sira === etkinlikSira.current) feedBozuk("events");
     }
   };
   // Sayfa yeniden one gelince (telefon kilidi, sekme degisimi) kaynak yeniden sorulur
