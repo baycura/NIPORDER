@@ -150,14 +150,33 @@ olarak değiştirelim."
   kez yeniden giriş gerekir. Veritabanındaki hiçbir şey etkilenmez.
 - ⏳ **Sahip adımları (kod bunlar olmadan da zararsız):**
   1. Vercel → niporder → Settings → Domains → `club.notinparis.me` ekle.
-  2. Alan adı DNS'i: `club` için CNAME → `cname.vercel-dns.com`.
-  3. Supabase (Order) → Authentication → URL Configuration → Redirect URLs →
-     `https://club.notinparis.me/**` ekle (yoksa club'da Google / e-posta
-     girişi eski adrese döner).
-- ⏳ **Yüklenmeyen sunucu sürümleri:** `paytr`, `rez-bildirim`, `konsinye-mail`
-  depoda yeni; canlıda eski sürüm çalışıyor ve bugün AYNI sonucu veriyor
-  (online ödeme Ağustos'tan beri kapalı). Online ödeme açılmadan önce `paytr`
-  yüklenmeli; diğer ikisi bir sonraki değişiklikte yüklenir.
+  2. Alan adı DNS'i: `club` için CNAME → Vercel'in o ekranda gösterdiği değer
+     (genelde `cname.vercel-dns.com`).
+  Bu ikisini Claude yapamıyor: Vercel bağlantısı proje ayarını değiştiremiyor
+  (403), DNS sağlayıcısına bağlantı yok.
+- ✅ **Supabase giriş ayarı GEREKMEZ (13.11).** Ölçüm: Supabase club adresine
+  geri dönmüyor, order altındaki her adresi kabul ediyor. Club'da başlayan
+  giriş order üzerinden döner ve dönüş bilgisi adresin içinde taşınır
+  (`/menu?donus=club.notinparis.me`); order sayfayı club'a taşır, kendisinde
+  oturum açmaz (`src/lib/girisDonus.js`, `index.html` hızlı yol). E-postadaki
+  bağlantı başka tarayıcıda açılsa da çalışır.
+- ✅ `paytr` yüklendi (v6, 12.11): dönüş adresi müşterinin geldiği adres.
+  ⏳ `rez-bildirim` ve `konsinye-mail` depoda yeni; canlıdaki sürüm bugün AYNI
+  sonucu veriyor, bir sonraki değişiklikte yüklenir.
+- **Rezervasyon taşıma, Aşama 1 (sunucu, 13.11):**
+  `20261113_rezervasyon_order_icinde.sql`. Order kendi başına rezervasyon
+  alabilir ama bugünkü akış DEĞİŞMEDİ: geçiş tek anahtara bağlı
+  (`nip_rez_ayar.yerel`, yalnız SQL oturumu çevirir; `durdu` = geçiş molası).
+  Personel işlemleri sunucu fonksiyonudur: `nip_rez_onayla`, `nip_rez_reddet`,
+  `nip_rez_giris`, `nip_rez_gelmedi`, `nip_rez_engel`. Üyede yalnız iki sayaç
+  (`customers.rez_geldi`, `rez_gelmedi`) ve rezervasyon engeli (`rez_engelli`)
+  var; bunları yalnız sunucu yazar. Tabloya doğrudan talep yazma kapalı.
+  Sıradaki: arayüz (panel ve menü kaynağı çalışırken okur), veri kopyası,
+  yeni KVKK sürümü, geçiş.
+- **Göç dosyaları yerel PostgreSQL'de denenir** (container'da sunucu var):
+  canlıdaki bağımlı nesnelerin taklidi + önceki göçler + yeni dosya iki kez
+  uygulanır, senaryolar orada koşar; sonra ana dala girer ve Göçüş işi
+  canlıya uygular.
 - ⏳ Altı veritabanı fonksiyonu Telegram mesajına eski adresi yazıyor
   (çalışır; yalnız yazı). Geçiş günü tek göçle değişecek.
 
