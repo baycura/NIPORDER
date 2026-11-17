@@ -28,3 +28,10 @@ select cron.schedule('nip-clean-paytr-pending', '40 3 * * *',
   $$delete from public.paytr_payments where status = 'pending' and created_at < now() - interval '1 day'$$);
 -- Acilmayanlar (dis servis ister): nip-daily-summary, eur-rate-daily,
 -- nip-weekly-audit, nip-*-hatirlatma, nip-kasa-bekcisi, nip-reserve-*, nip-shopify-*.
+
+-- Rezervasyon: bu isletmede ayri rezervasyon projesi (RESERVE) yok. Talepler
+-- bu veritabanindaki events / reservations tablolarina yazilir; menu ve panel
+-- kaynagi bu anahtardan okur (20261113_rezervasyon_order_icinde, lib/rezKaynak.js).
+-- Sema kopyasi satir tasimaz: satir yoksa eklenir, varsa anahtar acilir.
+insert into public.nip_rez_ayar (tek, yerel) values (true, true)
+on conflict (tek) do update set yerel = true, degisti = now();

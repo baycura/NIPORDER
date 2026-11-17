@@ -21,11 +21,16 @@ import { rezervasyonYerel } from "./profil.js";
 // Ceren). Baska bir yoneticiye yetki vermek icin o kisinin RESERVE'de hesabi
 // olmali ve is_admin=true yapilmali — bu ekran onu yapmaz, yalniz soyler.
 //
-// YEREL MOD (profil "temel", lib/profil.js REZERVASYON_KAYNAK = "yerel"):
-// Ayri proje yok; events / reservations tablolari bu veritabasinda
-// (migration 20260911_yerel_etkinlik_rezervasyon). "reserve" istemcisi
-// dogrudan Order istemcisidir, yetki Order'daki personel rolunden gelir
+// YEREL MOD: ayri proje yok; events / reservations tablolari bu veritabaninda
+// (migration 20260911_yerel_etkinlik_rezervasyon + 20261113_rezervasyon_order_icinde).
+// Istemci dogrudan Order istemcisidir, yetki Order'daki personel rolunden gelir
 // (nip_yonetici_mi). Kopru, SSO, uye senkronu hicbiri calismaz.
+//
+// HANGI MOD: calisma aninda sunucu soyler (lib/rezKaynak.js). Profil "temel"de
+// hep yerel; NIP'te gecis anahtari acilinca yerel. Bu yuzden istemci modul
+// sabiti DEGIL: reserveIstemci(yerel) cagiran, modu soyler. RESERVE istemcisi
+// ilk kopru kullaniminda kurulur; yerelde hic kurulmaz (eski RESERVE oturumu
+// bosuna yenilenmesin).
 // ============================================================================
 
 const env = (typeof import.meta !== "undefined" && import.meta.env) || {};
@@ -37,17 +42,26 @@ export const RESERVE_KEY = env.VITE_RESERVE_ANON_KEY || "eyJhbGciOiJIUzI1NiIsInR
 export const RESERVATION_URL = env.VITE_RESERVATION_URL || "https://reservation.notinparis.me";
 
 // Ayri storageKey sart: varsayilan anahtar Order oturumunun uzerine yazardi.
-export const reserve = rezervasyonYerel ? supabase : createClient(RESERVE_URL, RESERVE_KEY, {
-  auth: {
-    storageKey: "nip-reserve-auth",
-    persistSession: true,
-    autoRefreshToken: true,
-    detectSessionInUrl: false,
-  },
-});
+let uzak = null;
+const uzakIstemci = () => {
+  if (!uzak) {
+    uzak = createClient(RESERVE_URL, RESERVE_KEY, {
+      auth: {
+        storageKey: "nip-reserve-auth",
+        persistSession: true,
+        autoRefreshToken: true,
+        detectSessionInUrl: false,
+      },
+    });
+  }
+  return uzak;
+};
+
+// Rezervasyon verisinin okunup yazildigi istemci. yerel: bu veritabani.
+export const reserveIstemci = (yerel) => (yerel || rezervasyonYerel ? supabase : uzakIstemci());
 
 async function adminMi(session) {
-  const { data, error } = await reserve.rpc("nip_is_admin");
+  const { data, error } = await uzakIstemci().rpc("nip_is_admin");
   if (error) return { ok: true, admin: false, email: session?.user?.email || "", hata: error.message };
   return { ok: true, admin: !!data, email: session?.user?.email || "" };
 }
@@ -57,20 +71,22 @@ async function adminMi(session) {
 //   ok=false        -> kopru kurulamadi (hata metni var)
 //   ok, admin=false -> RESERVE'de oturum var ama admin degil
 //   ok, admin=true  -> panel yazabilir
-export async function reserveOturumAl({ zorla = false } = {}) {
+//   yerel: rezervasyon bu veritabaninda (kopru kurulmaz)
+export async function reserveOturumAl({ zorla = false, yerel = false } = {}) {
   try {
     const { data: { session: orderSess } } = await supabase.auth.getSession();
     const tok = orderSess?.access_token;
     const orderEmail = String(orderSess?.user?.email || "").toLowerCase();
     if (!tok) return { ok: false, admin: false, email: "", hata: "Order oturumu yok" };
 
-    if (rezervasyonYerel) {
+    if (yerel || rezervasyonYerel) {
       // Yerel: kopru yok, yetki bu veritabanindaki personel rolu.
       const { data, error } = await supabase.rpc("nip_yonetici_mi");
       if (error) return { ok: false, admin: false, email: orderEmail, hata: error.message };
       return { ok: true, admin: !!data, email: orderEmail };
     }
 
+    const reserve = uzakIstemci();
     if (!zorla) {
       const { data: { session } } = await reserve.auth.getSession();
       // Elde oturum var ama BASKA birinin: cihazda onceki personel oturum
@@ -107,7 +123,7 @@ export async function reserveOturumAl({ zorla = false } = {}) {
   }
 }
 
-export async function reserveCikis() {
-  if (rezervasyonYerel) return; // Order oturumu kapatilmaz; kopru yok
-  try { await reserve.auth.signOut(); } catch (_) { /* oturum zaten yoksa sorun degil */ }
+export async function reserveCikis(yerel = false) {
+  if (yerel || rezervasyonYerel) return; // Order oturumu kapatilmaz; kopru yok
+  try { await uzakIstemci().auth.signOut(); } catch (_) { /* oturum zaten yoksa sorun degil */ }
 }

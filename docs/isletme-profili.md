@@ -171,8 +171,22 @@ olarak değiştirelim."
   `nip_rez_giris`, `nip_rez_gelmedi`, `nip_rez_engel`. Üyede yalnız iki sayaç
   (`customers.rez_geldi`, `rez_gelmedi`) ve rezervasyon engeli (`rez_engelli`)
   var; bunları yalnız sunucu yazar. Tabloya doğrudan talep yazma kapalı.
-  Sıradaki: arayüz (panel ve menü kaynağı çalışırken okur), veri kopyası,
-  yeni KVKK sürümü, geçiş.
+  Sıradaki: veri kopyası, yeni KVKK sürümü, geçiş.
+- **Rezervasyon taşıma, Aşama 1 (arayüz, 17.11):** panel ve menü kaynağı
+  ÇALIŞIRKEN sunucuya sorar (`src/lib/rezKaynak.js` → `nip_rez_yerel_mi`);
+  build sabiti değil. Anahtar kapalıyken her şey eskisi gibidir.
+  - Panel (`ReservePage`): anahtar açıkken onay / ret / gelmedi / kapı girişi /
+    üye engeli tek sunucu çağrısıdır; tabloya doğrudan yazılmaz. Üye kartında
+    iki sayı görünür (kaç kez geldi, kaç kez gelmedi); güven puanı ve seviye
+    yok. Onaylı kayıt ayrı düğmeyle iptal edilir (koltuk boşalır). Başka günün
+    rezervasyonu kapıda önce sorulur. Kaynak okunamazsa liste çizilmez
+    (eski değerle yanlış veritabanına yazılmasın).
+  - Menü: talep her modda `nip_rezervasyon_iste` ile gider (doğrudan tabloya
+    yazma kodu kaldırıldı). Etkinlik listesi etkin kaynaktan okunur; sayfa
+    açıkken anahtar çevrilirse liste yeni kaynaktan yeniden okunur.
+  - Etkinlik formunda yeni alanlar: müşteriye not, İngilizce ve Rusça kurallar.
+  - Profil "temel" (rezervasyon sitesi olmayan işletme) aynı yolu kullanır:
+    o veritabanında göç dosyasından sonra anahtar açılır.
 - **Göç dosyaları yerel PostgreSQL'de denenir** (container'da sunucu var):
   canlıdaki bağımlı nesnelerin taklidi + önceki göçler + yeni dosya iki kez
   uygulanır, senaryolar orada koşar; sonra ana dala girer ve Göçüş işi
