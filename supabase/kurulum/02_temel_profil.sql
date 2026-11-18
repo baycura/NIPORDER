@@ -35,3 +35,7 @@ select cron.schedule('nip-clean-paytr-pending', '40 3 * * *',
 -- Sema kopyasi satir tasimaz: satir yoksa eklenir, varsa anahtar acilir.
 insert into public.nip_rez_ayar (tek, yerel) values (true, true)
 on conflict (tek) do update set yerel = true, degisti = now();
+-- Rezervasyon kodunun on eki (varsayilan 'NIP'): isletmenin kisa adi yazilir,
+-- 2-6 karakter, yalniz A-Z ve 0-9 (vite.config.js VITE_MARKA_KISA ile ayni).
+-- Kodu artik sunucu uretir; yazilmazsa musteri baska isletmenin on ekini gorur.
+--   update public.nip_rez_ayar set kod_on_eki = 'KAFE' where tek;

@@ -1,6 +1,6 @@
 import { useEffect, useMemo, useRef, useState } from "react";
 import { useParams, useNavigate, useSearchParams } from "react-router-dom";
-import { supabase, hataMetni } from "../../lib/supabase.js";
+import { supabase, hataMetni, zamanAsimiliFetch } from "../../lib/supabase.js";
 import { useAuth } from "../../contexts/AuthContext.jsx";
 import MusteriSheet from "../../components/MusteriSheet.jsx";
 import { happyHourPrices, happyHourPlan, hhSadeceUyeMi } from "../../lib/happyHour.js";
@@ -12,7 +12,7 @@ import { euroKuru, euroGosterilsin, euroAdimi, euroYaz } from "../../lib/euro.js
 import { STORE_SLUG } from "../../lib/stores.js";
 import { girisDonusAdresi } from "../../lib/girisDonus.js";
 import { RESERVE_URL, RESERVE_KEY } from "../../lib/reserve.js";
-import { rezYerelOku } from "../../lib/rezKaynak.js";
+import { rezYerelOku, rezYerelSonBilinen } from "../../lib/rezKaynak.js";
 import { kvkkGuncelGetir, kvkkPendingKaydet, kvkkEksikMi } from "../../lib/kvkk.js";
 import Ikon from "../../components/Ikon.jsx";
 import Bildirim from "../../components/Bildirim.jsx";
@@ -985,15 +985,30 @@ export default function CustomerMenu() {
   // telefonda tek seferde 40 satir zaten fazlasiyla yeter.
   const etkinlikKaynak = useRef(null);   // listenin okundugu kaynak (true = yerel); null = liste yok
   const etkinlikTik = useRef(0);
-  const etkinlikSira = useRef(0);
+  const etkinlikSira = useRef(0);        // baslayan okumalarin sirasi
+  const etkinlikYazilan = useRef(0);     // ekrana YAZILAN son okumanin sirasi
+  const etkinlikTeyit = useRef(null);    // kaynak teyit edilemediyse yeniden sorma sayaci
+  const etkinlikTeyitN = useRef(0);
   const etkinlikOku = async (zorla = false) => {
     let sira = 0;   // yalniz GERCEKTEN okuyan cagri sira alir (asagida)
     const today = new Date(Date.now() + 3 * 3600 * 1000).toISOString().slice(0, 10); // TR gunu
     const alanlar = "id,name,subtitle,date,time,genre,access_type,capacity,approved_count,rules,rules_en,rules_ru,note";
     try {
-      // zorla ("Tekrar dene" ya da sunucu "etkinlik yok" dedi): kaynak da yeniden sorulur
-      const yerel = await rezYerelOku(zorla ? { tazeMs: 0 } : undefined);
-      if (yerel === null) throw new Error("kaynak bilinmiyor");
+      // Kaynak sunucuya sorulur; zorla ("Tekrar dene" ya da sunucu "etkinlik
+      // yok" dedi) ise onbellek kullanilmaz. Soru cevapsiz kalirsa bu cihazda
+      // en son bilinen kaynak kullanilir AMA teyitsizdir: gecisten sonra eski
+      // kaynagi gosteriyor olabilir (inceleme 18.11). O yuzden bu sekme acikken
+      // birkac kez daha sorulur; cevap gelince liste dogru kaynaktan okunur.
+      clearTimeout(etkinlikTeyit.current);
+      let yerel = await rezYerelOku({ tazeMs: zorla ? 0 : 30000, kesin: true });
+      if (yerel === null) {
+        yerel = rezYerelSonBilinen();
+        if (yerel === null) throw new Error("kaynak bilinmiyor");
+        if (etkinlikTeyitN.current < 6) {
+          etkinlikTeyitN.current += 1;
+          etkinlikTeyit.current = setTimeout(() => etkinlikOku(), 10000);
+        }
+      } else etkinlikTeyitN.current = 0;
       if (!zorla && etkinlikKaynak.current === yerel) return;
       // Sira burada alinir: erken donen bir cagri (yukaridaki satir), o sirada
       // suren zorla yenilemenin sonucunu gecersiz kilmasin.
@@ -1007,27 +1022,34 @@ export default function CustomerMenu() {
         if (error) throw error;
         liste = data || [];
       } else {
-        const r = await fetch(RESERVE_URL + "/rest/v1/events?select=" + alanlar + "&status=eq.active&date=gte." + today + "&order=date.asc&limit=40",
+        // Zaman asimli istek: zayif sinyalde sonsuza kadar "yukleniyor" kalmasin
+        const r = await zamanAsimiliFetch(RESERVE_URL + "/rest/v1/events?select=" + alanlar + "&status=eq.active&date=gte." + today + "&order=date.asc&limit=40",
           { headers: { apikey: RESERVE_KEY } });
         if (!r.ok) throw new Error("http " + r.status);
         const d = await r.json();
         liste = Array.isArray(d) ? d : [];
       }
-      if (sira !== etkinlikSira.current) return;   // daha yeni bir okuma basladi
+      // Ust uste binen okumalar: daha YENI bir okuma ekrana yazildiysa eskisi
+      // atilir. Yeni okuma basarisiz olduysa eski (basarili) sonuc yazilir;
+      // eskiden "son baslayan" olcu aliniyor, gelen liste atilip hata gosteriliyordu.
+      if (sira < etkinlikYazilan.current) return;
+      etkinlikYazilan.current = sira;
       etkinlikKaynak.current = yerel;
       setFeedHata(h => (h.events ? { ...h, events: false } : h));
       setFeeds(f => ({ ...f, events: liste }));
     } catch (e) {
-      // Eldeki liste (varsa) ekranda kalir; yoksa "okunamadi / tekrar dene"
-      if (!sira || sira === etkinlikSira.current) feedBozuk("events");
+      // Eldeki liste (varsa) ekranda kalir; yoksa "okunamadi / tekrar dene".
+      // Daha yeni bir okuma zaten yazildiysa hata gosterilmez.
+      if (!sira || sira > etkinlikYazilan.current) feedBozuk("events");
     }
   };
-  // Sayfa yeniden one gelince (telefon kilidi, sekme degisimi) kaynak yeniden sorulur
+  // Sayfa yeniden one gelince (telefon kilidi, sekme degisimi) kaynak yeniden sorulur.
+  // Sekmeden cikinca teyit sayaci durur.
   useEffect(() => {
     if (custTab !== "events") return;
     const bak = () => { if (document.visibilityState === "visible") etkinlikOku(); };
     document.addEventListener("visibilitychange", bak);
-    return () => document.removeEventListener("visibilitychange", bak);
+    return () => { document.removeEventListener("visibilitychange", bak); clearTimeout(etkinlikTeyit.current); etkinlikTeyitN.current = 0; };
   }, [custTab]);
   useEffect(() => {
     const today = new Date(Date.now() + 3 * 3600 * 1000).toISOString().slice(0, 10); // TR gunu

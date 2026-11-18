@@ -179,10 +179,11 @@ function Durum({ tablo, kod }) {
   return <span style={{ fontSize: 10, padding: "2px 7px", borderRadius: 6, border: "1px solid " + d.renk, color: d.renk, fontWeight: 700, letterSpacing: "0.5px" }}>{d.ad}</span>;
 }
 
-// yerel    : rezervasyon bu veritabaninda mi (calisma aninda okunur)
-// db       : listelerin okundugu istemci (yerel: Order; kopru: RESERVE)
-// yonetici : onay / red / gelmedi / engel yetkisi (yerelde nip_yonetici_mi)
-const RezCtx = createContext({ yerel: false, db: null, yonetici: false });
+// yerel      : rezervasyon bu veritabaninda mi (calisma aninda okunur)
+// db         : listelerin okundugu istemci (yerel: Order; kopru: RESERVE)
+// yonetici   : onay / red / gelmedi / engel yetkisi (yerelde nip_yonetici_mi)
+// kaynakAyni : her YAZMADAN once cagrilir; kaynak degistiyse false doner
+const RezCtx = createContext({ yerel: false, db: null, yonetici: false, kaynakAyni: async () => true });
 
 export default function ReservePage() {
   const { staffUser } = useAuth();
@@ -205,10 +206,16 @@ export default function ReservePage() {
   };
   useEffect(() => () => clearTimeout(mesajZaman.current), []);
 
-  // Kaynak SIMDI okunur (eski degerle yanlis veritabanina yazilmasin). Sayfa
-  // one gelince yeniden bakilir: gecis anahtari sayfa acikken cevrilmis
-  // olabilir. Okunamazsa: ilk aciliste hata gosterilir; sayfa zaten
-  // calisiyorsa bilinen kaynakla devam edilir (kapidaki is durmasin).
+  // Kaynak SIMDI okunur (eski degerle yanlis veritabanina yazilmasin). Gecis
+  // anahtari sayfa ACIKKEN cevrilebilir; uc ayri yerde yeniden bakilir:
+  //   - sayfa one gelince (focus / visibilitychange),
+  //   - sayfa gorunurken 30 saniyede bir (kasadaki tablet hic arka plana
+  //     gitmez; ayni sayac, basarisiz okumanin yeniden denemesidir),
+  //   - her yazma isleminden hemen once (kaynakAyni).
+  // Inceleme 18.11: yalniz "one gelince" bakiliyordu; acik duran panel gecisten
+  // sonra eski veritabanina yazmaya devam edebiliyordu.
+  // Okunamazsa: ilk aciliste hata gosterilir; sayfa zaten calisiyorsa bilinen
+  // kaynakla devam edilir (kapidaki is durmasin).
   const kaynakOku = async (ilk) => {
     const v = await rezYerelOku({ tazeMs: ilk ? 0 : 15000, kesin: true });
     if (!canli.current) return;
@@ -223,8 +230,26 @@ export default function ReservePage() {
     const bak = () => { if (document.visibilityState === "visible") kaynakOku(false); };
     window.addEventListener("focus", bak);
     document.addEventListener("visibilitychange", bak);
-    return () => { window.removeEventListener("focus", bak); document.removeEventListener("visibilitychange", bak); };
+    const z = setInterval(bak, 30000);
+    return () => { window.removeEventListener("focus", bak); document.removeEventListener("visibilitychange", bak); clearInterval(z); };
   }, []);
+
+  // Yazmadan once: kaynak hala ayni mi? Degistiyse islem YAPILMAZ, sayfa yeni
+  // kaynaga gecer ve personel islemi yeni listede yeniden yapar. Okunamadiysa
+  // (null) bilinen kaynakla devam edilir: baglanti zayifken kapi durmasin;
+  // gecisten sonra eski veritabani yazmayi zaten reddeder (koruma tetigi).
+  const kaynakAyni = async () => {
+    if (rezervasyonYerel) return true;
+    const v = await rezYerelOku({ tazeMs: 5000, kesin: true });
+    if (v === null || v === yerelRef.current) return true;
+    if (canli.current) {
+      uyar("Rezervasyon kaynağı değişti. İşlem yapılmadı; liste yenilendi, yeniden dene.", true);
+      yerelRef.current = v; setYerel(v);
+    }
+    return false;
+  };
+  const kaynakAyniRef = useRef(kaynakAyni);
+  kaynakAyniRef.current = kaynakAyni;
 
   const baglaSira = useRef(0);
   const bagla = async (zorla = false, y = yerelRef.current) => {
@@ -243,7 +268,7 @@ export default function ReservePage() {
 
   const hazir = kopru.durum === "hazir";
   const db = yerel === null ? null : reserveIstemci(yerel);
-  const baglam = useMemo(() => ({ yerel: !!yerel, db, yonetici: hazir }), [yerel, db, hazir]);
+  const baglam = useMemo(() => ({ yerel: !!yerel, db, yonetici: hazir, kaynakAyni: () => kaynakAyniRef.current() }), [yerel, db, hazir]);
 
   // Uye senkronu (RESERVE -> Order customers): her 10 dakikada kendiliginden,
   // buradan da elle. Son turun kaydi reserve_sync_log'da.
@@ -358,7 +383,7 @@ export default function ReservePage() {
 // REZERVASYONLAR
 // ────────────────────────────────────────────────────────────────────────────
 function Rezervasyonlar({ uyar }) {
-  const { yerel, db, yonetici } = useContext(RezCtx);
+  const { yerel, db, yonetici, kaynakAyni } = useContext(RezCtx);
   // Kopru modunda liste yalniz admin baglaninca cizilir; yerelde yonetici degilse
   // onay / red / gelmedi / engel dugmeleri cizilmez (sunucu da reddeder: 42501).
   const yetkili = !yerel || yonetici;
@@ -379,6 +404,10 @@ function Rezervasyonlar({ uyar }) {
   const [bildirim, setBildirim] = useState({});
   // Yerel mod: uyenin iki sayaci ve engeli. customer_id -> { rez_geldi, rez_gelmedi, rez_engelli }
   const [uyeler, setUyeler] = useState({});
+  // Yerel mod: talep engeli olan BUTUN uyeler (listedeki kartlardan bagimsiz).
+  // Engelli uye yeni talep acamaz; eski kartlari listeden dustugunde engeli
+  // kaldiracak baska yer kalmiyordu (inceleme 18.11).
+  const [engelliler, setEngelliler] = useState([]);
   // Geri alinmaz dugmeler iki dokunus ister: "<id>:g" (gelmedi) / "<id>:r" (reddet)
   // / "<id>:k" (gelmedi geri al) / "<id>:i" (onayi iptal et) / "<id>:e" (uyeyi engelle)
   const [emin, setEmin] = useState(null);
@@ -411,6 +440,12 @@ function Rezervasyonlar({ uyar }) {
     if (!canli.current || yanitlar.some(y => y.error || !y.data)) return;
     setUyeler(Object.fromEntries(yanitlar.flatMap(y => y.data).map(c => [c.id, c])));
   };
+  const engelliOku = async () => {
+    if (!yerel || !ozellik("uyelik")) return;
+    const { data, error } = await supabase.from("customers").select("id,name,phone,rez_geldi,rez_gelmedi").eq("rez_engelli", true).order("name").limit(100);
+    if (!canli.current || error || !data) return;
+    setEngelliler(data);
+  };
 
   const yukle = async () => {
     const [r, e] = await Promise.all([
@@ -419,7 +454,7 @@ function Rezervasyonlar({ uyar }) {
     ]);
     if (!canli.current) return null;
     if (r.error) { uyar("Rezervasyonlar okunamadı: " + personelHata(r.error), true); setListe(l => l || []); }
-    else { setListe(r.data || []); bildirimOku(r.data || []); uyeOku(r.data || []); }
+    else { setListe(r.data || []); bildirimOku(r.data || []); uyeOku(r.data || []); engelliOku(); }
     if (!e.error) setEtkinlikler(e.data || []);
     return r.data || null;
   };
@@ -474,6 +509,7 @@ function Rezervasyonlar({ uyar }) {
   const rezOnayla = async (r) => {
     if (busy) return; setBusy(true);
     try {
+      if (!(await kaynakAyni())) return;
       if (yerel) {
         const { data: c, error } = await supabase.rpc("nip_rez_onayla", { p_rez: r.id });
         if (error) throw error;
@@ -517,6 +553,7 @@ function Rezervasyonlar({ uyar }) {
   const reddet = async (r) => {
     if (busy) return; setBusy(true); setEmin(null);
     try {
+      if (!(await kaynakAyni())) return;
       if (yerel) {
         const { data: c, error } = await supabase.rpc("nip_rez_reddet", { p_rez: r.id, p_onayli: false });
         if (error) throw error;
@@ -526,7 +563,7 @@ function Rezervasyonlar({ uyar }) {
         if (u.error) throw u.error;
         uyar("Reddedildi");
       }
-    } catch (e) { uyar("Reddedilemedi: " + personelHata(e), true); } finally { setBusy(false); yukle(); }
+    } catch (e) { uyar("Reddedilemedi: " + personelHata(e), true); } finally { setBusy(false); if (canli.current) yukle(); }
   };
 
   // ONAYI IPTAL ET (yalniz yerel): musteri vazgecti ya da yanlis onay. Koltuk
@@ -535,6 +572,7 @@ function Rezervasyonlar({ uyar }) {
   const onayIptal = async (r) => {
     if (busy) return; setBusy(true); setEmin(null);
     try {
+      if (!(await kaynakAyni())) return;
       const { data: c, error } = await supabase.rpc("nip_rez_reddet", { p_rez: r.id, p_onayli: true });
       if (error) throw error;
       if (!c?.ok) degistiDe(c);
@@ -542,7 +580,7 @@ function Rezervasyonlar({ uyar }) {
       else uyar("Onay iptal edildi" + (c.bosalan ? " · " + c.bosalan + " yer boşaldı" : ""));
       // Iptal edilen kayit "Red" suzgecine duser; WhatsApp dugmesi orada
       if (c?.ok && c.eposta_gitti) setDurum("rejected");
-    } catch (e) { uyar("İptal edilemedi: " + personelHata(e), true); } finally { setBusy(false); yukle(); }
+    } catch (e) { uyar("İptal edilemedi: " + personelHata(e), true); } finally { setBusy(false); if (canli.current) yukle(); }
   };
 
   // "GELMEDI" ve geri alma. Iki modda da TEK sunucu islemi; rezervasyon satiri
@@ -569,12 +607,13 @@ function Rezervasyonlar({ uyar }) {
   const gelmedi = async (r) => {
     if (busy) return; setBusy(true); setEmin(null);
     try {
+      if (!(await kaynakAyni())) return;
       const c = await gelmediYaz(r, false);
       if (!c.ok) degistiDe(c);
       else uyar("Gelmedi işaretlendi" + gelmediEk(c, "−"));
     } catch (e) {
       uyar("İşaretlenemedi: " + personelHata(e), true);
-    } finally { setBusy(false); yukle(); }
+    } finally { setBusy(false); if (canli.current) yukle(); }
   };
 
   // Yanlis isaret ya da gec gelen misafir: isaret kalkar, rezervasyon yeniden
@@ -583,24 +622,28 @@ function Rezervasyonlar({ uyar }) {
   const gelmediGeriAl = async (r) => {
     if (busy) return; setBusy(true); setEmin(null);
     try {
+      if (!(await kaynakAyni())) return;
       const c = await gelmediYaz(r, true);
       if (!c.ok) degistiDe(c);
       else uyar("Gelmedi işareti kaldırıldı" + gelmediEk(c, "+"));
     } catch (e) {
       uyar("Geri alınamadı: " + personelHata(e), true);
-    } finally { setBusy(false); yukle(); }
+    } finally { setBusy(false); if (canli.current) yukle(); }
   };
 
   // UYE ENGELI (yalniz yerel): engelli uye yeni rezervasyon talebi acamaz.
   // Bekleyen talepleri oldugu gibi kalir; karari yonetici verir.
-  const engelYaz = async (r, engel) => {
-    if (busy || !r.customer_id) return; setBusy(true); setEmin(null);
+  const engelYaz = async (musteriId, ad, engel) => {
+    if (busy || !musteriId) return; setBusy(true); setEmin(null);
     try {
-      const { data: c, error } = await supabase.rpc("nip_rez_engel", { p_customer: r.customer_id, p_engel: engel });
+      if (!(await kaynakAyni())) return;
+      const { data: c, error } = await supabase.rpc("nip_rez_engel", { p_customer: musteriId, p_engel: engel });
       if (error) throw error;
       if (!c?.ok) uyar("Üye kaydı bulunamadı.", true);
-      else uyar(engel ? (r.name || "Üye") + " artık rezervasyon talebi açamaz" : "Engel kaldırıldı: " + (r.name || "üye") + " yeniden talep açabilir");
-    } catch (e) { uyar("Yazılamadı: " + personelHata(e), true); } finally { setBusy(false); yukle(); }
+      else uyar(engel
+        ? (ad || "Üye") + " yeni rezervasyon talebi açamaz. Mevcut rezervasyonları geçerli kalır."
+        : "Engel kaldırıldı: " + (ad || "üye") + " yeniden talep açabilir");
+    } catch (e) { uyar("Yazılamadı: " + personelHata(e), true); } finally { setBusy(false); if (canli.current) yukle(); }
   };
 
   // KAPIDA GIRIS, yerel: nip_rez_giris. Kayit kimligiyle (satirdaki "Giriş") ya
@@ -617,6 +660,7 @@ function Rezervasyonlar({ uyar }) {
     setBusy(true);
     let c = null;
     try {
+      if (!(await kaynakAyni())) return;
       const { data, error } = await supabase.rpc("nip_rez_giris", kayit ? { p_rez: kayit.id, p_zorla: zorla } : { p_kod: kod, p_zorla: zorla });
       if (error) throw error;
       c = data || {};
@@ -654,6 +698,10 @@ function Rezervasyonlar({ uyar }) {
     if (busy) return;
     const sonuc = (ok, baslik, alt) => { kapiYaz(ok, baslik, alt); if (kayit) uyar(baslik + " — " + alt, !ok); };
     let r = kayit;
+    if (!kayit && !qr.trim()) return uyar("QR kodu gir", true);
+    // Kod aramasi da kaynaga baglidir: gecisten sonra eski veritabaninda
+    // aranan kod "GEÇERSİZ" cikardi.
+    if (!(await kaynakAyni())) return;
     if (!r) {
       const kod = qr.trim().toUpperCase();
       if (!kod) return uyar("QR kodu gir", true);
@@ -713,7 +761,7 @@ function Rezervasyonlar({ uyar }) {
     <div>
       {/* Kapi: kod ile giris */}
       <div style={{ display: "flex", gap: 8, marginBottom: 12 }}>
-        <input value={qr} onChange={e => { setQr(e.target.value); if (kapi) setKapi(null); }} aria-label="Rezervasyon kodu" placeholder={"Kapıda: rezervasyon kodu (" + (rezervasyonYerel ? MARKA.kisa.replace(/[^A-Z0-9]/gi, "").toUpperCase().slice(0, 4) : "NIP") + "-…)"} style={{ ...inputS, textTransform: "uppercase", letterSpacing: "1px" }} onKeyDown={e => e.key === "Enter" && girisYap(null)} />
+        <input value={qr} onChange={e => { setQr(e.target.value); if (kapi) setKapi(null); }} aria-label="Rezervasyon kodu" placeholder="Kapıda: rezervasyon kodu" style={{ ...inputS, textTransform: "uppercase", letterSpacing: "1px" }} onKeyDown={e => e.key === "Enter" && girisYap(null)} />
         <button onClick={() => girisYap(null)} disabled={busy} style={btnS(C.ink, "#000")}>GİRİŞ</button>
       </div>
       {kapi && (
@@ -753,7 +801,9 @@ function Rezervasyonlar({ uyar }) {
             <Durum tablo={REZ_DURUM} kod={d} />
             {!uyeMi(r) && misafirEtiketi && <span style={{ fontSize: 10, color: C.muted }}>MİSAFİR</span>}
             {yerel && uyeMi(r) && <span style={{ fontSize: 10, color: C.ink, fontWeight: 700, letterSpacing: "0.5px" }}>ÜYE</span>}
-            {u?.rez_engelli && <span style={{ fontSize: 10, padding: "2px 7px", borderRadius: 6, border: "1px solid " + C.down, color: C.down, fontWeight: 700, letterSpacing: "0.5px" }}>ENGELLİ</span>}
+            {/* "ENGELLİ" yazilmaz: kapida "engelli misafir" diye okunur (inceleme 18.11).
+                Engel yalniz YENI talebi keser; mevcut rezervasyon gecerlidir. */}
+            {u?.rez_engelli && <span title="Yeni talep açamaz; mevcut rezervasyonu geçerli" style={{ fontSize: 10, padding: "2px 7px", borderRadius: 6, border: "1px solid " + C.down, color: C.down, fontWeight: 700, letterSpacing: "0.5px" }}>TALEP ENGELİ</span>}
             <span style={{ flex: 1 }} />
             <span style={{ fontSize: 12, color: C.muted }}>{r.guest_count || 1} kişi</span>
           </div>
@@ -815,18 +865,35 @@ function Rezervasyonlar({ uyar }) {
             {/* Uye engeli (yalniz yerel, yonetici): gelmedi sayisi olan ya da bu
                 kaydi "gelmedi" olan uyede cikar; engelliyse her kartinda kaldirilir. */}
             {u && yonetici && u.rez_engelli && (
-              <button disabled={busy} onClick={() => engelYaz(r, false)} style={btnS("#0F0F0F", C.up)}>Engeli kaldır</button>
+              <button disabled={busy} onClick={() => engelYaz(r.customer_id, r.name, false)} style={btnS("#0F0F0F", C.up)}>Engeli kaldır</button>
             )}
             {u && yonetici && !u.rez_engelli && ((u.rez_gelmedi || 0) >= 1 || d === "no_show") && (
-              <button disabled={busy} onClick={() => emin === r.id + ":e" ? engelYaz(r, true) : eminSor(r.id + ":e")}
+              <button disabled={busy} onClick={() => emin === r.id + ":e" ? engelYaz(r.customer_id, r.name, true) : eminSor(r.id + ":e")}
                 style={btnS(emin === r.id + ":e" ? C.down : "#0F0F0F", emin === r.id + ":e" ? "#000" : C.muted)}>
-                {emin === r.id + ":e" ? "Emin misin? Talep açamaz" : "Üyeyi engelle"}
+                {emin === r.id + ":e" ? "Emin misin? Yeni talep açamaz" : "Yeni talebi engelle"}
               </button>
             )}
           </div>
         </div>
         );
       })}
+
+      {/* Talep engeli olan uyeler: kartlari listeden dusse de engel buradan kalkar. */}
+      {yerel && yonetici && engelliler.length > 0 && (
+        <div style={{ background: C.card, border: "1px solid " + C.line, borderRadius: 10, padding: 12, marginTop: 14 }}>
+          <div style={{ fontSize: 10, color: C.muted, letterSpacing: "1px", fontWeight: 700, marginBottom: 4 }}>TALEP ENGELİ OLAN ÜYELER · {engelliler.length}</div>
+          <div style={{ fontSize: 12, color: C.muted, lineHeight: 1.5, marginBottom: 8 }}>Bu üyeler yeni rezervasyon talebi açamaz. Mevcut rezervasyonları geçerlidir.</div>
+          {engelliler.map(k => (
+            <div key={k.id} style={{ display: "flex", gap: 8, alignItems: "center", flexWrap: "wrap", padding: "8px 0", borderTop: "1px solid " + C.line }}>
+              <div style={{ flex: 1, minWidth: 160 }}>
+                <div style={{ fontWeight: 700, fontSize: 14 }}>{k.name || "—"}</div>
+                <div style={{ fontSize: 12, color: C.muted, marginTop: 2 }}>{k.phone ? k.phone + " · " : ""}{k.rez_geldi || 0} kez geldi · {k.rez_gelmedi || 0} kez gelmedi</div>
+              </div>
+              <button disabled={busy} onClick={() => engelYaz(k.id, k.name, false)} style={btnS("#0F0F0F", C.up)}>Engeli kaldır</button>
+            </div>
+          ))}
+        </div>
+      )}
     </div>
   );
 }
@@ -842,7 +909,7 @@ const bosEtkinlik = {
 };
 
 function Etkinlikler({ uyar }) {
-  const { yerel, db, yonetici } = useContext(RezCtx);
+  const { yerel, db, yonetici, kaynakAyni } = useContext(RezCtx);
   // Yerelde etkinlik yazmak yonetici ister (RLS: events_yonetim)
   const yetkili = !yerel || yonetici;
   const [liste, setListe] = useState(null);
@@ -888,6 +955,7 @@ function Etkinlikler({ uyar }) {
     const name = form.name.trim().toLocaleUpperCase("tr-TR"), cap = parseInt(form.capacity);
     if (!name || !form.date || !cap) return uyar("İsim, tarih ve kapasite zorunlu", true);
     setBusy(true);
+    if (!(await kaynakAyni())) { setBusy(false); return; }
     const ortak = {
       name, genre: form.genre.trim(), subtitle: form.subtitle.trim(), date: form.date, time: form.time,
       time_end: form.time_end || null, warmup_name: form.warmup_name.trim() || null,
@@ -910,6 +978,7 @@ function Etkinlikler({ uyar }) {
   const sil = async (e) => {
     if (!(await onayla(e.name + " silinsin mi? Rezervasyon kayıtları kalır, etkinlik bağı boşalır.", { evet: "Sil", tehlike: true }))) return;
     setBusy(true);
+    if (!(await kaynakAyni())) { setBusy(false); return; }
     const r = await db.from("events").delete().eq("id", e.id);
     setBusy(false);
     if (r.error) return uyar("Silinemedi: " + personelHata(r.error), true);
@@ -1007,7 +1076,7 @@ function EtkinlikKart({ e, duzenle, sil, busy, gecmis, yetkili = true }) {
 // UYELER (rezervasyon tarafi profilleri)
 // ────────────────────────────────────────────────────────────────────────────
 function Uyeler({ uyar, staffUser }) {
-  const { db } = useContext(RezCtx);
+  const { db, kaynakAyni } = useContext(RezCtx);
   const [liste, setListe] = useState(null);
   // Uyelik onaysiz (10.11.2026): bekleyen kuyruk yok, liste "Üye" ile acilir
   const [durum, setDurum] = useState("approved");
@@ -1054,6 +1123,7 @@ function Uyeler({ uyar, staffUser }) {
   const onayla = async (p) => {
     if (busy) return; setBusy(true);
     try {
+      if (!(await kaynakAyni())) return;
       const kod = "NIP-MBR-" + hex6(), ref = "NIP-REF-" + hex6();
       const u = await db.from("profiles").update({ status: "approved", member_code: kod, referral_code: ref, approved_at: new Date().toISOString() }).eq("id", p.id);
       if (u.error) throw u.error;
@@ -1067,6 +1137,7 @@ function Uyeler({ uyar, staffUser }) {
   // index.html:1708 / 1736
   const durumYaz = async (p, s, msg) => {
     if (busy) return; setBusy(true);
+    if (!(await kaynakAyni())) { setBusy(false); return; }
     const u = await db.from("profiles").update({ status: s }).eq("id", p.id);
     setBusy(false);
     if (u.error) return uyar("Olmadı: " + u.error.message, true);
