@@ -1,6 +1,6 @@
 import { useEffect, useMemo, useRef, useState } from "react";
 import { useParams, useNavigate, useSearchParams } from "react-router-dom";
-import { supabase, hataMetni } from "../../lib/supabase.js";
+import { supabase, hataMetni, zamanAsimiliFetch } from "../../lib/supabase.js";
 import { useAuth } from "../../contexts/AuthContext.jsx";
 import MusteriSheet from "../../components/MusteriSheet.jsx";
 import { happyHourPrices, happyHourPlan, hhSadeceUyeMi } from "../../lib/happyHour.js";
@@ -12,6 +12,7 @@ import { euroKuru, euroGosterilsin, euroAdimi, euroYaz } from "../../lib/euro.js
 import { STORE_SLUG } from "../../lib/stores.js";
 import { girisDonusAdresi } from "../../lib/girisDonus.js";
 import { RESERVE_URL, RESERVE_KEY } from "../../lib/reserve.js";
+import { rezYerelOku, rezYerelSonBilinen } from "../../lib/rezKaynak.js";
 import { kvkkGuncelGetir, kvkkPendingKaydet, kvkkEksikMi } from "../../lib/kvkk.js";
 import Ikon from "../../components/Ikon.jsx";
 import Bildirim from "../../components/Bildirim.jsx";
@@ -62,10 +63,13 @@ function getVoterKey() {
     return k;
   } catch (e) { return "anon-" + Math.random().toString(36).slice(2); }
 }
-// Etkinlikler NIP'te rezervasyon sisteminin (NIP RESERVE) public verisinden
-// okunur (adresler lib/reserve.js'de); yerel modda bu veritabanindaki
-// events tablosundan. Rezervasyon formu IKI MODDA DA burada acilir: musteri
-// menuden cikmaz (sahip, 11.11.2026: siteye yonlendirme kaldirildi).
+// Etkinlik listesi iki kaynaktan gelebilir; hangisi oldugunu calisma aninda
+// sunucu soyler (lib/rezKaynak.js): kopru modunda rezervasyon sisteminin
+// (NIP RESERVE) public verisi (adresler lib/reserve.js'de), yerel modda bu
+// veritabanindaki events tablosu. Rezervasyon formu IKI MODDA DA burada acilir:
+// musteri menuden cikmaz (sahip, 11.11.2026: siteye yonlendirme kaldirildi).
+// Talep ve "Rezervasyonlarim" iki modda da AYNI sunucu fonksiyonudur
+// (nip_rezervasyon_iste / nip_rezervasyonlarim; kaynagi sunucu secer).
 // Misafirin talepleri telefonunda bu anahtarda saklanan kodlarla bulunur.
 const REZ_ANAHTAR = "nip_rezlerim";
 const REZ_KOD_BICIM = /^[A-Z0-9]{2,6}-[A-Z0-9]{6,12}$/;
@@ -713,11 +717,12 @@ export default function CustomerMenu() {
   // Uye profili karti (uye seridine tiklayinca acilir)
   // REZERVASYON FORMU — menunun icinde. Sahip (11.11.2026): "rezervasyon
   // butonuna basarsan web sitesine yonlendiriyor, bu cok sacma."
-  //   Kopru modu (NIP): RPC nip_rezervasyon_iste -> rezervasyon sistemi (RESERVE).
-  //     Sitedeki kurallar sunucuda uygulanir (uyelere ozel, kapasite, kurallar).
-  //     Talep sahibin panelinde "Bekleyen" olarak gorunur; onaylaninca uyeye
-  //     e-posta gider, misafire personel WhatsApp'tan yazar.
-  //   Yerel mod (profil "temel"): talep bu veritabanindaki reservations'a duser.
+  // Talep TEK yoldan gider: RPC nip_rezervasyon_iste. Kurallar sunucuda
+  // uygulanir (uyelere ozel, kapasite, etkinlik kurallari, hiz siniri); talebin
+  // rezervasyon sistemine (RESERVE) mi bu veritabanina mi yazilacagini da
+  // sunucu secer (20261113_rezervasyon_order_icinde). Tabloya dogrudan yazilmaz.
+  // Talep sahibin panelinde "Bekleyen" olarak gorunur; onaylaninca uyeye
+  // e-posta gider, misafire personel WhatsApp'tan yazar.
   // Kod musteriye ekranda gosterilir ve "Rezervasyonlarim"da durur.
   const [rezForm, setRezForm] = useState(null);      // { ev, name, phone, guest_count, note, kural, busy, sonuc, bilgi, hata }
   const rezAc = (ev) => setRezForm({ ev, name: customer?.name || "", phone: customer?.phone || "", guest_count: rezervasyonYerel ? 2 : 1, note: "", kural: false, busy: false, sonuc: null, bilgi: null, hata: null });
@@ -742,7 +747,7 @@ export default function CustomerMenu() {
   // taleplerini gorur. Liste okunamazsa bolum gosterilmez; form calisir.
   const [rezlerim, setRezlerim] = useState(null);
   const rezlerimOku = async () => {
-    if (rezervasyonYerel || !ozellik("rezervasyon")) return;
+    if (!ozellik("rezervasyon")) return;
     try {
       const { data, error } = await supabase.rpc("nip_rezervasyonlarim", { p_kodlar: rezKodlari() });
       if (!error) setRezlerim(Array.isArray(data) ? data : []);
@@ -760,43 +765,30 @@ export default function CustomerMenu() {
     if (tel.replace(/\D/g, "").length < 7) { bildir(L("Telefonunu yaz — onayı oradan ileteceğiz", "Enter your phone — we'll confirm there", "Введите телефон — подтвердим по нему")); return; }
     const kisi = Math.max(1, Math.min(20, Number(rezForm.guest_count) || 1));
     const not = String(rezForm.note || "").trim().slice(0, 300) || null;
-    if (!rezervasyonYerel) {
-      if (rezKural(rezForm.ev) && !rezForm.kural) { setRezForm(f => f ? ({ ...f, hata: "kural" }) : f); bildir(rezHataMetni("kural")); return; }
-      setRezForm(f => f ? ({ ...f, busy: true, hata: null }) : f);
-      let sonuc = null, hataKodu = "baglanti";
-      try {
-        const { data, error } = await supabase.rpc("nip_rezervasyon_iste", {
-          p: { event_id: rezForm.ev.id, ad, telefon: tel, kisi, not, kural: !!rezForm.kural, dil: lang, cihaz: getVoterKey() },
-        });
-        if (!error && data?.ok && data.kod) sonuc = data;
-        else if (!error && data?.hata) hataKodu = data.hata;
-      } catch (e) { /* hataKodu = baglanti */ }
-      if (!sonuc) {
-        setRezForm(f => f ? ({ ...f, busy: false, hata: hataKodu }) : f);
-        // Misafire "uye girisi yap" kapisi cizilir (bildirim yok). Giris yapmis
-        // uyede kapi cizilmez: sebep soylenir (profili onayli degil ya da seviye yetmiyor).
-        const girisKapisi = !customer && (hataKodu === "uye_gerekli" || hataKodu === "seviye_yetersiz");
-        if (!girisKapisi) bildir(rezHataMetni(hataKodu === "uye_gerekli" ? "guven_dusuk" : hataKodu));
-        return;
-      }
-      rezKodEkle(sonuc.kod);
-      setUyari(null);   // onceki denemenin uyarisi sonuc ekraninin ustunde kalmasin
-      setRezForm(f => f ? ({ ...f, busy: false, sonuc: sonuc.kod, bilgi: sonuc, hata: null }) : f);
-      rezlerimOku();
+    if (rezKural(rezForm.ev) && !rezForm.kural) { setRezForm(f => f ? ({ ...f, hata: "kural" }) : f); bildir(rezHataMetni("kural")); return; }
+    setRezForm(f => f ? ({ ...f, busy: true, hata: null }) : f);
+    let sonuc = null, hataKodu = "baglanti";
+    try {
+      const { data, error } = await supabase.rpc("nip_rezervasyon_iste", {
+        p: { event_id: rezForm.ev.id, ad, telefon: tel, kisi, not, kural: !!rezForm.kural, dil: lang, cihaz: getVoterKey() },
+      });
+      if (!error && data?.ok && data.kod) sonuc = data;
+      else if (!error && data?.hata) hataKodu = data.hata;
+    } catch (e) { /* hataKodu = baglanti */ }
+    if (!sonuc) {
+      setRezForm(f => f ? ({ ...f, busy: false, hata: hataKodu }) : f);
+      // Misafire "uye girisi yap" kapisi cizilir (bildirim yok). Giris yapmis
+      // uyede kapi cizilmez: sebep soylenir (profili onayli degil ya da seviye yetmiyor).
+      const girisKapisi = ozellik("uyelik") && !customer && (hataKodu === "uye_gerekli" || hataKodu === "seviye_yetersiz");
+      if (!girisKapisi) bildir(rezHataMetni(hataKodu === "uye_gerekli" ? "guven_dusuk" : hataKodu));
+      // Etkinlik kapanmis ya da kaynak degismis olabilir: liste yeniden okunur
+      if (hataKodu === "etkinlik_yok" || hataKodu === "gecti" || hataKodu === "dolu") etkinlikOku(true);
       return;
     }
-    setRezForm(f => ({ ...f, busy: true }));
-    const b = new Uint8Array(3); crypto.getRandomValues(b);
-    const kod = MARKA.kisa.replace(/[^A-Z0-9]/gi, "").toUpperCase().slice(0, 4) + "-" + Array.from(b, x => x.toString(16).padStart(2, "0")).join("").toUpperCase();
-    const { error } = await supabase.from("reservations").insert({
-      event_id: rezForm.ev.id, event_name: rezForm.ev.name, event_date: rezForm.ev.date, event_time: rezForm.ev.time || null,
-      name: ad, phone: tel, guest_count: kisi,
-      note: not, status: "pending", qr_id: kod,
-      customer_id: customer?.id || null,
-    });
-    if (error) { setRezForm(f => ({ ...f, busy: false })); bildir(L("Talep gönderilemedi: ", "Could not send: ", "Не удалось отправить: ") + errorText(error, lang)); return; }
-    setUyari(null);
-    setRezForm(f => ({ ...f, busy: false, sonuc: kod }));
+    rezKodEkle(sonuc.kod);
+    setUyari(null);   // onceki denemenin uyarisi sonuc ekraninin ustunde kalmasin
+    setRezForm(f => f ? ({ ...f, busy: false, sonuc: sonuc.kod, bilgi: sonuc, hata: null }) : f);
+    rezlerimOku();
   };
 
   // E-POSTA ILE GIRIS: Google'in "hesabini dogrula" ekranlari musteriyi
@@ -983,28 +975,86 @@ export default function CustomerMenu() {
   const [feedTik, setFeedTik] = useState(0);      // "Tekrar dene"
   const feedBozuk = (k) => setFeedHata(h => ({ ...h, [k]: true }));
   const feedTekrar = (k) => { setFeedHata(h => ({ ...h, [k]: false })); setFeedTik(n => n + 1); };
+  // ETKINLIK LISTESI. Kaynak her okumadan once sunucuya sorulur (30 sn
+  // onbellek): gecis anahtari acilinca acik duran sayfa da yeni kaynaktan okur.
+  // Liste, okundugu kaynak degismedikce yeniden cekilmez. Kaynak bilinmiyorsa
+  // (ilk acilis + baglanti yok) "okunamadi / tekrar dene" gosterilir.
+  // LIMIT 12 -> 40 (21.09.2026): takvim aralik basina kadar girilince 25
+  // aktif etkinlik oldu ve 13'u listede hic gorunmedi — sorgu ilk 12'yi
+  // cekiyordu. Sinir tamamen kalkmiyor: liste gelecege dogru buyuyor,
+  // telefonda tek seferde 40 satir zaten fazlasiyla yeter.
+  const etkinlikKaynak = useRef(null);   // listenin okundugu kaynak (true = yerel); null = liste yok
+  const etkinlikTik = useRef(0);
+  const etkinlikSira = useRef(0);        // baslayan okumalarin sirasi
+  const etkinlikYazilan = useRef(0);     // ekrana YAZILAN son okumanin sirasi
+  const etkinlikTeyit = useRef(null);    // kaynak teyit edilemediyse yeniden sorma sayaci
+  const etkinlikTeyitN = useRef(0);
+  const etkinlikOku = async (zorla = false) => {
+    let sira = 0;   // yalniz GERCEKTEN okuyan cagri sira alir (asagida)
+    const today = new Date(Date.now() + 3 * 3600 * 1000).toISOString().slice(0, 10); // TR gunu
+    const alanlar = "id,name,subtitle,date,time,genre,access_type,capacity,approved_count,rules,rules_en,rules_ru,note";
+    try {
+      // Kaynak sunucuya sorulur; zorla ("Tekrar dene" ya da sunucu "etkinlik
+      // yok" dedi) ise onbellek kullanilmaz. Soru cevapsiz kalirsa bu cihazda
+      // en son bilinen kaynak kullanilir AMA teyitsizdir: gecisten sonra eski
+      // kaynagi gosteriyor olabilir (inceleme 18.11). O yuzden bu sekme acikken
+      // birkac kez daha sorulur; cevap gelince liste dogru kaynaktan okunur.
+      clearTimeout(etkinlikTeyit.current);
+      let yerel = await rezYerelOku({ tazeMs: zorla ? 0 : 30000, kesin: true });
+      if (yerel === null) {
+        yerel = rezYerelSonBilinen();
+        if (yerel === null) throw new Error("kaynak bilinmiyor");
+        if (etkinlikTeyitN.current < 6) {
+          etkinlikTeyitN.current += 1;
+          etkinlikTeyit.current = setTimeout(() => etkinlikOku(), 10000);
+        }
+      } else etkinlikTeyitN.current = 0;
+      if (!zorla && etkinlikKaynak.current === yerel) return;
+      // Sira burada alinir: erken donen bir cagri (yukaridaki satir), o sirada
+      // suren zorla yenilemenin sonucunu gecersiz kilmasin.
+      sira = ++etkinlikSira.current;
+      let liste;
+      if (yerel) {
+        // Yerel: bu veritabanindaki events tablosu (anon yalniz aktif olanlari gorur)
+        const { data, error } = await supabase.from("events").select(alanlar)
+          .eq("status", "active").gte("date", today)
+          .order("date", { ascending: true }).limit(40);
+        if (error) throw error;
+        liste = data || [];
+      } else {
+        // Zaman asimli istek: zayif sinyalde sonsuza kadar "yukleniyor" kalmasin
+        const r = await zamanAsimiliFetch(RESERVE_URL + "/rest/v1/events?select=" + alanlar + "&status=eq.active&date=gte." + today + "&order=date.asc&limit=40",
+          { headers: { apikey: RESERVE_KEY } });
+        if (!r.ok) throw new Error("http " + r.status);
+        const d = await r.json();
+        liste = Array.isArray(d) ? d : [];
+      }
+      // Ust uste binen okumalar: daha YENI bir okuma ekrana yazildiysa eskisi
+      // atilir. Yeni okuma basarisiz olduysa eski (basarili) sonuc yazilir;
+      // eskiden "son baslayan" olcu aliniyor, gelen liste atilip hata gosteriliyordu.
+      if (sira < etkinlikYazilan.current) return;
+      etkinlikYazilan.current = sira;
+      etkinlikKaynak.current = yerel;
+      setFeedHata(h => (h.events ? { ...h, events: false } : h));
+      setFeeds(f => ({ ...f, events: liste }));
+    } catch (e) {
+      // Eldeki liste (varsa) ekranda kalir; yoksa "okunamadi / tekrar dene".
+      // Daha yeni bir okuma zaten yazildiysa hata gosterilmez.
+      if (!sira || sira > etkinlikYazilan.current) feedBozuk("events");
+    }
+  };
+  // Sayfa yeniden one gelince (telefon kilidi, sekme degisimi) kaynak yeniden sorulur.
+  // Sekmeden cikinca teyit sayaci durur.
+  useEffect(() => {
+    if (custTab !== "events") return;
+    const bak = () => { if (document.visibilityState === "visible") etkinlikOku(); };
+    document.addEventListener("visibilitychange", bak);
+    return () => { document.removeEventListener("visibilitychange", bak); clearTimeout(etkinlikTeyit.current); etkinlikTeyitN.current = 0; };
+  }, [custTab]);
   useEffect(() => {
     const today = new Date(Date.now() + 3 * 3600 * 1000).toISOString().slice(0, 10); // TR gunu
-    if (custTab === "events" && !feeds.events) {
-      // LIMIT 12 -> 40 (21.09.2026): takvim aralik basina kadar girilince 25
-      // aktif etkinlik oldu ve 13'u listede hic gorunmedi — sorgu ilk 12'yi
-      // cekiyordu. Sinir tamamen kalkmiyor: liste gelecege dogru buyuyor,
-      // telefonda tek seferde 40 satir zaten fazlasiyla yeter.
-      if (rezervasyonYerel) {
-        // Yerel: bu veritabanindaki events tablosu (anon yalniz aktif olanlari gorur)
-        supabase.from("events")
-          .select("id,name,subtitle,date,time,genre,access_type,capacity,approved_count")
-          .eq("status", "active").gte("date", today)
-          .order("date", { ascending: true }).limit(40)
-          .then(({ data, error }) => error ? feedBozuk("events") : setFeeds(f => ({ ...f, events: data || [] })));
-      } else {
-        fetch(RESERVE_URL + "/rest/v1/events?select=id,name,subtitle,date,time,genre,access_type,capacity,approved_count,rules,rules_en,rules_ru,note&status=eq.active&date=gte." + today + "&order=date.asc&limit=40",
-          { headers: { apikey: RESERVE_KEY } })
-          .then(r => { if (!r.ok) throw new Error("http " + r.status); return r.json(); })
-          .then(d => setFeeds(f => ({ ...f, events: Array.isArray(d) ? d : [] })))
-          .catch(() => feedBozuk("events"));
-      }
-    }
+    if (custTab === "events") etkinlikOku(feedTik !== etkinlikTik.current);
+    etkinlikTik.current = feedTik;
     if (custTab === "rides" && !feeds.rides) {
       // BIRLESTIRME ADIM 1 (2026-09-02): surusler artik Order'da. Eskiden
       // RESERVE projesinden fetch ile cekiliyordu; o tablolara hicbir uygulama
@@ -2374,7 +2424,7 @@ export default function CustomerMenu() {
 
       {custTab !== "menu" && (
         <div style={{padding:"14px 16px"}}>
-          {custTab === "events" && !rezervasyonYerel && rezlerim?.length > 0 && (
+          {custTab === "events" && rezlerim?.length > 0 && (
             <div style={{marginBottom:18}}>
               <div style={{fontSize:12,fontWeight:800,letterSpacing:"0.4px",color:"#666666",marginBottom:8}}>{L("REZERVASYONLARIM","MY RESERVATIONS","МОИ БРОНИ")}</div>
               {rezlerim.map(r => {
@@ -2383,6 +2433,8 @@ export default function CustomerMenu() {
                   approved: { ad: L("Onaylandı","Confirmed","Подтверждено"), zemin: "#E3F4E6", renk: "#1A6B2E" },
                   rejected: { ad: L("Onaylanmadı","Not confirmed","Не подтверждено"), zemin: "#F3F3F3", renk: "#666666" },
                   used: { ad: L("Giriş yapıldı","Checked in","Вход выполнен"), zemin: "#F3F3F3", renk: "#666666" },
+                  no_show: { ad: L("Gelinmedi","Missed","Неявка"), zemin: "#F3F3F3", renk: "#666666" },
+                  cancelled: { ad: L("İptal edildi","Cancelled","Отменено"), zemin: "#F3F3F3", renk: "#666666" },
                 })[r.durum] || { ad: r.durum, zemin: "#F3F3F3", renk: "#666666" };
                 return (
                   <div key={r.kod} style={{border:"1px solid " + (r.durum === "approved" ? "#BFE3C6" : "#e8e8e8"),borderRadius:14,padding:"12px 14px",marginBottom:8,background:"#fff"}}>
@@ -2410,9 +2462,7 @@ export default function CustomerMenu() {
           )}
           {custTab === "events" && feeds.events?.length > 0 && (
             <div style={{fontSize:12,color:"#666666",marginBottom:10,lineHeight:1.5}}>
-              {rezervasyonYerel
-                ? L("Etkinliğe dokun, yerini ayırt. Onayı telefonundan iletiriz.","Tap an event to book a spot. We confirm by phone.","Нажмите на событие, чтобы забронировать. Подтвердим по телефону.")
-                : L("Etkinliğe dokun, yerini buradan ayırt. Onaylanınca haber veririz.","Tap an event to book your spot right here. We will let you know once it is confirmed.","Нажмите на событие, чтобы забронировать прямо здесь. Сообщим, когда подтвердим.")}
+              {L("Etkinliğe dokun, yerini buradan ayırt. Onaylanınca haber veririz.","Tap an event to book your spot right here. We will let you know once it is confirmed.","Нажмите на событие, чтобы забронировать прямо здесь. Сообщим, когда подтвердим.")}
             </div>
           )}
           {custTab === "events" && (
@@ -2880,9 +2930,7 @@ export default function CustomerMenu() {
                 </div>
                 <div style={{fontSize:13,color:"#444",lineHeight:1.6,marginBottom:14}}>
                   {rezForm.ev.name} · {fmtDay(rezForm.ev.date)}{rezForm.ev.time ? " · " + rezForm.ev.time : ""}<br/>
-                  {rezervasyonYerel
-                    ? L("Onaylanınca telefonundan haber vereceğiz. Kapıda bu kodu göster:","We'll confirm by phone. Show this code at the door:","Подтвердим по телефону. Покажите этот код на входе:")
-                    : rezForm.bilgi?.durum === "approved"
+                  {rezForm.bilgi?.durum === "approved"
                       ? L("Kapıda bu kodu göster:","Show this code at the door:","Покажите этот код на входе:")
                       : rezForm.bilgi?.eposta
                         ? L("Onaylanınca e-posta ile haber vereceğiz. Durumu bu sayfada, Rezervasyonlarım altında görürsün. Kapıda bu kodu göster:","We will e-mail you once it is confirmed. You can follow it on this page under My reservations. Show this code at the door:","Сообщим по e-mail после подтверждения. Статус виден на этой странице в разделе «Мои брони». Покажите этот код на входе:")
@@ -2900,14 +2948,14 @@ export default function CustomerMenu() {
                   </div>
                   <button onClick={() => !rezForm.busy && setRezForm(null)} aria-label={L("Kapat","Close","Закрыть")} style={{width:44,height:44,margin:"-10px -10px 0 0",background:"none",border:"none",cursor:"pointer",display:"flex",alignItems:"center",justifyContent:"center",flexShrink:0,color:"#000"}}><Ikon ad="kapat" boy={18}/></button>
                 </div>
-                {!rezervasyonYerel && rezForm.ev.note && (
+                {rezForm.ev.note && (
                   <div style={{fontSize:12.5,color:"#444",lineHeight:1.5,background:"#f7f7f7",borderRadius:12,padding:"10px 12px",marginBottom:12,whiteSpace:"pre-line"}}>{rezForm.ev.note}</div>
                 )}
                 {rezDolu(rezForm.ev) ? (
                   <div role="status" style={{fontSize:14,fontWeight:700,textAlign:"center",padding:"18px 12px",background:"#f5f5f5",borderRadius:12}}>
                     {L("Bu etkinliğin kapasitesi doldu.","This event is full.","На это событие мест больше нет.")}
                   </div>
-                ) : (!rezervasyonYerel && !customer && (rezForm.hata === "uye_gerekli" || rezForm.hata === "seviye_yetersiz" || rezForm.ev.access_type === "members_only")) ? (
+                ) : (ozellik("uyelik") && !customer && (rezForm.hata === "uye_gerekli" || rezForm.hata === "seviye_yetersiz" || rezForm.ev.access_type === "members_only")) ? (
                   <>
                     <div role="status" style={{fontSize:14,lineHeight:1.5,padding:"14px 14px",background:"#f5f5f5",borderRadius:12,marginBottom:12}}>
                       <b>{L("Bu etkinlik üyelere özel.","This event is for members.","Это событие только для участников.")}</b><br/>
@@ -2932,7 +2980,7 @@ export default function CustomerMenu() {
                       <button onClick={()=>setRezForm(f=>({...f,guest_count:Math.min(20,(Number(f.guest_count)||1)+1)}))} style={{...rezStepS,width:44,height:44}} aria-label={L("Artır","Increase","Увеличить")}>+</button>
                     </div>
                     <input value={rezForm.note} onChange={e=>setRezForm(f=>({...f,note:e.target.value}))} placeholder={L("Not (isteğe bağlı)","Note (optional)","Примечание (необязательно)")} maxLength={300} style={rezInputS}/>
-                    {!rezervasyonYerel && rezKural(rezForm.ev) && (
+                    {rezKural(rezForm.ev) && (
                       <div style={{border:"1px solid " + (rezForm.hata === "kural" ? "#C0392B" : "#e8e8e8"),borderRadius:12,padding:"12px 12px 4px",marginBottom:12}}>
                         <div style={{fontSize:12,fontWeight:800,marginBottom:6}}>{L("Etkinlik kuralları","Event rules","Правила события")}</div>
                         <div style={{fontSize:12.5,color:"#444",lineHeight:1.55,whiteSpace:"pre-line",maxHeight:150,overflowY:"auto",marginBottom:8}}>{rezKural(rezForm.ev)}</div>

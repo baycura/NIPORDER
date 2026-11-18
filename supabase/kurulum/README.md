@@ -50,7 +50,9 @@ Doğrulama (hedefte): `select count(*) from pg_tables where schemaname='public'`
 → 51; `select count(*) from pg_policies where schemaname='public'` → 95.
 
 **4. Profil ve tohum** (hedefte): `02_temel_profil.sql` (dış servis
-tetikleyicileri kalkar, cron yalnız yerel işler), sonra `03_tohum.sql`
+tetikleyicileri kalkar, cron yalnız yerel işler, rezervasyon anahtarı açılır;
+dosyanın sonundaki satırla rezervasyon kodunun ön eki işletmenin kısa adı
+yapılır), sonra `03_tohum.sql`
 (`<STORE_ID>`, `<SLUG>`, `<ISLETME_ADI>`, `<ADMIN_EPOSTA>`, `<ADMIN_AD>`,
 `<GECICI_SIFRE>` doldurulur). `<STORE_ID>` ile
 `isletme/<slug>/vite.config.js` içindeki `VITE_STORE_ID` aynı olmalı.
