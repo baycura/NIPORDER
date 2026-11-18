@@ -25,7 +25,13 @@
 --     acabilir, kendi notunu duzeltebilir (bugunku gibi).
 --   * Parti bilgisini tarayici oturumu degistiremez ve yeni parti acamaz;
 --     AFIS sutunlari serbesttir (afis hala buradan yuklenir).
---   * Kopru uclari ve SQL oturumu / zamanlanmis is (arsiv) etkilenmez.
+--   * Parti SATIRI buradan kaldirilamaz (afis yalniz burada durur; satir
+--     giderse kopru partiyi afissiz geri yazardi). Son 10 gunun ve gelecegin
+--     partileri bir kilit satiriyla tutulur (nip_gecis_parti_kilidi). Parti
+--     Order panelinden kaldirilir; burada durumu 'cancelled' olur. 10 gunden
+--     eski parti serbesttir (gece arsivi 14 gunden eskiyi tasir).
+--   * Kopru uclari ve SQL oturumu / zamanlanmis is (arsiv) baska yonden
+--     etkilenmez.
 --
 -- Yalniz EKLEME; tekrar calistirilabilir. Hicbir nesne ya da satir kaldirilmaz.
 -- Geri donus: select public.nip_order_gecis_yaz('<sir>', false);
@@ -170,6 +176,50 @@ begin
   end if;
 end $t$;
 
+-- PARTI KILIDI: isaret acikken parti satiri kaldirilamaz. Kilit satiri partiye
+-- yabanci anahtarla baglidir (varsayilan kural: bagli satir varken ana satir
+-- kaldirilamaz). Yonetici eski panelde "kaldir" derse veritabani reddeder;
+-- hata metninde kisitin adi gorunur: parti_order_panelinden_kaldirilir.
+-- Kilit satiri hic kaldirilmaz; birakilirken event_id bosaltilir.
+create table if not exists public.nip_gecis_parti_kilidi (
+  id       bigint generated always as identity primary key,
+  event_id uuid,
+  constraint nip_gecis_parti_kilidi_tek unique (event_id),
+  constraint parti_order_panelinden_kaldirilir foreign key (event_id) references public.events (id)
+);
+comment on table public.nip_gecis_parti_kilidi is
+  'Gecis isareti acikken parti satirini tutan kilit (son 10 gun + gelecek). Parti Order panelinden kaldirilir (20261119).';
+alter table public.nip_gecis_parti_kilidi enable row level security;
+revoke all on public.nip_gecis_parti_kilidi from anon, authenticated, public;
+
+-- Kilitleri gunceller: isaret acik -> son 10 gunun ve gelecegin partileri
+-- kilitli, daha eskisi serbest (gece arsivi takilmasin). Isaret kapali ->
+-- hepsi serbest. Yalniz kopru uclari cagirir.
+create or replace function public.nip_gecis_kilit_guncelle()
+returns integer
+language plpgsql
+security definer
+set search_path to 'public'
+as $$
+declare v_n integer := 0;
+begin
+  if not public.nip_tasindi_mi() then
+    update public.nip_gecis_parti_kilidi k set event_id = null where k.event_id is not null;
+    return 0;
+  end if;
+  update public.nip_gecis_parti_kilidi k set event_id = null
+   where k.event_id is not null
+     and not exists (select 1 from public.events e where e.id = k.event_id and e.date >= current_date - 10);
+  insert into public.nip_gecis_parti_kilidi (event_id)
+  select e.id from public.events e
+   where e.date >= current_date - 10
+     and not exists (select 1 from public.nip_gecis_parti_kilidi k where k.event_id = e.id)
+  on conflict (event_id) do nothing;
+  select count(*) into v_n from public.nip_gecis_parti_kilidi k where k.event_id is not null;
+  return v_n;
+end $$;
+revoke all on function public.nip_gecis_kilit_guncelle() from public, anon, authenticated;
+
 -- ----------------------------------------------------------------------------
 -- 3) KOPRU UCLARI. Cagiran Order; kendini Vault'taki order_sync_sir ile tanitir
 --    (diger uclarla ayni: nip_order_sir_dogru). Sir tutmazsa hata.
@@ -188,6 +238,7 @@ begin
   end if;
   update public.nip_gecis set tasindi = coalesce(p_tasindi, false), degisti = now()
    where tek and tasindi is distinct from coalesce(p_tasindi, false);
+  perform public.nip_gecis_kilit_guncelle();
   return json_build_object('ok', true, 'tasindi', public.nip_tasindi_mi());
 end $$;
 
@@ -200,6 +251,10 @@ end $$;
 --                   Satir KALDIRILMAZ. Liste bossa bu adim atlanir (yanlislikla
 --                   bos liste gelirse butun partiler kapanmasin).
 -- Afis sutunlarina (poster_*) ve min_tier / min_trust'a dokunulmaz.
+-- Order yalniz 'open' / 'members_only' erisim turunu ve 'active' / 'cancelled' /
+-- 'archived' durumunu tanir; gecis kopyasi baska degeri bunlara indirger.
+-- Buradaki satir Order'in tanimadigi bir degerdeyse (ornek: 'tier_restricted')
+-- ve Order indirgenmis karsiligini yolluyorsa buradaki deger KORUNUR.
 -- Gecis isareti kapaliyken hicbir sey yazmaz.
 create or replace function public.nip_order_etkinlik_yaz(p_sir text, p_etkinlikler json, p_kimlikler uuid[])
 returns json
@@ -224,12 +279,19 @@ begin
                                   warmup_name, warmup_start, warmup_end, color)
   select x.id, x.name, x.subtitle, x.genre, x.date, coalesce(x."time", ''), x.time_end, coalesce(nullif(x.time_end, ''), '02:00'),
          greatest(1, coalesce(x.capacity, 100)), greatest(0, coalesce(x.approved_count, 0)),
-         x.rules, x.rules_en, x.rules_ru, coalesce(x.access_type, 'open'), coalesce(x.status, 'active'), x.note,
-         x.warmup_name, x.warmup_start, x.warmup_end, x.color
+         x.rules, x.rules_en, x.rules_ru,
+         case when coalesce(x.access_type, 'open') = 'members_only'
+                   and m.access_type is not null and m.access_type not in ('open', 'members_only')
+              then m.access_type else coalesce(x.access_type, 'open') end,
+         case when coalesce(x.status, 'active') = 'archived'
+                   and m.status is not null and m.status not in ('active', 'cancelled', 'archived')
+              then m.status else coalesce(x.status, 'active') end,
+         x.note, x.warmup_name, x.warmup_start, x.warmup_end, x.color
     from json_to_recordset(coalesce(p_etkinlikler, '[]'::json)) as x(
       id uuid, name text, subtitle text, genre text, date date, "time" text, time_end text, capacity int,
       approved_count int, rules text, rules_en text, rules_ru text, access_type text, status text, note text,
       warmup_name text, warmup_start text, warmup_end text, color text)
+    left join public.events m on m.id = x.id
    where x.id is not null and x.name is not null and x.date is not null
   on conflict (id) do update
      set name = excluded.name, subtitle = excluded.subtitle, genre = excluded.genre, date = excluded.date,
@@ -252,6 +314,8 @@ begin
      where e.status = 'active' and e.date >= current_date and not (e.id = any(p_kimlikler));
     get diagnostics v_kapanan = row_count;
   end if;
+
+  perform public.nip_gecis_kilit_guncelle();
 
   return json_build_object('ok', true, 'yazilan', v_yazilan, 'kapanan', v_kapanan);
 end $$;

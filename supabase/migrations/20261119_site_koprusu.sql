@@ -9,13 +9,12 @@
 -- listesini ve siteden yapilan rezervasyonu DOGRUDAN eski rezervasyon
 -- veritabanindan (RESERVE) okuyup yaziyor; uye girisi de orada. Gecisten sonra
 -- partileri ve rezervasyonlari Order yonetir, site DEGISMEZ. Bu dosya ikisini
--- bagli tutan kopruyu ekler:
+-- bagli tutan kopruyu ekler (5 dakikada bir tur):
 --
---   Order -> RESERVE  parti listesi      (5 dakikada bir + panelde kaydedince)
---   Order -> RESERVE  rezervasyon durumu (5 dakikada bir)
---   RESERVE -> Order  siteden gelen yeni talepler (5 dakikada bir; mevcut
---                     kopya fonksiyonu anahtar acikken yalniz eksik
---                     rezervasyonu ekler)
+--   Order -> RESERVE  parti listesi (ayrica panelde kaydedince hemen)
+--   Order -> RESERVE  rezervasyon durumu (onay, red, giris, gelmedi)
+--   RESERVE -> Order  siteden gelen yeni talepler; bekleyen talepte uyenin
+--                     duzelttigi alanlar; uyenin sitede kaldirdigi talep
 --
 -- Anahtar (nip_rez_ayar.yerel) KAPALIYKEN kopru hicbir sey yapmaz: zamanlanmis
 -- is hemen doner, RESERVE tarafindaki uclar "tasinmadi" der. Bugunku akis
@@ -24,13 +23,38 @@
 -- GECIS tek cagridir (yalniz SQL oturumu):
 --     select public.nip_rez_gecis_yap(true);     -- gec
 --     select public.nip_rez_gecis_yap(false);    -- geri don
--- Sirasi: son veri kopyasi -> anahtar acilir -> RESERVE'de gecis isareti acilir
--- -> parti listesi ve durumlar yollanir. Herhangi bir adim hata verirse islem
--- geri sarilir ve anahtar kapali kalir. Kopya ile anahtarin acilmasi arasinda
--- kopru yolundan gelen talep kaybolmaz: bir sonraki 5 dakikalik turda cekilir.
+-- Sirasi: RESERVE'de gecis isareti acilir (oradaki paneller durum ve parti
+-- yazamaz) -> son veri kopyasi -> anahtar acilir -> parti listesi ve durumlar
+-- yollanir. Kopya ya da anahtar adimi hata verirse Order geri sarilir ve
+-- RESERVE isareti yeniden kapatilir. Iki veritabani tek islem DEGILDIR: cagri
+-- geri sarilan bir islemin (begin ... rollback) icinde CALISTIRILMAZ; isaret
+-- acik kalir. Supheli durumda ayni cagri yeniden calistirilir (zararsiz).
+--
+-- Bagimsiz inceleme (18.11.2026) bulgulari bu dosyada kapatildi: gecis sirasi
+-- ve telafi, tur adimlari birbirinden ayri, uye bagi sonradan, sitede
+-- duzeltilen / kaldirilan talep, geri donuste son yollama, ikinci geciste
+-- yerel kayitlarin korunmasi, ariza uyarisi (Telegram).
 --
 -- Yalniz EKLEME; tekrar calistirilabilir. Hicbir nesne ya da satir kaldirilmaz.
 -- ============================================================================
+
+-- ----------------------------------------------------------------------------
+-- 0) KOLONLAR
+-- ----------------------------------------------------------------------------
+-- Kayit RESERVE'den mi geldi (web sitesi / rezervasyon sitesi / gecis kopyasi)?
+-- Menuden acilan yerel talepte false. Kopru yalniz bu isaretli kayitlari
+-- RESERVE ile karsilastirir. (profile_id yetmez: site misafir talebi de alir.)
+alter table public.reservations add column if not exists site_kaydi boolean not null default false;
+comment on column public.reservations.site_kaydi is
+  'true: kayit eski rezervasyon veritabanindan geldi (site talebi ya da gecis kopyasi). false: menuden acilan yerel talep (20261119).';
+-- Anahtarin ILK acildigi an. Dolu ise veri kopyasi uye sayaclarina dokunmaz.
+alter table public.nip_rez_ayar add column if not exists ilk_gecis timestamptz;
+comment on column public.nip_rez_ayar.ilk_gecis is
+  'Anahtarin ilk acildigi an (gecis). Bos: hic gecilmedi.';
+-- Kopru turu art arda kac kez hata verdi (0 = saglam). 3. hatada yonetici uyarilir.
+alter table public.nip_rez_ayar add column if not exists kopru_hata integer not null default 0;
+comment on column public.nip_rez_ayar.kopru_hata is
+  'Web sitesi koprusu art arda kac tur hata verdi; basarili turda sifirlanir.';
 
 -- ----------------------------------------------------------------------------
 -- 1) RESERVE'deki kopru uclarini cagiran yardimci (yalniz izinli uc adlari)
@@ -74,7 +98,368 @@ end $$;
 revoke all on function public.nip_rez_site_cagir(text, json) from public, anon, authenticated;
 
 -- ----------------------------------------------------------------------------
--- 2) PARTI LISTESI -> RESERVE
+-- 2) VERI KOPYASI / CEKME (20261118'deki fonksiyonun yeni surumu)
+--    Anahtar KAPALI: RESERVE ana kaynak (gecis kopyasi). Degisen:
+--      * yalniz siteden gelen kayit (site_kaydi) kapanir; yerel talep kapanmaz
+--      * uye sayaclari yalniz ILK gecisten once yazilir
+--    Anahtar ACIK (kopru turu): yalniz eksik 'pending' talep eklenir. Yeni:
+--      * uye bagi sonradan kurulur          * bekleyen talepte uyenin duzelttigi
+--        alanlar alinir                     * sitede kaldirilan acik talep kapanir
+--      * alinamayan bekleyen talep sayilir (tur hata sayar, yonetici uyarilir)
+--    Ad: saklanan deger ile suzulen deger ayni ifadedir (kisit: 2-80 harf).
+-- ----------------------------------------------------------------------------
+create or replace function public.nip_rez_gecis_ad(p text)
+returns text
+language sql
+immutable
+set search_path to 'public'
+as $$
+  select btrim(left(btrim(coalesce(p, '')), 80));
+$$;
+revoke all on function public.nip_rez_gecis_ad(text) from public, anon, authenticated;
+
+create or replace function public.nip_rez_gecis_kopyala(p_yaz boolean default false, p_kisisel boolean default false)
+returns json
+language plpgsql
+security definer
+set search_path to 'public'
+set statement_timeout to '60s'
+as $$
+declare
+  v_sir text;
+  v_anon constant text := 'eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJpc3MiOiJzdXBhYmFzZSIsInJlZiI6ImRpcXBhcmpydHZ2Znh2d3hlYm92Iiwicm9sZSI6ImFub24iLCJpYXQiOjE3NzM5Mzc3OTMsImV4cCI6MjA4OTUxMzc5M30.pNI2yU6LDG8583HBPq-5puxkpEVEAYwhGp9ibJ1WBsI';
+  v_url  constant text := 'https://diqparjrtvvfxvwxebov.supabase.co/rest/v1/rpc/nip_gecis_verisi';
+  v_status int; v_content text; v json;
+  v_yerel boolean := public.nip_rez_yerel_mi();
+  v_kisisel boolean := coalesce(p_yaz, false) and coalesce(p_kisisel, false);
+  n_etk int; n_etk_yeni int; n_etk_yazilan int := 0; n_etk_kapanan int := 0;
+  n_rez int; n_rez_yeni int; n_rez_uye int; n_rez_sorunlu int; n_rez_yazilan int := 0; n_rez_kapanan int := 0;
+  n_rez_atlanan int := 0;
+  n_kisi_kirpilan int; v_sorunlu json;
+  n_uye int; n_uye_eslesen int; n_uye_yazilan int := 0; n_uye_sifirlanan int := 0;
+  v_ilk timestamptz;                       -- anahtar daha once acildi mi (ilk gecis ani)
+  n_rez_baglanan int := 0; n_rez_guncellenen int := 0;
+  n_bek_sorunlu int := 0; v_bek_sorunlu text;
+  v_x record; v_r public.reservations; v_event uuid;
+begin
+  -- Yalniz SQL oturumu / zamanlanmis is (istek rolu yok). Tarayici oturumu cagiramaz.
+  if coalesce(nullif(current_setting('request.jwt.claims', true), '')::jsonb ->> 'role', '') <> '' then
+    raise exception 'dogrudan cagrilamaz' using errcode = '42501';
+  end if;
+
+  select decrypted_secret into v_sir from vault.decrypted_secrets where name = 'reserve_sync_sir';
+  if v_sir is null then return json_build_object('ok', false, 'hata', 'sir-yok'); end if;
+  begin
+    perform extensions.http_set_curlopt('CURLOPT_TIMEOUT_MS', '30000');
+    select status, content into v_status, v_content
+      from extensions.http((
+        'POST', v_url,
+        array[extensions.http_header('apikey', v_anon),
+              extensions.http_header('Authorization', 'Bearer ' || v_anon)],
+        'application/json',
+        json_build_object('p_sir', v_sir)::text
+      )::extensions.http_request);
+  exception when others then
+    return json_build_object('ok', false, 'hata', 'ag', 'ayrinti', left(sqlerrm, 200));
+  end;
+  if v_status <> 200 then
+    return json_build_object('ok', false, 'hata', 'yanit', 'durum', v_status, 'ayrinti', left(coalesce(v_content, ''), 200));
+  end if;
+  v := v_content::json;
+  select a.ilk_gecis into v_ilk from public.nip_rez_ayar a where a.tek;
+
+  select count(*) into n_etk from public.nip_rez_gecis_etk(v) g where g.id is not null;
+  -- Anahtar acikken parti EKLENMEZ (Order ana kaynak; Order'da kaldirilan parti geri gelmesin)
+  select count(*) into n_etk_yeni from public.nip_rez_gecis_etk(v) g
+   where not v_yerel and g.id is not null and g.name is not null and g.date is not null
+     and not exists (select 1 from public.events e where e.id = g.id);
+  select count(*) into n_rez from public.nip_rez_gecis_rez(v) g where g.id is not null;
+  -- Yazilabilir ve henuz burada olmayan satir (yazinca eklenecek olan).
+  -- Anahtar acikken yalniz 'pending' eklenir; digerleri "atlanan" sayilir.
+  select count(*) filter (where not v_yerel or g.status = 'pending'),
+         count(*) filter (where v_yerel and g.status <> 'pending')
+    into n_rez_yeni, n_rez_atlanan
+    from public.nip_rez_gecis_rez(v) g
+   where g.id is not null and length(public.nip_rez_gecis_ad(g.name)) >= 2 and coalesce(g.qr_id, '') <> ''
+     and g.status in ('pending', 'approved', 'used', 'rejected', 'cancelled', 'no_show')
+     and not exists (select 1 from public.reservations r where r.id = g.id or r.qr_id = g.qr_id);
+  select count(*) into n_rez_uye from public.nip_rez_gecis_rez(v) g
+   where (g.profile_id is not null and exists (select 1 from public.customers k where k.reserve_profile_id = g.profile_id))
+      or exists (select 1 from public.nip_rez_talepleri t join public.customers k on k.id = t.customer_id where t.rez_id = g.id);
+  -- Order kisitlarina sigmayan satir (ad 2 harften kisa, kod bos, bilinmeyen
+  -- durum) YAZILMAZ; raporda sayisi ve ilk 20 kimligi doner, elle bakilir.
+  select count(*), json_agg(json_build_object('id', q.id, 'kod', q.qr_id, 'durum', q.status)) filter (where q.sira <= 20)
+    into n_rez_sorunlu, v_sorunlu
+    from (select g.id, g.qr_id, g.status, row_number() over (order by g.created_at) as sira
+            from public.nip_rez_gecis_rez(v) g
+           where g.id is not null and (length(public.nip_rez_gecis_ad(g.name)) < 2 or coalesce(g.qr_id, '') = ''
+              or g.status not in ('pending', 'approved', 'used', 'rejected', 'cancelled', 'no_show'))) q;
+  -- Kisi sayisi 1-20 disinda olan satir yazilir ama sayi sinira cekilir
+  select count(*) into n_kisi_kirpilan from public.nip_rez_gecis_rez(v) g
+   where g.id is not null and coalesce(g.guest_count, 1) not between 1 and 20;
+  -- RESERVE'de artik olmayan satirlar (yalniz anahtar kapaliyken kapanir; asagida).
+  -- Kuru calistirmada "kapanacak" sayisidir; yazinca gercek sayi ile degisir.
+  if not v_yerel and n_etk > 0 then
+    select count(*) into n_etk_kapanan from public.events e
+     where e.status <> 'archived' and not exists (select 1 from public.nip_rez_gecis_etk(v) g where g.id = e.id);
+  end if;
+  if not v_yerel and n_rez > 0 then
+    select count(*) into n_rez_kapanan from public.reservations r
+     where r.site_kaydi and r.status in ('pending', 'approved', 'no_show')
+       and not exists (select 1 from public.nip_rez_gecis_rez(v) g where g.id = r.id);
+  end if;
+  if v_yerel and n_rez > 0 then
+    select count(*) into n_rez_kapanan from public.reservations r
+     where r.site_kaydi and r.status in ('pending', 'approved') and r.no_show_at is null
+       and not exists (select 1 from public.nip_rez_gecis_rez(v) g where g.id = r.id);
+  end if;
+  -- Anahtar acikken: sitede BEKLEYEN ama buraya alinamayan talep (ad cok kisa,
+  -- kod bos ya da kod baska bir kayitta). Tur bunu hata sayar; yonetici uyarilir.
+  if v_yerel then
+    select count(*), string_agg(coalesce(nullif(q.qr_id, ''), left(q.id::text, 8)), ', ') filter (where q.sira <= 3)
+      into n_bek_sorunlu, v_bek_sorunlu
+      from (select g.id, g.qr_id, row_number() over (order by g.created_at) as sira
+              from public.nip_rez_gecis_rez(v) g
+             where g.id is not null and g.status = 'pending'
+               and coalesce(g.created_at, now()) > now() - interval '30 days'
+               and not exists (select 1 from public.reservations r where r.id = g.id)
+               and (length(public.nip_rez_gecis_ad(g.name)) < 2 or coalesce(g.qr_id, '') = ''
+                    or exists (select 1 from public.reservations r2 where r2.qr_id = g.qr_id and r2.id <> g.id))) q;
+  end if;
+  select count(*) into n_uye from public.nip_rez_gecis_uye(v) g where g.id is not null;
+  select count(*) into n_uye_eslesen from public.nip_rez_gecis_uye(v) g
+   where exists (select 1 from public.customers k where k.reserve_profile_id = g.id);
+
+  if coalesce(p_yaz, false) and not v_yerel then
+    -- ETKINLIK (parti). Yalniz anahtar KAPALIYKEN: RESERVE ana kaynaktir, var
+    -- olan satir oradaki haline getirilir. Anahtar acikken parti ne eklenir ne
+    -- degisir (Order ana kaynak; inceleme 18.11: Order'da kaldirilan parti her
+    -- turda geri geliyordu).
+    insert into public.events as e (id, name, genre, subtitle, date, "time", time_end, warmup_name, warmup_start, warmup_end,
+                                    capacity, approved_count, access_type, rules, rules_en, rules_ru, color, note, status, created_at)
+    select g.id, g.name, g.genre, g.subtitle, g.date, g."time", g.time_end, g.warmup_name, g.warmup_start, g.warmup_end,
+           greatest(1, coalesce(g.capacity, 100)), greatest(0, coalesce(g.approved_count, 0)),
+           case when coalesce(g.access_type, 'open') = 'open' then 'open' else 'members_only' end,
+           g.rules, g.rules_en, g.rules_ru, g.color, g.note,
+           case when g.status in ('active', 'cancelled', 'archived') then g.status else 'archived' end,
+           coalesce(g.created_at, now())
+      from public.nip_rez_gecis_etk(v) g
+     where g.id is not null and g.name is not null and g.date is not null
+    on conflict (id) do update
+       set name = excluded.name, genre = excluded.genre, subtitle = excluded.subtitle, date = excluded.date,
+           "time" = excluded."time", time_end = excluded.time_end, warmup_name = excluded.warmup_name,
+           warmup_start = excluded.warmup_start, warmup_end = excluded.warmup_end, capacity = excluded.capacity,
+           approved_count = excluded.approved_count, access_type = excluded.access_type, rules = excluded.rules,
+           rules_en = excluded.rules_en, rules_ru = excluded.rules_ru, color = excluded.color, note = excluded.note,
+           status = excluded.status
+     where (e.name, e.genre, e.subtitle, e.date, e."time", e.time_end, e.warmup_name, e.warmup_start, e.warmup_end,
+            e.capacity, e.approved_count, e.access_type, e.rules, e.rules_en, e.rules_ru, e.color, e.note, e.status)
+           is distinct from
+           (excluded.name, excluded.genre, excluded.subtitle, excluded.date, excluded."time", excluded.time_end,
+            excluded.warmup_name, excluded.warmup_start, excluded.warmup_end, excluded.capacity, excluded.approved_count,
+            excluded.access_type, excluded.rules, excluded.rules_en, excluded.rules_ru, excluded.color, excluded.note,
+            excluded.status);
+    get diagnostics n_etk_yazilan = row_count;
+
+    -- RESERVE'de artik olmayan parti (orada kaldirildi ya da arsive gitti)
+    -- burada 'archived' olur; satir kalir. Liste bos geldiyse dokunulmaz.
+    n_etk_kapanan := 0;
+    if n_etk > 0 then
+      update public.events e set status = 'archived'
+       where e.status <> 'archived'
+         and not exists (select 1 from public.nip_rez_gecis_etk(v) g where g.id = e.id);
+      get diagnostics n_etk_kapanan = row_count;
+    end if;
+  end if;
+
+  if v_kisisel then
+    -- REZERVASYON (kisisel veri; yalniz p_kisisel ile). Kodu baska bir kimlikte
+    -- kullanilan satir atlanir. Anahtar kapaliyken var olan satir RESERVE'deki
+    -- haline getirilir; acikken yalniz burada hic olmayan 'pending' satir
+    -- eklenir (inceleme 18.11: acikken 'used' / 'no_show' gelen satir sayac
+    -- isaretini tasiyor ama sayaci artirmiyordu).
+    insert into public.reservations as r (id, qr_id, event_id, event_name, event_date, event_time, name, phone, guest_count,
+                                          guest_names, note, status, rules_accepted, profile_id, customer_id, email, lang, device,
+                                          approved_at, checked_in_at, no_show_at, came_counted, no_show_counted, created_at,
+                                          site_kaydi)
+    select g.id, g.qr_id, ev.id,
+           coalesce(ev.name, g.event_name), coalesce(ev.date, g.event_date), coalesce(nullif(ev."time", ''), g.event_time),
+           public.nip_rez_gecis_ad(g.name),
+           left(coalesce(public.nip_tel_duzelt(g.phone), btrim(coalesce(g.phone, ''))), 32),
+           greatest(1, least(20, coalesce(g.guest_count, 1))),
+           g.guest_names, nullif(left(coalesce(g.note, ''), 300), ''),
+           case when g.status = 'approved' and g.no_show_at is not null then 'no_show' else g.status end,
+           coalesce(g.rules_accepted, false), g.profile_id, coalesce(k.id, tk.id),
+           coalesce(nullif(lower(btrim(t.eposta)), ''), nullif(lower(btrim(g.email)), '')),
+           case when coalesce(t.dil, g.lang) in ('tr', 'en', 'ru') then coalesce(t.dil, g.lang) else 'tr' end,
+           t.cihaz,
+           g.approved_at, g.checked_in_at, g.no_show_at,
+           -- Sayac isaretleri yalniz RESERVE'nin toplamina GIRMIS kayitta (profilli):
+           -- kopyalanan sayaclar o toplamdir; geri almada ancak sayilmis olan duser.
+           (g.status = 'used' and k.id is not null),
+           (g.status = 'approved' and g.no_show_at is not null and k.id is not null),
+           coalesce(g.created_at, now()),
+           true
+      from public.nip_rez_gecis_rez(v) g
+      left join public.events ev on ev.id = g.event_id
+      left join lateral (select c.id from public.customers c where c.reserve_profile_id = g.profile_id
+                          order by c.created_at limit 1) k on true
+      left join public.nip_rez_talepleri t on t.rez_id = g.id
+      left join public.customers tk on tk.id = t.customer_id
+     where g.id is not null and length(public.nip_rez_gecis_ad(g.name)) >= 2 and coalesce(g.qr_id, '') <> ''
+       and g.status in ('pending', 'approved', 'used', 'rejected', 'cancelled', 'no_show')
+       and (not v_yerel or (g.status = 'pending'
+                            and not exists (select 1 from public.reservations y where y.id = g.id)))
+       and not exists (select 1 from public.reservations x where x.qr_id = g.qr_id and x.id <> g.id)
+    on conflict (id) do update
+       set qr_id = excluded.qr_id, event_id = excluded.event_id, event_name = excluded.event_name,
+           event_date = excluded.event_date, event_time = excluded.event_time, name = excluded.name,
+           phone = excluded.phone, guest_count = excluded.guest_count, guest_names = excluded.guest_names,
+           note = excluded.note, status = excluded.status, rules_accepted = excluded.rules_accepted,
+           profile_id = excluded.profile_id, customer_id = excluded.customer_id, email = excluded.email,
+           lang = excluded.lang, device = excluded.device, approved_at = excluded.approved_at,
+           checked_in_at = excluded.checked_in_at, no_show_at = excluded.no_show_at,
+           came_counted = excluded.came_counted, no_show_counted = excluded.no_show_counted,
+           site_kaydi = true
+     where not v_yerel
+       and (r.qr_id, r.event_id, r.event_name, r.event_date, r.event_time, r.name, r.phone, r.guest_count, r.guest_names,
+            r.note, r.status, r.rules_accepted, r.profile_id, r.customer_id, r.email, r.lang, r.device, r.approved_at,
+            r.checked_in_at, r.no_show_at, r.came_counted, r.no_show_counted, r.site_kaydi)
+           is distinct from
+           (excluded.qr_id, excluded.event_id, excluded.event_name, excluded.event_date, excluded.event_time, excluded.name,
+            excluded.phone, excluded.guest_count, excluded.guest_names, excluded.note, excluded.status,
+            excluded.rules_accepted, excluded.profile_id, excluded.customer_id, excluded.email, excluded.lang,
+            excluded.device, excluded.approved_at, excluded.checked_in_at, excluded.no_show_at, excluded.came_counted,
+            excluded.no_show_counted, true);
+    get diagnostics n_rez_yazilan = row_count;
+
+    if not v_yerel then
+      -- RESERVE'de artik olmayan ACIK rezervasyon (uye ya da yonetici orada
+      -- kaldirdi) burada 'cancelled' olur; satir kalir. Bitmis kayit (girdi,
+      -- red) oldugu gibi durur. YALNIZ siteden gelen kayit (site_kaydi):
+      -- anahtar bir kez acilip geri kapandiysa burada menuden acilmis yerel
+      -- talepler de vardir; onlar RESERVE'de hic olmadi, kapanmaz (inceleme
+      -- 18.11). Liste bos geldiyse dokunulmaz.
+      n_rez_kapanan := 0;
+      if n_rez > 0 then
+        update public.reservations r set status = 'cancelled'
+         where r.site_kaydi and r.status in ('pending', 'approved', 'no_show')
+           and not exists (select 1 from public.nip_rez_gecis_rez(v) g where g.id = r.id);
+        get diagnostics n_rez_kapanan = row_count;
+      end if;
+    end if;
+
+    if not v_yerel and v_ilk is null then
+      -- UYE SAYACLARI: yalniz ILK gecisten once. Anahtar bir kez acildiysa
+      -- Order kendi sayacini tutmustur; RESERVE toplami o donemi bilmez,
+      -- ustune yazilirsa giris / gelmedi kayitlari kaybolur (inceleme 18.11).
+      update public.customers k
+         set rez_geldi = greatest(0, coalesce(g.geldi, 0)), rez_gelmedi = greatest(0, coalesce(g.gelmedi, 0))
+        from public.nip_rez_gecis_uye(v) g
+       where k.reserve_profile_id = g.id
+         and (k.rez_geldi is distinct from greatest(0, coalesce(g.geldi, 0))
+           or k.rez_gelmedi is distinct from greatest(0, coalesce(g.gelmedi, 0)));
+      get diagnostics n_uye_yazilan = row_count;
+      -- Listede olmayan uye (RESERVE'de gecmisi sifira donmus): onceki kopyanin
+      -- yazdigi sayac sifirlanir. Liste yalniz gecmisi olanlari tasir.
+      update public.customers k set rez_geldi = 0, rez_gelmedi = 0
+       where k.reserve_profile_id is not null and (k.rez_geldi <> 0 or k.rez_gelmedi <> 0)
+         and not exists (select 1 from public.nip_rez_gecis_uye(v) g where g.id = k.reserve_profile_id);
+      get diagnostics n_uye_sifirlanan = row_count;
+    end if;
+
+    if v_yerel then
+      -- ANAHTAR ACIKKEN (kopru turu). Web sitesi uyesi talebini sitede hala
+      -- duzeltebilir ya da kaldirabilir (RESERVE: res_own, nip_rez_koru); Order
+      -- bunu yalniz buradan ogrenir (inceleme 18.11).
+
+      -- (a) Uye bagi: uye siteye yeni kaydolduysa musteri satiri talepten SONRA
+      --     olusur (uye esitlemesi 10 dakikada bir). Acik talep sonradan baglanir;
+      --     baglanmazsa panel "misafir" gosterir, geldi / gelmedi sayilmaz.
+      update public.reservations q set customer_id = k.id
+        from (select distinct on (c.reserve_profile_id) c.reserve_profile_id, c.id
+                from public.customers c
+               where c.reserve_profile_id is not null
+               order by c.reserve_profile_id, c.created_at) k
+       where q.site_kaydi and q.customer_id is null and q.profile_id is not null
+         and q.status in ('pending', 'approved') and q.no_show_at is null
+         and k.reserve_profile_id = q.profile_id;
+      get diagnostics n_rez_baglanan = row_count;
+
+      -- (b) Bekleyen talepte uyenin degistirebildigi alanlar (ad, telefon, kisi,
+      --     misafir adlari, not, kural onayi). Durum ve baska alan DEGISMEZ.
+      update public.reservations q
+         set name = public.nip_rez_gecis_ad(g.name),
+             phone = left(coalesce(public.nip_tel_duzelt(g.phone), btrim(coalesce(g.phone, ''))), 32),
+             guest_count = greatest(1, least(20, coalesce(g.guest_count, 1))),
+             guest_names = g.guest_names,
+             note = nullif(left(coalesce(g.note, ''), 300), ''),
+             rules_accepted = coalesce(g.rules_accepted, false)
+        from public.nip_rez_gecis_rez(v) g
+       where q.id = g.id and q.site_kaydi and q.status = 'pending' and g.status = 'pending'
+         and length(public.nip_rez_gecis_ad(g.name)) >= 2
+         and (q.name, q.phone, q.guest_count, q.guest_names, q.note, q.rules_accepted)
+             is distinct from
+             (public.nip_rez_gecis_ad(g.name),
+              left(coalesce(public.nip_tel_duzelt(g.phone), btrim(coalesce(g.phone, ''))), 32),
+              greatest(1, least(20, coalesce(g.guest_count, 1))),
+              g.guest_names, nullif(left(coalesce(g.note, ''), 300), ''), coalesce(g.rules_accepted, false));
+      get diagnostics n_rez_guncellenen = row_count;
+
+      -- (c) Sitede KALDIRILAN acik talep burada 'cancelled' olur; onayliysa yeri
+      --     bosalir, yoldaki onay e-postasi durur. Kilit sirasi onay / red ile
+      --     ayni (once parti, sonra rezervasyon). Liste bos geldiyse dokunulmaz.
+      n_rez_kapanan := 0;
+      if n_rez > 0 then
+        for v_x in
+          select q.id from public.reservations q
+           where q.site_kaydi and q.status in ('pending', 'approved') and q.no_show_at is null
+             and not exists (select 1 from public.nip_rez_gecis_rez(v) g where g.id = q.id)
+        loop
+          select q.event_id into v_event from public.reservations q where q.id = v_x.id;
+          if v_event is not null then
+            perform 1 from public.events e where e.id = v_event for update;
+          end if;
+          select * into v_r from public.reservations q where q.id = v_x.id for update;
+          if v_r.id is null or v_r.event_id is distinct from v_event
+             or v_r.status not in ('pending', 'approved') or v_r.no_show_at is not null then
+            continue;
+          end if;
+          if v_r.status = 'approved' then
+            if v_event is not null then
+              update public.events set approved_count = greatest(0, coalesce(approved_count, 0) - v_r.guest_count)
+               where id = v_event;
+            end if;
+            update public.nip_reserve_onay_bildirim b
+               set durum = 'hata', hata = 'uye-kaldirdi', deneme = 3, son = now()
+             where b.rez_id = v_r.id and b.durum in ('bekliyor', 'hata') and b.deneme < 3;
+          end if;
+          update public.reservations set status = 'cancelled', acted_at = now() where id = v_r.id;
+          n_rez_kapanan := n_rez_kapanan + 1;
+        end loop;
+      end if;
+    end if;
+  end if;
+
+  return json_build_object('ok', true, 'yazildi', coalesce(p_yaz, false), 'kisisel_yazildi', v_kisisel,
+    'anahtar_yerel', v_yerel,
+    'etkinlik', n_etk, 'etkinlik_yeni', n_etk_yeni, 'etkinlik_yazilan', n_etk_yazilan, 'etkinlik_kapanan', n_etk_kapanan,
+    'rezervasyon', n_rez, 'rezervasyon_yeni', n_rez_yeni, 'rezervasyon_yazilan', n_rez_yazilan,
+    'rezervasyon_kapanan', n_rez_kapanan, 'rezervasyon_atlanan', n_rez_atlanan,
+    'rezervasyon_uyeye_bagli', n_rez_uye,
+    'rezervasyon_sorunlu', n_rez_sorunlu, 'sorunlu_ilk20', coalesce(v_sorunlu, '[]'::json),
+    'kisi_sayisi_sinira_cekilen', n_kisi_kirpilan,
+    'gecmisi_olan_uye', n_uye, 'uye_eslesen', n_uye_eslesen, 'uye_sayaci_yazilan', n_uye_yazilan,
+    'uye_sayaci_sifirlanan', n_uye_sifirlanan,
+    'uye_sayaci_atlandi', (v_kisisel and not v_yerel and v_ilk is not null),
+    'rezervasyon_baglanan', n_rez_baglanan, 'rezervasyon_guncellenen', n_rez_guncellenen,
+    'bekleyen_sorunlu', n_bek_sorunlu, 'bekleyen_sorunlu_kod', v_bek_sorunlu);
+end $$;
+
+revoke all on function public.nip_rez_gecis_kopyala(boolean, boolean) from public, anon, authenticated;
+
+-- ----------------------------------------------------------------------------
+-- 3) PARTI LISTESI -> RESERVE
 --    Yakin gecmis (7 gun) ve gelecek partiler yazilir; daha eskisi RESERVE'de
 --    her gece arsive gider (14 gun), yollanirsa geri gelirdi. Butun parti
 --    kimlikleri ayrica yollanir: Order'da kaldirilan gelecek parti sitede
@@ -108,7 +493,7 @@ end $$;
 revoke all on function public.nip_rez_site_etkinlik_gonder() from public, anon, authenticated;
 
 -- ----------------------------------------------------------------------------
--- 3) REZERVASYON DURUMU -> RESERVE
+-- 4) REZERVASYON DURUMU -> RESERVE
 --    Son 30 gunun ve gelecegin butun rezervasyonlari yollanir; RESERVE yalniz
 --    kendinde olan kimlikleri (siteden gelen ya da gecisten once kopyalanan)
 --    gunceller, digerlerini atlar. RESERVE 'no_show' ve 'cancelled' durumlarini
@@ -138,9 +523,13 @@ end $$;
 revoke all on function public.nip_rez_site_durum_gonder() from public, anon, authenticated;
 
 -- ----------------------------------------------------------------------------
--- 4) ZAMANLANMIS TUR (5 dakikada bir). Anahtar kapaliyken hemen doner.
---    Basarisizlik nip_reserve_bildirim_log'a yazilir (mevcut izleme); basarili
---    tur kayit birakmaz (gunde 288 satir olmasin).
+-- 5) ZAMANLANMIS TUR (5 dakikada bir). Anahtar kapaliyken hemen doner.
+--    * Uc adim birbirinden AYRI: biri hata verirse digerleri yine calisir.
+--    * Once yollama, en son cekme: cekmenin aldigi satir kilitleri ag
+--      cagrilari boyunca tutulmaz.
+--    * RESERVE "tasinmadi" derse (isaret orada kapanmis) isaret yeniden acilir.
+--    * Art arda 3 tur hata: yoneticilere Telegram. Duzelince bir kez haber.
+--      Kayit: nip_reserve_bildirim_log (1., 3. ve her 12. hatali tur).
 -- ----------------------------------------------------------------------------
 create or replace function public.nip_rez_site_esitle()
 returns json
@@ -149,8 +538,11 @@ security definer
 set search_path to 'public'
 as $$
 declare
-  v_k json; v_e json; v_d json;
+  v_k json; v_e json; v_d json; v_g json;
   v_hata text := '';
+  v_say int := 0;
+  v_metin text;
+  k record;
 begin
   -- Yalniz zamanlanmis is / SQL oturumu (istek rolu yok).
   if coalesce(nullif(current_setting('request.jwt.claims', true), '')::jsonb ->> 'role', '') <> '' then
@@ -164,26 +556,90 @@ begin
     return json_build_object('ok', true, 'atlandi', 'reserve-yok');
   end if;
 
-  v_k := public.nip_rez_gecis_kopyala(true, true);          -- siteden gelen yeni talepler
-  v_e := public.nip_rez_site_etkinlik_gonder();       -- parti listesi
-  v_d := public.nip_rez_site_durum_gonder();          -- rezervasyon durumlari
+  -- 1) Parti listesi
+  begin
+    v_e := public.nip_rez_site_etkinlik_gonder();
+    if coalesce(v_e->>'hata', '') = 'tasinmadi' then
+      -- Anahtar acik ama RESERVE'de isaret kapali (yarim kalmis gecis / geri
+      -- donus). Order ana kaynaktir: isaret yeniden acilir, yollama yinelenir.
+      v_g := public.nip_rez_site_cagir('nip_order_gecis_yaz', json_build_object('p_tasindi', true));
+      if coalesce(v_g->>'tasindi', '') = 'true' then
+        insert into public.nip_reserve_bildirim_log (ok, hata)
+        values (false, 'site koprusu: eski veritabaninda gecis isareti kapaliydi, yeniden acildi');
+        v_e := public.nip_rez_site_etkinlik_gonder();
+      end if;
+    end if;
+  exception when others then
+    v_e := json_build_object('ok', false, 'hata', 'istisna', 'ayrinti', left(sqlerrm, 200));
+  end;
+  -- 2) Rezervasyon durumlari
+  begin
+    v_d := public.nip_rez_site_durum_gonder();
+  exception when others then
+    v_d := json_build_object('ok', false, 'hata', 'istisna', 'ayrinti', left(sqlerrm, 200));
+  end;
+  -- 3) Siteden gelenler (yeni talep, duzeltme, kaldirma)
+  begin
+    v_k := public.nip_rez_gecis_kopyala(true, true);
+  exception when others then
+    v_k := json_build_object('ok', false, 'hata', 'istisna', 'ayrinti', left(sqlerrm, 200));
+  end;
 
-  if coalesce(v_k->>'ok', '') <> 'true' then v_hata := v_hata || ' cekme: ' || coalesce(v_k->>'hata', '?') || ' ' || coalesce(v_k->>'ayrinti', ''); end if;
   if coalesce(v_e->>'ok', '') <> 'true' then v_hata := v_hata || ' parti: ' || coalesce(v_e->>'hata', '?') || ' ' || coalesce(v_e->>'ayrinti', ''); end if;
   if coalesce(v_d->>'ok', '') <> 'true' then v_hata := v_hata || ' durum: ' || coalesce(v_d->>'hata', '?') || ' ' || coalesce(v_d->>'ayrinti', ''); end if;
+  if coalesce(v_k->>'ok', '') <> 'true' then v_hata := v_hata || ' cekme: ' || coalesce(v_k->>'hata', '?') || ' ' || coalesce(v_k->>'ayrinti', ''); end if;
+  if coalesce((v_k->>'bekleyen_sorunlu')::int, 0) > 0 then
+    v_hata := v_hata || ' talep: siteden gelen ' || (v_k->>'bekleyen_sorunlu') || ' talep alinamadi (kod: '
+              || coalesce(v_k->>'bekleyen_sorunlu_kod', '?') || '; ad 2 harften kisa, kod bos ya da kod baska kayitta)';
+  end if;
+  v_hata := btrim(v_hata);
+
   if v_hata <> '' then
-    insert into public.nip_reserve_bildirim_log (ok, hata) values (false, left('site koprusu:' || v_hata, 400));
+    update public.nip_rez_ayar set kopru_hata = kopru_hata + 1 where tek returning kopru_hata into v_say;
+    if v_say in (1, 3) or v_say % 12 = 0 then
+      insert into public.nip_reserve_bildirim_log (ok, hata) values (false, left('site koprusu: ' || v_hata, 400));
+    end if;
+    if v_say = 3 or v_say % 144 = 0 then
+      v_metin := '⚠️ Web sitesi köprüsü çalışmıyor (' || (v_say * 5) || ' dakikadır).' || E'\n'
+              || left(v_hata, 300) || E'\n'
+              || 'Etki: parti ve rezervasyon durumu web sitesine gitmiyor ya da siteden gelen talep panele düşmüyor.' || E'\n'
+              || 'Köprü 5 dakikada bir yeniden dener.';
+    end if;
+  else
+    select a.kopru_hata into v_say from public.nip_rez_ayar a where a.tek;
+    if coalesce(v_say, 0) > 0 then
+      update public.nip_rez_ayar set kopru_hata = 0 where tek;
+      if v_say >= 3 then
+        v_metin := '✅ Web sitesi köprüsü yeniden çalışıyor.';
+        insert into public.nip_reserve_bildirim_log (ok, hata) values (true, 'site koprusu: yeniden calisiyor');
+      end if;
+    end if;
+  end if;
+
+  if v_metin is not null then
+    begin
+      for k in select sf.telegram_chat_id from public.staff sf
+                where sf.is_active and sf.role = 'admin' and sf.telegram_chat_id is not null
+      loop
+        perform public.nip_tg_gonder(k.telegram_chat_id, v_metin, 'site_koprusu');
+      end loop;
+    exception when others then
+      insert into public.nip_reserve_bildirim_log (ok, hata) values (false, left('site koprusu: uyari gonderilemedi: ' || sqlerrm, 400));
+    end;
   end if;
 
   return json_build_object('ok', v_hata = '',
     'gelen_rezervasyon', coalesce((v_k->>'rezervasyon_yazilan')::int, 0),
+    'duzeltilen', coalesce((v_k->>'rezervasyon_guncellenen')::int, 0),
+    'kaldirilan', case when coalesce(v_k->>'ok', '') = 'true' then coalesce((v_k->>'rezervasyon_kapanan')::int, 0) else 0 end,
+    'baglanan', coalesce((v_k->>'rezervasyon_baglanan')::int, 0),
     'parti_yazilan', coalesce((v_e->>'yazilan')::int, 0), 'parti_kapanan', coalesce((v_e->>'kapanan')::int, 0),
     'durum_yazilan', coalesce((v_d->>'yazilan')::int, 0), 'hata', nullif(v_hata, ''));
 end $$;
 revoke all on function public.nip_rez_site_esitle() from public, anon, authenticated;
 
 -- ----------------------------------------------------------------------------
--- 5) PANEL: parti kaydedilince / kaldirilinca liste siteye hemen yollanir
+-- 6) PANEL: parti kaydedilince / kaldirilinca liste siteye hemen yollanir
 --    (5 dakikayi beklemeden). Yalniz yonetici; anahtar kapaliyken bir sey yapmaz.
 -- ----------------------------------------------------------------------------
 create or replace function public.nip_rez_site_simdi()
@@ -212,7 +668,7 @@ revoke all on function public.nip_rez_site_simdi() from public, anon;
 grant execute on function public.nip_rez_site_simdi() to authenticated;
 
 -- ----------------------------------------------------------------------------
--- 6) "YENI UYE / YENI TALEP" TELEGRAM BILDIRIMI
+-- 7) "YENI UYE / YENI TALEP" TELEGRAM BILDIRIMI
 --    Anahtar acikken kontrol yalniz yerel talepleri yolluyordu; web sitesine
 --    yeni uye olanlarin bildirimi kesilirdi (uyelik RESERVE'de kaliyor). Artik
 --    yerel kontrolden SONRA RESERVE'ye de bakilir: yeni uyeler ve siteden gelip
@@ -282,7 +738,14 @@ end $$;
 revoke all on function public.nip_reserve_bekleyen_kontrol() from public, anon, authenticated;
 
 -- ----------------------------------------------------------------------------
--- 7) GECIS (tek cagri; yalniz SQL oturumu)
+-- 8) GECIS (tek cagri; yalniz SQL oturumu)
+--    RESERVE isareti bir ag cagrisiyla yazilir; Order'in islemiyle birlikte
+--    geri SARILMAZ. Bu yuzden:
+--      * isaret ILK adimdir (oradaki paneller donar; kopya ile isaret arasinda
+--        orada verilen karar ya da acilan parti kaybolmaz)
+--      * sonraki adim hata verirse isaret telafi cagrisiyla yeniden kapatilir
+--      * cagri geri sarilan bir islemin icinde calistirilmaz
+--      * ayni cagri yeniden calistirilabilir (her iki yon de zararsiz)
 -- ----------------------------------------------------------------------------
 create or replace function public.nip_rez_gecis_yap(p_ac boolean)
 returns json
@@ -292,40 +755,61 @@ set search_path to 'public'
 set statement_timeout to '120s'
 as $$
 declare
-  v_k json; v_g json; v_e json; v_d json;
+  v_k json; v_g json; v_g2 json; v_e json; v_d json;
+  v_neden text;
 begin
   if coalesce(nullif(current_setting('request.jwt.claims', true), '')::jsonb ->> 'role', '') <> '' then
     raise exception 'dogrudan cagrilamaz' using errcode = '42501';
   end if;
 
   if not coalesce(p_ac, false) then
-    -- GERI DONUS: anahtar kapanir, RESERVE'de gecis isareti kapanir. Nesneler
-    -- ve kopyalanan veri yerinde kalir. Yalniz ilk yerel talep / onaydan once
-    -- kayipsizdir (20261113 basligindaki not).
+    -- GERI DONUS: son parti listesi ve durumlar yollanir (isaret acikken
+    -- yazilabilir; RESERVE yeniden ana kaynak olunca son kararlar orada
+    -- olsun), anahtar kapanir, RESERVE'de isaret kapanir. Nesneler ve veri
+    -- yerinde kalir. Menuden acilmis yerel talepler RESERVE'de yoktur; kopru
+    -- panelinde gorunmez (20261113 basligindaki not).
+    if public.nip_rez_yerel_mi() then
+      v_e := public.nip_rez_site_etkinlik_gonder();
+      v_d := public.nip_rez_site_durum_gonder();
+    end if;
     update public.nip_rez_ayar set yerel = false, durdu = false, degisti = now() where tek;
     v_g := public.nip_rez_site_cagir('nip_order_gecis_yaz', json_build_object('p_tasindi', false));
-    if coalesce(v_g->>'ok', '') <> 'true' then
-      raise exception 'geri donus: RESERVE gecis isareti kapatilamadi (%); hicbir sey degismedi', v_g;
+    if coalesce(v_g->>'ok', '') <> 'true' or coalesce(v_g->>'tasindi', '') <> 'false' then
+      raise exception 'geri donus: RESERVE gecis isareti kapatilamadi (%). Order DEGISMEDI (anahtar onceki halinde). Isaretin durumu belirsiz olabilir; ayni cagriyi yeniden calistir.', v_g;
     end if;
-    return json_build_object('ok', true, 'yerel', false, 'reserve', v_g);
+    return json_build_object('ok', true, 'yerel', false, 'reserve', v_g, 'parti', v_e, 'durum', v_d);
   end if;
 
   if public.nip_rez_yerel_mi() then
-    return json_build_object('ok', true, 'zaten', true, 'yerel', true);
+    -- Zaten gecilmis: isaret yeniden dogrulanir (yarim kalmis gecisi onarir).
+    v_g := public.nip_rez_site_cagir('nip_order_gecis_yaz', json_build_object('p_tasindi', true));
+    return json_build_object('ok', coalesce(v_g->>'tasindi', '') = 'true', 'zaten', true, 'yerel', true, 'reserve', v_g);
   end if;
 
-  -- 1) Son veri kopyasi (anahtar kapaliyken: RESERVE ana kaynak)
-  v_k := public.nip_rez_gecis_kopyala(true, true);
-  if coalesce(v_k->>'ok', '') <> 'true' then
-    raise exception 'gecis: veri kopyasi basarisiz (%); hicbir sey degismedi', v_k;
-  end if;
-  -- 2) Anahtar
-  update public.nip_rez_ayar set yerel = true, durdu = false, degisti = now() where tek;
-  -- 3) RESERVE'de gecis isareti. Basarisizsa islem geri sarilir (anahtar kapali kalir).
+  -- 1) RESERVE'de gecis isareti (oradaki paneller artik durum / parti yazamaz)
   v_g := public.nip_rez_site_cagir('nip_order_gecis_yaz', json_build_object('p_tasindi', true));
   if coalesce(v_g->>'ok', '') <> 'true' or coalesce(v_g->>'tasindi', '') <> 'true' then
-    raise exception 'gecis: RESERVE gecis isareti acilamadi (%); hicbir sey degismedi', v_g;
+    -- Yanit kaybolmus olabilir (isaret orada acilmis olabilir): telafi.
+    v_g2 := public.nip_rez_site_cagir('nip_order_gecis_yaz', json_build_object('p_tasindi', false));
+    raise exception 'gecis: RESERVE gecis isareti acilamadi (%). Order degismedi. Isaret telafi cagrisi: %', v_g, v_g2;
   end if;
+
+  begin
+    -- 2) Son veri kopyasi (anahtar kapaliyken: RESERVE ana kaynak)
+    v_k := public.nip_rez_gecis_kopyala(true, true);
+    if coalesce(v_k->>'ok', '') <> 'true' then
+      raise exception 'veri kopyasi basarisiz (%)', v_k;
+    end if;
+    -- 3) Anahtar
+    update public.nip_rez_ayar
+       set yerel = true, durdu = false, degisti = now(), ilk_gecis = coalesce(ilk_gecis, now()), kopru_hata = 0
+     where tek;
+  exception when query_canceled or others then
+    v_neden := sqlerrm;
+    v_g2 := public.nip_rez_site_cagir('nip_order_gecis_yaz', json_build_object('p_tasindi', false));
+    raise exception 'gecis basarisiz: %. Order degismedi. RESERVE isareti geri kapatildi mi: %', v_neden, v_g2;
+  end;
+
   -- 4) Parti listesi ve durumlar (basarisizlik gecisi bozmaz; 5 dakikalik tur yeniden dener)
   v_e := public.nip_rez_site_etkinlik_gonder();
   v_d := public.nip_rez_site_durum_gonder();
@@ -335,7 +819,7 @@ end $$;
 revoke all on function public.nip_rez_gecis_yap(boolean) from public, anon, authenticated;
 
 -- ----------------------------------------------------------------------------
--- 8) ZAMANLAMA: 5 dakikada bir. Anahtar kapaliyken tur hemen doner.
+-- 9) ZAMANLAMA: 5 dakikada bir. Anahtar kapaliyken tur hemen doner.
 -- ----------------------------------------------------------------------------
 do $$
 begin
