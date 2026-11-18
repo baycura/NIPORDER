@@ -189,15 +189,18 @@ olarak değiştirelim."
     o veritabanında göç dosyasından sonra anahtar açılır.
 - **Rezervasyon taşıma, Aşama 2 (hazırlık, 18.11):**
   `20261118_rezervasyon_gecis_hazirligi.sql`. Bugünkü akış DEĞİŞMEZ.
-  - Veri kopyası: `select nip_rez_gecis_kopyala();` sayar,
-    `select nip_rez_gecis_kopyala(true);` yazar (yalnız SQL oturumu). Partiler
-    (etkinlik), rezervasyonlar ve üyelerin geldi / gelmedi sayıları gelir;
-    kimlikler ve kodlar korunur. Anahtar kapalıyken eski veritabanı ana
-    kaynaktır (tekrar çalıştırınca fark kapanır); anahtar açıkken yalnız burada
-    olmayan rezervasyon eklenir. Eski veritabanı tarafı:
-    `supabase/reserve_migrations/20261118_gecis_verisi.sql`.
-  - Etkinliğin adı, tarihi ya da saati değişince o etkinliğin rezervasyonları
-    da değişir (kapı ve "Rezervasyonlarım" bu kopyalara bakar).
+  - Veri kopyası (yalnız SQL oturumu): `select nip_rez_gecis_kopyala();` sayar;
+    `(true)` yalnız PARTİLERİ yazar (kişisel veri yok, deneme kopyası);
+    `(true, true)` rezervasyonları ve üyelerin geldi / gelmedi sayılarını da
+    yazar (kişisel veri: geçiş günü, yeni KVKK sürümüyle birlikte). Kimlikler
+    ve kodlar korunur. Anahtar kapalıyken eski veritabanı ana kaynaktır: tekrar
+    çalıştırınca fark kapanır, orada artık olmayan parti arşive, açık
+    rezervasyon iptale düşer. Anahtar açıkken partilere dokunulmaz; yalnız
+    burada olmayan bekleyen talep eklenir (siteden gelen rezervasyon). Eski
+    veritabanı tarafı: `supabase/reserve_migrations/20261118_gecis_verisi.sql`.
+  - Etkinliğin adı, tarihi ya da saati değişince o etkinliğin AÇIK
+    rezervasyonları (bekleyen, onaylı) da değişir; kapı ve "Rezervasyonlarım"
+    bu kopyalara bakar. Bitmiş kayıtlar (girdi, gelmedi, ret) değişmez.
   - `reservations` tablosuna doğrudan yazma kapalı; listeyi yalnız yönetici
     okur. Aktif personel kodla kapıda giriş yapar.
 - **Web sitesi (notinparis.me, Shopify teması) eski rezervasyon veritabanına
