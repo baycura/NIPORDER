@@ -187,6 +187,26 @@ olarak değiştirelim."
   - Etkinlik formunda yeni alanlar: müşteriye not, İngilizce ve Rusça kurallar.
   - Profil "temel" (rezervasyon sitesi olmayan işletme) aynı yolu kullanır:
     o veritabanında göç dosyasından sonra anahtar açılır.
+- **Rezervasyon taşıma, Aşama 2 (hazırlık, 18.11):**
+  `20261118_rezervasyon_gecis_hazirligi.sql`. Bugünkü akış DEĞİŞMEZ.
+  - Veri kopyası: `select nip_rez_gecis_kopyala();` sayar,
+    `select nip_rez_gecis_kopyala(true);` yazar (yalnız SQL oturumu). Partiler
+    (etkinlik), rezervasyonlar ve üyelerin geldi / gelmedi sayıları gelir;
+    kimlikler ve kodlar korunur. Anahtar kapalıyken eski veritabanı ana
+    kaynaktır (tekrar çalıştırınca fark kapanır); anahtar açıkken yalnız burada
+    olmayan rezervasyon eklenir. Eski veritabanı tarafı:
+    `supabase/reserve_migrations/20261118_gecis_verisi.sql`.
+  - Etkinliğin adı, tarihi ya da saati değişince o etkinliğin rezervasyonları
+    da değişir (kapı ve "Rezervasyonlarım" bu kopyalara bakar).
+  - `reservations` tablosuna doğrudan yazma kapalı; listeyi yalnız yönetici
+    okur. Aktif personel kodla kapıda giriş yapar.
+- **Web sitesi (notinparis.me, Shopify teması) eski rezervasyon veritabanına
+  DOĞRUDAN bağlı (18.11 bulgusu):** üye girişi, parti listesi (Line up),
+  siteden rezervasyon (RSVP), bisiklet panosu, sürüş panosu, başvurular.
+  Dosya: temada `assets/nip-supabase.js`. Yani o veritabanı web sitesinin de
+  arka ucudur; kapatılamaz. Geçişten önce partilerin ve siteden gelen
+  rezervasyonların iki yönde akması çözülmelidir (köprü ya da temanın Order'a
+  bağlanması). Claude temayı okuyabiliyor, yazamıyor (bağlantı izni yok).
 - **Göç dosyaları yerel PostgreSQL'de denenir** (container'da sunucu var):
   canlıdaki bağımlı nesnelerin taklidi + önceki göçler + yeni dosya iki kez
   uygulanır, senaryolar orada koşar; sonra ana dala girer ve Göçüş işi
