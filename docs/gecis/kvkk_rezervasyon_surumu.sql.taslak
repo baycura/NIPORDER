@@ -1,0 +1,149 @@
+-- ============================================================================
+-- KVKK SURUMU: REZERVASYON VE KATILIM GECMISI            2026111x_kvkk_rezervasyon
+-- ============================================================================
+-- Neden yeni surum: rezervasyon Order'in icine tasindi (sahip karari 12.11.2026).
+-- Uye kaydina yeni veri ve yeni amac baglaniyor:
+--   * etkinlik rezervasyonu (ad, telefon, kisi sayisi, misafir adlari, not, kod)
+--   * katilim gecmisi: rezervasyonla kac kez geldi / kac kez gelmedi
+--   * rezervasyon kisiti (yonetici karari)
+--   * rezervasyon durumunun e-posta ile bildirilmesi
+-- Onceki surum (2026-10-11) bunlari saymiyordu. Kural (kvkk-onay): yeni veri /
+-- yeni amac -> yeni surum ve yeniden onay. Mevcut uyeler ilk giriste yeni metni
+-- gorur ve bir kez isaretler (customers.kvkk_version eslesmez).
+--
+-- HUKUKI NOT: metin TASLAKTIR; hukuki esas Turkce metindir, EN ve RU
+-- bilgilendirme cevirisidir. Bir hukuk danismaninin gozden gecirmesi onerilir.
+--
+-- Yalniz EKLEME: eski surum satiri yerinde kalir (is_current = false), onay
+-- gecmisi (customer_kvkk_consents) degismez.
+-- ============================================================================
+-- Tekrar calistirilabilir: surum zaten varsa hicbir sey yapmaz (guncel surum
+-- isareti de degismez).
+-- SURUM_TARIHI: gecis gununun tarihi (YYYY-AA-GG) yazilir; dosya o gun depoya girer.
+do $surum$
+begin
+  if exists (select 1 from public.kvkk_documents where version = 'SURUM_TARIHI') then
+    return;
+  end if;
+  update public.kvkk_documents set is_current = false where is_current;
+
+  insert into public.kvkk_documents (version, title, summary, body, is_current)
+values (
+  'SURUM_TARIHI',
+  jsonb_build_object(
+    'tr', 'Kişisel Verilerin Korunması — Aydınlatma ve Üyelik Açık Rızası',
+    'en', 'Protection of Personal Data — Notice and Membership Consent',
+    'ru', 'Защита персональных данных — Уведомление и согласие участника'
+  ),
+  jsonb_build_object(
+    'tr', 'Üyelik, sipariş, puan, etkinlik rezervasyonu ve iletişim için kişisel verilerinizin işlenmesine ilişkin aydınlatma metnini okudum; üyelik kapsamında açık rızamı veriyorum.',
+    'en', 'I have read the privacy notice on processing my personal data for membership, orders, points, event reservations and communications, and I give my explicit consent for membership purposes.',
+    'ru', 'Я ознакомился(лась) с уведомлением об обработке персональных данных для членства, заказов, баллов, бронирования событий и связи, и даю согласие в рамках членства.'
+  ),
+  jsonb_build_object(
+    'tr', $kvkk$
+NOT IN PARIS / ilgili işletme (“Veri Sorumlusu”), 6698 sayılı Kişisel Verilerin Korunması Kanunu (“KVKK”) kapsamında sizi bilgilendirir.
+
+1) İşlenen veriler
+Kimlik ve iletişim (ad, soyad, e-posta, telefon), üyelik ve giriş bilgileri, sipariş ve ödeme ile ilişkili işlem kayıtları, puan/cüzdan ve seviye bilgileri, sürüş kaydı (RSVP) tercihleri, etkinlik rezervasyonu bilgileri (ad, telefon, kişi sayısı, yazdıysanız misafir adları ve not, rezervasyon kodu ve durumu), etkinliklere katılım geçmişi (rezervasyonla kaç kez geldiğiniz ve kaç kez gelmediğiniz), varsa rezervasyon kısıtı, cihaz/oturum teknik verileri (güvenlik ve hizmet sunumu için).
+
+2) Amaçlar
+• Üyelik hesabının oluşturulması ve yönetilmesi
+• Siparişlerin alınması, hazırlanması ve takibi
+• Puan, cüzdan ve üye indirimlerinin uygulanması
+• Sürüş kayıtlarının yönetilmesi (ilgili özellik açıksa)
+• Etkinlik rezervasyonlarının alınması, onaylanması ve kapıda doğrulanması; rezervasyon durumunun size e-posta ile bildirilmesi (rezervasyonu uygulamadan ya da web sitemizden yapmanız fark etmez; ikisi aynı kayıt sisteminde işlenir)
+• Katılım geçmişinin tutulması; rezervasyona tekrar tekrar gelinmemesi halinde yeni rezervasyonun kısıtlanması
+• Müşteri destek ve işlem güvenliği
+• Yasal yükümlülüklerin yerine getirilmesi
+• Açık rızanız varsa bilgilendirme ve kampanya iletişimleri
+
+3) Hukuki sebepler
+KVKK m.5/2 (sözleşmenin kurulması/ifası, hukuki yükümlülük, meşru menfaat) ve üyelik/sadakat ile açık rıza gerektiren işlemler için m.5/1 açık rıza.
+
+4) Aktarım
+Hizmetin sunulması için zorunlu teknik hizmet sağlayıcılarına (barındırma, kimlik doğrulama, e-posta ve bildirim altyapısı) ve kanunen yetkili kurumlara; yurt dışına aktarım söz konusuysa KVKK’ya uygun güvencelerle.
+
+5) Saklama
+Üyelik, rezervasyon ve işlem kayıtları, mevzuattaki saklama süreleri ve işin gerektirdiği süre boyunca; sonra silinir, yok edilir veya anonimleştirilir.
+
+6) Haklarınız (KVKK m.11)
+Verilerinizin işlenip işlenmediğini öğrenme, düzeltme, silme/yok etme, itiraz ve zararın giderilmesini talep etme haklarına sahipsiniz. Başvurularınızı işletmenin duyurduğu iletişim kanallarından iletebilirsiniz.
+
+7) Üyelik açık rızası
+Checkbox ile verdiğiniz onay; üyelik hesabı, puan/cüzdan, sipariş geçmişinizin, etkinlik rezervasyonlarınızın ve katılım geçmişinizin üyelik profilinize bağlanması ve bu amaçlarla işlenmesi içindir. Onayı geri çekmek üyelik özelliklerinin kullanılamamasına yol açabilir; yasal saklama zorunlulukları saklıdır.
+
+Bu metin bilgilendirme amaçlıdır; güncellemelerde yeni sürüm yayınlanır ve gerekirse yeniden onay istenir.
+$kvkk$,
+    'en', $kvkk$
+NOT IN PARIS / the relevant business (“Data Controller”) informs you under Türkiye’s Personal Data Protection Law No. 6698 (“KVKK”).
+
+1) Data processed
+Identity and contact (name, surname, email, phone), membership and login data, order and payment-related records, points/wallet and tier data, ride RSVP preferences, event reservation data (name, phone, number of guests, guest names and note if you wrote them, reservation code and status), event attendance history (how many times you came and did not come with a reservation), a reservation restriction if one applies, and technical device/session data (for security and service delivery).
+
+2) Purposes
+• Creating and managing your membership account
+• Taking, preparing and tracking orders
+• Applying points, wallet balance and member discounts
+• Managing ride sign-ups (where the feature is enabled)
+• Taking, confirming and checking event reservations at the door; telling you the status of your reservation by email (reservations made in the app and on our web site are processed in the same record system)
+• Keeping attendance history; restricting new reservations after repeated no-shows
+• Customer support and transaction security
+• Complying with legal obligations
+• Informational and campaign messages where you have given consent
+
+3) Legal bases
+KVKK art. 5/2 (contract, legal obligation, legitimate interest) and, for membership/loyalty processing that requires it, art. 5/1 explicit consent.
+
+4) Transfers
+To essential service providers (hosting, authentication, email and notifications) and competent authorities as required by law; cross-border transfers only with KVKK-compliant safeguards where applicable.
+
+5) Retention
+Membership, reservation and transaction records are kept for the periods required by law and by the service, then deleted, destroyed or anonymised.
+
+6) Your rights (KVKK art. 11)
+You may request information, correction, deletion/destruction, objection and compensation for unlawful processing via the channels published by the business.
+
+7) Membership consent
+By ticking the checkbox you consent to linking your membership, points/wallet, order history, event reservations and attendance history to your profile for those purposes. Withdrawing consent may limit membership features; mandatory legal retention still applies.
+
+This notice is for information; updates are published as a new version and may require fresh consent.
+$kvkk$,
+    'ru', $kvkk$
+NOT IN PARIS / соответствующее предприятие («Оператор данных») информирует вас в соответствии с Законом Турции № 6698 о защите персональных данных («KVKK»).
+
+1) Обрабатываемые данные
+Идентификационные и контактные данные (имя, фамилия, e-mail, телефон), данные членства и входа, записи о заказах и оплате, баллы/кошелёк и уровень, предпочтения RSVP на заезды, данные бронирования событий (имя, телефон, число гостей, имена гостей и заметка, если вы их указали, код и статус брони), история посещений (сколько раз вы пришли и не пришли по брони), ограничение на бронирование, если оно действует, технические данные устройства/сессии (для безопасности и оказания услуги).
+
+2) Цели
+• Создание и ведение аккаунта участника
+• Приём, приготовление и отслеживание заказов
+• Применение баллов, кошелька и скидок участника
+• Управление записями на заезды (если функция включена)
+• Приём, подтверждение и проверка брони на входе; сообщение о статусе брони по e-mail (бронь из приложения и с нашего сайта обрабатывается в одной системе учёта)
+• Ведение истории посещений; ограничение новых броней при повторных неявках
+• Поддержка клиентов и безопасность операций
+• Исполнение законных обязанностей
+• Информационные и рекламные сообщения при наличии согласия
+
+3) Правовые основания
+KVKK ст. 5/2 (договор, законная обязанность, законный интерес) и при необходимости для членства/лояльности — ст. 5/1 явное согласие.
+
+4) Передача
+Необходимым поставщикам услуг (хостинг, аутентификация, e-mail и уведомления) и уполномоченным органам; трансграничная передача — только с гарантиями по KVKK.
+
+5) Хранение
+Данные членства, бронирования и операций хранятся в сроки, требуемые законом и услугой, затем удаляются, уничтожаются или обезличиваются.
+
+6) Ваши права (KVKK ст. 11)
+Вы можете запросить информацию, исправление, удаление/уничтожение, возражение и возмещение ущерба через каналы, указанные предприятием.
+
+7) Согласие участника
+Отметка в чекбоксе означает согласие на привязку членства, баллов/кошелька, истории заказов, броней и истории посещений к вашему профилю для этих целей. Отзыв согласия может ограничить функции членства; обязательные сроки хранения сохраняются.
+
+Это уведомление носит информационный характер; обновления публикуются новой версией и могут требовать повторного согласия.
+$kvkk$
+  ),
+  true
+);
+end $surum$;
