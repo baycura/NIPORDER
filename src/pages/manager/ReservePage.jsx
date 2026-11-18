@@ -322,8 +322,8 @@ export default function ReservePage() {
         <>
           {kopru.durum === "admin-degil" && (
             <div style={{ background: C.card, border: "1px solid " + C.line, borderRadius: 10, padding: "10px 12px", marginBottom: 14, fontSize: 12 }}>
-              <span style={{ color: C.warn, fontWeight: 700 }}>● Yalnız görüntüleme ve kapı girişi</span>
-              <span style={{ color: C.muted }}> — onay, ret ve etkinlik düzenleme yönetici yetkisi ister.</span>
+              <span style={{ color: C.warn, fontWeight: 700 }}>● Yalnız kapı girişi</span>
+              <span style={{ color: C.muted }}> — rezervasyon listesi, onay, ret ve etkinlik düzenleme yönetici yetkisi ister.</span>
             </div>
           )}
           {kopru.durum === "hata" && (
@@ -362,8 +362,10 @@ export default function ReservePage() {
         {!yerel && <Cip aktif={sekme === "uye"} onClick={() => setSekme("uye")}>Üyeler</Cip>}
       </div>
 
-      {/* Yerelde personel (is_staff) rezervasyonlari okur ve kapida giris yapar;
-          onay / red / gelmedi ve etkinlik yazmak yonetici ister (nip_yonetici_mi).
+      {/* Yerelde rezervasyon listesini yalniz yonetici okur (20261118: misafirin
+          adi ve telefonu her personel hesabina acik olmasin); aktif personel
+          kodla kapida giris yapar (nip_rez_giris). Onay / red / gelmedi ve
+          etkinlik yazmak yonetici ister (nip_yonetici_mi).
           Kopru modunda hazir olmadan hicbir liste gelmez. key: kaynak degisince
           liste yeni kaynaktan bastan okunur. */}
       {!yerel && !hazir && kopru.durum !== "yukleniyor" && (
