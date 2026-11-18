@@ -207,9 +207,29 @@ olarak değiştirelim."
   DOĞRUDAN bağlı (18.11 bulgusu):** üye girişi, parti listesi (Line up),
   siteden rezervasyon (RSVP), bisiklet panosu, sürüş panosu, başvurular.
   Dosya: temada `assets/nip-supabase.js`. Yani o veritabanı web sitesinin de
-  arka ucudur; kapatılamaz. Geçişten önce partilerin ve siteden gelen
-  rezervasyonların iki yönde akması çözülmelidir (köprü ya da temanın Order'a
-  bağlanması). Claude temayı okuyabiliyor, yazamıyor (bağlantı izni yok).
+  arka ucudur; kapatılamaz. Claude temayı okuyabiliyor, yazamıyor.
+- **Web sitesi köprüsü (sahip kararı 18.11: "köprü kur, site aynı kalsın"):**
+  `20261119_site_koprusu.sql` (Order) +
+  `supabase/reserve_migrations/20261119_site_koprusu.sql` (eski veritabanı).
+  Geçişten sonra partileri ve rezervasyon durumunu Order yönetir; site
+  değişmez. Anahtar kapalıyken köprü hiçbir şey yapmaz.
+  - Order → eski veritabanı: parti listesi (5 dakikada bir; panelde parti
+    kaydedilince hemen) ve rezervasyon durumu (5 dakikada bir). Afişe
+    dokunulmaz; afiş hâlâ rezervasyon sitesinin panelinden yüklenir.
+  - Eski veritabanı → Order: siteden gelen yeni talepler (5 dakikada bir).
+    Panelde "Bekleyen" olarak görünür; Telegram bildirimi gider.
+  - Geçiş işareti açıkken eski veritabanında rezervasyon durumunu ve parti
+    bilgisini tarayıcıdan kimse değiştiremez (rezervasyon sitesinin yönetim
+    paneli hata verir: "Order paneline taşındı"). Üye yeni talep açabilir.
+  - Sitedeki seviye ve güven puanı geçişten sonra GÜNCELLENMEZ (sahip kararı
+    12.11: tek puan sistemi Order'ın harcama puanı).
+- **Geçiş (Aşama 3) tek çağrıdır, yalnız SQL oturumu:**
+  `select nip_rez_gecis_yap(true);` Sırası: son veri kopyası (kişisel veri
+  dahil) → anahtar açılır → eski veritabanında geçiş işareti açılır → parti
+  listesi ve durumlar yollanır. Bir adım hata verirse işlem geri sarılır.
+  Geri dönüş: `select nip_rez_gecis_yap(false);` (yalnız ilk yerel talep ya
+  da onaydan önce kayıpsızdır). Geçişten ÖNCE aynı gün: yeni KVKK sürümü
+  (rezervasyon ve katılım geçmişi; tr / en / ru) yayınlanır.
 - **Göç dosyaları yerel PostgreSQL'de denenir** (container'da sunucu var):
   canlıdaki bağımlı nesnelerin taklidi + önceki göçler + yeni dosya iki kez
   uygulanır, senaryolar orada koşar; sonra ana dala girer ve Göçüş işi
