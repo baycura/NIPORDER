@@ -540,6 +540,8 @@ as $$
 declare
   v_k json; v_e json; v_d json; v_g json;
   v_hata text := '';
+  v_ariza boolean := false;      -- adimlardan biri calismadi (ag, sir, istisna)
+  v_talep int := 0;              -- siteden gelip alinamayan bekleyen talep
   v_say int := 0;
   v_metin text;
   k record;
@@ -588,8 +590,10 @@ begin
   if coalesce(v_e->>'ok', '') <> 'true' then v_hata := v_hata || ' parti: ' || coalesce(v_e->>'hata', '?') || ' ' || coalesce(v_e->>'ayrinti', ''); end if;
   if coalesce(v_d->>'ok', '') <> 'true' then v_hata := v_hata || ' durum: ' || coalesce(v_d->>'hata', '?') || ' ' || coalesce(v_d->>'ayrinti', ''); end if;
   if coalesce(v_k->>'ok', '') <> 'true' then v_hata := v_hata || ' cekme: ' || coalesce(v_k->>'hata', '?') || ' ' || coalesce(v_k->>'ayrinti', ''); end if;
-  if coalesce((v_k->>'bekleyen_sorunlu')::int, 0) > 0 then
-    v_hata := v_hata || ' talep: siteden gelen ' || (v_k->>'bekleyen_sorunlu') || ' talep alinamadi (kod: '
+  v_ariza := v_hata <> '';
+  v_talep := coalesce((v_k->>'bekleyen_sorunlu')::int, 0);
+  if v_talep > 0 then
+    v_hata := v_hata || ' talep: siteden gelen ' || v_talep || ' talep alinamadi (kod: '
               || coalesce(v_k->>'bekleyen_sorunlu_kod', '?') || '; ad 2 harften kisa, kod bos ya da kod baska kayitta)';
   end if;
   v_hata := btrim(v_hata);
@@ -600,17 +604,24 @@ begin
       insert into public.nip_reserve_bildirim_log (ok, hata) values (false, left('site koprusu: ' || v_hata, 400));
     end if;
     if v_say = 3 or v_say % 144 = 0 then
-      v_metin := '⚠️ Web sitesi köprüsü çalışmıyor (' || (v_say * 5) || ' dakikadır).' || E'\n'
-              || left(v_hata, 300) || E'\n'
-              || 'Etki: parti ve rezervasyon durumu web sitesine gitmiyor ya da siteden gelen talep panele düşmüyor.' || E'\n'
-              || 'Köprü 5 dakikada bir yeniden dener.';
+      if v_ariza then
+        v_metin := '⚠️ Web sitesi köprüsü ' || (v_say * 5) || ' dakikadır çalışmıyor.' || E'\n'
+                || 'Etki: parti ve rezervasyon durumu web sitesine gitmiyor ya da siteden gelen talep panele düşmüyor.' || E'\n'
+                || 'Köprü 5 dakikada bir yeniden dener; düzelince haber verir.' || E'\n'
+                || 'Ayrıntı: ' || left(v_hata, 300);
+      else
+        v_metin := '⚠️ Web sitesinden gelen ' || v_talep || ' rezervasyon talebi panele alınamadı.' || E'\n'
+                || 'Kod: ' || coalesce(v_k->>'bekleyen_sorunlu_kod', '?') || E'\n'
+                || 'Neden: talepteki ad 2 harften kısa ya da rezervasyon kodu boş.' || E'\n'
+                || 'Çözüm: üye web sitesinde talebini düzeltsin ya da yeniden açsın. Talep düzelince panele kendiliğinden düşer.';
+      end if;
     end if;
   else
     select a.kopru_hata into v_say from public.nip_rez_ayar a where a.tek;
     if coalesce(v_say, 0) > 0 then
       update public.nip_rez_ayar set kopru_hata = 0 where tek;
       if v_say >= 3 then
-        v_metin := '✅ Web sitesi köprüsü yeniden çalışıyor.';
+        v_metin := '✅ Web sitesi köprüsü düzeldi: parti, rezervasyon durumu ve siteden gelen talepler yeniden eşitleniyor.';
         insert into public.nip_reserve_bildirim_log (ok, hata) values (true, 'site koprusu: yeniden calisiyor');
       end if;
     end if;

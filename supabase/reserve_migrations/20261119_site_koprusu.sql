@@ -64,7 +64,8 @@ revoke all on function public.nip_tasindi_mi() from public;
 grant execute on function public.nip_tasindi_mi() to anon, authenticated, service_role;
 
 -- Bu islem bir kopru cagrisi mi? Kopru uclari sirri dogruladiktan sonra islem
--- icinde 'nip.kopru' isaretini koyar. Tarayici bu isareti koyamaz (PostgREST
+-- icinde 'nip.kopru' isaretini koyar, isi bitince kaldirir (isaret ayni
+-- islemdeki baska bir ifadeye tasmasin). Tarayici bu isareti koyamaz (PostgREST
 -- yalniz public semasindaki fonksiyonlari cagirtir; set_config orada degil).
 create or replace function public.nip_kopru_mu()
 returns boolean
@@ -316,6 +317,7 @@ begin
   end if;
 
   perform public.nip_gecis_kilit_guncelle();
+  perform set_config('nip.kopru', '', true);
 
   return json_build_object('ok', true, 'yazilan', v_yazilan, 'kapanan', v_kapanan);
 end $$;
@@ -355,6 +357,7 @@ begin
      and (r.status, r.approved_at, r.checked_in_at, r.no_show_at)
          is distinct from (x.status, x.approved_at, x.checked_in_at, x.no_show_at);
   get diagnostics v_yazilan = row_count;
+  perform set_config('nip.kopru', '', true);
 
   return json_build_object('ok', true, 'yazilan', v_yazilan);
 end $$;
