@@ -207,45 +207,9 @@ olarak değiştirelim."
   DOĞRUDAN bağlı (18.11 bulgusu):** üye girişi, parti listesi (Line up),
   siteden rezervasyon (RSVP), bisiklet panosu, sürüş panosu, başvurular.
   Dosya: temada `assets/nip-supabase.js`. Yani o veritabanı web sitesinin de
-  arka ucudur; kapatılamaz. Claude temayı okuyabiliyor, yazamıyor.
-- **Web sitesi köprüsü (sahip kararı 18.11: "köprü kur, site aynı kalsın"):**
-  `20261119_site_koprusu.sql` (Order) +
-  `supabase/reserve_migrations/20261119_site_koprusu.sql` (eski veritabanı).
-  Geçişten sonra partileri ve rezervasyon durumunu Order yönetir; site
-  değişmez. Anahtar kapalıyken köprü hiçbir şey yapmaz. Tur 5 dakikada birdir
-  (`nip_rez_site_esitle`).
-  - Order → eski veritabanı: parti listesi (panelde parti kaydedilince hemen)
-    ve rezervasyon durumu. Afişe dokunulmaz; afiş hâlâ rezervasyon sitesinin
-    panelinden yüklenir.
-  - Eski veritabanı → Order: siteden gelen yeni talep ("Bekleyen" görünür,
-    Telegram gider); bekleyen talepte üyenin düzelttiği alanlar (kişi sayısı,
-    ad, telefon, not); üyenin sitede kaldırdığı talep (Order'da "İptal
-    edildi" olur, onaylıysa yeri boşalır). Yalnız `site_kaydi` işaretli
-    kayıtlar karşılaştırılır; menüden açılan yerel talebe dokunulmaz.
-  - Geçiş işareti açıkken eski veritabanında rezervasyon durumunu ve parti
-    bilgisini tarayıcıdan kimse değiştiremez (rezervasyon sitesinin yönetim
-    paneli hata verir: "Order paneline taşındı"). Parti satırı orada
-    kaldırılamaz (kilit: `nip_gecis_parti_kilidi`; hata metninde
-    `parti_order_panelinden_kaldirilir` görünür). Parti Order panelinden
-    kaldırılır. Üye yeni talep açabilir.
-  - Arıza: tur art arda 3 kez hata verirse (15 dakika) yöneticilere Telegram
-    gider; düzelince bir kez haber verir. Kayıt: `nip_reserve_bildirim_log`
-    ("site koprusu: …"). Siteden gelen bir talep alınamazsa (ad 2 harften
-    kısa, kod boş) aynı uyarı gelir.
-  - Sitedeki seviye ve güven puanı geçişten sonra GÜNCELLENMEZ (sahip kararı
-    12.11: tek puan sistemi Order'ın harcama puanı).
-- **Geçiş (Aşama 3) tek çağrıdır, yalnız SQL oturumu:**
-  `select nip_rez_gecis_yap(true);` Sırası: eski veritabanında geçiş işareti
-  açılır (oradaki paneller donar) → son veri kopyası (kişisel veri dahil) →
-  anahtar açılır → parti listesi ve durumlar yollanır. Kopya ya da anahtar
-  adımı hata verirse Order geri sarılır ve işaret yeniden kapatılır. İki
-  veritabanı tek işlem değildir: çağrı `begin … rollback` içinde
-  ÇALIŞTIRILMAZ (işaret açık kalır). Şüpheli durumda aynı çağrı yeniden
-  çalıştırılır; zararsızdır. Geri dönüş: `select nip_rez_gecis_yap(false);`
-  (son durumlar yollanır; menüden açılmış yerel talepler eski panelde
-  görünmez). İkinci bir geçişte yerel talepler ve üye sayaçları korunur.
-  Geçişten ÖNCE aynı gün: yeni KVKK sürümü (rezervasyon ve katılım geçmişi;
-  tr / en / ru) yayınlanır.
+  arka ucudur; kapatılamaz. Geçişten önce partilerin ve siteden gelen
+  rezervasyonların iki yönde akması çözülmelidir (köprü ya da temanın Order'a
+  bağlanması). Claude temayı okuyabiliyor, yazamıyor (bağlantı izni yok).
 - **Göç dosyaları yerel PostgreSQL'de denenir** (container'da sunucu var):
   canlıdaki bağımlı nesnelerin taklidi + önceki göçler + yeni dosya iki kez
   uygulanır, senaryolar orada koşar; sonra ana dala girer ve Göçüş işi

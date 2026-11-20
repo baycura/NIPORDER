@@ -949,17 +949,6 @@ function Etkinlikler({ uyar }) {
   };
   const iptal = () => { setDuzenlenen(null); setForm(bosEtkinlik); };
 
-  // WEB SITESI KOPRUSU (20261119). Web sitesi ve rezervasyon sitesi parti
-  // listesini eski rezervasyon veritabanindan okur. Yerel modda partiler
-  // burada (Order) yonetilir; kopru listeyi oraya 5 dakikada bir yollar.
-  // Kayittan hemen sonra bir kez de buradan yollanir (beklenmez; hata sessiz
-  // gecer, zamanlanmis tur yeniden dener). Koprusu olmayan kurulumda sunucu
-  // "atlandi" der ya da fonksiyon yoktur: ikisi de zararsiz.
-  const siteyeGonder = () => {
-    if (!yerel) return;
-    try { supabase.rpc("nip_rez_site_simdi").then(() => {}, () => {}); } catch (_) { /* sessiz */ }
-  };
-
   // index.html:1800 updateEvt / 1801 addEvt — ayni alanlar, ayni varsayilanlar.
   // Kurallar uc dilde: menu secili dilde gosterir, bos dilde Turkceyi. Not
   // (musteriye): rezervasyon formunun ustunde gorunur. Yerelde seviye ve guven
@@ -984,7 +973,7 @@ function Etkinlikler({ uyar }) {
     setBusy(false);
     if (r.error) return uyar("Kaydedilemedi: " + personelHata(r.error), true);
     uyar(duzenlenen ? "Güncellendi ✓" : "Etkinlik oluşturuldu ✓");
-    iptal(); yukle(); siteyeGonder();
+    iptal(); yukle();
   };
 
   // index.html:1803 deleteEvt. Rezervasyonlar SILINMEZ (bag SET NULL, 2026-09-02).
@@ -995,7 +984,7 @@ function Etkinlikler({ uyar }) {
     const r = await db.from("events").delete().eq("id", e.id);
     setBusy(false);
     if (r.error) return uyar("Silinemedi: " + personelHata(r.error), true);
-    uyar(e.name + " silindi"); if (duzenlenen === e.id) iptal(); yukle(); siteyeGonder();
+    uyar(e.name + " silindi"); if (duzenlenen === e.id) iptal(); yukle();
   };
 
   const F = (k, ekstra = {}) => ({ value: form[k] ?? "", onChange: ev => setForm(f => ({ ...f, [k]: ev.target.value })), style: inputS, ...ekstra });
@@ -1037,7 +1026,6 @@ function Etkinlikler({ uyar }) {
         </div>
         <div style={{ fontSize: 11, color: C.faint, margin: "-4px 0 8px", lineHeight: 1.5 }}>İngilizce ya da Rusça boşsa o dilde Türkçe kurallar gösterilir.</div>
         {!yerel && <div style={{ fontSize: 11, color: C.faint, marginBottom: 8 }}>Afiş yükleme şimdilik rezervasyon panelinden; burada gösterilir, değiştirilmez.</div>}
-        {yerel && !rezervasyonYerel && <div style={{ fontSize: 11, color: C.faint, marginBottom: 8, lineHeight: 1.5 }}>Parti web sitesinde birkaç dakika içinde görünür. Afiş, rezervasyon sitesinin panelinden yüklenir.</div>}
         <div style={{ display: "flex", gap: 8 }}>
           <button disabled={busy} onClick={kaydet} style={btnS(C.ink, "#000")}>{duzenlenen ? "GÜNCELLE" : "OLUŞTUR"}</button>
           {duzenlenen && <button onClick={iptal} style={btnS()}>Vazgeç</button>}
