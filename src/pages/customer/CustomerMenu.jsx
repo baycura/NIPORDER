@@ -479,6 +479,9 @@ const OPT_I18N = {
   "Pomegranate":     { tr: "Nar",             ru: "Гранат" },
   "Grapefruit":      { tr: "Greyfurt",        ru: "Грейпфрут" },
   "Tequila":         { tr: "Tekila",          ru: "Текила" },
+  "Sunum":           { en: "Serving",         ru: "Подача" },
+  "Kadeh":           { en: "Glass",           ru: "Бокал" },
+  "Şişe (75 cl)":    { en: "Bottle (75 cl)",  ru: "Бутылка (75 сл)" },
   "Small":           { tr: "Küçük",           ru: "Маленький" },
   "Big":             { tr: "Büyük",           ru: "Большой" },
 };
@@ -1158,6 +1161,20 @@ export default function CustomerMenu() {
   ) : null;
   // Secenek adi/degeri gosterim cevirisi (kanonik deger degismez, mutfak aynisini gorur)
   const optT = (s) => (OPT_I18N[s] && OPT_I18N[s][lang]) || s;
+  // SECENEK <-> URUN STOK BAGI. Bir secenek baska bir urunle ayni maldan
+  // yapiliyorsa (Ice Bumble "Nar" = Nar Suyu) grup ayarinda yazilir:
+  //   options_config.groups[].stock_links = { "Pomegranate": "<urun kimligi>" }
+  // Bagli urun "bugun tukendi" ise ya da menuden kapatildiysa secenek secilemez.
+  // Eskiden nar suyu tukenmisken Ice Bumble'da nar secilebiliyordu.
+  const secenekTukendi = (group, opt) => {
+    const pid = group?.stock_links?.[opt];
+    if (!pid) return false;
+    const bagli = products.find(x => x.id === pid);
+    return !bagli || !!bagli.sold_out_today;
+  };
+  // Zorunlu bir grubun BUTUN secenekleri tukendiyse urun de siparis edilemez.
+  const secenektenTukendi = (p) => !!(p?.has_options && (p.options_config?.groups || []).some(g =>
+    g.required && (g.options || []).length > 0 && (g.options || []).every(o => secenekTukendi(g, o))));
   const postTitle = (p) => (lang === "en" && p?.title_en) ? p.title_en : (lang === "ru" && p?.title_ru) ? p.title_ru : p?.title;
   const postBody = (p) => (lang === "en" && p?.body_en) ? p.body_en : (lang === "ru" && p?.body_ru) ? p.body_ru : p?.body;
   const dateLocale = lang === "en" ? "en-GB" : lang === "ru" ? "ru-RU" : "tr-TR";
@@ -1770,6 +1787,7 @@ export default function CustomerMenu() {
   const onProductTap = (p) => {
     unlockAudio();
     if (p.sold_out_today) { bildir(t.sold_out_alert + (p.unavailable_reason || "")); return; }
+    if (secenektenTukendi(p)) { bildir(t.sold_out); return; }
     // Saat disinda "+" zaten gorunmuyor; yine de tek kapi olsun
     const blk = blockedInfo(p);
     if (blk) { bildir(`${hhmm(blk.window ? blk.start : blk.end)} – ${hhmm(blk.window ? blk.end : blk.start)} ${t.order_between}`); return; }
@@ -1820,6 +1838,10 @@ export default function CustomerMenu() {
         document.getElementById("optg-" + group.name)?.scrollIntoView({ block: "center" });
         return;
       }
+    }
+    for (const group of cfg.groups || []) {
+      const secili = [].concat(optSelected[group.name] || []);
+      if (secili.some(o => secenekTukendi(group, o))) { setOptEksik(group.name); return; }
     }
     for (let i = 0; i < optAdet; i++) addToCart(optModal, optSelected, optNote.trim() || null);
     setOptModal(null);
@@ -2370,7 +2392,7 @@ export default function CustomerMenu() {
           <div style={{flex:1,border:"1px solid #ddd",borderRadius:8,display:"flex",alignItems:"center",gap:8,padding:"9px 12px"}}>
             <Ikon ad="ara" boy={15} style={{color:"#666666"}}/>
             <input value={menuSearch} onChange={e=>setMenuSearch(e.target.value)}
-              placeholder={L("Ürün ara — latte, efes, aperol","Search — latte, beer, aperol","Поиск — латте, пиво, апероль")}
+              placeholder={L("Ürün ara — latte, bud, aperol","Search — latte, beer, aperol","Поиск — латте, пиво, апероль")}
               style={{flex:1,minWidth:0,border:"none",outline:"none",boxShadow:"none",fontSize:13,color:"#000",background:"transparent",fontFamily:"inherit",padding:0}}/>
             {menuSearch && (
               <button onClick={()=>setMenuSearch("")} aria-label={L("Aramayı temizle","Clear search","Очистить")}
@@ -2793,7 +2815,7 @@ export default function CustomerMenu() {
           const dis = fp < Number(p.price);
           const blocked = blockedInfo(p);
           const isFaded = !!blocked;
-          const soldOut = p.sold_out_today;
+          const soldOut = p.sold_out_today || secenektenTukendi(p);
           const cartIdx = cart.findIndex(c => c.product.id === p.id && !c.options);
           const inCart = cartIdx >= 0 ? cart[cartIdx].quantity : 0;
           // Secenekli urun sepette ayri satirlar olarak durur (her secim ayri);
@@ -3163,6 +3185,13 @@ export default function CustomerMenu() {
                     // Fiyat farki secenek ustunde gorunur — musteri sepette surprizle karsilasmasin
                     const pm = Number(group.price_modifiers?.[opt] || 0);
                     const sel = group.multi ? (optSelected[group.name]||[]).includes(opt) : optSelected[group.name]===opt;
+                    // Bagli urun tukendi: secenek gorunur ama secilemez (neden yazili).
+                    if (secenekTukendi(group, opt)) return (
+                    <button key={opt} disabled aria-disabled="true" style={{padding:"10px 14px",minHeight:44,background:"#f7f7f7",color:"#9A9A9A",border:"1px dashed #ddd",borderRadius:10,fontSize:13,fontWeight:700,cursor:"not-allowed"}}>
+                      <span style={{textDecoration:"line-through"}}>{optT(opt)}</span>
+                      <span style={{fontSize:11,fontWeight:700,marginLeft:6,color:"#A34A3A"}}>{t.sold_out}</span>
+                    </button>
+                    );
                     return (
                     <button key={opt} onClick={()=>{setOptEksik(null);setOptSelected(group.multi?{...optSelected,[group.name]:((optSelected[group.name]||[]).includes(opt)?(optSelected[group.name]||[]).filter(x=>x!==opt):[...(optSelected[group.name]||[]),opt])}:{...optSelected,[group.name]:opt});}} style={{padding:"10px 14px",minHeight:44,background:sel?"#000":"#f2f2f2",color:sel?"#fff":"#333",border:"none",borderRadius:10,fontSize:13,fontWeight:700,cursor:"pointer"}}>
                       {optT(opt)}
