@@ -228,10 +228,16 @@ olarak değiştirelim."
     kaldırılamaz (kilit: `nip_gecis_parti_kilidi`; hata metninde
     `parti_order_panelinden_kaldirilir` görünür). Parti Order panelinden
     kaldırılır. Üye yeni talep açabilir.
-  - Arıza: tur art arda 3 kez hata verirse (15 dakika) yöneticilere Telegram
+  - Arıza: tur art arda 3 kez arıza verirse (15 dakika) yöneticilere Telegram
     gider; düzelince bir kez haber verir. Kayıt: `nip_reserve_bildirim_log`
     ("site koprusu: …"). Siteden gelen bir talep alınamazsa (ad 2 harften
-    kısa, kod boş) aynı uyarı gelir.
+    kısa, kod boş) AYRI bir uyarı gelir; bu arıza sayılmaz (ayrı sayaç:
+    `nip_rez_ayar.kopru_talep`). Parti günü geçince kayıt sayılmaz.
+  - Tur boyunca anahtar satırı kilitlidir: iki tur üst üste binmez; geçiş ve
+    geri dönüş çalışan turu bekler.
+  - Eski veritabanında parti kilitleri her gece 00:50'de (UTC) ayrıca
+    tazelenir (`nip-gecis-kilit`); köprü günlerce dursa da gece arşivi
+    takılmaz.
   - Sitedeki seviye ve güven puanı geçişten sonra GÜNCELLENMEZ (sahip kararı
     12.11: tek puan sistemi Order'ın harcama puanı).
 - **Geçiş (Aşama 3) tek çağrıdır, yalnız SQL oturumu:**
@@ -241,9 +247,15 @@ olarak değiştirelim."
   adımı hata verirse Order geri sarılır ve işaret yeniden kapatılır. İki
   veritabanı tek işlem değildir: çağrı `begin … rollback` içinde
   ÇALIŞTIRILMAZ (işaret açık kalır). Şüpheli durumda aynı çağrı yeniden
-  çalıştırılır; zararsızdır. Geri dönüş: `select nip_rez_gecis_yap(false);`
-  (son durumlar yollanır; menüden açılmış yerel talepler eski panelde
-  görünmez). İkinci bir geçişte yerel talepler ve üye sayaçları korunur.
+  çalıştırılır; zararsızdır. Anahtar açıldıktan sonraki yollama hatası geçişi
+  geri sarmaz; 5 dakikalık tur yeniden dener. Geri dönüş:
+  `select nip_rez_gecis_yap(false);` Son parti listesi ve durumlar
+  yollanamazsa geri dönüş YAPILMAZ (hata verir, hiçbir şey değişmez). Köprü
+  bozukken yine de dönmek için: `select nip_rez_gecis_yap(false, true);`
+  Eski veritabanındaki `nip_order_gecis_yaz(…, false)` tek başına geri dönüş
+  değildir; anahtar açıkken köprü işareti 5 dakikada yeniden açar. Menüden
+  açılmış yerel talepler eski panelde görünmez. İkinci bir geçişte yerel
+  talepler, üye sayaçları ve sayaç işaretleri korunur.
   Geçişten ÖNCE aynı gün: yeni KVKK sürümü (rezervasyon ve katılım geçmişi;
   tr / en / ru) yayınlanır.
 - **Göç dosyaları yerel PostgreSQL'de denenir** (container'da sunucu var):

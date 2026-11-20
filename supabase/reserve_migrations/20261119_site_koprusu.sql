@@ -34,7 +34,12 @@
 --     etkilenmez.
 --
 -- Yalniz EKLEME; tekrar calistirilabilir. Hicbir nesne ya da satir kaldirilmaz.
--- Geri donus: select public.nip_order_gecis_yaz('<sir>', false);
+-- Geri donus yalniz ORDER'dan yapilir: select public.nip_rez_gecis_yap(false);
+-- (son durumlari yollar, anahtari kapatir, sonra bu isareti kapatir).
+-- nip_order_gecis_yaz('<sir>', false) TEK BASINA geri donus DEGILDIR: Order
+-- anahtari acikken kopru isareti 5 dakika icinde yeniden acar ve Order'daki
+-- durumu buraya yazar. Yalniz Order anahtari KAPALI oldugu halde isaret acik
+-- kalmissa elle kullanilir.
 -- ============================================================================
 
 -- ----------------------------------------------------------------------------
@@ -220,6 +225,17 @@ begin
   return v_n;
 end $$;
 revoke all on function public.nip_gecis_kilit_guncelle() from public, anon, authenticated;
+
+-- Kilitler kopru cagrisindan BAGIMSIZ da her gece tazelenir (gece arsivinden
+-- 10 dakika once). Kopru gunlerce calismazsa eskiyen partinin kilidi kalir,
+-- arsiv isi yabanci anahtara takilirdi (inceleme 20.11). Isaret kapaliyken
+-- butun kilitleri birakir.
+do $z$
+begin
+  if exists (select 1 from pg_extension where extname = 'pg_cron') then
+    perform cron.schedule('nip-gecis-kilit', '50 0 * * *', 'select public.nip_gecis_kilit_guncelle()');
+  end if;
+end $z$;
 
 -- ----------------------------------------------------------------------------
 -- 3) KOPRU UCLARI. Cagiran Order; kendini Vault'taki order_sync_sir ile tanitir
