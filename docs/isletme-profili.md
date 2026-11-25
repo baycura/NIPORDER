@@ -251,9 +251,12 @@ olarak değiştirelim."
   çalıştırılır; zararsızdır. Anahtar açıldıktan sonraki yollama hatası geçişi
   geri sarmaz; 5 dakikalık tur yeniden dener. Geri dönüş:
   `select nip_rez_gecis_yap(false);` Son parti listesi ve durumlar
-  yollanamazsa geri dönüş YAPILMAZ (hata verir, hiçbir şey değişmez). Eski
-  veritabanında işaret kapalı çıkarsa çağrı işareti yeniden açar, son kararları
-  yollar, sonra kapatır. Köprü bozukken yine de dönmek için:
+  yollanamazsa geri dönüş YAPILMAZ: hata verir, Order değişmez, anahtar açık
+  kalır. Eski veritabanında işaret kapalı çıkarsa çağrı işareti yeniden açar,
+  son kararları yollar, sonra kapatır. Çağrı bu arada hata verirse eski
+  veritabanında işaret açık ve parti listesi yazılmış kalabilir; bu, geçişten
+  sonraki olağan durumdur (köprü turu da aynısını yapar). Köprü bozukken yine
+  de dönmek için:
   `select nip_rez_gecis_yap(false, true);` Bu çağrı anahtarı her durumda
   kapatır. Eski veritabanındaki işaret kapatılamadıysa yanıtta `uyari` döner;
   işaret o zaman eski veritabanında (SQL oturumu) elle kapatılır:

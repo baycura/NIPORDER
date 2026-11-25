@@ -816,8 +816,9 @@ revoke all on function public.nip_reserve_bekleyen_kontrol() from public, anon, 
 --    yeniden acilir ve yollama yinelenir; "tasinmadi" yaniti basari SAYILMAZ.
 --    Kopru bozukken yine de donmek gerekirse: nip_rez_gecis_yap(false, true).
 --    Zorla donuste son yollama da RESERVE isaretinin kapatilmasi da basarisiz
---    olabilir; anahtar yine kapanir ve yanitta "uyari" doner. Isaret o zaman
---    RESERVE'de (SQL oturumu) elle kapatilir:
+--    olabilir; anahtar yine kapanir. Son yollamanin sonucu yanitta "parti" ve
+--    "durum" alanlarindadir. ISARET kapatilamadiysa yanitta ayrica "uyari"
+--    doner; isaret o zaman RESERVE'de (SQL oturumu) elle kapatilir:
 --      select public.nip_order_gecis_yaz((select decrypted_secret
 --        from vault.decrypted_secrets where name = 'order_sync_sir'), false);
 --    Kapanana kadar oradaki panellerde onay / red / parti duzenleme kilitlidir.
