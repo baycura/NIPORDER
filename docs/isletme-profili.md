@@ -207,9 +207,67 @@ olarak değiştirelim."
   DOĞRUDAN bağlı (18.11 bulgusu):** üye girişi, parti listesi (Line up),
   siteden rezervasyon (RSVP), bisiklet panosu, sürüş panosu, başvurular.
   Dosya: temada `assets/nip-supabase.js`. Yani o veritabanı web sitesinin de
-  arka ucudur; kapatılamaz. Geçişten önce partilerin ve siteden gelen
-  rezervasyonların iki yönde akması çözülmelidir (köprü ya da temanın Order'a
-  bağlanması). Claude temayı okuyabiliyor, yazamıyor (bağlantı izni yok).
+  arka ucudur; kapatılamaz. Claude temayı okuyabiliyor, yazamıyor.
+- **Web sitesi köprüsü (sahip kararı 18.11: "köprü kur, site aynı kalsın"):**
+  `20261119_site_koprusu.sql` (Order) +
+  `supabase/reserve_migrations/20261119_site_koprusu.sql` (eski veritabanı).
+  Geçişten sonra partileri ve rezervasyon durumunu Order yönetir; site
+  değişmez. Anahtar kapalıyken köprü hiçbir şey yapmaz. Tur 5 dakikada birdir
+  (`nip_rez_site_esitle`).
+  - Order → eski veritabanı: parti listesi (panelde parti kaydedilince hemen)
+    ve rezervasyon durumu. Afişe dokunulmaz; afiş hâlâ rezervasyon sitesinin
+    panelinden yüklenir.
+  - Eski veritabanı → Order: siteden gelen yeni talep ("Bekleyen" görünür,
+    Telegram gider); bekleyen talepte üyenin düzelttiği alanlar (kişi sayısı,
+    ad, telefon, not); üyenin sitede kaldırdığı talep (Order'da "İptal
+    edildi" olur, onaylıysa yeri boşalır). Yalnız `site_kaydi` işaretli
+    kayıtlar karşılaştırılır; menüden açılan yerel talebe dokunulmaz.
+  - Geçiş işareti açıkken eski veritabanında rezervasyon durumunu ve parti
+    bilgisini tarayıcıdan kimse değiştiremez (rezervasyon sitesinin yönetim
+    paneli hata verir: "Order paneline taşındı"). Parti satırı orada
+    kaldırılamaz (kilit: `nip_gecis_parti_kilidi`; hata metninde
+    `parti_order_panelinden_kaldirilir` görünür). Parti Order panelinden
+    kaldırılır. Üye yeni talep açabilir.
+  - Arıza: tur art arda 3 kez arıza verirse (15 dakika) yöneticilere Telegram
+    gider; düzelince bir kez haber verir. Kayıt: `nip_reserve_bildirim_log`
+    ("site koprusu: …"). Siteden gelen bir talep alınamazsa (ad 2 harften
+    kısa, kod boş) AYRI bir uyarı gelir; bu arıza sayılmaz (ayrı sayaç:
+    `nip_rez_ayar.kopru_talep`). Parti günü geçince kayıt sayılmaz. Çekme
+    adımı çalışmayan turda bu sayaç değişmez.
+  - Tur boyunca anahtar satırı kilitlidir: iki tur üst üste binmez; geçiş ve
+    geri dönüş çalışan turu bekler.
+  - Eski veritabanında parti kilitleri her gece 00:50'de (UTC) ayrıca
+    tazelenir (`nip-gecis-kilit`); köprü günlerce dursa da gece arşivi
+    takılmaz.
+  - Sitedeki seviye ve güven puanı geçişten sonra GÜNCELLENMEZ (sahip kararı
+    12.11: tek puan sistemi Order'ın harcama puanı).
+- **Geçiş (Aşama 3) tek çağrıdır, yalnız SQL oturumu:**
+  `select nip_rez_gecis_yap(true);` Sırası: eski veritabanında geçiş işareti
+  açılır (oradaki paneller donar) → son veri kopyası (kişisel veri dahil) →
+  anahtar açılır → parti listesi ve durumlar yollanır. Kopya ya da anahtar
+  adımı hata verirse Order geri sarılır ve işaret yeniden kapatılır. İki
+  veritabanı tek işlem değildir: çağrı `begin … rollback` içinde
+  ÇALIŞTIRILMAZ (işaret açık kalır). Şüpheli durumda aynı çağrı yeniden
+  çalıştırılır; zararsızdır. Anahtar açıldıktan sonraki yollama hatası geçişi
+  geri sarmaz; 5 dakikalık tur yeniden dener. Geri dönüş:
+  `select nip_rez_gecis_yap(false);` Son parti listesi ve durumlar
+  yollanamazsa geri dönüş YAPILMAZ: hata verir, Order değişmez, anahtar açık
+  kalır. Eski veritabanında işaret kapalı çıkarsa çağrı işareti yeniden açar,
+  son kararları yollar, sonra kapatır. Çağrı bu arada hata verirse eski
+  veritabanında işaret açık ve parti listesi yazılmış kalabilir; bu, geçişten
+  sonraki olağan durumdur (köprü turu da aynısını yapar). Köprü bozukken yine
+  de dönmek için:
+  `select nip_rez_gecis_yap(false, true);` Bu çağrı anahtarı her durumda
+  kapatır. Eski veritabanındaki işaret kapatılamadıysa yanıtta `uyari` döner;
+  işaret o zaman eski veritabanında (SQL oturumu) elle kapatılır:
+  `select nip_order_gecis_yaz((select decrypted_secret from vault.decrypted_secrets where name = 'order_sync_sir'), false);`
+  Kapanana kadar oradaki panellerde onay / red / parti düzenleme kilitlidir.
+  Eski veritabanındaki `nip_order_gecis_yaz(…, false)` tek başına geri dönüş
+  değildir; anahtar açıkken köprü işareti 5 dakikada yeniden açar. Menüden
+  açılmış yerel talepler eski panelde görünmez. İkinci bir geçişte yerel
+  talepler, üye sayaçları ve sayaç işaretleri korunur.
+  Geçişten ÖNCE aynı gün: yeni KVKK sürümü (rezervasyon ve katılım geçmişi;
+  tr / en / ru) yayınlanır.
 - **Göç dosyaları yerel PostgreSQL'de denenir** (container'da sunucu var):
   canlıdaki bağımlı nesnelerin taklidi + önceki göçler + yeni dosya iki kez
   uygulanır, senaryolar orada koşar; sonra ana dala girer ve Göçüş işi
