@@ -39,7 +39,10 @@
 -- nip_order_gecis_yaz('<sir>', false) TEK BASINA geri donus DEGILDIR: Order
 -- anahtari acikken kopru isareti 5 dakika icinde yeniden acar ve Order'daki
 -- durumu buraya yazar. Yalniz Order anahtari KAPALI oldugu halde isaret acik
--- kalmissa elle kullanilir.
+-- kalmissa (zorla geri donus: nip_rez_gecis_yap(false, true) yanitinda "uyari")
+-- burada, SQL oturumunda elle kullanilir:
+--   select public.nip_order_gecis_yaz((select decrypted_secret
+--     from vault.decrypted_secrets where name = 'order_sync_sir'), false);
 -- ============================================================================
 
 -- ----------------------------------------------------------------------------

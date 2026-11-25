@@ -24,6 +24,7 @@
 --     select public.nip_rez_gecis_yap(true);          -- gec
 --     select public.nip_rez_gecis_yap(false);         -- geri don (son durumlar yollanir)
 --     select public.nip_rez_gecis_yap(false, true);   -- kopru bozukken zorla geri don
+--                                                        (donen "uyari" alanina bak)
 -- Sirasi: RESERVE'de gecis isareti acilir (oradaki paneller durum ve parti
 -- yazamaz) -> son veri kopyasi -> anahtar acilir -> parti listesi ve durumlar
 -- yollanir. Kopya ya da anahtar adimi hata verirse Order geri sarilir ve
@@ -31,12 +32,15 @@
 -- geri sarilan bir islemin (begin ... rollback) icinde CALISTIRILMAZ; isaret
 -- acik kalir. Supheli durumda ayni cagri yeniden calistirilir (zararsiz).
 --
--- Bagimsiz incelemelerin (18.11 ve 20.11.2026) bulgulari bu dosyada kapatildi:
+-- Bagimsiz incelemelerin (18.11, 20.11 ve 25.11.2026) bulgulari bu dosyada kapatildi:
 -- gecis sirasi ve telafi, tur adimlari birbirinden ayri, uye bagi sonradan,
 -- sitede duzeltilen / kaldirilan talep, geri donuste son yollama (basarisizsa
 -- donulmez), ikinci geciste yerel kayitlarin ve sayac isaretlerinin korunmasi,
 -- ariza uyarisi ile alinamayan talep uyarisinin ayri sayilmasi, tur boyunca
--- anahtar kilidi, kilit sirasi, siteden yazilan zaman alanlarina guvenilmemesi.
+-- anahtar kilidi, kilit sirasi, siteden yazilan zaman alanlarina guvenilmemesi,
+-- geri donuste kapali isaretin yeniden acilip son kararlarin yollanmasi, zorla
+-- geri donusun kopru tamamen bozukken de tamamlanmasi, cekme calismayan turda
+-- alinamayan talep sayacina dokunulmamasi.
 --
 -- Yalniz EKLEME; tekrar calistirilabilir. Hicbir nesne ya da satir kaldirilmaz.
 -- ============================================================================
@@ -649,7 +653,12 @@ begin
 
   -- ALINAMAYAN TALEP: ariza degildir (kopru calisiyor). Ayri sayilir; 3. turda
   -- ve sonra gunde bir kez haber verilir. Talep duzelince ya da parti gecince biter.
-  if v_talep > 0 then
+  -- Cekme adimi CALISMADIYSA talep hakkinda bir sey ogrenilmemistir: sayaca
+  -- dokunulmaz (yoksa tek bir ag kesintisi sayaci sifirlar, uyari 15 dakika
+  -- sonra yinelenir ya da hic gitmezdi; inceleme 25.11).
+  if coalesce(v_k->>'ok', '') <> 'true' then
+    null;
+  elsif v_talep > 0 then
     v_tsay := coalesce(v_tsay, 0) + 1;
     update public.nip_rez_ayar set kopru_talep = v_tsay where tek;
     v_talep_metin := 'talep: siteden gelen ' || v_talep || ' talep alinamadi (kod: '
@@ -802,8 +811,16 @@ revoke all on function public.nip_reserve_bekleyen_kontrol() from public, anon, 
 --      * cagri geri sarilan bir islemin icinde calistirilmaz
 --      * ayni cagri yeniden calistirilabilir (her iki yon de zararsiz)
 --    GERI DONUS: son parti listesi ve durumlar yollanamazsa geri donus YAPILMAZ
---    (RESERVE yeniden ana kaynak olunca son kararlar orada olmali). Kopru
---    bozukken yine de donmek gerekirse: nip_rez_gecis_yap(false, true).
+--    (RESERVE yeniden ana kaynak olunca son kararlar orada olmali). RESERVE'de
+--    isaret kapali cikarsa (yarim kalmis geri donus, elle kapatma) isaret
+--    yeniden acilir ve yollama yinelenir; "tasinmadi" yaniti basari SAYILMAZ.
+--    Kopru bozukken yine de donmek gerekirse: nip_rez_gecis_yap(false, true).
+--    Zorla donuste son yollama da RESERVE isaretinin kapatilmasi da basarisiz
+--    olabilir; anahtar yine kapanir ve yanitta "uyari" doner. Isaret o zaman
+--    RESERVE'de (SQL oturumu) elle kapatilir:
+--      select public.nip_order_gecis_yaz((select decrypted_secret
+--        from vault.decrypted_secrets where name = 'order_sync_sir'), false);
+--    Kapanana kadar oradaki panellerde onay / red / parti duzenleme kilitlidir.
 --    Anahtar satiri islem boyunca kilitlidir: calisan kopru turu beklenir, yeni
 --    tur da bu islemi bekler.
 -- ----------------------------------------------------------------------------
@@ -834,20 +851,37 @@ begin
     -- kopru panelinde gorunmez (20261113 basligindaki not).
     if v_yerel then
       v_e := public.nip_rez_site_etkinlik_gonder();
+      if coalesce(v_e->>'hata', '') = 'tasinmadi' then
+        -- RESERVE'de isaret kapali (yarim kalmis geri donus ya da orada elle
+        -- kapatma): bu halde orasi hicbir sey YAZMAZ. Arada Order panelinde
+        -- verilen karar kaybolmasin diye isaret yeniden acilir, yollama
+        -- yinelenir (kopru turunun yaptigi gibi; inceleme 25.11).
+        v_g2 := public.nip_rez_site_cagir('nip_order_gecis_yaz', json_build_object('p_tasindi', true));
+        if coalesce(v_g2->>'tasindi', '') = 'true' then
+          v_e := public.nip_rez_site_etkinlik_gonder();
+        end if;
+      end if;
       v_d := public.nip_rez_site_durum_gonder();
       -- Son yollama basarisizsa geri donulmez: RESERVE ana kaynak olunca son
       -- onay / red / giris orada eksik kalirdi ve bir daha yollanamazdi
-      -- (inceleme 20.11). 'tasinmadi' = isaret orada zaten kapali; gecilir.
+      -- (inceleme 20.11). 'tasinmadi' da basarisizliktir: orasi yazmamistir.
       if not coalesce(p_zorla, false)
-         and ((coalesce(v_e->>'ok', '') <> 'true' and coalesce(v_e->>'hata', '') <> 'tasinmadi')
-           or (coalesce(v_d->>'ok', '') <> 'true' and coalesce(v_d->>'hata', '') <> 'tasinmadi')) then
-        raise exception 'geri donus: son yollama basarisiz (parti: %, durum: %). Hicbir sey degismedi; ayni cagriyi yeniden calistir. Kopru bozukken yine de donmek icin: nip_rez_gecis_yap(false, true)', v_e, v_d;
+         and (coalesce(v_e->>'ok', '') <> 'true' or coalesce(v_d->>'ok', '') <> 'true') then
+        raise exception 'geri donus: son yollama basarisiz (parti: %, durum: %). Order degismedi (anahtar acik); ayni cagriyi yeniden calistir. Kopru bozukken yine de donmek icin: nip_rez_gecis_yap(false, true)', v_e, v_d;
       end if;
     end if;
     update public.nip_rez_ayar set yerel = false, durdu = false, degisti = now() where tek;
     v_g := public.nip_rez_site_cagir('nip_order_gecis_yaz', json_build_object('p_tasindi', false));
     if coalesce(v_g->>'ok', '') <> 'true' or coalesce(v_g->>'tasindi', '') <> 'false' then
-      raise exception 'geri donus: RESERVE gecis isareti kapatilamadi (%). Order DEGISMEDI (anahtar onceki halinde). Isaretin durumu belirsiz olabilir; ayni cagriyi yeniden calistir.', v_g;
+      if not coalesce(p_zorla, false) then
+        raise exception 'geri donus: RESERVE gecis isareti kapatilamadi (%). Order DEGISMEDI (anahtar onceki halinde). Isaretin durumu belirsiz olabilir; ayni cagriyi yeniden calistir. Kopru tamamen bozuksa nip_rez_gecis_yap(false, true) anahtari kapatir; isaret sonra RESERVE''de elle kapatilir.', v_g;
+      end if;
+      -- ZORLA: kopru tamamen bozukken de donulebilsin (inceleme 25.11). Anahtar
+      -- kapanir; RESERVE isareti acik kalmis olabilir ve orada elle kapatilir.
+      insert into public.nip_reserve_bildirim_log (ok, hata)
+      values (false, 'site koprusu: zorla geri donus; eski veritabaninda gecis isareti kapatilamadi, orada elle kapatilmali');
+      return json_build_object('ok', true, 'yerel', false, 'reserve', v_g, 'parti', v_e, 'durum', v_d, 'zorla', true,
+        'uyari', 'RESERVE gecis isareti KAPATILAMADI. Eski veritabaninda (SQL oturumu) elle kapat: select public.nip_order_gecis_yaz((select decrypted_secret from vault.decrypted_secrets where name = ''order_sync_sir''), false); Kapanana kadar oradaki panellerde onay / red / parti duzenleme kilitlidir.');
     end if;
     return json_build_object('ok', true, 'yerel', false, 'reserve', v_g, 'parti', v_e, 'durum', v_d,
                              'zorla', coalesce(p_zorla, false));

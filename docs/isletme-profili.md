@@ -232,7 +232,8 @@ olarak değiştirelim."
     gider; düzelince bir kez haber verir. Kayıt: `nip_reserve_bildirim_log`
     ("site koprusu: …"). Siteden gelen bir talep alınamazsa (ad 2 harften
     kısa, kod boş) AYRI bir uyarı gelir; bu arıza sayılmaz (ayrı sayaç:
-    `nip_rez_ayar.kopru_talep`). Parti günü geçince kayıt sayılmaz.
+    `nip_rez_ayar.kopru_talep`). Parti günü geçince kayıt sayılmaz. Çekme
+    adımı çalışmayan turda bu sayaç değişmez.
   - Tur boyunca anahtar satırı kilitlidir: iki tur üst üste binmez; geçiş ve
     geri dönüş çalışan turu bekler.
   - Eski veritabanında parti kilitleri her gece 00:50'de (UTC) ayrıca
@@ -250,8 +251,14 @@ olarak değiştirelim."
   çalıştırılır; zararsızdır. Anahtar açıldıktan sonraki yollama hatası geçişi
   geri sarmaz; 5 dakikalık tur yeniden dener. Geri dönüş:
   `select nip_rez_gecis_yap(false);` Son parti listesi ve durumlar
-  yollanamazsa geri dönüş YAPILMAZ (hata verir, hiçbir şey değişmez). Köprü
-  bozukken yine de dönmek için: `select nip_rez_gecis_yap(false, true);`
+  yollanamazsa geri dönüş YAPILMAZ (hata verir, hiçbir şey değişmez). Eski
+  veritabanında işaret kapalı çıkarsa çağrı işareti yeniden açar, son kararları
+  yollar, sonra kapatır. Köprü bozukken yine de dönmek için:
+  `select nip_rez_gecis_yap(false, true);` Bu çağrı anahtarı her durumda
+  kapatır. Eski veritabanındaki işaret kapatılamadıysa yanıtta `uyari` döner;
+  işaret o zaman eski veritabanında (SQL oturumu) elle kapatılır:
+  `select nip_order_gecis_yaz((select decrypted_secret from vault.decrypted_secrets where name = 'order_sync_sir'), false);`
+  Kapanana kadar oradaki panellerde onay / red / parti düzenleme kilitlidir.
   Eski veritabanındaki `nip_order_gecis_yaz(…, false)` tek başına geri dönüş
   değildir; anahtar açıkken köprü işareti 5 dakikada yeniden açar. Menüden
   açılmış yerel talepler eski panelde görünmez. İkinci bir geçişte yerel
