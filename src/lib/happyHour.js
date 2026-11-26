@@ -85,13 +85,14 @@ export function happyHourPlan(products, rules, now = new Date()) {
         // YAZILAN SAAT gercek parcaya uyar. Gece yarisini asan kural (21:00–
         // 09:00) her gun seciliyse kesintisizdir. Bir onceki / sonraki gun
         // secili DEGILSE parca gece yarisinda baslar ya da biter: "00:00–09:00"
-        // ya da "21:00–00:00" yazilir, musteriye tutulmayacak saat soylenmez.
+        // ya da "21:00–24:00" yazilir, musteriye tutulmayacak saat soylenmez.
         const sarar = s > e;
         const gBas = (sarar && a === 0 && !gunVar((g + 6) % 7)) ? "00:00" : kisaSaat(bas);
-        // Bitisi 23:59 yazilan kural gece yarisina kadar surer (GUN_SONU);
-        // musteriye "23:59" degil "24:00" yazilir: "09:30–24:00 arası".
-        const gBit = (sarar && b === 1440 && !gunVar((g + 1) % 7)) ? "00:00"
-          : (eHam === GUN_SONU ? "24:00" : kisaSaat(bit));
+        // GECE YARISINDA BITEN parca hep "24:00" yazilir: bitisi 23:59 yazilan
+        // kural (GUN_SONU), bitisi 00:00 yazilan kural, ertesi gunu secili
+        // olmayan gece kurali. "09:30–24:00 arası"; "23:59" ya da bitiste
+        // "00:00" yazmaz. (Baslangictaki "00:00" dogrudur, kalir.)
+        const gBit = b === 1440 && (!sarar || eHam === 0 || !gunVar((g + 1) % 7)) ? "24:00" : kisaSaat(bit);
         // Esitlikte sonra gelen kazanir: happyHourPrices'ta da sonraki kural
         // oncekinin, urunun kendi alani kuralin ustune yazar.
         if (!eski || uzak <= eski.uzak) out[pid] = { fiyat: f, bas: gBas, bit: gBit, gun: k, aktif, uzak, tumGun };
@@ -113,48 +114,6 @@ export function happyHourPlan(products, rules, now = new Date()) {
     dene(p.id, p.hh_price, p.hh_start, p.hh_end, (g) => days.includes(g));
   });
 
-  return out;
-}
-
-// HAFTANIN TAVANI — urun basina, hafta icinde odenen EN YUKSEK fiyat: happy
-// hour fiyati, pencere disinda liste fiyati. Musteri menusu basliktaki "HAPPY
-// HOUR" rozetini bununla yakar: urunun SU ANKI fiyati tavanin altindaysa "su
-// an ozel bir saat" vardir. Her gun tum gun ayni fiyatla satilan uye fiyati
-// (kahve ₺150) tavana esittir, rozeti yakmaz; Pazar bisiklet kulubu saati
-// (₺120) ve Bud'in saatli / Pazar fiyati yakar.
-//
-// Fiyat yalniz kural sinirlarinda degisir. Bu yuzden 7 gunun her sinir
-// dakikasinda happyHourPrices cagrilir: ayri bir pencere hesabi yok, fiyatla
-// ayni kural. Yalniz hafta icinde en az bir kez happy hour fiyati alan urunler
-// doner: { [product_id]: tavanFiyat }
-export function happyHourTavan(products, rules, now = new Date()) {
-  const sinir = new Set([0]);
-  const bas = (saat) => { const d = dakika(saat); if (d != null) sinir.add(d % 1440); };
-  const bit = (saat) => { const d = dakika(saat); if (d != null) sinir.add(bitisDk(d) % 1440); };
-  (rules || []).forEach(r => { bas(r?.start_time); bit(r?.end_time); });
-  (products || []).forEach(p => { if (p?.hh_enabled) { bas(p.hh_start); bit(p.hh_end); } });
-
-  const liste = {};
-  (products || []).forEach(p => { if (p?.id != null) liste[p.id] = Number(p.price); });
-
-  const ornekler = [];
-  const gorulen = new Set();
-  for (let k = 0; k < 7; k++) {
-    for (const m of sinir) {
-      const f = happyHourPrices(products, rules, new Date(now.getFullYear(), now.getMonth(), now.getDate() + k, 0, m));
-      ornekler.push(f);
-      Object.keys(f).forEach(id => { if (f[id] != null) gorulen.add(id); });
-    }
-  }
-  const out = {};
-  gorulen.forEach(id => {
-    let tavan = -Infinity;
-    for (const f of ornekler) {
-      const v = f[id] != null ? Number(f[id]) : liste[id];
-      if (Number.isFinite(v) && v > tavan) tavan = v;
-    }
-    if (Number.isFinite(tavan)) out[id] = tavan;
-  });
   return out;
 }
 

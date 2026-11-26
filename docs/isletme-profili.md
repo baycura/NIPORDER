@@ -90,19 +90,21 @@
   eklenir ("yarın", "Pazar"). Dokununca üyelik penceresi açılır. Herkese
   açık happy hour'da (`hh_sadece_uye = false`) gösterilmez.
   Kod: `lib/happyHour.js` → `happyHourPlan`, `CustomerMenu` → `uyeCagrisi`.
-- **Üye aynı cümleyi görür (sahip, 2026-11-26: "birada yazdığı gibi alt
-  açıklamada yazsın").** Üyenin kartında üstü çizili liste fiyatı ve üye
-  fiyatı yazar; altında düğme olmayan satır: "Üyelere özel · bugün tüm gün
-  ₺150" ya da "Üyelere özel · 09:00–22:00 arası ₺200". Fiyatın yanındaki
-  "HAPPY HOUR" etiketi üyelere özel düzende ÇIKMAZ (tüm gün geçerli üye
-  fiyatı happy hour değildir). Kişiye özel fiyat kazanırsa satır çıkmaz,
-  "SANA ÖZEL" etiketi kalır. Kod: `CustomerMenu` → `uyeSatiri`.
+- **Üye "Üye fiyatı" yazısını görür (sahip, 2026-11-26: "birada yazdığı gibi
+  alt açıklamada yazsın; üye fiyatı yazsın, happy hour yazmasın").** Üyenin
+  kartında üstü çizili liste fiyatı ve üye fiyatı yazar; altında düğme
+  olmayan satır: "Üye fiyatı · bugün tüm gün ₺150" ya da "Üye fiyatı ·
+  09:00–22:00 arası ₺200". Saat yalnız fiyat o an bir kuraldan geliyorsa
+  yazar; yalnız anlık indirim varsa "Üye fiyatı · ₺180". Üyelere özel
+  düzende "HAPPY HOUR" sözü hiçbir yerde yazmaz. Kişiye özel fiyat kazanırsa
+  satır çıkmaz, "SANA ÖZEL" etiketi kalır. Üye olmayanın gördüğü "Üyelere
+  özel · …" yazısı değişmedi. Kod: `CustomerMenu` → `uyeSatiri`.
 - **Kahve üye fiyatı (sahip, 2026-11-26):** Filtre Kahve, Espresso, Americano
   liste ₺180, üyeye **₺150**, her gün tüm gün (kurallar "Üye fiyatı — kahve
   …" ve "Üye fiyatı — filtre …"). Pazar 08:00–09:30 Filtre üyeye ₺120
   ("Cycling Club") aynen durur; bu yüzden Pazar günü Filtre üç ayrı kuraldır
   (00:00–08:00, 08:00–09:30, 09:30–23:59), üst üste binmez.
-- **Efes Fıçı 0.5L (liste ₺280) üye fiyatı:**
+- **Bud Fıçı 50 cl (liste ₺280; eski adı Efes Fıçı 0.5L) üye fiyatı:**
   - Pazartesi–Cumartesi 09:00–22:00: **₺200** (kural "Üye fiyatı — Pzt–Cmt
     09:00–22:00"). 22:00'den sonra herkes liste fiyatı öder.
   - Pazar **tüm gün: ₺150** (kural "Üye fiyatı — Pazar tüm gün", 00:00–23:59).
@@ -116,16 +118,14 @@
   dahil); menüde saat yerine "tüm gün" yazar: "Üyelere özel · Pazar tüm gün
   ₺150". Aynı ürün için iki kural AYNI ANDA açık olmamalı: hangisinin
   kazanacağı belli değildir. Günleri ya da saatleri ayır.
-- Başlıktaki "HAPPY HOUR" rozeti yalnız indirimi gören kişiye ve ŞU AN ÖZEL
-  BİR SAAT varsa çıkar: menüdeki bir ürünün şu anki fiyatı, o ürünün hafta
-  içindeki en yüksek fiyatından düşükse (`lib/happyHour.js` →
-  `happyHourTavan`). Her gün tüm gün aynı olan kahve üye fiyatı rozeti
-  yakmaz (yoksa rozet üyede hiç sönmezdi). Bugünkü kurallarla rozet:
-  Pazartesi–Cumartesi 09:00–22:00 ve Pazar tüm gün (Bud); Bud kuralları
-  olmasa yalnız Pazar 08:00–09:30 (Cycling Club). Herkese açık düzende
-  (`hh_sadece_uye = false`) eski kural geçerlidir.
-- Bitişi 23:59 yazılan ama tüm gün olmayan pencere menüde "24:00" diye
-  yazar: "Üyelere özel · 09:30–24:00 arası ₺150".
+- **Başlıktaki rozet:** üyelere özel düzende "ÜYE FİYATI" yazar ve menüde
+  üye fiyatıyla satılan bir ürün varken yalnız üyeye çıkar (kartlardaki
+  satırla aynı koşul). Kahve üye fiyatı tüm gün olduğu için rozet üyede
+  sürekli görünür. "HAPPY HOUR" yalnız happy hour herkese açıksa
+  (`hh_sadece_uye = false`) yazar; o düzende eski kural geçerlidir.
+- Gece yarısında biten pencere menüde "24:00" diye yazar (bitişi 23:59 ya da
+  00:00 yazılan kural, ertesi günü seçili olmayan gece kuralı): "Üyelere
+  özel · 09:30–24:00 arası ₺150". Başlangıçtaki "00:00" aynen kalır.
 - Kurallar panelden yönetilir: Panel → Happy Hour.
 
 ## Rezervasyon: "Gelmedi" (sahip onayı, 2026-11-12)
