@@ -87,9 +87,21 @@
 - **Amaç: üye sayısını artırmak.** Üye olmayan kişi, happy hour ürününün
   altında üye fiyatını ve saatini HER ZAMAN görür (saat dışında da):
   "Üyelere özel · 09:00–22:00 arası ₺200". Pencere başka gündeyse gün adı
-  eklenir ("yarın", "Pazar"). Dokununca üyelik penceresi açılır. Üyeye ve
-  herkese açık happy hour'da (`hh_sadece_uye = false`) gösterilmez.
+  eklenir ("yarın", "Pazar"). Dokununca üyelik penceresi açılır. Herkese
+  açık happy hour'da (`hh_sadece_uye = false`) gösterilmez.
   Kod: `lib/happyHour.js` → `happyHourPlan`, `CustomerMenu` → `uyeCagrisi`.
+- **Üye aynı cümleyi görür (sahip, 2026-11-26: "birada yazdığı gibi alt
+  açıklamada yazsın").** Üyenin kartında üstü çizili liste fiyatı ve üye
+  fiyatı yazar; altında düğme olmayan satır: "Üyelere özel · bugün tüm gün
+  ₺150" ya da "Üyelere özel · 09:00–22:00 arası ₺200". Fiyatın yanındaki
+  "HAPPY HOUR" etiketi üyelere özel düzende ÇIKMAZ (tüm gün geçerli üye
+  fiyatı happy hour değildir). Kişiye özel fiyat kazanırsa satır çıkmaz,
+  "SANA ÖZEL" etiketi kalır. Kod: `CustomerMenu` → `uyeSatiri`.
+- **Kahve üye fiyatı (sahip, 2026-11-26):** Filtre Kahve, Espresso, Americano
+  liste ₺180, üyeye **₺150**, her gün tüm gün (kurallar "Üye fiyatı — kahve
+  …" ve "Üye fiyatı — filtre …"). Pazar 08:00–09:30 Filtre üyeye ₺120
+  ("Cycling Club") aynen durur; bu yüzden Pazar günü Filtre üç ayrı kuraldır
+  (00:00–08:00, 08:00–09:30, 09:30–23:59), üst üste binmez.
 - **Efes Fıçı 0.5L (liste ₺280) üye fiyatı:**
   - Pazartesi–Cumartesi 09:00–22:00: **₺200** (kural "Üye fiyatı — Pzt–Cmt
     09:00–22:00"). 22:00'den sonra herkes liste fiyatı öder.
@@ -104,7 +116,9 @@
   dahil); menüde saat yerine "tüm gün" yazar: "Üyelere özel · Pazar tüm gün
   ₺150". Aynı ürün için iki kural AYNI ANDA açık olmamalı: hangisinin
   kazanacağı belli değildir. Günleri ya da saatleri ayır.
-- Başlıktaki "HAPPY HOUR" rozeti yalnız indirimi gören kişiye çıkar.
+- Başlıktaki "HAPPY HOUR" rozeti yalnız indirimi gören kişiye ve SAATLİ bir
+  pencere açıkken çıkar. Tüm gün geçerli üye fiyatı rozeti yakmaz (yoksa
+  rozet üyede hiç sönmezdi). Herkese açık düzende eski kural geçerlidir.
 - Kurallar panelden yönetilir: Panel → Happy Hour.
 
 ## Rezervasyon: "Gelmedi" (sahip onayı, 2026-11-12)
