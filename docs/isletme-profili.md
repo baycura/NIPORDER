@@ -116,9 +116,16 @@
   dahil); menüde saat yerine "tüm gün" yazar: "Üyelere özel · Pazar tüm gün
   ₺150". Aynı ürün için iki kural AYNI ANDA açık olmamalı: hangisinin
   kazanacağı belli değildir. Günleri ya da saatleri ayır.
-- Başlıktaki "HAPPY HOUR" rozeti yalnız indirimi gören kişiye ve SAATLİ bir
-  pencere açıkken çıkar. Tüm gün geçerli üye fiyatı rozeti yakmaz (yoksa
-  rozet üyede hiç sönmezdi). Herkese açık düzende eski kural geçerlidir.
+- Başlıktaki "HAPPY HOUR" rozeti yalnız indirimi gören kişiye ve ŞU AN ÖZEL
+  BİR SAAT varsa çıkar: menüdeki bir ürünün şu anki fiyatı, o ürünün hafta
+  içindeki en yüksek fiyatından düşükse (`lib/happyHour.js` →
+  `happyHourTavan`). Her gün tüm gün aynı olan kahve üye fiyatı rozeti
+  yakmaz (yoksa rozet üyede hiç sönmezdi). Bugünkü kurallarla rozet:
+  Pazartesi–Cumartesi 09:00–22:00 ve Pazar tüm gün (Bud); Bud kuralları
+  olmasa yalnız Pazar 08:00–09:30 (Cycling Club). Herkese açık düzende
+  (`hh_sadece_uye = false`) eski kural geçerlidir.
+- Bitişi 23:59 yazılan ama tüm gün olmayan pencere menüde "24:00" diye
+  yazar: "Üyelere özel · 09:30–24:00 arası ₺150".
 - Kurallar panelden yönetilir: Panel → Happy Hour.
 
 ## Rezervasyon: "Gelmedi" (sahip onayı, 2026-11-12)

@@ -3,7 +3,7 @@ import { useParams, useNavigate, useSearchParams } from "react-router-dom";
 import { supabase, hataMetni, zamanAsimiliFetch } from "../../lib/supabase.js";
 import { useAuth } from "../../contexts/AuthContext.jsx";
 import MusteriSheet from "../../components/MusteriSheet.jsx";
-import { happyHourPrices, happyHourPlan, hhSadeceUyeMi } from "../../lib/happyHour.js";
+import { happyHourPrices, happyHourPlan, happyHourTavan, hhSadeceUyeMi } from "../../lib/happyHour.js";
 import { optionMod } from "../../lib/productOptions.js";
 import { PHONE_CODES, toE164 } from "../../lib/phoneCodes.js";
 import { errorText } from "../../lib/errorText.js";
@@ -594,6 +594,11 @@ export default function CustomerMenu() {
   const hhPlan = useMemo(
     () => (hhKurallar === null ? {} : happyHourPlan(products, hhKurallar, new Date())),
     [hhDakika, hhKurallar, products]);
+  // Urun basina haftanin en yuksek fiyati (basliktaki rozet icin). Haftalik
+  // duzen saate bagli degildir: yalniz kurallar ya da urunler degisince hesaplanir.
+  const hhTavan = useMemo(
+    () => (hhKurallar === null ? {} : happyHourTavan(products, hhKurallar, new Date())),
+    [hhKurallar, products]);
   const [fadedProdInfo, setFadedProdInfo] = useState({});
   const [loading, setLoading] = useState(true);
   // Menu sorgulari hata verdi (baglanti koptu): bos menu yerine "tekrar dene" ekrani.
@@ -1783,13 +1788,16 @@ export default function CustomerMenu() {
     if (pl?.aktif) return uyeOzelYazi(pl, fp, false);
     return L(`Üyelere özel · ${para(fp)}`, `Members only · ${para(fp)}`, `Только для участников · ${para(fp)}`);
   };
-  // Basliktaki "HAPPY HOUR" rozeti, uyelere ozel duzende, SAATLI bir pencere
-  // acikken cikar. Tum gun gecerli uye fiyati sayilmaz: sayilsa rozet uyede
-  // hic sonmez, bir sey soylemez olurdu (kahve uye fiyati 26.11'de tum gun
-  // yapildi). Happy hour herkese aciksa (hh_sadece_uye = false) eski kural.
-  const hhSaatliAcik = Object.keys(hhProductPrices).some(id => hhProductPrices[id] != null
-    && !(hhPlan[id]?.aktif && hhPlan[id].tumGun));
-  const hhRozet = hhVar && (!hhSadeceUye || (uyeMi && hhSaatliAcik));
+  // Basliktaki "HAPPY HOUR" rozeti, uyelere ozel duzende, SU AN OZEL BIR SAAT
+  // varsa cikar: menudeki bir urunun su anki fiyati, o urunun hafta icindeki
+  // en yuksek fiyatindan (hhTavan) dusukse. Her gun tum gun ayni olan uye
+  // fiyati (kahve ₺150, 26.11) rozeti yakmaz: yaksa rozet uyede hic sonmez,
+  // bir sey soylemez olurdu. Bud'in saatli ve Pazar fiyati, Pazar bisiklet
+  // kulubu saati yakar. Happy hour herkese aciksa (hh_sadece_uye = false)
+  // eski kural gecerli.
+  const hhOzelSimdi = (products || []).some(p => hhProductPrices[p.id] != null
+    && Number(hhProductPrices[p.id]) < (hhTavan[p.id] ?? Number(p.price)));
+  const hhRozet = hhVar && (!hhSadeceUye || (uyeMi && hhOzelSimdi));
 
   // Ustu cizilecek liste fiyati: yalniz gercekten indirim varsa
   const listPrice = (p, options) => {
@@ -2373,7 +2381,7 @@ export default function CustomerMenu() {
                 özel · saat · fiyat" yazisi konusur. Eskiden rozet "HAPPY HOUR ·
                 üyelere" idi: dar telefonda baslik satirina sigmiyor, marka adi
                 uc satira kiriliyor, dil dugmeleri ekran disina tasiyordu.
-                Tum gun gecerli uye fiyati rozeti yakmaz (hhRozet). */}
+                Her gun tum gun ayni olan uye fiyati rozeti yakmaz (hhRozet). */}
             {hhRozet && custTab === "menu" && <div style={{background:"#000000",color:"#FFFFFF",padding:"4px 10px",borderRadius:10,fontSize:12,fontWeight:600,letterSpacing:"0.2px",whiteSpace:"nowrap"}}>{t.happy_hour}</div>}
             {LangSwitcher()}
           </div>
