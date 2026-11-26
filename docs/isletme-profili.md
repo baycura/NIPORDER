@@ -118,11 +118,13 @@
   dahil); menüde saat yerine "tüm gün" yazar: "Üyelere özel · Pazar tüm gün
   ₺150". Aynı ürün için iki kural AYNI ANDA açık olmamalı: hangisinin
   kazanacağı belli değildir. Günleri ya da saatleri ayır.
-- **Başlıktaki rozet:** üyelere özel düzende "ÜYE FİYATI" yazar ve menüde
-  üye fiyatıyla satılan bir ürün varken yalnız üyeye çıkar (kartlardaki
-  satırla aynı koşul). Kahve üye fiyatı tüm gün olduğu için rozet üyede
-  sürekli görünür. "HAPPY HOUR" yalnız happy hour herkese açıksa
-  (`hh_sadece_uye = false`) yazar; o düzende eski kural geçerlidir.
+- **Başlıktaki rozet:** üyelere özel düzende "ÜYE FİYATI" yazar ve Menü
+  sekmesinde üye fiyatıyla satılan bir ürün varken yalnız üyeye çıkar
+  (kartlardaki satırla aynı koşul; Shop rafı sayılmaz, parti gecesinde yalnız
+  parti menüsü sayılır). Kahve üye fiyatı tüm gün olduğu için rozet, menüde
+  o kahveler göründüğü sürece üyede görünür. "HAPPY HOUR" yalnız happy hour
+  herkese açıksa (`hh_sadece_uye = false`) yazar; o düzende eski kural
+  geçerlidir.
 - Gece yarısında biten pencere menüde "24:00" diye yazar (bitişi 23:59 ya da
   00:00 yazılan kural, ertesi günü seçili olmayan gece kuralı): "Üyelere
   özel · 09:30–24:00 arası ₺150". Başlangıçtaki "00:00" aynen kalır.

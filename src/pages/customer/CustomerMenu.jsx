@@ -1777,7 +1777,9 @@ export default function CustomerMenu() {
   // Doner: yazi ya da null. Kisiye ozel fiyat kazandiysa (SANA ÖZEL etiketi)
   // bu satir cikmaz: yazdigi rakam kuralin degil kisinin fiyati olurdu.
   const uyeSatiri = (p, fp) => {
-    if (!uyeMi || !hhSadeceUye || !(fp < Number(p.price))) return null;
+    // Yuvarlanmis liste fiyatiyla karsilastirilir: kurusla girilmis fiyat
+    // (180,40) yuvarlaninca indirim sayilmasin.
+    if (!uyeMi || !hhSadeceUye || !(fp < Math.round(Number(p.price)))) return null;
     const mp = memberPriceFor(p);
     if (mp != null && mp <= fp) return null;
     const pl = hhPlan[p.id];
@@ -1793,7 +1795,10 @@ export default function CustomerMenu() {
   // kosul (uyeSatiri), boylece rozet yanarken en az bir kartta satir vardir.
   // "HAPPY HOUR" yalniz happy hour herkese aciksa (hh_sadece_uye = false)
   // yazar; o duzende eski kural gecerli.
-  const menudeki = partyMode ? products.filter(p => p.show_in_party_menu) : products;
+  // Yalniz Menu sekmesinin kategorilerindeki urunler sayilir: Shop rafindaki
+  // urun kartinda satir yoktur, rozeti o yakmamali.
+  const menuKatId = new Set(menuCategories.map(c => c.id));
+  const menudeki = products.filter(p => menuKatId.has(p.category_id) && (!partyMode || p.show_in_party_menu));
   const hhRozet = hhSadeceUye
     ? (uyeMi && menudeki.some(p => uyeSatiri(p, calcPrice(p)) != null) ? t.uye_fiyati : null)
     : (hhVar ? t.happy_hour : null);
