@@ -228,6 +228,7 @@ const T = {
     notif_title: "Siparişin hazır!",
     notif_body: "Kasadan alabilirsin — " + MARKA.ad,
     happy_hour: "HAPPY HOUR",
+    uye_fiyati: "ÜYE FİYATI",
   },
   en: {
     menu: "MENU",
@@ -316,6 +317,7 @@ const T = {
     notif_title: "Your order is ready!",
     notif_body: "Pick it up from the cashier — " + MARKA.ad,
     happy_hour: "HAPPY HOUR",
+    uye_fiyati: "MEMBER PRICE",
   },
   ru: {
     menu: "МЕНЮ",
@@ -404,6 +406,7 @@ const T = {
     notif_title: "Ваш заказ готов!",
     notif_body: "Заберите на кассе — " + MARKA.ad,
     happy_hour: "HAPPY HOUR",
+    uye_fiyati: "ЦЕНА УЧАСТНИКА",
   }
 };
 
@@ -1728,6 +1731,20 @@ export default function CustomerMenu() {
   const hhVar = Object.keys(hhProductPrices).some(id => hhProductPrices[id] != null);
   // Uye olmayanin gorecegi "uye olursan" fiyati: indirimler acikmis gibi hesap.
   const uyeOlursaFiyat = (p, options) => (!uyeMi && hhSadeceUye) ? calcPrice(p, options, true) : null;
+  // Pencerenin ne zaman oldugu, uc dilde. TUM GUN kurali (00:00–23:59) saat
+  // yerine "tüm gün" yazar: "Üyelere özel · Pazar tüm gün ₺150" (sahip 12.11).
+  const hhZaman = (pl) => {
+    const bugun = pl.gun === 0 || pl.aktif;
+    const gunAdi = bugun || pl.gun === 1 ? null
+      : new Date(Date.now() + pl.gun * 86400000).toLocaleDateString(paraDil, { weekday: "long" });
+    if (pl.tumGun) {
+      return L(`${bugun ? "bugün" : gunAdi || "yarın"} tüm gün`,
+               `${bugun ? "today" : gunAdi || "tomorrow"}, all day ·`,
+               `${bugun ? "сегодня" : gunAdi || "завтра"}, весь день ·`);
+    }
+    const gun = bugun ? "" : (gunAdi || L("yarın", "tomorrow", "завтра")) + " ";
+    return L(`${gun}${pl.bas}–${pl.bit} arası`, `${gun}${pl.bas}–${pl.bit} ·`, `${gun}${pl.bas}–${pl.bit} ·`);
+  };
   // UYELIK CAGRISI (sahip 12.11): uye olmayan, happy hour urununun altinda uye
   // fiyatini ve saatini HER ZAMAN gorur — saat disinda da. "Üyelere özel ·
   // 21:00–09:00 arası ₺200"; pencere baska gundeyse gun adi da yazilir.
@@ -1736,23 +1753,9 @@ export default function CustomerMenu() {
     if (uyeMi || !hhSadeceUye) return null;
     const simdi = uyeOlursaFiyat(p);          // su an uye olsa odeyecegi
     const pl = hhPlan[p.id];
-    // Pencerenin ne zaman oldugu, uc dilde. TUM GUN kurali (00:00–23:59) saat
-    // yerine "tüm gün" yazar: "Üyelere özel · Pazar tüm gün ₺150" (sahip 12.11).
-    const zaman = () => {
-      const bugun = pl.gun === 0 || pl.aktif;
-      const gunAdi = bugun || pl.gun === 1 ? null
-        : new Date(Date.now() + pl.gun * 86400000).toLocaleDateString(paraDil, { weekday: "long" });
-      if (pl.tumGun) {
-        return L(`${bugun ? "bugün" : gunAdi || "yarın"} tüm gün`,
-                 `${bugun ? "today" : gunAdi || "tomorrow"}, all day ·`,
-                 `${bugun ? "сегодня" : gunAdi || "завтра"}, весь день ·`);
-      }
-      const gun = bugun ? "" : (gunAdi || L("yarın", "tomorrow", "завтра")) + " ";
-      return L(`${gun}${pl.bas}–${pl.bit} arası`, `${gun}${pl.bas}–${pl.bit} ·`, `${gun}${pl.bas}–${pl.bit} ·`);
-    };
-    const yaz = (fiyat) => ({ fiyat, yazi: L(`Üyelere özel · ${zaman()} ${para(fiyat)}`,
-                                             `Members only · ${zaman()} ${para(fiyat)} — join`,
-                                             `Только для участников · ${zaman()} ${para(fiyat)} — вступить`) });
+    const yaz = (fiyat) => ({ fiyat, yazi: L(`Üyelere özel · ${hhZaman(pl)} ${para(fiyat)}`,
+                                             `Members only · ${hhZaman(pl)} ${para(fiyat)} — join`,
+                                             `Только для участников · ${hhZaman(pl)} ${para(fiyat)} — вступить`) });
     if (simdi != null && simdi < fp) {
       // Indirim su an acik. Nedeni happy hour ise saatini de yaz.
       if (pl?.aktif && hhProductPrices[p.id] != null) return yaz(simdi);
@@ -1764,6 +1767,41 @@ export default function CustomerMenu() {
     if (!(f < fp)) return null;
     return yaz(f);
   };
+  // UYENIN GORDUGU SATIR (sahip 26.11: "birada yazdigi gibi alt aciklamada
+  // yazsin; uye fiyati yazsin, happy hour yazmasin"). Uye indirimli fiyati
+  // oder; nedenini fiyatin yanindaki "HAPPY HOUR" etiketi degil, alttaki satir
+  // soyler: "Üye fiyatı · bugün tüm gün ₺150" / "Üye fiyatı · 09:00–22:00
+  // arası ₺200". Uyelere ozel duzende indirimlerin hepsi uye fiyatidir;
+  // "happy hour" sozu o duzende hicbir yerde yazmaz. Saat yalniz fiyat su an
+  // bir kuraldan geliyorsa yazilir (anlik indirimde saat yoktur).
+  // Doner: yazi ya da null. Kisiye ozel fiyat kazandiysa (SANA ÖZEL etiketi)
+  // bu satir cikmaz: yazdigi rakam kuralin degil kisinin fiyati olurdu.
+  const uyeSatiri = (p, fp) => {
+    // Yuvarlanmis liste fiyatiyla karsilastirilir: kurusla girilmis fiyat
+    // (180,40) yuvarlaninca indirim sayilmasin.
+    if (!uyeMi || !hhSadeceUye || !(fp < Math.round(Number(p.price)))) return null;
+    const mp = memberPriceFor(p);
+    if (mp != null && mp <= fp) return null;
+    const pl = hhPlan[p.id];
+    if (hhUygulandi(p) && pl?.aktif) {
+      return L(`Üye fiyatı · ${hhZaman(pl)} ${para(fp)}`,
+               `Member price · ${hhZaman(pl)} ${para(fp)}`,
+               `Цена участника · ${hhZaman(pl)} ${para(fp)}`);
+    }
+    return L(`Üye fiyatı · ${para(fp)}`, `Member price · ${para(fp)}`, `Цена участника · ${para(fp)}`);
+  };
+  // BASLIKTAKI ROZET. Uyelere ozel duzende "ÜYE FİYATI" yazar ve menude uye
+  // fiyatiyla satilan bir urun varken uyeye cikar: kartlardaki satirla AYNI
+  // kosul (uyeSatiri), boylece rozet yanarken en az bir kartta satir vardir.
+  // "HAPPY HOUR" yalniz happy hour herkese aciksa (hh_sadece_uye = false)
+  // yazar; o duzende eski kural gecerli.
+  // Yalniz Menu sekmesinin kategorilerindeki urunler sayilir: Shop rafindaki
+  // urun kartinda satir yoktur, rozeti o yakmamali.
+  const menuKatId = new Set(menuCategories.map(c => c.id));
+  const menudeki = products.filter(p => menuKatId.has(p.category_id) && (!partyMode || p.show_in_party_menu));
+  const hhRozet = hhSadeceUye
+    ? (uyeMi && menudeki.some(p => uyeSatiri(p, calcPrice(p)) != null) ? t.uye_fiyati : null)
+    : (hhVar ? t.happy_hour : null);
 
   // Ustu cizilecek liste fiyati: yalniz gercekten indirim varsa
   const listPrice = (p, options) => {
@@ -2346,8 +2384,9 @@ export default function CustomerMenu() {
                 olmayan indirimli fiyat gormez; ona urunun altindaki "Üyelere
                 özel · saat · fiyat" yazisi konusur. Eskiden rozet "HAPPY HOUR ·
                 üyelere" idi: dar telefonda baslik satirina sigmiyor, marka adi
-                uc satira kiriliyor, dil dugmeleri ekran disina tasiyordu. */}
-            {hhVar && (uyeMi || !hhSadeceUye) && custTab === "menu" && <div style={{background:"#000000",color:"#FFFFFF",padding:"4px 10px",borderRadius:10,fontSize:12,fontWeight:600,letterSpacing:"0.2px",whiteSpace:"nowrap"}}>{t.happy_hour}</div>}
+                uc satira kiriliyor, dil dugmeleri ekran disina tasiyordu.
+                Uyelere ozel duzende yazi "ÜYE FİYATI"dir (hhRozet, sahip 26.11). */}
+            {hhRozet && custTab === "menu" && <div style={{background:"#000000",color:"#FFFFFF",padding:"4px 10px",borderRadius:10,fontSize:12,fontWeight:600,letterSpacing:"0.2px",whiteSpace:"nowrap"}}>{hhRozet}</div>}
             {LangSwitcher()}
           </div>
         </div>
@@ -2850,8 +2889,10 @@ export default function CustomerMenu() {
                 <div style={{display:"flex",alignItems:"center",gap:10,marginTop:8,opacity:sol}}>
                   {dis && <span style={{fontSize:12,color:"#666666",textDecoration:"line-through"}}>{para(p.price)}</span>}
                   <span style={{fontSize:15,fontWeight:800,color:"#000"}}>{para(fp)}</span>
-                  {/* Ustu cizili fiyatin nedeni. */}
-                  {dis && hhUygulandi(p) && <span style={{fontSize:11,padding:"2px 6px",border:"1px solid #000",borderRadius:6,fontWeight:700,letterSpacing:"0.3px",whiteSpace:"nowrap"}}>{t.happy_hour}</span>}
+                  {/* Ustu cizili fiyatin nedeni. Yalniz happy hour HERKESE aciksa
+                      etiket cikar; uyelere ozel duzende nedeni alttaki "Üye
+                      fiyatı · …" satiri soyler (uyeSatiri). */}
+                  {dis && hhUygulandi(p) && !hhSadeceUye && <span style={{fontSize:11,padding:"2px 6px",border:"1px solid #000",borderRadius:6,fontWeight:700,letterSpacing:"0.3px",whiteSpace:"nowrap"}}>{t.happy_hour}</span>}
                   {p.currency === "EUR" && p.price_eur != null && (
                     <span style={{fontSize:12,color:"#666666",fontWeight:600}}>· €{Number(p.price_eur)}</span>
                   )}
@@ -2866,6 +2907,13 @@ export default function CustomerMenu() {
                   // gorur, altinda uye fiyati ve giris cagrisi (sahip 24.10).
                   // Happy hour urununde saat ve fiyat HER ZAMAN yazar (saat disinda da):
                   // "Üyelere özel · 21:00–09:00 arası ₺200" (sahip 12.11).
+                  // Uye, dugme olmayan "Üye fiyatı · …" satirini gorur (sahip 26.11).
+                  const uyeYazi = uyeSatiri(p, fp);
+                  if (uyeYazi) return (
+                    <div style={{marginTop:6,fontSize:12,color:"#000",fontWeight:700,display:"flex",alignItems:"center",gap:5,lineHeight:1.35,opacity:sol}}>
+                      <Ikon ad="uye" boy={12} style={{flexShrink:0}}/><span>{uyeYazi}</span>
+                    </div>
+                  );
                   const cagri = uyeCagrisi(p, fp);
                   if (!cagri) return null;
                   return (

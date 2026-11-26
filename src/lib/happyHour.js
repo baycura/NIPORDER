@@ -85,10 +85,14 @@ export function happyHourPlan(products, rules, now = new Date()) {
         // YAZILAN SAAT gercek parcaya uyar. Gece yarisini asan kural (21:00–
         // 09:00) her gun seciliyse kesintisizdir. Bir onceki / sonraki gun
         // secili DEGILSE parca gece yarisinda baslar ya da biter: "00:00–09:00"
-        // ya da "21:00–00:00" yazilir, musteriye tutulmayacak saat soylenmez.
+        // ya da "21:00–24:00" yazilir, musteriye tutulmayacak saat soylenmez.
         const sarar = s > e;
         const gBas = (sarar && a === 0 && !gunVar((g + 6) % 7)) ? "00:00" : kisaSaat(bas);
-        const gBit = (sarar && b === 1440 && !gunVar((g + 1) % 7)) ? "00:00" : kisaSaat(bit);
+        // GECE YARISINDA BITEN parca hep "24:00" yazilir: bitisi 23:59 yazilan
+        // kural (GUN_SONU), bitisi 00:00 yazilan kural, ertesi gunu secili
+        // olmayan gece kurali. "09:30–24:00 arası"; "23:59" ya da bitiste
+        // "00:00" yazmaz. (Baslangictaki "00:00" dogrudur, kalir.)
+        const gBit = b === 1440 && (!sarar || eHam === 0 || !gunVar((g + 1) % 7)) ? "24:00" : kisaSaat(bit);
         // Esitlikte sonra gelen kazanir: happyHourPrices'ta da sonraki kural
         // oncekinin, urunun kendi alani kuralin ustune yazar.
         if (!eski || uzak <= eski.uzak) out[pid] = { fiyat: f, bas: gBas, bit: gBit, gun: k, aktif, uzak, tumGun };

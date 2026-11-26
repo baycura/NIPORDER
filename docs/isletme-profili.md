@@ -87,10 +87,24 @@
 - **Amaç: üye sayısını artırmak.** Üye olmayan kişi, happy hour ürününün
   altında üye fiyatını ve saatini HER ZAMAN görür (saat dışında da):
   "Üyelere özel · 09:00–22:00 arası ₺200". Pencere başka gündeyse gün adı
-  eklenir ("yarın", "Pazar"). Dokununca üyelik penceresi açılır. Üyeye ve
-  herkese açık happy hour'da (`hh_sadece_uye = false`) gösterilmez.
+  eklenir ("yarın", "Pazar"). Dokununca üyelik penceresi açılır. Herkese
+  açık happy hour'da (`hh_sadece_uye = false`) gösterilmez.
   Kod: `lib/happyHour.js` → `happyHourPlan`, `CustomerMenu` → `uyeCagrisi`.
-- **Efes Fıçı 0.5L (liste ₺280) üye fiyatı:**
+- **Üye "Üye fiyatı" yazısını görür (sahip, 2026-11-26: "birada yazdığı gibi
+  alt açıklamada yazsın; üye fiyatı yazsın, happy hour yazmasın").** Üyenin
+  kartında üstü çizili liste fiyatı ve üye fiyatı yazar; altında düğme
+  olmayan satır: "Üye fiyatı · bugün tüm gün ₺150" ya da "Üye fiyatı ·
+  09:00–22:00 arası ₺200". Saat yalnız fiyat o an bir kuraldan geliyorsa
+  yazar; yalnız anlık indirim varsa "Üye fiyatı · ₺180". Üyelere özel
+  düzende "HAPPY HOUR" sözü hiçbir yerde yazmaz. Kişiye özel fiyat kazanırsa
+  satır çıkmaz, "SANA ÖZEL" etiketi kalır. Üye olmayanın gördüğü "Üyelere
+  özel · …" yazısı değişmedi. Kod: `CustomerMenu` → `uyeSatiri`.
+- **Kahve üye fiyatı (sahip, 2026-11-26):** Filtre Kahve, Espresso, Americano
+  liste ₺180, üyeye **₺150**, her gün tüm gün (kurallar "Üye fiyatı — kahve
+  …" ve "Üye fiyatı — filtre …"). Pazar 08:00–09:30 Filtre üyeye ₺120
+  ("Cycling Club") aynen durur; bu yüzden Pazar günü Filtre üç ayrı kuraldır
+  (00:00–08:00, 08:00–09:30, 09:30–23:59), üst üste binmez.
+- **Bud Fıçı 50 cl (liste ₺280; eski adı Efes Fıçı 0.5L) üye fiyatı:**
   - Pazartesi–Cumartesi 09:00–22:00: **₺200** (kural "Üye fiyatı — Pzt–Cmt
     09:00–22:00"). 22:00'den sonra herkes liste fiyatı öder.
   - Pazar **tüm gün: ₺150** (kural "Üye fiyatı — Pazar tüm gün", 00:00–23:59).
@@ -104,8 +118,31 @@
   dahil); menüde saat yerine "tüm gün" yazar: "Üyelere özel · Pazar tüm gün
   ₺150". Aynı ürün için iki kural AYNI ANDA açık olmamalı: hangisinin
   kazanacağı belli değildir. Günleri ya da saatleri ayır.
-- Başlıktaki "HAPPY HOUR" rozeti yalnız indirimi gören kişiye çıkar.
+- **Başlıktaki rozet:** üyelere özel düzende "ÜYE FİYATI" yazar ve Menü
+  sekmesinde üye fiyatıyla satılan bir ürün varken yalnız üyeye çıkar
+  (kartlardaki satırla aynı koşul; Shop rafı sayılmaz, parti gecesinde yalnız
+  parti menüsü sayılır). Kahve üye fiyatı tüm gün olduğu için rozet, menüde
+  o kahveler göründüğü sürece üyede görünür. "HAPPY HOUR" yalnız happy hour
+  herkese açıksa (`hh_sadece_uye = false`) yazar; o düzende eski kural
+  geçerlidir.
+- Gece yarısında biten pencere menüde "24:00" diye yazar (bitişi 23:59 ya da
+  00:00 yazılan kural, ertesi günü seçili olmayan gece kuralı): "Üyelere
+  özel · 09:30–24:00 arası ₺150". Başlangıçtaki "00:00" aynen kalır.
 - Kurallar panelden yönetilir: Panel → Happy Hour.
+
+## Kahve ve maliyet kararları (sahip, 2026-11-26)
+- **Kahve liste fiyatları değişmez.** Cappuccino ve Latte ₺200 kalır (₺220
+  önerisi: "dokunma"). Filtre, Espresso, Americano liste ₺180, üyeye ₺150.
+  Tekrar sorma; sahip kendisi açarsa konuşulur.
+- **Seçime göre malzeme düşme yapılmaz** (yulaf sütü, şurup, soda, laktozsuz
+  süt seçilince ayrı malzeme düşmesi): "gerek yok". Reçete ürünün ana
+  malzemesini düşer.
+- **Filtre dozu 15 g** (60 g çekirdekten 4 fincan). Süt: Cappuccino, Latte,
+  Flat White, Cortado dördü de 250 ml.
+- **Maliyet yazımı:** birim maliyet KDV dahil yazılır (satır tutarı +
+  o satırın KDV'si, alınan adede ya da ml'ye bölünür). Fıçı: 30 L fıçının
+  27.500 ml'si satılır sayılır. Depozito maliyet değildir.
+- **Glenlivet 12** maliyeti bilerek boş: sahip konuyu beklemeye aldı.
 
 ## Rezervasyon: "Gelmedi" (sahip onayı, 2026-11-12)
 - Panelde onaylı rezervasyonda **"Gelmedi"** düğmesi var (iki dokunuş). Üyede
