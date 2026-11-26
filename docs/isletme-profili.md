@@ -128,6 +128,20 @@
   özel · 09:30–24:00 arası ₺150". Başlangıçtaki "00:00" aynen kalır.
 - Kurallar panelden yönetilir: Panel → Happy Hour.
 
+## Kahve ve maliyet kararları (sahip, 2026-11-26)
+- **Kahve liste fiyatları değişmez.** Cappuccino ve Latte ₺200 kalır (₺220
+  önerisi: "dokunma"). Filtre, Espresso, Americano liste ₺180, üyeye ₺150.
+  Tekrar sorma; sahip kendisi açarsa konuşulur.
+- **Seçime göre malzeme düşme yapılmaz** (yulaf sütü, şurup, soda, laktozsuz
+  süt seçilince ayrı malzeme düşmesi): "gerek yok". Reçete ürünün ana
+  malzemesini düşer.
+- **Filtre dozu 15 g** (60 g çekirdekten 4 fincan). Süt: Cappuccino, Latte,
+  Flat White, Cortado dördü de 250 ml.
+- **Maliyet yazımı:** birim maliyet KDV dahil yazılır (satır tutarı +
+  o satırın KDV'si, alınan adede ya da ml'ye bölünür). Fıçı: 30 L fıçının
+  27.500 ml'si satılır sayılır. Depozito maliyet değildir.
+- **Glenlivet 12** maliyeti bilerek boş: sahip konuyu beklemeye aldı.
+
 ## Rezervasyon: "Gelmedi" (sahip onayı, 2026-11-12)
 - Panelde onaylı rezervasyonda **"Gelmedi"** düğmesi var (iki dokunuş). Üyede
   güven −40, gelmedi sayısı +1, seri 0. Misafirde yalnız işaret.
