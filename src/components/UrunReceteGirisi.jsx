@@ -45,6 +45,7 @@ export default function UrunReceteGirisi({ storeId, value, onChange, onYeniAcik 
 
   // Istek surerken bilesen kalkabilir ya da magaza degisebilir; cevap o zaman
   // forma YAZILMAZ (kapanmis pencerenin satirlari yeni urune dusmesin).
+  const soruAni = useRef(0);   // kuskulu rakam sorusunun soruldugu an (ms)
   const takili = useRef(true);
   const magazaRef = useRef(storeId);
   magazaRef.current = storeId;
@@ -118,7 +119,9 @@ export default function UrunReceteGirisi({ storeId, value, onChange, onYeniAcik 
   const birim = yeni ? MALZEME_BIRIMLERI.find(b => b.k === yeni.unit) : null;
   const onizle = yeni && birim ? yeniMalzemeKaydi({ ...yeni, storeId }, malzemeler || []) : null;
   const benzer = yeni ? benzerMalzemeler(yeni.name, yeni.grup, malzemeler || []).filter(m => m.id !== onizle?.ayni?.id).slice(0, 8) : [];
-  const varOlaniSec = (m) => { setYeni(null); ekle(m); };
+  // Kayit surerken var olan secilmez: yoldaki ekleme yine tamamlanir ve
+  // recetede iki malzeme, stokta ikiz kayit olurdu.
+  const varOlaniSec = (m) => { if (kaydediyor) return; setYeni(null); ekle(m); };
   const soruAnahtari = (y) => [y.unit, y.boyut, y.fiyat].join("|");
 
   const yeniKaydet = async () => {
@@ -130,9 +133,12 @@ export default function UrunReceteGirisi({ storeId, value, onChange, onYeniAcik 
     // dokunus kaydeder.
     if (ilk.soru && sorulan !== soruAnahtari(taslak)) {
       setSorulan(soruAnahtari(taslak));
+      soruAni.current = Date.now();
       uyar(ilk.soru + " Doğruysa yeniden “Malzemeyi kaydet”e bas.");
       return;
     }
+    // Cift dokunus soruyu okutmadan gecmesin: sorudan hemen sonraki dokunus sayilmaz.
+    if (ilk.soru && Date.now() - soruAni.current < 1500) return;
     setKaydediyor(true);
     // AYNI AD denetimi GUNCEL listeyle yapilir: kutu acildiktan sonra baskasi
     // ayni malzemeyi acmis ya da onceki denemenin cevabi yolda kaybolmus olabilir.
@@ -152,8 +158,8 @@ export default function UrunReceteGirisi({ storeId, value, onChange, onYeniAcik 
     if (!takili.current) return;
     setKaydediyor(false);
     if (error || !data?.id) { uyar("Malzeme kaydedilemedi: " + (error?.message || "bilinmeyen hata")); return; }
+    if (magazaRef.current !== magaza) return;   // magaza degisti: malzeme kayitli; bu listeye ve receteye eklenmez
     setMalzemeler(prev => adSirala([...(prev || []).filter(m => m.id !== data.id), data]));
-    if (magazaRef.current !== magaza) return;   // magaza degisti: malzeme kayitli, bu receteye eklenmez
     setYeni(null);
     ekle(data, { yeniAcildi: true });
     uyar(data.name + " eklendi. Reçetedeki miktarını yaz.", "basari");
@@ -243,7 +249,7 @@ export default function UrunReceteGirisi({ storeId, value, onChange, onYeniAcik 
           {onizle?.ayni && (
             <div style={{ fontSize: 13, color: "#C87A6A", marginTop: 8, lineHeight: 1.5 }}>
               “{onizle.ayni.name}” zaten var.{" "}
-              <button type="button" onClick={() => varOlaniSec(onizle.ayni)} style={{ ...cip(false), marginLeft: 4 }}>Onu reçeteye ekle</button>
+              <button type="button" onClick={() => varOlaniSec(onizle.ayni)} disabled={kaydediyor} style={{ ...cip(false), marginLeft: 4 }}>Onu reçeteye ekle</button>
             </div>
           )}
           {benzer.length > 0 && (
@@ -253,7 +259,7 @@ export default function UrunReceteGirisi({ storeId, value, onChange, onYeniAcik 
               </div>
               <div style={{ display: "flex", flexWrap: "wrap", gap: 6 }}>
                 {benzer.map(m => (
-                  <button type="button" key={m.id} onClick={() => varOlaniSec(m)} style={malzemeDugme}>
+                  <button type="button" key={m.id} onClick={() => varOlaniSec(m)} disabled={kaydediyor} style={malzemeDugme}>
                     {m.name} <span style={{ color: "#888", fontWeight: 600 }}>({m.unit})</span>
                   </button>
                 ))}
