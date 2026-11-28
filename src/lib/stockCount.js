@@ -111,16 +111,23 @@ const ESANLAM = [
   ["vodka", "votka"], ["votka", "vodka"],
   ["gin", "cin"], ["cin", "gin"],
   ["whiskey", "viski"], ["whisky", "viski"], ["viski", "whisk"],
+  ["whisky", "whiskey"], ["whiskey", "whisky"],
   ["rum", "rom"], ["rom", "rum"],
   ["tequila", "tekila"], ["tekila", "tequila"],
   ["liqueur", "likor"], ["likor", "liqueur"],
-  ["syrup", "surup"], ["surup", "syrup"],
+  ["syrup", "surup"], ["syrup", "surub"], ["surup", "syrup"],   // "Şeker Şurubu": ek alinca p -> b
 ];
+// UC HARFLI ciftler (gin/cin, rum/rom) yalniz TAM KELIME olarak eslesir:
+// alt dizi aramasi "gin" yazana "Tarçın"i, "rum" yazana "Aromatik"i getirirdi.
+const KISA_CIFT = 3;
+const adKelimeleri = (s) => sadelestir(s).split(/[^a-z0-9]+/).filter(Boolean);
 export const aramaAnahtari = (s) => sadelestir(s).replace(/[^a-z0-9]/g, "");
 export const aramaUyar = (ad, sorgu) => {
   const q = aramaAnahtari(sorgu);
   if (!q) return true;
   const hedef = aramaAnahtari(ad);
   if (hedef.includes(q)) return true;
-  return ESANLAM.some(([a, b]) => q.includes(a) && hedef.includes(q.replace(a, b)));
+  return ESANLAM.some(([a, b]) => (a.length <= KISA_CIFT
+    ? q === a && adKelimeleri(ad).includes(b)
+    : q.includes(a) && hedef.includes(q.replace(a, b))));
 };

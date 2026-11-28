@@ -9,6 +9,7 @@ import { MARKA } from "../../lib/profil.js";
 import { useQrSiparisZili } from "../../lib/qrZil.js";
 import Ikon from "../../components/Ikon.jsx";
 import QrSerit from "../../components/QrSerit.jsx";
+import { gorunenUnvan } from "../../lib/unvan.js";
 
 const roleColor = {admin:"#FFFFFF", manager:"#FFFFFF", owner:"#FFFFFF", waiter:"#FFFFFF", kitchen:"#FFFFFF", cashier:"#8A8580", viewer:"#8A8580", parttime:"#8A8580"};
 const cv = "-apple-system,BlinkMacSystemFont,'Segoe UI',Roboto,sans-serif";
@@ -45,7 +46,7 @@ export default function StaffLayout() {
     </button>
   );
   const color = roleColor[staffUser?.role] || "#888";
-  const displayRole = staffUser?.display_role || "Yönetici";
+  const displayRole = gorunenUnvan(staffUser);
   const [isMobile, setIsMobile] = useState(typeof window !== "undefined" ? window.innerWidth < 900 : true);
   // Akordeon: son acilan grup hatirlanir; ilk grup varsayilan acik
   const [acikGrup, setAcikGrup] = useState(() => {

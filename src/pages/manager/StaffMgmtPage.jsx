@@ -6,6 +6,7 @@ import FormPencere from "../../components/FormPencere.jsx";
 import { supabase } from "../../lib/supabase.js";
 import { useAuth } from "../../contexts/AuthContext.jsx";
 import Ikon from "../../components/Ikon.jsx";
+import { varsayilanUnvan } from "../../lib/unvan.js";
 
 const cv = "-apple-system,BlinkMacSystemFont,'Segoe UI',Roboto,sans-serif";
 
@@ -24,10 +25,6 @@ const ROLES_BASE = [
 const EK_YETKILER = [
   { key: "menu_fiyat", label: "Ürün ekleme ve fiyat değiştirme", kisa: "ürün + fiyat" },
 ];
-// Unvan bos birakilirsa yazilan ad: rol etiketinin parantezden onceki kismi
-// ("Part-time (Sipariş+Kasa)" -> "Part-time").
-const ROL_ADI = { admin: "Sahip", ...Object.fromEntries(ROLES_BASE.map(r => [r.key, r.label.split(" (")[0]])) };
-const varsayilanUnvan = (r) => ROL_ADI[r] || "Personel";
 const ekYetkiAlmaz = (r) => r === "admin" || r === "manager" || r === "owner" || r === "viewer";
 
 const roleColor = { admin:"#FFFFFF", manager:"#FFFFFF", owner:"#FFFFFF", waiter:"#FFFFFF", kitchen:"#FFFFFF", cashier:"#8A8580", viewer:"#8A8580", parttime:"#8A8580" };
@@ -117,7 +114,11 @@ export default function StaffMgmtPage() {
         email: form.email?.trim() || null,
         phone: form.phone?.trim() || null,
         role: form.role,
-        display_role: form.display_role?.trim() || varsayilanUnvan(form.role),
+        // Bos unvan = rolun adi. Rol degistiyse ve unvan ESKI rolun adiysa
+        // (elle yazilmamis) yeni rolun adi yazilir; yoksa garsondan yonetici
+        // yapilan kisi "Garson/Kasiyer" gorunmeye devam ederdi.
+        display_role: (!form.display_role?.trim() || (form.role !== modal.data.role && form.display_role.trim() === varsayilanUnvan(modal.data.role)))
+          ? varsayilanUnvan(form.role) : form.display_role.trim(),
         is_active: form.is_active,
         store_ids: form.store_ids || [],
         // Yonetici rolunde ek yetki anlamsiz: bos yazilir, rol dusurulurse eski yetki geri gelmesin.

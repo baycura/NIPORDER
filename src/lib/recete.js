@@ -159,7 +159,13 @@ export function yeniMalzemeOzeti(kayit) {
 // Kelime KELIME karsilastirilir ("gin" ile "Tarçın" benzer sayilmaz; "vodka"
 // ile "Votka" sayilir). Once kelimesi tutanlar, sonra ayni raftakiler.
 const kelimeler = (s) => String(s || "").split(/[\s\-/]+/).filter(k => aramaAnahtari(k).length >= 3);
-const ayniKelime = (a, b) => aramaUyar(a, b) && aramaUyar(b, a);
+// Ayni kelime: iki yonlu eslesme (es anlam dahil) ya da biri otekinin BASI
+// ("Likör" ile "Likörü", "Limon" ile "Limonata"; en az 4 harf).
+const ayniKelime = (a, b) => {
+  if (aramaUyar(a, b) && aramaUyar(b, a)) return true;
+  const ka = aramaAnahtari(a), kb = aramaAnahtari(b);
+  return Math.min(ka.length, kb.length) >= 4 && (ka.startsWith(kb) || kb.startsWith(ka));
+};
 export function benzerMalzemeler(ad, grup, mevcutlar = []) {
   const yk = kelimeler(ad);
   const raf = String(grup || "").trim();

@@ -5,6 +5,7 @@ import { useAuth } from "../../contexts/AuthContext.jsx";
 import { gorunurGruplar } from "../../lib/panelNav.js";
 import { sikKullanilanlar, kullanimYaz, acikGruplarOku, acikGruplarYaz } from "../../lib/panelKullanim.js";
 import Ikon from "../../components/Ikon.jsx";
+import { gorunenUnvan } from "../../lib/unvan.js";
 
 const cv = "-apple-system,BlinkMacSystemFont,'Segoe UI',Roboto,sans-serif";
 
@@ -131,7 +132,7 @@ export default function HubPage() {
         </div>
         <div style={{ flex: 1, minWidth: 0 }}>
           <div style={{ fontSize: 14, fontWeight: 700 }}>{staffUser?.name}</div>
-          <div style={{ fontSize: 11, color: "#8A8580" }}>{staffUser?.display_role || staffUser?.role}</div>
+          <div style={{ fontSize: 11, color: "#8A8580" }}>{gorunenUnvan(staffUser)}</div>
         </div>
         <button
           onClick={async () => { await signOut(); navigate("/login"); }}
