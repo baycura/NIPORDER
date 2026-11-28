@@ -138,9 +138,12 @@ export function AuthProvider({ children }) {
   const isParttime = role === "parttime";
   // EK YETKI (sahip 28.11): rol degismeden tek bir is icin izin. staff.yetkiler
   // (text[]) icinde tutulur, yalniz admin yazar (Personel sayfasi).
-  //   "menu_fiyat" = Menu Yonetimi'nde YALNIZ urun ekleme + fiyat degistirme.
+  //   "menu_fiyat" = Menu Yonetimi'nde YALNIZ urun ekleme (recetesiyle; listede
+  //                  olmayan malzemeyi de acar) + fiyat degistirme.
   // Yonetici zaten hepsini yapar; ek yetki yonetici olmayan icindir.
-  const yetkiler = Array.isArray(staffUser?.yetkiler) ? staffUser.yetkiler : [];
+  // Gozlemci (viewer) "sadece goruntuleme" roludur: kaydinda yetki kalmis
+  // olsa da bos sayilir (App.jsx PrivateRoute ve lib/panelNav.js ayni kural).
+  const yetkiler = !isViewer && Array.isArray(staffUser?.yetkiler) ? staffUser.yetkiler : [];
   const yetkiVar = (ad) => yetkiler.includes(ad);
 
   // Profil formu kaydettikten sonra uygulamanin elindeki musteri de tazelenmeli;

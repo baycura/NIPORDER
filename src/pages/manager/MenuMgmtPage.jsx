@@ -27,8 +27,12 @@ export default function MenuMgmtPage() {
   // kategori, siralama, silme ve urunun diger alanlari kapali. Yeni urun
   // formunda muhasebe ve yonlendirme alanlari da gizli (konsinye, indirim,
   // happy hour, magaza, mutfak, NIP Kitchen): varsayilan degerler yazilir.
+  // ALIS FIYATI bilerek ACIK: hazir alinan urunun maliyeti baska yerde
+  // tutulmaz; ekleyen kisi yazmazsa karlilik raporu urunu goremez. Recete
+  // kutusunda listede olmayan malzemeyi de acar (maliyet + stok ile).
   const dar = !isManager;
   const [fiyatModal, setFiyatModal] = useState(null);   // dar gorunum: fiyati degisecek urun
+  const [yeniMalzemeAcik, setYeniMalzemeAcik] = useState(false); // recete kutusunda kaydedilmemis yeni malzeme formu
   const [yeniFiyat, setYeniFiyat] = useState("");
   const [eurRate, setEurRate] = useState(0); // 1 € = ? ₺ (Ayarlar'dan)
   const [categories, setCategories] = useState([]);
@@ -204,6 +208,13 @@ export default function MenuMgmtPage() {
     setGorselBusy(false);
   };
 
+  // Urunun yazilacagi magaza. Dar gorunumde magaza secimi gizlidir: secili
+  // kategorinin magazasi alinir (iki magazali birine ek yetki verilirse urun
+  // yanlis magazaya dusmesin). Recete kutusu da malzemeleri bu magazadan ceker.
+  const urunMagazasi = () => prodForm.store_id
+    || (dar ? categories.find(c => c.id === prodForm.category_id)?.store_id : null)
+    || staffUser?.store_ids?.[0];
+
   const saveProd = async () => {
     if (busy) return;
     if (dar && prodModal?.mode !== "new") return;   // dar yetki: mevcut urunde yalniz fiyat (saveFiyat)
@@ -226,10 +237,18 @@ export default function MenuMgmtPage() {
     // RECETE: yalniz YENI urunde ve formda acildiysa yazilir. NIP Kitchen
     // envanterinin recetesi olmaz (mutfak hazirlar, stok bizde dusmez).
     const yeni = prodModal.mode === "new";
+    // Bu kaydi BASLATAN pencere. Istek surerken pencere kapatilip baskasi
+    // acilirsa sonuc o baska pencereye yazilmaz (kayitliId yanlis urune
+    // gecip B'nin recetesi A'ya yazilirdi).
+    const pencere = prodModal;
     const receteSatir = (yeni && prodForm.recete_gir && !prodForm.kitchen_consignment) ? (prodForm.recete || []) : [];
+    if (yeni && prodForm.recete_gir && !prodForm.kitchen_consignment && yeniMalzemeAcik) {
+      uyar("Önce yeni malzemeyi kaydet ya da Vazgeç'e bas"); return;
+    }
     const bozuk = gecersizReceteSatiri(receteSatir);
     if (bozuk) { uyar("Reçete: " + bozuk.name + " için miktar yaz"); return; }
     setBusy(true);
+    const hedefMagaza = urunMagazasi();
     const payload = {
       name: prodForm.name.trim(),
       name_en: prodForm.name_en?.trim() || null,
@@ -258,14 +277,14 @@ export default function MenuMgmtPage() {
       unavailable_reason: prodForm.unavailable_reason?.trim() || null,
       show_in_party_menu: prodForm.show_in_party_menu,
       kitchen_consignment: !!prodForm.kitchen_consignment,
-      store_id: prodForm.store_id || staffUser?.store_ids?.[0],
+      store_id: hedefMagaza,
       additional_store_ids: prodForm.additional_store_ids || [],
       hh_enabled: !!prodForm.hh_enabled,
       hh_price: (prodForm.hh_price===''||prodForm.hh_price==null)?null:Number(prodForm.hh_price),
       hh_start: prodForm.hh_start||null,
       hh_end: prodForm.hh_end||null,
       hh_days: Array.isArray(prodForm.hh_days)?prodForm.hh_days:[0,1,2,3,4,5,6],
-      kitchen_destination_store_id: prodForm.kitchen_destination_store_id || prodForm.store_id || staffUser?.store_ids?.[0],
+      kitchen_destination_store_id: prodForm.kitchen_destination_store_id || hedefMagaza,
       is_available: prodForm.is_available,
       category_id: prodForm.category_id,
       has_options: prodForm.has_options,
@@ -274,21 +293,29 @@ export default function MenuMgmtPage() {
       show_prep_time: !!prodForm.show_prep_time,
     };
     if (yeni) {
-      // Urun bir onceki denemede yazildiysa (recete hatasi) YENIDEN yazilmaz:
-      // ikinci "Kaydet" ayni urunu iki kez acmasin.
-      let urunId = prodModal.kayitliId || null;
-      if (!urunId) {
+      // Urun bir onceki denemede yazildiysa (recete hatasi) YENIDEN acilmaz:
+      // ikinci "Kaydet" ayni urunu iki kez acmasin. Formda bu arada yapilan
+      // duzeltme (ad, fiyat) kaybolmasin diye urun GUNCELLENIR.
+      let urunId = pencere.kayitliId || null;
+      if (urunId) {
+        const { error } = await supabase.from("products").update(payload).eq("id", urunId);
+        if (error) { uyar("Hata: " + error.message); setBusy(false); return; }
+      } else {
         const { data, error } = await supabase.from("products").insert(payload).select("id").single();
         if (error || !data?.id) { uyar("Hata: " + (error?.message || "ürün kaydedilemedi")); setBusy(false); return; }
         urunId = data.id;
       }
       if (receteSatir.length) {
-        // Tek istek: satirlarin hepsi yazilir ya da hicbiri.
-        const { error: rErr } = await supabase.from("recipes").insert(receteKayitlari(receteSatir, urunId, payload.store_id));
+        // Tek istek: satirlarin hepsi yazilir ya da hicbiri. upsert: ilk
+        // istek aslinda yazildiysa (cevap yolda kaybolduysa) ikinci deneme
+        // "ayni kayit var" hatasina takilmaz.
+        const { error: rErr } = await supabase.from("recipes")
+          .upsert(receteKayitlari(receteSatir, urunId, payload.store_id), { onConflict: "product_id,ingredient_id" });
         if (rErr) {
-          setProdModal(m => (m ? { ...m, kayitliId: urunId } : m));
+          setProdModal(m => (m === pencere ? { ...m, kayitliId: urunId } : m));
           setBusy(false); load(true);
-          uyar("Ürün eklendi. Reçete kaydedilemedi: " + rErr.message + ". Kaydet'e yeniden bas; yalnız reçete gönderilir.");
+          // Pencere bu arada kapatilmis olabilir; mesaj iki durumu da soyler.
+          uyar("Ürün eklendi. Reçete kaydedilemedi: " + rErr.message + ". Pencere açıksa Kaydet'e yeniden bas; kapattıysan reçeteyi yönetici girsin.");
           return;
         }
       }
@@ -296,7 +323,7 @@ export default function MenuMgmtPage() {
       const res = await supabase.from("products").update(payload).eq("id", prodModal.data.id);
       if (res.error) { uyar("Hata: " + res.error.message); setBusy(false); return; }
     }
-    setProdModal(null); setBusy(false); load(true);
+    setProdModal(m => (m === pencere ? null : m)); setBusy(false); load(true);
   };
 
   // DAR GORUNUM: yalniz fiyat yazilir. Urunun baska hicbir alani gonderilmez;
@@ -433,7 +460,7 @@ export default function MenuMgmtPage() {
       <div style={{fontSize:11,color:"#888",letterSpacing:"1px",marginBottom:dar?8:18}}>{categories.length} KATEGORİ · {products.length} ÜRÜN</div>
       {dar && (
         <div style={{fontSize:12.5,color:"#B8B3AC",lineHeight:1.5,marginBottom:16}}>
-          Yetkin: yeni ürün eklemek ve fiyat değiştirmek. Yeni ürünü eklerken reçetesini de girebilirsin. Fiyat için ürüne dokun. Başka bir değişiklik gerekiyorsa yöneticiye yaz.
+          Yetkin: yeni ürün eklemek ve fiyat değiştirmek. Yeni ürünü eklerken reçetesini de girebilirsin; listede olmayan malzemeyi de açabilirsin. Fiyat için ürüne dokun. Başka bir değişiklik gerekiyorsa yöneticiye yaz.
         </div>
       )}
 
@@ -881,7 +908,7 @@ export default function MenuMgmtPage() {
                 <span style={{fontSize:13,color:"#F0EDE8",fontWeight:700}}>Reçete gir (satılınca stoktan düşer)</span>
               </label>
               {prodForm.recete_gir && (
-                <UrunReceteGirisi storeId={prodForm.store_id || staffUser?.store_ids?.[0]}
+                <UrunReceteGirisi storeId={urunMagazasi()} onYeniAcik={setYeniMalzemeAcik}
                   value={prodForm.recete} onChange={v=>setProdForm(f => ({...f,recete:v}))}/>
               )}
             </div>
