@@ -11,7 +11,7 @@ export const varsayilanMiktar = (ing) => {
   return 1;
 };
 
-// Formda tutulan satirlar: [{ ingredient_id, name, unit, qty }].
+// Formda tutulan satirlar: [{ ingredient_id, name, unit, qty, store_id }].
 // Miktari gecersiz (bos, 0, eksi, sayi degil) ilk satiri verir; hepsi
 // gecerliyse null. Kayittan ONCE bakilir: 0 miktarli satir stoktan hicbir sey
 // dusmez, "reçete girdim" sanilmasin.

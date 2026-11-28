@@ -17,7 +17,7 @@ import SayiGirisi from "./SayiGirisi.jsx";
 //   - Maliyet gosterilmez. Bu bolumu "menu_fiyat" ek yetkili personel de
 //     gorur; maliyet ekranlari yoneticiye aittir.
 //
-// value: [{ ingredient_id, name, unit, qty }]   onChange(yeniListe)
+// value: [{ ingredient_id, name, unit, qty, store_id }]   onChange(yeniListe)
 export default function UrunReceteGirisi({ storeId, value, onChange }) {
   const satirlar = value || [];
   const [malzemeler, setMalzemeler] = useState(null);   // null = yukleniyor
@@ -37,10 +37,18 @@ export default function UrunReceteGirisi({ storeId, value, onChange }) {
     return () => { iptal = true; };
   }, [storeId]);
 
+  // MAGAZA DEGISTI (yonetici formda "hangi menude" secimini degistirdi):
+  // onceki magazanin malzemeleri bu urunun recetesinde kalmasin; yoksa urun
+  // satilinca baska magazanin stogu duserdi.
+  useEffect(() => {
+    if (satirlar.some(r => r.store_id !== storeId)) onChange(satirlar.filter(r => r.store_id === storeId));
+    // Yalniz magaza degisince calisir; satirlar bilerek bagimlilikta degil.
+  }, [storeId]);
+
   const secili = (id) => satirlar.some(r => r.ingredient_id === id);
   const ekle = (ing) => {
     if (secili(ing.id)) return;
-    onChange([...satirlar, { ingredient_id: ing.id, name: ing.name, unit: ing.unit, qty: varsayilanMiktar(ing) }]);
+    onChange([...satirlar, { ingredient_id: ing.id, name: ing.name, unit: ing.unit, qty: varsayilanMiktar(ing), store_id: storeId }]);
     setAra("");
   };
   const cikar = (id) => onChange(satirlar.filter(r => r.ingredient_id !== id));
