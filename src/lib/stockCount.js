@@ -93,19 +93,34 @@ export const TASLAK_KEY = (storeId) => `nip_stok_sayim_taslak_${storeId}`;
 // tek elle, "sut" yazip Sut'u bulmak lazim.
 const SADE = { ı: "i", i: "i", İ: "i", I: "i", ş: "s", Ş: "s", ğ: "g", Ğ: "g",
                ü: "u", Ü: "u", ö: "o", Ö: "o", ç: "c", Ç: "c" };
+// Turkce disi aksanlar da katlanir ("Jägermeister" -> "jagermeister",
+// "Rosé" -> "rose", "Kâğıt" -> "kagit"); eskiden bu harfler anahtardan
+// DUSUYOR, "jager" yazan Jägermeister'i bulamiyordu.
 export const sadelestir = (s) =>
-  String(s || "").replace(/[ıiİIşŞğĞüÜöÖçÇ]/g, c => SADE[c]).toLowerCase();
+  String(s || "").replace(/[ıiİIşŞğĞüÜöÖçÇ]/g, c => SADE[c])
+    .normalize("NFD").replace(/[\u0300-\u036f]/g, "").toLowerCase();
 
 // Sayim aramasi bir adim daha gevsek: bosluk, tire, nokta atilir ki
 // "t shirt", "t-shirt" ve "tshirt" ayni seyi bulsun. Tisort iki dilde
 // yaziliyor — eski urunler "T-Shirt", yeniler "Tişört" — biri aranirken
 // oteki de cikmali; yoksa "tshirt" yazan kisi bos liste gorur.
-const ESANLAM = { tshirt: "tisort", tisort: "tshirt" };
+// Bar tarafi: sise ustunde Ingilizce, rafta Turkce yazar ("vodka" / "votka").
+// Biri aranirken oteki de cikmali; yoksa ayni malzeme ikinci kez acilir.
+const ESANLAM = [
+  ["tshirt", "tisort"], ["tisort", "tshirt"],
+  ["vodka", "votka"], ["votka", "vodka"],
+  ["gin", "cin"], ["cin", "gin"],
+  ["whiskey", "viski"], ["whisky", "viski"], ["viski", "whisk"],
+  ["rum", "rom"], ["rom", "rum"],
+  ["tequila", "tekila"], ["tekila", "tequila"],
+  ["liqueur", "likor"], ["likor", "liqueur"],
+  ["syrup", "surup"], ["surup", "syrup"],
+];
 export const aramaAnahtari = (s) => sadelestir(s).replace(/[^a-z0-9]/g, "");
 export const aramaUyar = (ad, sorgu) => {
   const q = aramaAnahtari(sorgu);
   if (!q) return true;
   const hedef = aramaAnahtari(ad);
   if (hedef.includes(q)) return true;
-  return Object.entries(ESANLAM).some(([a, b]) => q.includes(a) && hedef.includes(q.replace(a, b)));
+  return ESANLAM.some(([a, b]) => q.includes(a) && hedef.includes(q.replace(a, b)));
 };

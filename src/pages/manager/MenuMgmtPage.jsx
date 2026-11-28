@@ -771,8 +771,8 @@ export default function MenuMgmtPage() {
         <Modal onClose={()=>setProdModal(null)} title={prodModal.mode==="new"?"Yeni Ürün":"Ürünü Düzenle"}>
           {prodModal.kayitliId && (
             <div role="status" style={{fontSize:13,color:"#F0EDE8",background:"#221A16",border:"1px solid #C87A6A",borderRadius:10,padding:"10px 12px",marginBottom:12,lineHeight:1.5}}>
-              Ürün eklendi. Reçete henüz kaydedilmedi. Kaydet&apos;e bas: yalnız reçete gönderilir.
-              İptal dersen ürün reçetesiz kalır.
+              Ürün eklendi. Reçete henüz kaydedilmedi. Kaydet&apos;e bas: reçete gönderilir,
+              formdaki düzeltmeler de kaydedilir. İptal dersen ürün reçetesiz kalır.
             </div>
           )}
           <Field label="AD (Türkçe)">
@@ -888,7 +888,7 @@ export default function MenuMgmtPage() {
               baska hicbir yerde tutulmuyor; urun karliligi raporu bu alani okur.
               Konsinye urunde gizli: maliyet satistan hesaplanir. */}
           {!konsinyeDurumu(prodForm, categories.find(c => c.id === prodForm.category_id), null).etkin && (
-          <Field label="ALIŞ FİYATI (₺ / adet — opsiyonel)">
+          <Field label="ALIŞ FİYATI (₺ / adet, KDV dahil — opsiyonel)">
             <SayiGirisi kip="para" min={0} value={prodForm.cost_price??''}
                    onChange={v=>setProdForm(f => ({...f,cost_price:v}))}
                    placeholder="örn: 950" style={inputS}/>
@@ -909,7 +909,8 @@ export default function MenuMgmtPage() {
               </label>
               {prodForm.recete_gir && (
                 <UrunReceteGirisi storeId={urunMagazasi()} onYeniAcik={setYeniMalzemeAcik}
-                  value={prodForm.recete} onChange={v=>setProdForm(f => ({...f,recete:v}))}/>
+                  value={prodForm.recete}
+                  onChange={v=>setProdForm(f => ({...f,recete: typeof v === "function" ? v(f.recete || []) : v}))}/>
               )}
             </div>
           )}

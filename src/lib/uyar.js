@@ -25,9 +25,16 @@ const CEVIR = [
   [/JWT expired|invalid JWT|token is expired/i, "oturum süresi doldu. Çıkış yapıp yeniden gir."],
 ];
 
-export function uyar(metin, tur = "hata") {
+// Sunucu iletisini Turkce sebebe cevirir (ekrana dogrudan yazilan hata
+// satirlari da ayni ceviriyi kullansin diye disari acik).
+export function iletiCevir(metin) {
   let yazi = String(metin ?? "");
   for (const [desen, karsilik] of CEVIR) if (desen.test(yazi)) { yazi = yazi.replace(desen, karsilik); break; }
+  return yazi;
+}
+
+export function uyar(metin, tur = "hata") {
+  const yazi = iletiCevir(metin);
   if (!dinleyenler.size) {
     try { window.alert(yazi); } catch (e) { /* tarayici yok */ }
     return;

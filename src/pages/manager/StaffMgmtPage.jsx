@@ -70,7 +70,7 @@ export default function StaffMgmtPage() {
     setForm({
       name: s.name || "", email: s.email || "",
       role: s.role || "manager",
-      display_role: s.display_role || "Yönetici",
+      display_role: s.display_role || "",
       phone: s.phone || "",
       is_active: s.is_active !== false,
       store_ids: s.store_ids || [],
@@ -117,7 +117,7 @@ export default function StaffMgmtPage() {
         email: form.email?.trim() || null,
         phone: form.phone?.trim() || null,
         role: form.role,
-        display_role: form.display_role || "Yönetici",
+        display_role: form.display_role?.trim() || varsayilanUnvan(form.role),
         is_active: form.is_active,
         store_ids: form.store_ids || [],
         // Yonetici rolunde ek yetki anlamsiz: bos yazilir, rol dusurulurse eski yetki geri gelmesin.
@@ -172,7 +172,7 @@ export default function StaffMgmtPage() {
       <div>
         {staff.map(s => {
           const color = roleColor[s.role] || "#888";
-          const displayRole = s.display_role || "Yönetici";
+          const displayRole = s.display_role || varsayilanUnvan(s.role);
           return (
             <div key={s.id} style={{background:"#1A1A1A",border:"1px solid #2A2A2A",borderRadius:10,padding:14,marginBottom:8,opacity:s.is_active===false?0.5:1}}>
               <div style={{display:"flex",alignItems:"flex-start",gap:12}}>
