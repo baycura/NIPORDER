@@ -24,13 +24,13 @@ const tr = (s) => String(s || "").toLocaleLowerCase("tr-TR");
 //   3. Arama zaten hepsini tariyordu, yerinde duruyor — kapali grup sayfayi
 //      saklamiyor.
 export default function HubPage() {
-  const { staffUser, isManager, isAdmin, isViewer, signOut } = useAuth();
+  const { staffUser, isManager, isAdmin, isViewer, yetkiler = [], signOut } = useAuth();
   const navigate = useNavigate();
   const [q, setQ] = useState("");
 
   const gruplar = useMemo(
-    () => gorunurGruplar({ role: staffUser?.role, isManager, isAdmin, isViewer }),
-    [staffUser?.role, isManager, isAdmin, isViewer]
+    () => gorunurGruplar({ role: staffUser?.role, isManager, isAdmin, isViewer, yetkiler }),
+    [staffUser?.role, isManager, isAdmin, isViewer, yetkiler.join(",")]
   );
 
   // Sik kullanilanlar yalniz sayfa acilirken hesaplanir: karoya basinca liste

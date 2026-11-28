@@ -17,7 +17,7 @@ const cv = "-apple-system,BlinkMacSystemFont,'Segoe UI',Roboto,sans-serif";
 // sekmesindeki HubPage'de), masaustunde gruplu akordeon kenar menusu.
 // Menu tanimi tek yerde: src/lib/panelNav.js.
 export default function StaffLayout() {
-  const {staffUser, isManager, isAdmin, isViewer, isParttime, isKitchen, signOut} = useAuth();
+  const {staffUser, isManager, isAdmin, isViewer, isParttime, isKitchen, yetkiler = [], signOut} = useAuth();
   const navigate = useNavigate();
   const { pathname } = useLocation();
 
@@ -81,7 +81,7 @@ export default function StaffLayout() {
   };
 
   const sekmeler = altBar({ isManager, isAdmin, isViewer, isParttime });
-  const gruplar = gorunurGruplar({ role: staffUser?.role, isManager, isAdmin, isViewer });
+  const gruplar = gorunurGruplar({ role: staffUser?.role, isManager, isAdmin, isViewer, yetkiler });
 
   const linkStyle = (isActive) => ({display:"flex",alignItems:"center",gap:10,padding:"9px 12px",borderRadius:9,textDecoration:"none",background:isActive?"rgba(255,255,255,0.18)":"transparent",color:isActive?"#FFFFFF":"#aaa",fontFamily:cv,fontSize:13.5,fontWeight:isActive?700:500});
 

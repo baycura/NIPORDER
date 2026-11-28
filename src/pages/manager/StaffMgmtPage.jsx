@@ -17,6 +17,15 @@ const ROLES_BASE = [
   { key: "viewer",   label: "Gözlemci (sadece görüntüleme)" },
 ];
 
+// EK YETKILER (staff.yetkiler): rol degismeden tek bir is icin izin. Yonetici
+// rolleri zaten hepsini yapar; ek yetki digerleri icindir (sahip 28.11).
+// Gozlemci (viewer) "sadece goruntuleme" roludur: yazma yetkisi almaz
+// (App.jsx PrivateRoute ve lib/panelNav.js ayni kurali uygular).
+const EK_YETKILER = [
+  { key: "menu_fiyat", label: "Ürün ekleme ve fiyat değiştirme", kisa: "ürün + fiyat" },
+];
+const ekYetkiAlmaz = (r) => r === "admin" || r === "manager" || r === "owner" || r === "viewer";
+
 const roleColor = { admin:"#FFFFFF", manager:"#FFFFFF", owner:"#FFFFFF", waiter:"#FFFFFF", kitchen:"#FFFFFF", cashier:"#8A8580", viewer:"#8A8580", parttime:"#8A8580" };
 
 export default function StaffMgmtPage() {
@@ -47,7 +56,7 @@ export default function StaffMgmtPage() {
 
   const openNew = () => {
     setModal({ mode: "new" });
-    setForm({ name:"", email:"", password:"", role:"manager", display_role:"Yönetici", phone:"", is_active:true, store_ids:[] });
+    setForm({ name:"", email:"", password:"", role:"manager", display_role:"Yönetici", phone:"", is_active:true, store_ids:[], yetkiler:[] });
   };
 
   const openEdit = (s) => {
@@ -59,6 +68,7 @@ export default function StaffMgmtPage() {
       phone: s.phone || "",
       is_active: s.is_active !== false,
       store_ids: s.store_ids || [],
+      yetkiler: Array.isArray(s.yetkiler) ? s.yetkiler : [],
     });
   };
 
@@ -69,19 +79,32 @@ export default function StaffMgmtPage() {
 
     if (modal.mode === "new") {
       if (!form.email?.trim() || !form.password?.trim()) { uyar("E-posta ve şifre gerekli"); setBusy(false); return; }
-      const { data: newId, error } = await supabase.rpc("admin_create_staff_with_auth", {
+      const { data: yeniKayit, error } = await supabase.rpc("admin_create_staff_with_auth", {
         p_email: form.email.trim(),
         p_password: form.password,
         p_name: form.name.trim(),
         p_role: form.role,
       });
       if (error) { uyar("Hata: " + error.message); setBusy(false); return; }
-      // Update display_role + phone after creation
-      const { error: upErr } = await supabase.from("staff").update({
-        display_role: form.display_role || "Yönetici",
-        phone: form.phone?.trim() || null,
-        store_ids: form.store_ids || [],
-      }).eq("id", newId);
+      // Fonksiyon TABLO doner: [{ staff_id, auth_user_id }]. Eskiden bu dizi
+      // dogrudan .eq("id", …) icine yaziliyordu; guncelleme hicbir satira
+      // ulasmiyor, hata da okunmuyordu: yeni personel unvansiz, telefonsuz ve
+      // MAGAZASIZ aciliyordu (magazasiz kisi hicbir veri goremez).
+      const ilk = Array.isArray(yeniKayit) ? yeniKayit[0] : yeniKayit;
+      const yeniId = ilk?.staff_id ?? (typeof ilk === "string" ? ilk : null);
+      const { data: upd, error: upErr } = yeniId
+        ? await supabase.from("staff").update({
+            display_role: form.display_role || "Yönetici",
+            phone: form.phone?.trim() || null,
+            store_ids: form.store_ids || [],
+            yetkiler: ekYetkiAlmaz(form.role) ? [] : (form.yetkiler || []),
+          }).eq("id", yeniId).select("id")
+        : { data: null, error: null };
+      if (upErr || !upd?.length) {
+        setModal(null); setBusy(false); load(true);
+        uyar("Personel açıldı. Unvan, telefon, mağaza ve ek yetki yazılamadı" + (upErr ? ": " + upErr.message : "") + ". Listeden kişiyi aç, bilgileri gir ve kaydet.");
+        return;
+      }
     } else {
       const payload = {
         name: form.name.trim(),
@@ -91,6 +114,8 @@ export default function StaffMgmtPage() {
         display_role: form.display_role || "Yönetici",
         is_active: form.is_active,
         store_ids: form.store_ids || [],
+        // Yonetici rolunde ek yetki anlamsiz: bos yazilir, rol dusurulurse eski yetki geri gelmesin.
+        yetkiler: ekYetkiAlmaz(form.role) ? [] : (form.yetkiler || []),
       };
       // .select() ile kac satir etkilendigini gor: RLS engellerse hata DEGIL,
       // sessizce 0 satir doner ve kullanici kaydettim saniyordu
@@ -149,6 +174,9 @@ export default function StaffMgmtPage() {
                 <div style={{flex:1,minWidth:0}}>
                   <div style={{fontSize:15,fontWeight:700,color:"#F0EDE8"}}>{s.name}</div>
                   <div style={{fontSize:11,color,letterSpacing:"1px",marginTop:2,fontWeight:600}}>{displayRole?.toLocaleUpperCase("tr-TR")}{s.role === "admin" && <Ikon ad="yildiz" boy={11} style={{color:"#FFFFFF",marginLeft:6}}/>}</div>
+                  {!ekYetkiAlmaz(s.role) && EK_YETKILER.filter(y => (s.yetkiler || []).includes(y.key)).map(y => (
+                    <div key={y.key} style={{fontSize:11,color:"#F0EDE8",marginTop:3}}>Ek yetki: {y.kisa}</div>
+                  ))}
                   {s.email && <div style={{fontSize:11,color:"#888",marginTop:3}}>{s.email}</div>}
                   {s.phone && <div style={{fontSize:11,color:"#888"}}>{s.phone}</div>}
                   {s.last_login && <div style={{fontSize:10,color:"#888888",marginTop:3}}>Son giriş: {new Date(s.last_login).toLocaleDateString("tr-TR")}</div>}
@@ -181,6 +209,26 @@ export default function StaffMgmtPage() {
               ))}
             </div>
           </Field>
+
+          {!ekYetkiAlmaz(form.role) && (
+            <Field label="EK YETKİ (rol aynı kalır)">
+              <div style={{display:"flex",gap:6,flexWrap:"wrap"}}>
+                {EK_YETKILER.map(y => {
+                  const sel = (form.yetkiler || []).includes(y.key);
+                  return (
+                    <button key={y.key} type="button" aria-pressed={sel}
+                      onClick={()=>setForm(f => ({...f, yetkiler: sel ? (f.yetkiler||[]).filter(k => k !== y.key) : [...(f.yetkiler||[]), y.key]}))}
+                      style={{flex:"1 1 100%",minHeight:44,padding:"10px",background:sel?"#FFFFFF":"#222",color:sel?"#000":"#888",border:"1px solid "+(sel?"#FFFFFF":"#333"),borderRadius:8,fontSize:12,fontWeight:700,cursor:"pointer",fontFamily:"inherit"}}>
+                      {sel ? "✓ " : ""}{y.label}
+                    </button>
+                  );
+                })}
+              </div>
+              <div style={{fontSize:11,color:"#888",marginTop:6,lineHeight:1.5}}>
+                Açıksa bu kişi Menü'de "Ürün Ekle · Fiyat" kartını görür: yalnız yeni ürün ekler (reçetesiyle) ve fiyat değiştirir. Kategori, sıralama, silme ve diğer alanlar kapalıdır.
+              </div>
+            </Field>
+          )}
 
           <Field label="MAĞAZA YETKİLERİ (boş = hiçbir mağazada yetki yok)">
             <div style={{display:"flex",gap:6,flexWrap:"wrap"}}>
