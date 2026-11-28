@@ -36,7 +36,9 @@ export const GRUPLAR = [
   {
     ad: "MENÜ & ÜRÜNLER", manager: true,
     items: [
-      { to: "/menu-mgmt",         icon: "menu", label: "Menü Yönetimi" },
+      // yetki: yonetici olmayan, bu ek yetkiyle (staff.yetkiler) karti gorur;
+      // darLabel o kisiye yazilan addir (sayfa onda dar acilir).
+      { to: "/menu-mgmt",         icon: "menu", label: "Menü Yönetimi", yetki: "menu_fiyat", darLabel: "Ürün Ekle · Fiyat" },
       { to: "/party-menu",        icon: "kampanya", label: "Parti Menüsü", ozellik: "parti" },
       { to: "/recipes",           icon: "recete", label: "Reçeteler" },
       { to: "/stock-mgmt",        icon: "arsiv", label: "Stok Yönetimi" },
@@ -108,11 +110,21 @@ const VIEWER_GRUP = [{
 
 const profildeVar = (i) => ozellik(i.ozellik);
 
-export function gorunurGruplar({ role, isManager, isAdmin, isViewer }) {
+// yetkiler: staff.yetkiler (ek yetkiler). Grubu goremeyen kisi, o grubun
+// yalniz kendi ek yetkisine bagli kartlarini gorur (App.jsx'teki
+// PrivateRoute yetki= ile ayni kural).
+export function gorunurGruplar({ role, isManager, isAdmin, isViewer, yetkiler = [] }) {
   if (isViewer) return VIEWER_GRUP.map(g => ({ ...g, items: g.items.filter(profildeVar) }));
+  const ekYetkili = (i) => !!i.yetki && yetkiler.includes(i.yetki);
   return GRUPLAR
-    .filter(g => (!g.manager || isManager) && (!g.admin || isAdmin))
-    .map(g => ({ ...g, items: g.items.filter(i => !(i.deny || []).includes(role)).filter(profildeVar) }))
+    .map(g => {
+      const grupAcik = (!g.manager || isManager) && (!g.admin || isAdmin);
+      const items = g.items
+        .filter(i => grupAcik || ekYetkili(i))
+        .filter(i => !(i.deny || []).includes(role)).filter(profildeVar)
+        .map(i => (!grupAcik && i.darLabel) ? { ...i, label: i.darLabel } : i);
+      return { ...g, items };
+    })
     .filter(g => g.items.length > 0);
 }
 
@@ -128,6 +140,8 @@ export function altBar({ isManager, isAdmin, isViewer, isParttime }) {
     // Parttime'in alt barinda /hub yok — gorunurGruplar yalniz masaustu
     // kenar menusunde ve HubPage'de render ediliyor (StaffLayout.jsx:115).
     // Kapanisi fiilen yapan kisi bu; sayima baska yoldan ulasamaz.
+    // Ek yetkili part-time (staff.yetkiler) kartina sag ustteki ad
+    // dugmesiyle acilan Menü'den (HubPage) ulasir; alt bar degismez.
     { to: "/cash-count", icon: "nakit", label: "Sayım" },
   ];
   if (isManager) return [

@@ -136,6 +136,12 @@ export function AuthProvider({ children }) {
   const isCashier = role === "cashier" || role === "waiter" || role === "parttime";
   const isViewer  = role === "viewer";
   const isParttime = role === "parttime";
+  // EK YETKI (sahip 28.11): rol degismeden tek bir is icin izin. staff.yetkiler
+  // (text[]) icinde tutulur, yalniz admin yazar (Personel sayfasi).
+  //   "menu_fiyat" = Menu Yonetimi'nde YALNIZ urun ekleme + fiyat degistirme.
+  // Yonetici zaten hepsini yapar; ek yetki yonetici olmayan icindir.
+  const yetkiler = Array.isArray(staffUser?.yetkiler) ? staffUser.yetkiler : [];
+  const yetkiVar = (ad) => yetkiler.includes(ad);
 
   // Profil formu kaydettikten sonra uygulamanin elindeki musteri de tazelenmeli;
   // yoksa "ad ve telefon eksik" penceresi kaydedilmis olmasina ragmen kaliyor.
@@ -157,6 +163,7 @@ export function AuthProvider({ children }) {
       session, staffUser, customer, loading, refreshCustomer, acceptKvkk,
       signIn, signInWithGoogle, signOut,
       isAdmin, isManager, isWaiter, isKitchen, isCashier, isViewer, isParttime,
+      yetkiler, yetkiVar,
     }}>
       {children}
     </AuthContext.Provider>

@@ -130,6 +130,26 @@
   özel · 09:30–24:00 arası ₺150". Başlangıçtaki "00:00" aynen kalır.
 - Kurallar panelden yönetilir: Panel → Happy Hour.
 
+## Personel ek yetkisi (sahip, 2026-11-28)
+- **Rol değişmeden tek bir iş için izin.** `staff.yetkiler` (text[]) tutar;
+  yalnız admin yazar (Panel → Personel → Düzenle → "EK YETKİ"). Personel
+  kendi satırını değiştiremez (`admin_write_staff`).
+- **`menu_fiyat` = ürün ekleme + fiyat değiştirme.** Bu yetkiyi alan kişi
+  Menü'de (sağ üstteki ad düğmesi → MENÜ & ÜRÜNLER) "Ürün Ekle · Fiyat"
+  kartını görür. Sayfa onda DAR açılır: "+ Yeni Ürün" ve ürüne dokununca
+  yalnız fiyat kutusu. Kategori ekleme/düzenleme, sıralama, silme ve ürünün
+  diğer alanları kapalıdır. Fiyat kaydı veritabanına yalnız `price` (EUR
+  üründe `price_eur`) gönderir.
+- İlk verilen kişi: Tuğçe (part-time). Rolü ve alt barı aynı kaldı.
+- Yönetici rollerinde ek yetki boş yazılır (zaten hepsini yaparlar).
+- **Sınır uygulama ekranlarındadır.** `products` tablosunun veritabanı
+  kuralı (`staff_write_products`) role bakmaz: mağazanın her personeli ürün
+  satırına yazabilir. Bunu role göre daraltmak ayrı bir iştir; yapılırsa
+  satış sırasındaki stok düşümleri bozulmasın diye sakin saatte yapılmalı.
+- Kod: `AuthContext` (`yetkiler`, `yetkiVar`), `App.jsx` (`PrivateRoute
+  yetki=`), `lib/panelNav.js` (`yetki`, `darLabel`), `MenuMgmtPage` (`dar`).
+  Göç: `20261128_personel_ek_yetki.sql`.
+
 ## Kahve ve maliyet kararları (sahip, 2026-11-26)
 - **Kahve liste fiyatları değişmez.** Cappuccino ve Latte ₺200 kalır (₺220
   önerisi: "dokunma"). Filtre, Espresso, Americano liste ₺180, üyeye ₺150.

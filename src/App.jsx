@@ -48,7 +48,7 @@ import DiscountsPage from "./pages/manager/DiscountsPage.jsx";
 import CorrectionsPage from "./pages/manager/CorrectionsPage.jsx";
 import MutfakRaporPage from "./pages/MutfakRaporPage.jsx";
 
-function PrivateRoute({ children, managerOnly = false, adminOnly = false, allowViewer = false, deny = [] }) {
+function PrivateRoute({ children, managerOnly = false, adminOnly = false, allowViewer = false, deny = [], yetki = null }) {
   const { session, staffUser, isManager, isAdmin, isViewer, loading } = useAuth();
   if (loading) return (
     // Panel koyu: acilis ekrani da koyu. Eskiden beyaz ekran koyu panele
@@ -60,7 +60,10 @@ function PrivateRoute({ children, managerOnly = false, adminOnly = false, allowV
   if (!session || !staffUser) return (<Navigate to="/login" replace />);
   const home = isViewer ? "/reports" : "/tables";
   if (adminOnly && !isAdmin && !(allowViewer && isViewer)) return (<Navigate to={home} replace />);
-  if (managerOnly && !isManager) return (<Navigate to={home} replace />);
+  // yetki: yonetici olmayana bu sayfayi acan ek yetki (staff.yetkiler). Sayfa
+  // kendi icinde dar gorunume gecer (MenuMgmtPage: yalniz urun ekle + fiyat).
+  const ekYetkili = !!yetki && Array.isArray(staffUser.yetkiler) && staffUser.yetkiler.includes(yetki);
+  if (managerOnly && !isManager && !ekYetkili) return (<Navigate to={home} replace />);
   if (deny.includes(staffUser.role)) return (<Navigate to={home} replace />);
   return children;
 }
@@ -114,7 +117,7 @@ function AppRoutes() {
         <Route path="rides"            element={<PrivateRoute managerOnly><RidesPage /></PrivateRoute>} />
         <Route path="reserve"          element={<PrivateRoute managerOnly><ReservePage /></PrivateRoute>} />
         <Route path="settings"         element={<PrivateRoute managerOnly><SettingsPage /></PrivateRoute>} />
-        <Route path="menu-mgmt"        element={<PrivateRoute managerOnly><MenuMgmtPage /></PrivateRoute>} />
+        <Route path="menu-mgmt"        element={<PrivateRoute managerOnly yetki="menu_fiyat"><MenuMgmtPage /></PrivateRoute>} />
         <Route path="party-menu"       element={<PrivateRoute managerOnly><PartyMenuPage /></PrivateRoute>} />
         <Route path="tables-mgmt"      element={<PrivateRoute managerOnly><TablesMgmtPage /></PrivateRoute>} />
         <Route path="recipes"          element={<PrivateRoute managerOnly><RecipesMgmtPage /></PrivateRoute>} />
