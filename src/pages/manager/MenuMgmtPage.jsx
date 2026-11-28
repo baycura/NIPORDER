@@ -11,6 +11,8 @@ import Ikon from "../../components/Ikon.jsx";
 import SayiGirisi from "../../components/SayiGirisi.jsx";
 import { konsinyeDurumu, konsinyeMaliyet, payMetni, payTemizle } from "../../lib/konsinye.js";
 import BarkodOkut from "../../components/BarkodOkut.jsx";
+import UrunReceteGirisi from "../../components/UrunReceteGirisi.jsx";
+import { gecersizReceteSatiri, receteKayitlari } from "../../lib/recete.js";
 
 const cv = "-apple-system,BlinkMacSystemFont,'Segoe UI',Roboto,sans-serif";
 // Adi yalniz rakam (6-14 hane) olan urun: buyuk olasilikla barkod. Musteri
@@ -21,8 +23,10 @@ export default function MenuMgmtPage() {
   const { staffUser, isManager } = useAuth();
   // DAR GORUNUM (sahip 28.11): yonetici olmayan kisi bu sayfaya yalniz
   // "menu_fiyat" ek yetkisiyle girer (App.jsx PrivateRoute). O kisi YALNIZ
-  // yeni urun ekler ve mevcut urunun fiyatini degistirir: kategori, siralama,
-  // silme ve urunun diger alanlari kapali.
+  // yeni urun ekler (recetesiyle) ve mevcut urunun fiyatini degistirir:
+  // kategori, siralama, silme ve urunun diger alanlari kapali. Yeni urun
+  // formunda muhasebe ve yonlendirme alanlari da gizli (konsinye, indirim,
+  // happy hour, magaza, mutfak, NIP Kitchen): varsayilan degerler yazilir.
   const dar = !isManager;
   const [fiyatModal, setFiyatModal] = useState(null);   // dar gorunum: fiyati degisecek urun
   const [yeniFiyat, setYeniFiyat] = useState("");
@@ -158,6 +162,8 @@ export default function MenuMgmtPage() {
       category_id: selectedCat,
       has_options:false,
       options_config:{groups:[]},
+      // Recete (yalniz yeni urun): urunle birlikte yazilir, products'a gitmez.
+      recete_gir:false, recete:[],
     });
   };
 
@@ -202,6 +208,13 @@ export default function MenuMgmtPage() {
     if (busy) return;
     if (dar && prodModal?.mode !== "new") return;   // dar yetki: mevcut urunde yalniz fiyat (saveFiyat)
     if (!prodForm.name?.trim()) { uyar("Ürün adı gerekli"); return; }
+    // Dar yetki: fiyatsiz urun eklenmez. Bos fiyat 0 yazilir ve urun menude
+    // ₺0 ile acilirdi; dar yetkili bunu sonradan yalniz fiyat penceresinden
+    // duzeltebilir, o yuzden bastan istenir.
+    if (dar) {
+      const f = prodForm.currency === "EUR" ? Number(prodForm.price_eur) : Number(prodForm.price);
+      if (!Number.isFinite(f) || f <= 0) { uyar("Fiyat yaz"); return; }
+    }
     // Validate options_config groups
     if (prodForm.has_options) {
       const groups = (prodForm.options_config && prodForm.options_config.groups) || [];
@@ -210,6 +223,12 @@ export default function MenuMgmtPage() {
         if (!g.options || g.options.length === 0) { uyar(g.name + " grubunun hiç seçeneği yok"); return; }
       }
     }
+    // RECETE: yalniz YENI urunde ve formda acildiysa yazilir. NIP Kitchen
+    // envanterinin recetesi olmaz (mutfak hazirlar, stok bizde dusmez).
+    const yeni = prodModal.mode === "new";
+    const receteSatir = (yeni && prodForm.recete_gir && !prodForm.kitchen_consignment) ? (prodForm.recete || []) : [];
+    const bozuk = gecersizReceteSatiri(receteSatir);
+    if (bozuk) { uyar("Reçete: " + bozuk.name + " için miktar yaz"); return; }
     setBusy(true);
     const payload = {
       name: prodForm.name.trim(),
@@ -254,16 +273,32 @@ export default function MenuMgmtPage() {
       prep_time_minutes: prodForm.show_prep_time ? (prodForm.prep_time_minutes || null) : null,
       show_prep_time: !!prodForm.show_prep_time,
     };
-    const res = prodModal.mode === "new"
-      ? await supabase.from("products").insert(payload)
-      : await supabase.from("products").update(payload).eq("id", prodModal.data.id);
-    if (res.error) { uyar("Hata: " + res.error.message); setBusy(false); return; }
+    if (yeni) {
+      // Urun bir onceki denemede yazildiysa (recete hatasi) YENIDEN yazilmaz:
+      // ikinci "Kaydet" ayni urunu iki kez acmasin.
+      let urunId = prodModal.kayitliId || null;
+      if (!urunId) {
+        const { data, error } = await supabase.from("products").insert(payload).select("id").single();
+        if (error || !data?.id) { uyar("Hata: " + (error?.message || "ürün kaydedilemedi")); setBusy(false); return; }
+        urunId = data.id;
+      }
+      if (receteSatir.length) {
+        // Tek istek: satirlarin hepsi yazilir ya da hicbiri.
+        const { error: rErr } = await supabase.from("recipes").insert(receteKayitlari(receteSatir, urunId, payload.store_id));
+        if (rErr) {
+          setProdModal(m => (m ? { ...m, kayitliId: urunId } : m));
+          setBusy(false); load(true);
+          uyar("Ürün eklendi. Reçete kaydedilemedi: " + rErr.message + ". Kaydet'e yeniden bas; yalnız reçete gönderilir.");
+          return;
+        }
+      }
+    } else {
+      const res = await supabase.from("products").update(payload).eq("id", prodModal.data.id);
+      if (res.error) { uyar("Hata: " + res.error.message); setBusy(false); return; }
+    }
     setProdModal(null); setBusy(false); load(true);
   };
 
-  // Donen deger: silindi mi. Pencerenin dibindeki "Bu urunu sil" buna bakar —
-  // onay kutusunda "Iptal" denince pencere ACIK kalmali, yoksa kaydedilmemis
-  // degisiklik sessizce ucuyordu.
   // DAR GORUNUM: yalniz fiyat yazilir. Urunun baska hicbir alani gonderilmez;
   // EUR urunde TL karsiligini veritabani tetikleyicisi kurdan hesaplar.
   const openFiyat = (p) => {
@@ -275,17 +310,21 @@ export default function MenuMgmtPage() {
     const p = fiyatModal, eur = p.currency === "EUR";
     const v = Number(yeniFiyat);
     if (yeniFiyat === "" || yeniFiyat == null || !Number.isFinite(v) || v <= 0) { uyar("Geçerli bir fiyat yaz"); return; }
-    const eski = eur ? Number(p.price_eur) : Number(p.price);
-    if (v === eski) { setFiyatModal(null); return; }
+    // Ekrandaki fiyat sayfa acilirken okundu; baska cihazda degismis olabilir.
+    // Ayni rakam yazilsa da GONDERILIR: "200'e geri al" denince gercekten 200 olsun.
     setBusy(true);
     // .select(): kural engellerse hata degil 0 satir doner; "kaydettim" sanilmasin.
     const { data, error } = await supabase.from("products").update(eur ? { price_eur: v } : { price: v }).eq("id", p.id).select("id");
     setBusy(false);
     if (error) { uyar("Hata: " + error.message); return; }
-    if (!data?.length) { uyar("Fiyat kaydedilemedi: bu ürün için yetkin yok."); return; }
+    // 0 satir: urun bu arada silinmis ya da kural engellemis. Liste tazelenir.
+    if (!data?.length) { setFiyatModal(null); load(true); uyar("Fiyat kaydedilemedi: ürün bulunamadı ya da yetkin yok. Liste yenilendi."); return; }
     setFiyatModal(null); load(true);
   };
 
+  // Donen deger: silindi mi. Pencerenin dibindeki "Bu urunu sil" buna bakar —
+  // onay kutusunda "Iptal" denince pencere ACIK kalmali, yoksa kaydedilmemis
+  // degisiklik sessizce ucuyordu.
   const delProd = async (p) => {
     if (dar) return false;
     if (!(await onayla('"' + p.name + '" silinsin mi?', { evet: "Sil", tehlike: true }))) return false;
@@ -394,7 +433,7 @@ export default function MenuMgmtPage() {
       <div style={{fontSize:11,color:"#888",letterSpacing:"1px",marginBottom:dar?8:18}}>{categories.length} KATEGORİ · {products.length} ÜRÜN</div>
       {dar && (
         <div style={{fontSize:12.5,color:"#B8B3AC",lineHeight:1.5,marginBottom:16}}>
-          Yetkin: yeni ürün eklemek ve fiyat değiştirmek. Fiyat için ürüne dokun. Başka bir değişiklik gerekiyorsa yöneticiye yaz.
+          Yetkin: yeni ürün eklemek ve fiyat değiştirmek. Yeni ürünü eklerken reçetesini de girebilirsin. Fiyat için ürüne dokun. Başka bir değişiklik gerekiyorsa yöneticiye yaz.
         </div>
       )}
 
@@ -429,7 +468,7 @@ export default function MenuMgmtPage() {
                   {c.name} ({n})
                 </button>
               </span>
-            ))}. Ürünlere gerçek ad ver ya da kategoriyi "Yalnız personel" yap.
+            ))}. {dar ? "Yöneticiye haber ver." : "Ürünlere gerçek ad ver ya da kategoriyi \"Yalnız personel\" yap."}
           </div>
         );
       })()}
@@ -703,6 +742,12 @@ export default function MenuMgmtPage() {
       {/* PRODUCT MODAL */}
       {prodModal && (
         <Modal onClose={()=>setProdModal(null)} title={prodModal.mode==="new"?"Yeni Ürün":"Ürünü Düzenle"}>
+          {prodModal.kayitliId && (
+            <div role="status" style={{fontSize:13,color:"#F0EDE8",background:"#221A16",border:"1px solid #C87A6A",borderRadius:10,padding:"10px 12px",marginBottom:12,lineHeight:1.5}}>
+              Ürün eklendi. Reçete henüz kaydedilmedi. Kaydet&apos;e bas: yalnız reçete gönderilir.
+              İptal dersen ürün reçetesiz kalır.
+            </div>
+          )}
           <Field label="AD (Türkçe)">
             <input value={prodForm.name||""} onChange={e=>setProdForm(f => ({...f,name:e.target.value}))} style={inputS}/>
             {barkodAd(prodForm.name) && (
@@ -784,7 +829,7 @@ export default function MenuMgmtPage() {
           {/* KONSINYE: tedarikcinin mali; maliyet satisin tedarikci payi kadar.
               Kategori konsinye ise urun devralir, kendi payini yazabilir ya da
               "Hayır" ile disina cikabilir. docs/konsinye.md */}
-          {(() => {
+          {!dar && (() => {
             const kat = categories.find(c => c.id === prodForm.category_id);
             const d = konsinyeDurumu(prodForm, kat, null);
             const katMetin = kat?.konsinye ? `Kategoriye göre: konsinye${kat.konsinye_pay_pct != null ? ` · %${Number(kat.konsinye_pay_pct)} bizim` : ""}` : "Kategoriye göre: konsinye değil";
@@ -827,9 +872,24 @@ export default function MenuMgmtPage() {
             </div>
           </Field>
           )}
-          <Field label="ANLIK İNDİRİM (%)"><SayiGirisi kip="tam" min={0} max={99} value={prodForm.instant_discount_pct??''} onChange={v=>setProdForm(f => ({...f,instant_discount_pct:v}))} style={inputS}/></Field>
+          {/* RECETE (yalniz yeni urunde): satirlar formda durur, "Kaydet" urunle
+              birlikte yazar. Mevcut urunun recetesi Reçeteler sayfasindadir. */}
+          {prodModal.mode === "new" && !prodForm.kitchen_consignment && (
+            <div style={{background:"#0C0C0C",border:"1px solid "+(prodForm.recete_gir?"#FFFFFF":"#2A2A2A"),borderRadius:10,padding:12,marginBottom:12}}>
+              <label style={{display:"flex",alignItems:"center",gap:8,cursor:"pointer",marginBottom:prodForm.recete_gir?10:0}}>
+                <input type="checkbox" checked={!!prodForm.recete_gir} onChange={e=>setProdForm(f => ({...f,recete_gir:e.target.checked}))}/>
+                <span style={{fontSize:13,color:"#F0EDE8",fontWeight:700}}>Reçete gir (satılınca stoktan düşer)</span>
+              </label>
+              {prodForm.recete_gir && (
+                <UrunReceteGirisi storeId={prodForm.store_id || staffUser?.store_ids?.[0]}
+                  value={prodForm.recete} onChange={v=>setProdForm(f => ({...f,recete:v}))}/>
+              )}
+            </div>
+          )}
+          {!dar && <Field label="ANLIK İNDİRİM (%)"><SayiGirisi kip="tam" min={0} max={99} value={prodForm.instant_discount_pct??''} onChange={v=>setProdForm(f => ({...f,instant_discount_pct:v}))} style={inputS}/></Field>}
 
           {/* HAPPY HOUR */}
+        {!dar && (
         <div style={{background:"#0C0C0C",border:"1px solid #222",borderRadius:10,padding:12,marginBottom:10}}>
           <label style={{display:"flex",alignItems:"center",gap:8,cursor:"pointer",fontSize:14,fontWeight:600,color:"#F0EDE8"}}>
             <input type="checkbox" checked={!!prodForm.hh_enabled} onChange={e=>setProdForm(f => ({...f,hh_enabled:e.target.checked}))}/>
@@ -848,6 +908,7 @@ export default function MenuMgmtPage() {
             <SayiGirisi kip="para" value={prodForm.hh_price??""} onChange={v=>setProdForm(f => ({...f,hh_price:v}))} placeholder="örn: 200" style={{width:"100%",padding:8,background:"#1a1a1a",border:"1px solid #333",borderRadius:8,color:"#fff",boxSizing:"border-box"}}/>
           </div>)}
         </div>
+        )}
 
         {/* OPTIONS SYSTEM */}
           <div style={{background:"#0C0C0C",border:"1px solid "+(prodForm.has_options?"#FFFFFF":"#2A2A2A"),borderRadius:10,padding:12,marginBottom:12}}>
@@ -897,6 +958,7 @@ export default function MenuMgmtPage() {
             {prodForm.sold_out_today && (<input value={prodForm.unavailable_reason||""} onChange={e=>setProdForm(f => ({...f,unavailable_reason:e.target.value}))} placeholder="Neden (müşteri görecek)" style={{...inputS,fontSize:13}}/>)}
           </div>
 
+          {!dar && (<>
           <div style={{marginBottom:10}}>
             <label style={{display:"block",fontSize:11,color:"#888",marginBottom:4,fontWeight:600,letterSpacing:0.5}}>HANGİ MENÜDE GÖRÜNSÜN? (birden fazla seçilebilir)</label>
             <div style={{display:"flex",gap:6}}>
@@ -915,12 +977,14 @@ export default function MenuMgmtPage() {
               </div>
             )}
           </div>
+          </>)}
 
           <label style={{display:"flex",alignItems:"center",gap:8,marginBottom:10,cursor:"pointer"}}>
             <input type="checkbox" checked={!!prodForm.show_in_party_menu} onChange={e=>setProdForm(f => ({...f,show_in_party_menu:e.target.checked}))}/>
             <span style={{fontSize:13,color:"#F0EDE8"}}>Sadece parti menüsünde</span>
           </label>
 
+          {!dar && (<>
           <label style={{display:"flex",alignItems:"flex-start",gap:8,marginBottom:4,cursor:"pointer"}}>
             <input type="checkbox" checked={!!prodForm.kitchen_consignment} onChange={e=>setProdForm(f => ({...f,kitchen_consignment:e.target.checked}))} style={{marginTop:3}}/>
             <span style={{fontSize:13,color:"#F0EDE8"}}>NIP Kitchen envanteri</span>
@@ -929,6 +993,7 @@ export default function MenuMgmtPage() {
             Mutfak hazırlıyor, maliyetini biz tutmuyoruz ve kâr etmiyoruz. Satış tutarı ay sonu mutfağa ödenir.
             Reçete ekranında çıkmaz, kâr hesabına girmez, raporda ayrı gösterilir.
           </div>
+          </>)}
 
           <label style={{display:"flex",alignItems:"center",gap:8,marginBottom:12,cursor:"pointer"}}>
             <input type="checkbox" checked={prodForm.is_available!==false} onChange={e=>setProdForm(f => ({...f,is_available:e.target.checked}))}/>

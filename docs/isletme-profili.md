@@ -140,14 +140,25 @@
   yalnız fiyat kutusu. Kategori ekleme/düzenleme, sıralama, silme ve ürünün
   diğer alanları kapalıdır. Fiyat kaydı veritabanına yalnız `price` (EUR
   üründe `price_eur`) gönderir.
+- **Yeni ürün formu onda kısadır.** Konsinye, anlık indirim, happy hour,
+  mağaza seçimi, "bu ürünü kim yapıyor" ve "NIP Kitchen envanteri" gizlidir;
+  varsayılan değerler yazılır. Fiyatsız (₺0) ürün ekleyemez.
+- **Yeni ürünü eklerken reçetesini de girer** (sahip: "yeni ürün eklerken
+  reçete de girebilsin"). Formdaki "Reçete gir" kutusu: var olan malzemeyi
+  arar, seçer, miktarını yazar; sarf malzemeler tek dokunuş. Satırlar ürünle
+  birlikte kaydedilir. Sınırlar: yeni malzeme açamaz (yönetici açar), maliyet
+  görmez, mevcut ürünün reçetesine dokunamaz (Reçeteler sayfası yöneticide).
+  Aynı kutu yöneticinin yeni ürün formunda da vardır.
 - İlk verilen kişi: Tuğçe (part-time). Rolü ve alt barı aynı kaldı.
 - Yönetici rollerinde ek yetki boş yazılır (zaten hepsini yaparlar).
+  Gözlemci (viewer) rolüne ek yetki verilmez: düğme çıkmaz, adres açılmaz.
 - **Sınır uygulama ekranlarındadır.** `products` tablosunun veritabanı
   kuralı (`staff_write_products`) role bakmaz: mağazanın her personeli ürün
   satırına yazabilir. Bunu role göre daraltmak ayrı bir iştir; yapılırsa
   satış sırasındaki stok düşümleri bozulmasın diye sakin saatte yapılmalı.
 - Kod: `AuthContext` (`yetkiler`, `yetkiVar`), `App.jsx` (`PrivateRoute
-  yetki=`), `lib/panelNav.js` (`yetki`, `darLabel`), `MenuMgmtPage` (`dar`).
+  yetki=`), `lib/panelNav.js` (`yetki`, `darLabel`), `MenuMgmtPage` (`dar`),
+  `components/UrunReceteGirisi.jsx`, `lib/recete.js`.
   Göç: `20261128_personel_ek_yetki.sql`.
 
 ## Kahve ve maliyet kararları (sahip, 2026-11-26)

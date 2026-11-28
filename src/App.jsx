@@ -62,7 +62,8 @@ function PrivateRoute({ children, managerOnly = false, adminOnly = false, allowV
   if (adminOnly && !isAdmin && !(allowViewer && isViewer)) return (<Navigate to={home} replace />);
   // yetki: yonetici olmayana bu sayfayi acan ek yetki (staff.yetkiler). Sayfa
   // kendi icinde dar gorunume gecer (MenuMgmtPage: yalniz urun ekle + fiyat).
-  const ekYetkili = !!yetki && Array.isArray(staffUser.yetkiler) && staffUser.yetkiler.includes(yetki);
+  // Gozlemci (viewer) yazma yetkisi almaz: menude de karti gormez (panelNav).
+  const ekYetkili = !!yetki && !isViewer && Array.isArray(staffUser.yetkiler) && staffUser.yetkiler.includes(yetki);
   if (managerOnly && !isManager && !ekYetkili) return (<Navigate to={home} replace />);
   if (deny.includes(staffUser.role)) return (<Navigate to={home} replace />);
   return children;

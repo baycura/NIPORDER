@@ -8,7 +8,8 @@
 -- staff.yetkiler (text[]) bu izinleri tutar:
 --   'menu_fiyat' = Menu Yonetimi sayfasinda YALNIZ yeni urun ekleme ve mevcut
 --                  urunun fiyatini degistirme (kategori, siralama, silme ve
---                  urunun diger alanlari uygulamada kapali).
+--                  urunun diger alanlari uygulamada kapali). Yeni urunu
+--                  eklerken recetesini de girer (var olan malzemelerden).
 --
 -- KIM YAZAR: staff tablosunun yazma kurali degismedi (admin_write_staff:
 -- is_admin()). Personel kendi satirini degistiremez; yetkiyi yalniz admin
@@ -19,7 +20,10 @@
 -- personeli urun satirina yazabilir (staff_write_products). Bunu role gore
 -- daraltmak ayri bir istir.
 --
--- Yalniz EKLEME; tekrar calistirilabilir.
+-- Yalniz EKLEME. Sutun kismi tekrar calistirilabilir. Asagidaki YETKI VERME
+-- satiri TEK SEFERLIKTIR: sahip yetkiyi Personel sayfasindan geri aldiktan
+-- sonra bu dosya elle yeniden calistirilirsa yetki geri gelir; calistirma.
+-- (Gocus isi her dosyayi bir kez uygular: public.nip_gocusler.)
 -- ============================================================================
 alter table public.staff
   add column if not exists yetkiler text[] not null default '{}'::text[];

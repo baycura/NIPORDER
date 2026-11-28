@@ -6,18 +6,14 @@ import { useAuth } from "../../contexts/AuthContext.jsx";
 import { ozellik } from "../../lib/profil.js";
 import Ikon from "../../components/Ikon.jsx";
 import SayiGirisi from "../../components/SayiGirisi.jsx";
+import { varsayilanMiktar } from "../../lib/recete.js";
 
 const cv = "-apple-system,BlinkMacSystemFont,'Segoe UI',Roboto,sans-serif";
 const UNITS = ["ml", "cl", "l", "g", "kg", "adet", "şişe", "porsiyon"];
 
-// Malzeme eklenince kullanilacak varsayilan miktar
-const defaultQty = (ing) => {
-  if (ing.unit === "g") return 150;
-  if (ing.unit === "ml") return 40;
-  if (ing.unit === "cl") return 4;
-  if (ing.unit === "l") return 0.2;
-  return 1;
-};
+// Malzeme eklenince kullanilacak varsayilan miktar: lib/recete.js (yeni urun
+// formundaki recete bolumu de ayni degeri kullanir).
+const defaultQty = varsayilanMiktar;
 
 // Hizli miktar secimleri — isletmenin STANDART OLCUSUNE gore uretilir (Ayarlar'dan degisir).
 // Bunlar sadece kisayol; miktari her zaman elle de yazabilirsin.
