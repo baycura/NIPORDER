@@ -145,10 +145,23 @@
   varsayılan değerler yazılır. Fiyatsız (₺0) ürün ekleyemez.
 - **Yeni ürünü eklerken reçetesini de girer** (sahip: "yeni ürün eklerken
   reçete de girebilsin"). Formdaki "Reçete gir" kutusu: var olan malzemeyi
-  arar, seçer, miktarını yazar; sarf malzemeler tek dokunuş. Satırlar ürünle
-  birlikte kaydedilir. Sınırlar: yeni malzeme açamaz (yönetici açar), maliyet
-  görmez, mevcut ürünün reçetesine dokunamaz (Reçeteler sayfası yöneticide).
-  Aynı kutu yöneticinin yeni ürün formunda da vardır.
+  arar ("sut" yazınca "Süt" çıkar), seçer, miktarını yazar; sarf malzemeler
+  tek dokunuş. Parti bardağı gibi sarflarda "Sadece parti gecesi düşsün"
+  kutusu vardır; malzeme başka reçetede öyleyse işaretli gelir. Satırlar
+  ürünle birlikte kaydedilir. Aynı kutu yöneticinin yeni ürün formunda da
+  vardır.
+- **Listede olmayan malzemeyi açar; maliyetini ve stoğunu da girer** (sahip
+  28.11: "Evet yazabilsin, maliyet ve stok da girebilsin"). Arama sonuç
+  vermezse "yeni malzeme aç" düğmesi çıkar. Kişi paket diliyle yazar: nasıl
+  ölçülür (ml / g / adet), bir şişe ya da paket ne kadar, bir şişenin
+  fiyatı (KDV dahil), elde kaç şişe var, stok rafı. Birim maliyeti ve stoğu
+  kod hesaplar (700 ml şişe ₺2.800, elde 2,5 şişe → ml başı ₺4, stok 1.750
+  ml). Aynı adla ikinci malzeme açılmaz. Malzeme hemen kaydedilir ve Stok
+  Yönetimi'nde görünür.
+- **Hâlâ kapalı:** var olan malzemelerin maliyeti görünmez; var olan
+  malzemenin maliyeti, stoğu ve mevcut ürünün reçetesi değiştirilemez
+  (Stok Yönetimi ve Reçeteler sayfaları yöneticide). Alış fiyatı alanı
+  bilerek açıktır: hazır alınan ürünün maliyeti başka yerde tutulmaz.
 - İlk verilen kişi: Tuğçe (part-time). Rolü ve alt barı aynı kaldı.
 - Yönetici rollerinde ek yetki boş yazılır (zaten hepsini yaparlar).
   Gözlemci (viewer) rolüne ek yetki verilmez: düğme çıkmaz, adres açılmaz.
@@ -158,7 +171,7 @@
   satış sırasındaki stok düşümleri bozulmasın diye sakin saatte yapılmalı.
 - Kod: `AuthContext` (`yetkiler`, `yetkiVar`), `App.jsx` (`PrivateRoute
   yetki=`), `lib/panelNav.js` (`yetki`, `darLabel`), `MenuMgmtPage` (`dar`),
-  `components/UrunReceteGirisi.jsx`, `lib/recete.js`.
+  `components/UrunReceteGirisi.jsx`, `lib/recete.js` (`yeniMalzemeKaydi`).
   Göç: `20261128_personel_ek_yetki.sql`.
 
 ## Kahve ve maliyet kararları (sahip, 2026-11-26)

@@ -24,6 +24,10 @@ const ROLES_BASE = [
 const EK_YETKILER = [
   { key: "menu_fiyat", label: "Ürün ekleme ve fiyat değiştirme", kisa: "ürün + fiyat" },
 ];
+// Unvan bos birakilirsa yazilan ad: rol etiketinin parantezden onceki kismi
+// ("Part-time (Sipariş+Kasa)" -> "Part-time").
+const ROL_ADI = { admin: "Sahip", ...Object.fromEntries(ROLES_BASE.map(r => [r.key, r.label.split(" (")[0]])) };
+const varsayilanUnvan = (r) => ROL_ADI[r] || "Personel";
 const ekYetkiAlmaz = (r) => r === "admin" || r === "manager" || r === "owner" || r === "viewer";
 
 const roleColor = { admin:"#FFFFFF", manager:"#FFFFFF", owner:"#FFFFFF", waiter:"#FFFFFF", kitchen:"#FFFFFF", cashier:"#8A8580", viewer:"#8A8580", parttime:"#8A8580" };
@@ -56,7 +60,9 @@ export default function StaffMgmtPage() {
 
   const openNew = () => {
     setModal({ mode: "new" });
-    setForm({ name:"", email:"", password:"", role:"manager", display_role:"Yönetici", phone:"", is_active:true, store_ids:[], yetkiler:[] });
+    // Unvan BOS baslar: bos birakilirsa secilen rolun adi yazilir (asagida).
+    // Eskiden "Yönetici" dolu gelirdi ve garsona da "Yönetici" yazilirdi.
+    setForm({ name:"", email:"", password:"", role:"manager", display_role:"", phone:"", is_active:true, store_ids:[], yetkiler:[] });
   };
 
   const openEdit = (s) => {
@@ -94,7 +100,7 @@ export default function StaffMgmtPage() {
       const yeniId = ilk?.staff_id ?? (typeof ilk === "string" ? ilk : null);
       const { data: upd, error: upErr } = yeniId
         ? await supabase.from("staff").update({
-            display_role: form.display_role || "Yönetici",
+            display_role: form.display_role?.trim() || varsayilanUnvan(form.role),
             phone: form.phone?.trim() || null,
             store_ids: form.store_ids || [],
             yetkiler: ekYetkiAlmaz(form.role) ? [] : (form.yetkiler || []),
@@ -200,7 +206,7 @@ export default function StaffMgmtPage() {
           {modal.mode==="new" && <Field label="ŞİFRE (en az 6 karakter)"><input type="text" value={form.password||""} onChange={e=>setForm(f => ({...f,password:e.target.value}))} placeholder="örn: garson2026" style={inputS}/></Field>}
           <Field label="TELEFON"><input value={form.phone||""} onChange={e=>setForm(f => ({...f,phone:e.target.value}))} style={inputS}/></Field>
 
-          <Field label="GÖRÜNEN UNVAN (uygulamada gözükür)"><input value={form.display_role||""} onChange={e=>setForm(f => ({...f,display_role:e.target.value}))} placeholder="Yönetici" style={inputS}/></Field>
+          <Field label="GÖRÜNEN UNVAN (uygulamada gözükür)"><input value={form.display_role||""} onChange={e=>setForm(f => ({...f,display_role:e.target.value}))} placeholder={varsayilanUnvan(form.role)} style={inputS}/></Field>
 
           <Field label="GERÇEK YETKİ">
             <div style={{display:"flex",gap:6,flexWrap:"wrap"}}>
@@ -225,7 +231,7 @@ export default function StaffMgmtPage() {
                 })}
               </div>
               <div style={{fontSize:11,color:"#888",marginTop:6,lineHeight:1.5}}>
-                Açıksa bu kişi Menü'de "Ürün Ekle · Fiyat" kartını görür: yalnız yeni ürün ekler (reçetesiyle) ve fiyat değiştirir. Kategori, sıralama, silme ve diğer alanlar kapalıdır.
+                Açıksa bu kişi Menü'de "Ürün Ekle · Fiyat" kartını görür: yalnız yeni ürün ekler (reçetesiyle) ve fiyat değiştirir. Reçete için listede olmayan malzemeyi açabilir (maliyet ve stok ile). Kategori, sıralama, silme ve diğer alanlar kapalıdır.
               </div>
             </Field>
           )}
