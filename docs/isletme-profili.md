@@ -151,13 +151,26 @@
   ürünle birlikte kaydedilir. Aynı kutu yöneticinin yeni ürün formunda da
   vardır.
 - **Listede olmayan malzemeyi açar; maliyetini ve stoğunu da girer** (sahip
-  28.11: "Evet yazabilsin, maliyet ve stok da girebilsin"). Arama sonuç
-  vermezse "yeni malzeme aç" düğmesi çıkar. Kişi paket diliyle yazar: nasıl
-  ölçülür (ml / g / adet), bir şişe ya da paket ne kadar, bir şişenin
-  fiyatı (KDV dahil), elde kaç şişe var, stok rafı. Birim maliyeti ve stoğu
-  kod hesaplar (700 ml şişe ₺2.800, elde 2,5 şişe → ml başı ₺4, stok 1.750
-  ml). Aynı adla ikinci malzeme açılmaz. Malzeme hemen kaydedilir ve Stok
-  Yönetimi'nde görünür.
+  28.11: "Evet yazabilsin, maliyet ve stok da girebilsin"). Aramada tam aynı
+  adla malzeme yoksa "yeni malzeme aç" düğmesi çıkar ("Limon Suyu" varken
+  "Limon" açılabilir). Kişi paket diliyle yazar: nasıl ölçülür (ml / g /
+  adet), bir şişe ya da paket ne kadar, bir şişenin fiyatı (KDV dahil), elde
+  kaç şişe var, stok rafı. Birim maliyeti ve stoğu kod hesaplar (700 ml şişe
+  ₺2.800, elde 2,5 şişe → ml başı ₺4, litresi ₺4.000, stok 1.750 ml).
+  Malzeme hemen kaydedilir ve Stok Yönetimi'nde görünür. Reçetedeki miktarı
+  boş gelir; kişi yazar.
+- **Yeni malzemede korumalar** (`lib/recete.js`):
+  - Aynı adla ikinci malzeme açılmaz; harf ve aksan farkı sayılmaz ("sut" =
+    "Süt", "Jagermeister" = "Jägermeister"). Kayıttan önce liste yeniden
+    okunur; başka cihaz aynı malzemeyi açtıysa o seçilir.
+  - Benzer malzeme varsa formda gösterilir ("vodka" yazana "Absolut Votka");
+    dokununca var olan reçeteye eklenir.
+  - Kuşkulu rakam bir kez sorulur: şişe 150 ml'den, paket 50 g'dan küçükse
+    (70 cl için "70" yazılmış olabilir) ya da litre / kilo karşılığı ₺10.000'i
+    aşarsa. Aynı rakamla ikinci dokunuş kaydeder.
+  - Fıçı (20.000 ml ve üstü) bu formdan açılmaz: fire payı girilir; Stok
+    Yönetimi'nden açılır.
+  - Raf "Sarf Malzeme" seçilirse malzeme sarf sayılır.
 - **Hâlâ kapalı:** var olan malzemelerin maliyeti görünmez; var olan
   malzemenin maliyeti, stoğu ve mevcut ürünün reçetesi değiştirilemez
   (Stok Yönetimi ve Reçeteler sayfaları yöneticide). Alış fiyatı alanı
